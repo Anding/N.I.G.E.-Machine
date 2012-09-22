@@ -4,6 +4,8 @@ The N.I.G.E. Machine
 
 The N.I.G.E. Machine is a user-expandable micro-computer system that runs on an FPGA development board. It is designed specifically for the rapid prototyping of experimental scientific hardware or other devices. The key components of the system include a stack-based softcore CPU optimized for embedded control, a FORTH software environment, and a flexible digital logic layer that interfaces the micro-computer components with the external environment. The system is currently hosted on a Digilent Nexys 2 development board.
 
+A video demonstration is available here: <http://www.youtube.com/watch?v=0v-HuVLRoUc>
+
 
 COPYRIGHT AND LICENSE
 =====================
@@ -12,7 +14,7 @@ The N.I.G.E machine, its design and its source code are Copyright (C) 2012 by An
     
 (1) For commercial or proprietary use you must obtain a commercial license agreement with Andrew Richard Read (anding_eunding@yahoo.com)
     
-(2) You can redistribute the N.I.G.E. Machine, its design and its source code and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+(2) You can redistribute the N.I.G.E. Machine, its design and its source code and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.  If you do so, you implicitly agree that your modifications may be used within a commercial license by Andrew Read without attribution or compensation.
 
 The N.I.G.E Machine is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details. You should have received a copy of the GNU General Public License along with this repository.  If not, see <http://www.gnu.org/licenses/>.
 
@@ -92,7 +94,7 @@ Steps 7 and 8 are required because ISE uses absolute file references that need t
 Project structure
 =================
 
-\Resourses contains documentation and other reference materials
+\Resources contains documentation and other reference materials
 
 \VHDL contains all of the logic design (VHDL files) for the N.I.G.E. Machine
 
