@@ -4,7 +4,8 @@ The N.I.G.E. Machine
 
 The N.I.G.E. Machine is a user-expandable micro-computer system that runs on an FPGA development board. It is designed specifically for the rapid prototyping of experimental scientific hardware or other devices. The key components of the system include a stack-based softcore CPU optimized for embedded control, a FORTH software environment, and a flexible digital logic layer that interfaces the micro-computer components with the external environment. The system is currently hosted on a Digilent Nexys 2 development board.
 
-A video demonstration is available here: <http://www.youtube.com/watch?v=0v-HuVLRoUc>
+Short video introduction to the system: <http://www.youtube.com/watch?v=0v-HuVLRoUc>
+Demonstration of an example application with a light sensor: <http://www.youtube.com/watch?v=0Kj5EMdnkMk>
 
 
 COPYRIGHT AND LICENSE
@@ -87,7 +88,7 @@ Steps 7 and 8 are required because ISE uses absolute file references that need t
 9. Select "uut - Board - Behavioral" in the Design Hierachy window
 10. Run "Generate Programming File" and confirm no errors are reported
 11. In the Digilent Adept software, for PROM (second row), browse to Xilinx\board.bit and click "Program"
-12. Turn to the Nexys 2 board.  Confirm the N.I.G.E. Machine startup message on the VGA monitor (it may be necessary to adjust the horizontal/vertical VGA positioning)
+12. Press the reset button on the Nexys 2 board.  After a moment, confirm the N.I.G.E. Machine startup message on the VGA monitor (it may be necessary to adjust the horizontal/vertical VGA positioning)
 13. Run a short FORTH programme.  For example "1 1 + . <return>"
 14. Congratulations!  The project is up and running.
 
@@ -105,9 +106,9 @@ Project structure
 Possible next steps
 ===================
 
-* The file "\Resources\NIGE Machine EuroFORTH 2012.pdf" is a copy of the academic paper presented at EuroFORTH 2012 at Exeter College, Oxford.  It contains a reasonably detailed explanation of the N.I.G.E. Machine with an example application, and is a good starting point for further review.
+* The file "\Resources\NIGE Machine EuroFORTH 2012.pdf" is a copy of the academic paper presented at EuroFORTH 2012 at Exeter College, Oxford.  It contains a fairly detailed explanation of the N.I.G.E. Machine with an example application for further review.
 
-* It is very much hoped that the N.I.G.E. Machine will find uses in its intended application of supporting the prototyping and use of experimental scientific hardware.  If this applies to you, your initiative and contact will be warmly welcomed.  In fact it may be possible to work together to configure the N.I.G.E. Machine for your intended application.
+* It is very much hoped that the N.I.G.E. Machine will find uses in its intended application of supporting the prototyping and use of experimental scientific hardware.  If this applies to you, your initiative and contact would be warmly welcomed.  In fact it may be possible to work together to configure the N.I.G.E. Machine for your intended application.
 
 * The project is under constant development.  You are invited and encouraged to contribute! The preferred collaboration model via Github is a small team using the Shared Repository model rather than ad-hoc Fork and Pull (<https://help.github.com/articles/using-pull-requests>).
 
