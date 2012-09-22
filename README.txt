@@ -4,6 +4,8 @@ The N.I.G.E. Machine
 
 The N.I.G.E. Machine is a user-expandable micro-computer system that runs on an FPGA development board. It is designed specifically for the rapid prototyping of experimental scientific hardware or other devices. The key components of the system include a stack-based softcore CPU optimized for embedded control, a FORTH software environment, and a flexible digital logic layer that interfaces the micro-computer components with the external environment. The system is currently hosted on a Digilent Nexys 2 development board.
 
+A video demonstration is available here: <http://www.youtube.com/watch?v=0v-HuVLRoUc>
+
 
 COPYRIGHT AND LICENSE
 =====================
