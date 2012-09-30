@@ -74,7 +74,7 @@ Getting started
 1. Install Xilix ISE and Digilent Adept software on your PC
 2. Connect the Nexys2 board to your PC via USB and confirm the connection with Adept.  Also connect a VGA monitor and PS/2 keyboard to the board
 3. Clone the Github hosted repository to your PC
-4. Unzip the file Xilinx.zip to the same folder ("extract HERE")
+4. Unzip the file Xilinx.zip in the same folder ("extract HERE")
 5. Confirm the folder structure as follows
 \Resources
 \Software
