@@ -1641,13 +1641,13 @@ DEPTH.LF	dc.l	R>.NF
 DEPTH.NF	dc.b	5 128 +
 		dc.b	char H char T char P char E char D
 DEPTH.SF	dc.w	1
-DEPTH.CF	LOADPSP,rts
+DEPTH.CF	PSP@,rts
 ;
 RDEPTH.LF	dc.l	DEPTH.NF
 RDEPTH.NF	dc.b	6 128 +
 		dc.b	char H char T char P char E char D char R
 RDEPTH.SF	dc.w	2
-RDEPTH.CF	LOADRSP
+RDEPTH.CF	RSP@
 		rts
 ;
 +.LF		dc.l	RDEPTH.NF
@@ -2100,7 +2100,7 @@ PICK.LF	dc.l	2SWAP.NF
 PICK.NF	dc.b	4 128 +
 		dc.b	char K char C char I char P
 PICK.SF	dc.w	PICK.Z PICK.CF del
-PICK.CF	loadpsp	( n depth)
+PICK.CF	psp@		( n depth)
 		swap		( depth n)
 		-
 		#.b	4
@@ -2160,7 +2160,7 @@ DOTS.LF	dc.l	DUMP.NF
 DOTS.NF	dc.b	2 128 +
 		dc.b	char S char .
 DOTS.SF	dc.w	DOTS.Z DOTS.CF del
-DOTS.CF	loadpsp		( depth)
+DOTS.CF	psp@			( depth)
 		#.b	4		( depth 4)
 		multu
 		drop			( offset)

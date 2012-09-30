@@ -523,11 +523,8 @@
 	then
 ;
 
-: _+LOOP
+: _+LOOP							\ KNOWN ISSUE - +LOOP only works with positive increments!
 \ Forth code
-\ dup	( n R: limit index)
-\ 0<
-\ swap	( flag1 n R: limit index)		; sign of index variable
 \ R>	( flag1 n index R: limit)
 \ +	( flag1 index+ R: limit)
 \ dup	( flag1 index+ index+ R: limit)
@@ -536,7 +533,6 @@
 \ not	( flag1 index+ flag2 R: limit)
 \ swap ( flag1 flag2 index+  R: limit)
 \ >R   ( flag1 flag2 R: limit index+)
-\ XOR
 \ BEQ
 \ R> R> drop drop ( -- R: --)
 	if									\ pass 2
@@ -544,14 +540,14 @@
 		1 1 10 10	
 		R>					( code.. pointer)
 		make-BEQ	
-		2 46 4 8 4 34 30 9 2 15 10 42
-		18					( code.. size)
+		8 4 34 30 9 2 15 10
+		14					( code.. size)
 	else									\ pass 1
 		\ update instruction count
 		instruction-count 67 4 * + 1 swap +!
 		-5					( pointer sub-offset)
 		calc-rev-offset			
-		18					( size)
+		14					( size)
 	then
 ;
 
