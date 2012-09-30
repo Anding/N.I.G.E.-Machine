@@ -15,7 +15,7 @@ The N.I.G.E machine, its design and its source code are Copyright (C) 2012 by An
     
 (1) For commercial or proprietary use you must obtain a commercial license agreement with Andrew Richard Read (anding_eunding@yahoo.com)
     
-(2) You can redistribute the N.I.G.E. Machine, its design and its source code and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.  If you do so, you implicitly agree that your modifications may be used within a commercial license by Andrew Read without attribution or compensation.
+(2) You can redistribute the N.I.G.E. Machine, its design and its source code and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.  
 
 The N.I.G.E Machine is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details. You should have received a copy of the GNU General Public License along with this repository.  If not, see <http://www.gnu.org/licenses/>.
 
@@ -43,6 +43,8 @@ Hardware
 The system currently runs on a Digilent Nexys 2 development board, although it may be ported to other FPGA development boards.  Please note that there are two versions of the Nexys 2, 1200k gates and 500k gates.  The design has been developed and tested with the 1200k gate board.  A port to the 500k gate board would likely be quite feasible but has not been tested.  If acquiring a new board then the 1200k gate version is is recommended.
 <http://www.digilentinc.com/Products/Detail.cfm?NavPath=2,400,789&Prod=NEXYS2>
 
+The board is also able to interface with an SD card using the following adapter.
+http://www.digilentinc.com/Products/Detail.cfm?NavPath=2,401,513&Prod=PMOD-SD
 
 Software
 --------
@@ -57,9 +59,10 @@ The required software for using this project is available from the internet at n
 
 Other software packages are not required but may be helpful for development work:
 
-* Programmers Notepad and FORTH files add-on.
+* Programmers Notepad and FORTH files add-on. 
 <http://www.pnotepad.org/>
 <http://www.pnotepad.org/add-ons/>
+Set Tools/Options/General/Defaults "Tab Width" to 7
 
 * VFX Forth from MicroProcessor Engineering
 <http://www.mpeforth.com/>
@@ -74,20 +77,22 @@ Getting started
 4. Unzip the file Xilinx.zip
 5. Confirm the folder structure as follows
 \Resources
+\Software
 \System
 \VHDL
 \Xilinx
-6. Run the file Xilinx\NIGE_Machine.xise to launch this project in Xilinx ISE
+6. Run the file \Xilinx\NIGE_Machine.xise to launch this project in Xilinx ISE
 7. Within ISE, in the Design Hierachy window (top left) double click "inst_SYS_RAM - SYS_RAM".  A CORE generator wizard will launch
 On page 4 of the wizard, browse to the init file \System\SRAM.coe and click "Generate"
 8. Similarly, make sure the init file for "inst_Char_RAM - Char_RAM" points to \System\Character_ROM.coe and then generate
 Steps 7 and 8 are required because ISE uses absolute file references that need to be set for your local hard drive configuration
-9. Select "uut - Board - Behavioral" in the Design Hierachy window
-10. Run "Generate Programming File" and confirm no errors are reported
-11. In the Digilent Adept software, for PROM (second row), browse to Xilinx\board.bit and click "Program"
+9. Select "prj - Board_Nexys2_1200 - RTL" in the Design Hierachy window
+10. In the Design Processes window, run "Generate Programming File" and confirm no errors are reported
+11. In the Digilent Adept software, for PROM (second row), browse to \Xilinx\board_nexys2_1200.bit and click "Program"
 12. Press the reset button on the Nexys 2 board.  After a moment, confirm the N.I.G.E. Machine startup message on the VGA monitor (it may be necessary to adjust the horizontal/vertical VGA positioning)
 13. Run a short FORTH programme.  For example "1 1 + . <return>"
 14. Congratulations!  The project is up and running.
+
 
 Project structure
 =================
@@ -96,9 +101,12 @@ Project structure
 
 \VHDL contains all of the logic design (VHDL files) for the N.I.G.E. Machine
 
-\System contains other design files that are not VHDL, such as the FORTH system software
+\System contains other design files that are not VHDL, such as the FORTH system software and the character ROM
+
+\Software contains FORTH language application software that may be run on the N.I.G.E. Machine
 
 \Xilinx is treated slightly differently from the other folders.  Xilinx ISE uses binary configuration files and also regenerates a significant number of intermediate files with each run.  For these reasons it has been considered best NOT to version control the Xilinx ISE project files.  They are placed in a separate folder (\Xilinx) that is referenced in .gitignore and taken outside the scope of version control.  The supplied file Xilinx.zip is a reasonably updated snapshot of the project for the purpose of providing users with a starting point for ISE (see "Getting started")
+
 
 Possible next steps
 ===================
