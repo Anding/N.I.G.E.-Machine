@@ -95,7 +95,7 @@ variable SD.ver			\ xxxxx [block/byte] [v2/v1]
 	0 timeout
 ;
 
-: sd.sector-code ( n -- b4 b3 b2 b1, scale and split sector address)
+: SD.sector-code ( n -- b4 b3 b2 b1, scale and split sector address)
 	sd.ver @ 2 and			\ scale sector
 	0 = IF
 		512 *
@@ -107,7 +107,7 @@ variable SD.ver			\ xxxxx [block/byte] [v2/v1]
 	R> 24 rshift				\ bits 31 - 24
 ;	
 
-: sd.busy-check ( --, wait for SD card after asserting CS)
+: SD.busy-check ( --, wait for SD card after asserting CS)
 	spi.cs-hi
 	BEGIN				
 		spi.get 
@@ -117,7 +117,7 @@ variable SD.ver			\ xxxxx [block/byte] [v2/v1]
 ;
 
 
-: sd.read-sector ( addr n --, read 512 bytes from sector n into a buffer at addr)
+: SD.read-sector ( addr n --, read 512 bytes from sector n into a buffer at addr)
 	1000 timeout
 	sd.busy-check
 	1 swap					\ checksum
