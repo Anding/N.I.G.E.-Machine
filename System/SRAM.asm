@@ -3046,10 +3046,10 @@ LOOP2.Z	rts
 ;
 ; UNLOOP, remove loop paramaters
 UNLOOP.LF	dc.l	+LOOP.NF
-UNLOOP.NF	dc.b	6 128 + IMMED +
+UNLOOP.NF	dc.b	6 128 +
 		dc.b	char P char O char O char L char N char U
-UNLOOP.SF	dc.w	UNLOOP.Z UNLOOP.CF del		; must be compiled inline
-UNLOOP.CF	R>						; assume no return address
+UNLOOP.SF	dc.w	UNLOOP.Z UNLOOP.CF del MUSTINLINE + ; must be compiled inline
+UNLOOP.CF	R>						 ; assume no return address
 		R>
 		drop
 UNLOOP.Z	drop,rts
