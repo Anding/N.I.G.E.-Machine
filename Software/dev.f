@@ -52,6 +52,7 @@ variable FAT.SecPerClus		\ sectors per cluster
 variable FAT.RsvdSecCnt		\ number of reserved sectors
 variable FAT.RootClus		\ first cluster of root directory
 variable FAT.FirstDataSector	
+variable FAT.CurrentDirectory	\ cluster number of current directory
 512 buffer: FAT.buf			\ buffer for sector access
 
 : FAT.init ( --, initiaize the FAT data structures)
@@ -64,7 +65,7 @@ variable FAT.FirstDataSector
 		2001 error
 	THEN
 	fat.buf 13 + c@ fat.secperclus !
-	fat.buf 44 fat.read-long fat.rootclus !
+	fat.buf 44 fat.read-long dup fat.rootclus ! FAT.CurrentDirectory !
 	fat.buf 14 fat.read-word dup fat.rsvdseccnt !	( RsvdSecCnt)
 	fat.buf 16 + c@					( RsvdSecCnt NumFATs)
 	fat.buf 36 fat.read-long				( RsvdSecCnt NumFATs SecPerFAT)
@@ -97,9 +98,9 @@ variable FAT.FirstDataSector
 		THEN
 ;
 
-11 buffer: FAT.filestring
+24 buffer: FAT.filestring			\ allow space for overwrite to simplify name conversions
 
-: FAT.Filename2String ( addr -- addr n, convert a FAT filename to an ordinary string)
+: FAT.Filename2String ( addr -- addr n, convert a short FAT filename to an ordinary string)
 	FAT.filestring over 				\ remember address and use FAT.filestring for the return string address
 	dup 8 + swap DO
 		i FAT.copynonblank
@@ -116,10 +117,28 @@ variable FAT.FirstDataSector
 	FAT.filestring dup rot swap -	( addr n)
 ;
 
-: FAT.DIR ( n --, print the directory at the cluster n)
-	FAT.Clus2Sec		( firstRootSec)
-	dup FAT.SecPerClus @ + swap		( lastRootSec firstRootSec)		\ ignore any clusters after the first
-	cr DO										\ examine each sector in the first root cluster
+: FAT.String2Filename ( addr n -- addr, convert an ordinary string to a short FAT filename)
+	>R >R
+	FAT.filestring dup dup dup
+	12 + swap DO 32 i c! LOOP	 		\ fill the output string with blanks
+	R> R>
+	12 min over + swap 							
+	DO						\ loop over the input string upto 12 characters
+		i c@ dup 46 =				\ .
+		IF
+			drop drop dup 8 +		\ re-position in output string
+		ELSE
+			UPPER over c! 1+		\ save and increment position in output string
+		THEN				
+	LOOP
+	drop
+;
+
+: DIR ( n --, print the directory at the cluster n)
+	FAT.CurrentDirectory @
+	FAT.Clus2Sec		( firstSec)
+	dup FAT.SecPerClus @ + swap		( lastSec firstSec)			\ ignore any clusters after the first [128 entries per directory]
+	cr DO										\ examine each sector in the cluster
 		FAT.buf i SD.read-sector
 		FAT.buf dup 512 + swap DO						\ examine each 32 byte entry in the sector
 			i c@ ?dup 0= IF UNLOOP UNLOOP EXIT	THEN			\ empty entry and no following entries
@@ -146,14 +165,42 @@ variable FAT.FirstDataSector
 	LOOP	
 ;
 
-: DIR ( --, print the root directory contents)
-	fat.init
-	FAT.ROOTClus @ 
-	FAT.DIR								
+: FAT.find-file ( cluster addr n -- cluster size flags TRUE | FALSE, given a file name scan the given directory and return the size, first cluster and flags of the file, or false if not found)
+	FAT.String2Filename	( cluster filestring)
+	swap FAT.Clus2Sec	( filestring firstSec)
+	dup FAT.SecPerClus @ + swap		( filestring lastSec firstSec)	\ ignore any clusters after the first [128 entries per directory]
+	DO										\ examine each sector in the cluster
+		FAT.buf i SD.read-sector
+		FAT.buf dup 512 + swap DO						\ examine each 32 byte entry in the sector
+			i c@ 0= IF UNLOOP UNLOOP 0 EXIT THEN			\ empty entry and no following entries - exit with false flag
+			dup 229 <> IF							\ non-0xE5 first byte indicates valid entry
+				15 and 15 <> IF					\ is not a long-name entry
+					dup 11 i 11 $= IF					\ test string match
+						i 20 FAT.read-word 65536 * i 26 FAT.read-word \ cluster	
+						i 28 FAT.read-long 				\ size
+						i 11 + c@					\ flags
+						UNLOOP UNLOOP 0 not EXIT			\ exit with true flag
+					THEN
+				THEN
+			THEN
+		32 +LOOP
+	LOOP
 ;
 
-: FAT.seek-file ( addr n -- size cluster | 0, given a file name return the size and first cluster of the file, or zero if not found)
-;
 
-: FAT.load-file ( addr size cluster, load a file to addr given the file size and first cluster)
+: FAT.load-file ( addr firstCluster, load a file to addr given the first cluster, assuming size <> 0)
+	BEGIN						( addr currentCluster)
+		dup >R					( addr currentCluster R:currentCluster)
+		FAT.Clus2Sec				( addr firstSec R:currentCluster)
+		dup FAT.SecPerClus @ + swap		( addr lastSec firstSec R:currentCluster)
+		DO
+			dup i SD.read-sector		
+			512 +				( addr)
+		LOOP
+		R>					( addr currentCluster)
+		FAT.get-fat				( addr nextCluster)
+		dup 268435455 =			( addr nextCluster flag)  \ End-of-clusters mark
+	UNTIL
+		drop drop
+	REPEAT
 ;
