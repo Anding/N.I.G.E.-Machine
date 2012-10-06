@@ -8,7 +8,7 @@
 --	3	XOR
 --	4	LSL
 --	5	LSR
---	6	ASL
+--	6	ASL, identical with LSL since there is no overflow flag
 --	7	ASR
 
 library IEEE;
@@ -39,9 +39,9 @@ process (PortA, PortB, control)
 			when "101" =>
 				Output <= '0' & PortB(31 downto 1);
 			when "110" =>
-				Output <= PortB(31) & PortB(29 downto 0) & '0';
+				Output <= PortB(30 downto 0) & '0';  -- identical with LSL since there is no overflow flag
 			when "111" =>
-				Output <= PortB(31) & PortB(31) & PortB(30 downto 1);
+				Output <= PortB(31) & PortB(31 downto 1);
 			when others =>
 				Output <= not PortB;				-- INVERT is the default
 		end case;
