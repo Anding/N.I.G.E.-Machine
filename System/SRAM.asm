@@ -52,6 +52,7 @@ _END		equ	hex 072C30		; dataspace in SDRAM
 ; ---------------------------------------------------------------------------------------------
 ; Machine specifics
 EOL		equ	10			; line separator = ASCII 10
+~EOL		equ	13			; ignore this character, not line separator = ASCII 13
 EOF		equ	26			; file systems terminator = ASCII 26
 ERR		equ	27			; file system error signal = ASCII 27
 ;
@@ -2124,12 +2125,13 @@ DUMP.CF	over	( addr n addr)
 			#.w	EMIT.CF
 			jsr		
 			dup		( addr addr)
-			#.b	6				; 6 digit output for the address
+			#.b	6					; 6 digit output for the address
 			#.w	UDOTR.CF
 			jsr		( addr)
 			#.b	32
 			#.w	EMIT.CF
 			jsr
+			dup		( addr addr)			; keep the address for literal printing
 			#.b	8
 			zero
 			DO
@@ -2142,11 +2144,18 @@ DUMP.CF	over	( addr n addr)
 				#.w	UDOTR.CF
 				jsr
 				1+		( addr+)
-			LOOP
-			dup		( addr addr R: end)
-			R@		( addr end R: end)
-			<		( addr flag R: end)
-			not		( addr flag' R: end)
+			LOOP		( addr addr+8)
+			#.b	32
+			#.w	EMIT.CF
+			jsr
+			swap		( addr+8 addr)
+			#.b	8	( addr+8 addr 8)
+			#.w	TYPERAW.CF
+			jsr						; print the literals
+			dup		( addr+8 addr+8 R: end)
+			R@		( addr+8 addr+8 end R: end)
+			<		( addr+8 flag R: end)
+			not		( addr+8 flag' R: end)
 		UNTIL
 		#.b	EOL
 		#.w	EMIT.CF
@@ -4054,6 +4063,7 @@ CLS.CF		#.w	{CLS}.CF
 		jsr
 CLS.Z		rts
 ;
+; SCRSET ( --, set the ROWS and COLS according to the video mode)
 SCRSET.LF	dc.l	CLS.NF
 SCRSET.NF	dc.b	6 128 +
 		dc.b	char T char E char S char R char C char S
@@ -4080,6 +4090,7 @@ SCRSET		dc.b	60 80			; VGA, interlace off, ROWS, COLUMNS
 		dc.b	75 100			; SVGA, interlace off
 		dc.b	60 100			; SVGA, interlace on
 ;
+; NEWLINE ( --, implement a newline)
 NEWLINE.LF	dc.l	SCRSET.NF
 NEWLINE.NF	dc.b	7 128 +
 		dc.b	char E char N char I char L char W char E char N
@@ -4208,66 +4219,85 @@ CSR-TAB.CF	#.w	CSR-X
 		THEN
 CSR-TAB.Z	rts
 ;
-; VEMIT ( n --, emit a character to the VDU)
+; {VEMITRAW} ( n --, emit a character to the VDU excluding non-printing recognition and cursor update, internal word)
+{VEMITRAW}.CF	#.w	CSR-PLOT.CF		; plot
+		jsr
+		#.w	CSR-FWD.CF		; advance cursor
+		jsr	
+		rts
+;
+; {VEMIT} (n --, emit a character to the VDU including non-priniting recognition but excluding cursor update, internal word)
+{VEMIT}.CF 	#.b	EOL
+		over
+		=
+		IF								; newline
+			drop
+			#.w 	NEWLINE.CF
+			jsr
+		ELSE
+			#.b	~EOL
+			over
+			=
+			IF							; not newline - ignore
+				drop
+			ELSE
+				#.b	8
+				over
+				=
+				IF						; backspace
+					drop
+					#.w 	CSR-BACK.CF
+					jsr
+					zero
+					#.w 	CSR-PLOT.CF
+					jsr
+				ELSE
+					#.b	9
+					over
+					=
+					IF					; tab
+						drop
+						#.w	CSR-TAB.CF
+						jsr
+					ELSE
+						#.b	12
+						over
+						=
+						IF				; clear screen
+							drop
+							#.w	{CLS}.CF
+							jsr
+						ELSE				; other literal
+							#.w	{VEMITRAW}.CF		 ; emit the literal
+							jsr	
+						THEN
+					THEN
+				THEN
+			THEN
+		THEN
+		rts
+;
+; VEMIT ( n --, emit a character to the VDU, including non-printing recognition and cursor update)
 VEMIT.LF	dc.l	CSR-TAB.NF
 VEMIT.NF	dc.b	5 128 +
 		dc.b	char T char I char M char E char V
 		dc.w	VEMIT.Z VEMIT.CF del
 VEMIT.CF	#.w	CSR-OFF.CF					; undraw cursor
 		jsr
-		#.b	EOL
-		over
-		=
-		IF							; newline
-			drop
-			#.w 	NEWLINE.CF
-			jsr
-		ELSE
-			#.b	8
-			over
-			=
-			IF						; backspace
-				drop
-				#.w 	CSR-BACK.CF
-				jsr
-				zero
-				#.w 	CSR-PLOT.CF
-				jsr
-			ELSE
-				#.b	9
-				over
-				=
-				IF					; tab
-					drop
-					#.w	CSR-TAB.CF
-					jsr
-				ELSE
-					#.b	12
-					over
-					=
-					IF				; clear screen
-						drop
-						#.w	{CLS}.CF
-						jsr
-					ELSE				; other literal
-						#.w	CSR-PLOT.CF		 ; plot
-						jsr
-						#.w	CSR-FWD.CF		; advance cursor
-						jsr	
-					THEN
-				THEN
-			THEN
-		THEN
+		#.w	{VEMIT}.CF
+		jsr
 		#.w	CSR-ON.CF					; draw cursor
 		jsr
 VEMIT.Z	rts
 ;
-;VTYPE ( addr len, type to VDU)
-VTYPE.LF	dc.l	VEMIT.NF
-VTYPE.NF	dc.b	5 128 +
-		dc.b	char E char P char Y char T char V
-VTYPE.SF	dc.w	VTYPE.Z VTYPE.CF del
-VTYPE.CF	?dup
+; VTYPERAW ( addr len, type to VDU, excluding non-printing recognition including cursor update)
+VTYPERAW.LF	dc.l	VEMIT.NF
+VTYPERAW.NF	dc.b	8 128 +
+		dc.b	char W char A char R char E char P char Y char T char V
+VTYPERAW.SF	dc.w	VTYPERAW.Z VTYPERAW.CF del
+VTYPERAW.CF	#.w	CSR-OFF.CF					; undraw cursor
+		jsr
+		?dup
 		IF
 			over			( addr len addr)
 			+			( start end)
@@ -4275,10 +4305,35 @@ VTYPE.CF	?dup
 			DO
 				R@
 				fetch.b
-				#.w	VEMIT.CF
+				#.w	{VEMITRAW}.CF
 				jsr
 			LOOP
 		THEN
+		#.w	CSR-ON.CF					; draw cursor
+		jsr
+VTYPERAW.Z	rts
+;
+; VTYPE ( addr len, type to VDU, including non-printing recognition and cursor update)
+VTYPE.LF	dc.l	VTYPERAW.NF
+VTYPE.NF	dc.b	5 128 +
+		dc.b	char E char P char Y char T char V
+VTYPE.SF	dc.w	VTYPE.Z VTYPE.CF del
+VTYPE.CF	#.w	CSR-OFF.CF					; undraw cursor
+		jsr
+		?dup
+		IF
+			over			( addr len addr)
+			+			( start end)
+			swap			( end start)
+			DO
+				R@
+				fetch.b
+				#.w	{VEMIT}.CF
+				jsr
+			LOOP
+		THEN
+		#.w	CSR-ON.CF					; draw cursor
+		jsr
 VTYPE.Z	rts
 ;
 KEY?.LF	dc.l	VTYPE.NF
@@ -4317,7 +4372,16 @@ TYPE.CF	#.w	TYPE_VECTOR
 		jsr
 TYPE.Z		rts
 ;
->REMOTE.LF	dc.l	TYPE.NF
+TYPERAW.LF	dc.l	TYPE.NF
+TYPERAW.NF	dc.b	7 128 +
+		dc.b	char W char A char R char E char P char Y char T
+TYPERAW.SF	dc.w	TYPERAW.Z TYPERAW.CF del
+TYPERAW.CF	#.w	TYPERAW_VECTOR
+		fetch.l
+		jsr
+TYPERAW.Z	rts
+;
+>REMOTE.LF	dc.l	TYPERAW.NF
 >REMOTE.NF	dc.b	7 128 +
 		dc.b	char E char T char O char M char E char R char >
 >REMOTE.SF	dc.w	>REMOTE.Z >REMOTE.CF del
@@ -4326,6 +4390,9 @@ TYPE.Z		rts
 		store.l
 		#.w	S0TYPE.CF
 		#.w	TYPE_VECTOR
+		store.l
+		#.w	S0TYPE.CF
+		#.w	TYPERAW_VECTOR
 		store.l	
 >REMOTE.Z	rts	
 ;
@@ -4338,6 +4405,9 @@ TYPE.Z		rts
 		store.l
 		#.w	VTYPE.CF
 		#.w	TYPE_VECTOR
+		store.l
+		#.w	VTYPERAW.CF
+		#.w	TYPERAW_VECTOR
 		store.l	
 >LOCAL.Z	rts
 ;	
@@ -4908,6 +4978,7 @@ input_size	dc.l	_input_size		; length of input buffer (returned by SOURCE)
 input_size_a	dc.l	0
 COMPILEstackP	dc.l	_PAD			; location of compiler stack
 TYPE_VECTOR	dc.l	VTYPE.CF		; VTYPE.CF
+TYPERAW_VECTOR dc.l	VTYPERAW.CF		; VTYPERAW.CF
 EMIT_VECTOR	dc.l	VEMIT.CF		; VEMIT.CF
 KEY_VECTOR	dc.l	KKEY.CF		; KKEY.CF
 KEY?_VECTOR	dc.l	KKEY?.CF		; EKEY?.CF
