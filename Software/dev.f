@@ -165,21 +165,22 @@ variable FAT.CurrentDirectory	\ cluster number of current directory
 	LOOP	
 ;
 
-: FAT.find-file ( cluster addr n -- cluster size flags TRUE | FALSE, given a file name scan the given directory and return the size, first cluster and flags of the file, or false if not found)
+: FAT.find-file ( cluster addr n -- size cluster flags TRUE | FALSE, given a file name scan the given directory and return the size, first cluster and flags of the file, or false if not found)
 	FAT.String2Filename	( cluster filestring)
 	swap FAT.Clus2Sec	( filestring firstSec)
 	dup FAT.SecPerClus @ + swap		( filestring lastSec firstSec)	\ ignore any clusters after the first [128 entries per directory]
 	DO										\ examine each sector in the cluster
 		FAT.buf i SD.read-sector
 		FAT.buf dup 512 + swap DO						\ examine each 32 byte entry in the sector
-			i c@ 0= IF UNLOOP UNLOOP 0 EXIT THEN			\ empty entry and no following entries - exit with false flag
+			i c@ dup 0= IF UNLOOP UNLOOP nip EXIT THEN		\ empty entry and no following entries - exit with false flag
 			dup 229 <> IF							\ non-0xE5 first byte indicates valid entry
 				15 and 15 <> IF					\ is not a long-name entry
-					dup 11 i 11 $= IF					\ test string match
-						i 20 FAT.read-word 65536 * i 26 FAT.read-word \ cluster	
-						i 28 FAT.read-long 				\ size
-						i 11 + c@					\ flags
-						UNLOOP UNLOOP 0 not EXIT			\ exit with true flag
+					dup 11 i 11 $= IF				\ test string match
+						drop					\ remove filestring
+						i 28 FAT.read-long 					\ size						
+						i 20 FAT.read-word 65536 * i 26 FAT.read-word + 	\ cluster	
+						i 11 + c@						\ flags
+						UNLOOP UNLOOP 0 not EXIT				\ exit with true flag
 					THEN
 				THEN
 			THEN
@@ -201,6 +202,5 @@ variable FAT.CurrentDirectory	\ cluster number of current directory
 		FAT.get-fat				( addr nextCluster)
 		dup 268435455 =			( addr nextCluster flag)  \ End-of-clusters mark
 	UNTIL
-		drop drop
-	REPEAT
+	drop drop
 ;
