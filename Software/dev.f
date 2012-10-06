@@ -1,24 +1,5 @@
 \ development of the FAT file system
 
-: FAT.write-sector ( addr n --, write 512 byte to sector n from addr)
-	1000 timeout
-	sd.busy-check
-	1 swap					\ checksum
-	sd.sector-code			\ encode sector number
-	88 sd.cmd				\ CMD24
-	sd.get-R1 0 <> IF			\ check response OK
-		1010 ERROR
-	THEN
-	255 spi.put				\ space
-	254 spi.put				\ initiate data packet
-	dup 512 + swap DO I c@ spi.put LOOP	\ write sector
-	2 0 DO 1 spi.put LOOP			\ dummy checksum
-	sd.get-R1 31 and 5 <> IF			\ check data response
-		1011 ERROR				\ write error
-	THEN	
-	0 timeout
-;
-
 : FAT.read-long ( addr n -- x, get a little endian longword from the buffer)
 	+ dup 4 + swap DO i c@ LOOP
 	3 0 DO 256 * + LOOP
@@ -53,7 +34,11 @@ variable FAT.RsvdSecCnt		\ number of reserved sectors
 variable FAT.RootClus		\ first cluster of root directory
 variable FAT.FirstDataSector	
 variable FAT.CurrentDirectory	\ cluster number of current directory
-512 buffer: FAT.buf			\ buffer for sector access
+variable FAT.NextFreeCluster	\ where to look for the next free cluster
+variable FAT.TotalSectors		\ total sectors on the disk
+variable FAT.FATinBuf		\ the currently buffered FAT sector
+512 buffer: FAT.buf			\ buffer for general sector access
+512 buffer: FAT.fatbuf		\ buffer specifically for FAT
 
 : FAT.init ( --, initiaize the FAT data structures)
 	sd.init
@@ -66,10 +51,24 @@ variable FAT.CurrentDirectory	\ cluster number of current directory
 	THEN
 	fat.buf 13 + c@ fat.secperclus !
 	fat.buf 44 fat.read-long dup fat.rootclus ! FAT.CurrentDirectory !
+	fat.buf 32 fat.read-long fat.TotalSectors !
 	fat.buf 14 fat.read-word dup fat.rsvdseccnt !	( RsvdSecCnt)
 	fat.buf 16 + c@					( RsvdSecCnt NumFATs)
 	fat.buf 36 fat.read-long				( RsvdSecCnt NumFATs SecPerFAT)
 	* + fat.firstdatasector !
+	fat.buf 1 sd.read-sector				\ FAT32 FSInfo
+	fat.buf 0 fat.read-long 1096897106 <> IF
+		2002 error					\ confirm valid FSInfo sector
+	THEN
+	fat.buf 492 fat.read-long dup -1 = IF drop 2 THEN
+	FAT.NextFreeCluster !
+	0 FAT.FATinBuf !
+;
+
+: FAT.UpdateFSInfo ( --, update the FAT32 FSInfo sector with next free cluster)
+	fat.buf 1 sd.read-sector
+	fat.buf 488 FAT.NextFreeCluster @ FAT.write-long
+	fat.buf 1 sd.write-sector
 ;
 	
 : FAT.Clus2Sec ( n -- n, given a valid cluster number return the number of the first sector in that cluster)
@@ -82,11 +81,28 @@ variable FAT.CurrentDirectory	\ cluster number of current directory
 	4 *			( FATOffset)
 	512 /MOD		( rem quo)
 	fat.rsvdseccnt @ + 	( ThisFATEntOffset ThisFATSecNum)
-	fat.buf swap	 	( ThisFATEntOffset fat.buf ThisFATSecNum)
-	SD.read-sector	( ThisFATEntOffset)
-	fat.buf swap		( fat.buf ThisFATEntOffset)
+	dup FAT.FATinBuf @ <> IF
+		dup FAT.FATinBuf !			\ remember the buffered sector
+		fat.fatbuf swap	 ( ThisFATEntOffset fat.fatbuf ThisFATSecNum)
+		SD.read-sector	 ( ThisFATEntOffset)
+	ELSE
+		drop			( ThisFATEntOffset)
+	THEN
+	fat.fatbuf swap		( fat.buf ThisFATEntOffset)
 	fat.read-long
 	268435455 and  \ 0x0FFFFFFF
+;
+
+: FAT.FindFreeCluster ( -- n, return the first free cluster on the disk)
+	FAT.TotalSectors @ Fat.SecPerClus @ / >R	\ total clusters
+	FAT.NextFreeCluster @
+	BEGIN
+		dup R@ > IF drop 2 THEN		\ if over last cluster then return to 0
+		dup FAT.get-fat 0<>
+	WHILE
+		1+
+	REPEAT
+	R> drop
 ;
 
 : FAT.copynonblank ( out-addr in-addr -- out-addr+1, copy a non-space character from in-out)
@@ -203,4 +219,52 @@ variable FAT.CurrentDirectory	\ cluster number of current directory
 		dup 268435455 =			( addr nextCluster flag)  \ End-of-clusters mark
 	UNTIL
 	drop drop
+;
+
+: CLOSE-FILE ( fileid - ior, close the file identified by fileid and return an I/O result)
+;
+
+: CREATE-FILE ( c-addr u fam -- fileid ior, if the file already exists, re-create it as a replacement empty file)
+;
+
+: DELETE-FILE ( c-addr u -- ior)
+;
+
+: FLUSH-FILE ( fileid -- ior, force any buffered contents to disk)
+;
+
+: OPEN-FILE ( c-addr u fam -- fileid ior, open a file for sequential access)
+;
+
+: RENAME-FILE ( c-addr1 u1 c-addr2 u2 -- ior, rename file1 -> file2) 
+;
+
+: RESIZE-FILE ( ud fileid - ior)
+;
+
+: READ-FILE ( addr u1 fileid -- u2 ior, read u1 characters and store at addr, return u2 the number of characters sucessfully read)
+;
+
+: READ-LINE ( addr u1 fileid -- us flag ior)
+\ if no exception occurs ior=0 and flag=true
+\ if FILE-POSITION = FILE-SIZE before executing READ-LINE, ior=0 and flag=false
+;
+
+: WRITE-FILE ( addr u fileid -- ior)
+\ increase FILE-SIZE if necessary
+\ after this operation FILE-POSITION returns the next file position after the last character written to the file
+\ and FILE-SIZE returns a value equal to or greater than FILE-POSITION
+;
+
+: WRITE-LINE ( addr u fileid -- ior, as WRITE-FILE but a line terminator is added)
+;
+
+: FILE-POSITION ( filid - uD ior)
+;
+
+: FILE-SIZE ( fileid - uD ior)
+;
+\ access methods R/O, R/W, W/O
+
+: REPOSITION-FILE ( ud fileid - ior)
 ;

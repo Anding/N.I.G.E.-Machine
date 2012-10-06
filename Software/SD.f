@@ -135,6 +135,26 @@ variable SD.ver			\ xxxxx [block/byte] [v2/v1]
 	0 timeout
 ;
 
+: SD.write-sector ( addr n --, write 512 byte to sector n from addr)
+	1000 timeout
+	sd.busy-check
+	1 swap					\ checksum
+	sd.sector-code			\ encode sector number
+	88 sd.cmd				\ CMD24
+	sd.get-R1 0 <> IF			\ check response OK
+		1010 ERROR
+	THEN
+	255 spi.put				\ space
+	254 spi.put				\ initiate data packet
+	dup 512 + swap DO I c@ spi.put LOOP	\ write sector
+	2 0 DO 1 spi.put LOOP			\ dummy checksum
+	sd.get-R1 31 and 5 <> IF			\ check data response
+		1011 ERROR				\ write error
+	THEN	
+	0 timeout
+;
+	
+
 \ debug tools	
 : dummy 80 0 do 255 spi.put loop ;
 : cmd0 149 0 0 0 0 64 sd.cmd ;
