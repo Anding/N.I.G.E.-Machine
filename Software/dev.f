@@ -5,7 +5,7 @@
 	3 0 DO 256 * + LOOP
 ;
 
-: FAT.write-long ( x addr n --, write a little endian longword to the buffer)
+: FAT.write-long ( x addr n --, write a little endian longword x to the buffer at position n)
 	+ >R >R	( R: x addr+n)
 	R@ 24 rshift 255 and	
 	R@ 16 rshift 255 and	
@@ -37,8 +37,10 @@ variable FAT.CurrentDirectory	\ cluster number of current directory
 variable FAT.NextFreeCluster	\ where to look for the next free cluster
 variable FAT.TotalSectors		\ total sectors on the disk
 variable FAT.FATinBuf		\ the currently buffered FAT sector
+variable FAT.CDcluster		\ the current directory's cluster
 512 buffer: FAT.buf			\ buffer for general sector access
 512 buffer: FAT.fatbuf		\ buffer specifically for FAT
+
 
 : FAT.init ( --, initiaize the FAT data structures)
 	sd.init
@@ -77,7 +79,7 @@ variable FAT.FATinBuf		\ the currently buffered FAT sector
 	fat.firstdatasector @ +
 ;
 
-: FAT.get-fat ( n -- x, return the FAT entry for a given cluster)
+: FAT.prep-fat ( n -- ThisFATEntOffset, calulate location and load the appropriate FAT sector into fat.fatbuf)
 	4 *			( FATOffset)
 	512 /MOD		( rem quo)
 	fat.rsvdseccnt @ + 	( ThisFATEntOffset ThisFATSecNum)
@@ -88,9 +90,20 @@ variable FAT.FATinBuf		\ the currently buffered FAT sector
 	ELSE
 		drop			( ThisFATEntOffset)
 	THEN
+;
+
+: FAT.get-fat ( n -- x, return the FAT entry for a given cluster)
+	FAT.prep-fat
 	fat.fatbuf swap		( fat.buf ThisFATEntOffset)
 	fat.read-long
 	268435455 and  \ 0x0FFFFFFF
+;
+
+: FAT.put-fat ( m n --, place value m in the FAT location for cluster n)
+	FAT.prep-fat			( m ThisFATEntOffset)
+	fat.buf swap			( m fat.buf ThisFATEntOffset)
+	fat.write-long
+	FAT.fatbuf FAT.FATinBuf @ SD.write-sector
 ;
 
 : FAT.FindFreeCluster ( -- n, return the first free cluster on the disk)
@@ -181,7 +194,7 @@ variable FAT.FATinBuf		\ the currently buffered FAT sector
 	LOOP	
 ;
 
-: FAT.find-file ( cluster addr n -- size cluster flags TRUE | FALSE, given a file name scan the given directory and return the size, first cluster and flags of the file, or false if not found)
+: FAT.find-file-local ( dirCluster addr n -- ownCluster size dirOffset flags TRUE | FALSE, given a file name scan WITHIN the given directory and return the size, first cluster and flags of the file, or false if not found)
 	FAT.String2Filename	( cluster filestring)
 	swap FAT.Clus2Sec	( filestring firstSec)
 	dup FAT.SecPerClus @ + swap		( filestring lastSec firstSec)	\ ignore any clusters after the first [128 entries per directory]
@@ -192,9 +205,10 @@ variable FAT.FATinBuf		\ the currently buffered FAT sector
 			dup 229 <> IF							\ non-0xE5 first byte indicates valid entry
 				15 and 15 <> IF					\ is not a long-name entry
 					dup 11 i 11 $= IF				\ test string match
-						drop					\ remove filestring
-						i 28 FAT.read-long 					\ size						
-						i 20 FAT.read-word 65536 * i 26 FAT.read-word + 	\ cluster	
+						drop					\ remove filestring					
+						i 20 FAT.read-word 65536 * i 26 FAT.read-word + 	\ cluster
+						i							\ directory offset						
+						i 28 FAT.read-long 					\ size		
 						i 11 + c@						\ flags
 						UNLOOP UNLOOP 0 not EXIT				\ exit with true flag
 					THEN
@@ -202,6 +216,25 @@ variable FAT.FATinBuf		\ the currently buffered FAT sector
 			THEN
 		32 +LOOP
 	LOOP
+;
+
+: FAT.find-file ( dirStartCluster addr n -- dirCluster ownCluster dirOffset size flags TRUE | FALSE, given a file name scan FROM the current directory and return the size, first cluster and flags of the file, or false if not found)
+	over + dup >R over 						( cluster startAddr endAddr startAddr R:endAddr)
+	DO								( cluster startAddr R:endAddr)
+		i @ 92 = IF
+			i over -					( cluster Addr n)
+			FAT.find-file IF				( )
+				dup 15 and 15 <> swap 16 = and IF			\ is a directory
+					nip nip i 1+			( newCluster newAddr)
+			ELSE
+				UNLOOP drop drop drop 0 EXIT			\ cannot parse filepath - not a diretory
+			THEN
+		ELSE
+			UNLOOP drop drop drop drop 0 EXIT				\ cannot parse filepath - not found
+		THEN
+	LOOP								( cluster Addr R:endAddr)
+	>R dup R> R> over - 						( culsterDir clusterDir addr n)
+	FAT.find-file-local
 ;
 
 
@@ -216,24 +249,67 @@ variable FAT.FATinBuf		\ the currently buffered FAT sector
 		LOOP
 		R>					( addr currentCluster)
 		FAT.get-fat				( addr nextCluster)
-		dup 268435455 =			( addr nextCluster flag)  \ End-of-clusters mark
+		dup 268435455 =			( addr nextCluster flag) 	\ End-of-clusters mark
 	UNTIL
 	drop drop
 ;
 
+: FAT.save-file ( firstCluster addr size , save a file to disk assuming size <> 0)
+	over +	>R swap >R				( startAddr R:endAddr firstCluster)
+	BEGIN
+		R@ FAT.Clus2Sec			( Addr Sector R:endAddr Cluster)
+		dup 8 + swap DO							\ write a complete sector
+			dup i SD.write-sector
+			512 +
+		LOOP					( Addr R: endAddr Cluster)
+		R> over R@ swap			( Addr cluster endAddr Addr	R:endAddr)
+	> WHILE					( Addr cluster R:endAddr)
+		FAT.FindFreeCluster dup >R		( Addr cluster nextCluster R:endAddr nextCluster)
+		swap FAT.put-fat			( Addr R:endAddr nextCluster)
+	REPEAT						
+	268435455 swap FAT.put-fat							\ last cluster marker
+	drop R> drop
+;
+
+
+\ STRUCTURE needed for ANSI FORTH file words (40 bytes)
+\ &nextfile
+\ &priorfile
+\ Mode ( 1 = R, 2 = W, 4 = modified)
+\ DirectoryCluster
+\ DirectoryOffset
+\ FirstCluster
+\ Size
+\ File-Poistion
+\ Address
+\ Allocated space
+
 : CLOSE-FILE ( fileid - ior, close the file identified by fileid and return an I/O result)
+\ if W/O or R/W then flush buffer to disk and update directory entry for size
 ;
 
 : CREATE-FILE ( c-addr u fam -- fileid ior, if the file already exists, re-create it as a replacement empty file)
+\ parse the path including folder names
+\ if the file exists then smudge the first byte of the directory entry
+\ find first empty cluster
+\ create a new directory entry
+\ add to a linked list with format FWD/BACK/Mode/First free cluster/DirectoryCluster/DirectoryEntry/Size/BaseAddress/CurrentAddress/Reserved.  fileid is the linked list reference
 ;
 
 : DELETE-FILE ( c-addr u -- ior)
+\ in common with first part of create-file
 ;
 
 : FLUSH-FILE ( fileid -- ior, force any buffered contents to disk)
 ;
 
 : OPEN-FILE ( c-addr u fam -- fileid ior, open a file for sequential access)
+\ parse the path including folder names
+\ if the file exists then 
+\	add to linked list
+\	allocate memory based on size (R/O) or 2*size (R/W)
+\	FAT.loadfile 
+\ if not found then if R/O error or otherwise CREATE-FILE 
 ;
 
 : RENAME-FILE ( c-addr1 u1 c-addr2 u2 -- ior, rename file1 -> file2) 
@@ -243,11 +319,17 @@ variable FAT.FATinBuf		\ the currently buffered FAT sector
 ;
 
 : READ-FILE ( addr u1 fileid -- u2 ior, read u1 characters and store at addr, return u2 the number of characters sucessfully read)
+\ check if the read will go over size
+\ if not, stright copy
+\ otherwise copy bytes available
+\ update file-position
 ;
 
 : READ-LINE ( addr u1 fileid -- us flag ior)
 \ if no exception occurs ior=0 and flag=true
 \ if FILE-POSITION = FILE-SIZE before executing READ-LINE, ior=0 and flag=false
+\ check file position
+\ copy byte by byte until LF (ignore CR)
 ;
 
 : WRITE-FILE ( addr u fileid -- ior)
