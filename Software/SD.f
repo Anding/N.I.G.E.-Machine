@@ -5,8 +5,8 @@
 63524 constant SPI.divide
 
 \ settings with no stack effect
-: SPI.CS-hi SPI.control c@ 1 or SPI.control c! ;
-: SPI.CS-lo SPI.control c@ 254 and SPI.control c! ;
+: SPI.CS-hi SPI.control c@ 1 or SPI.control c! ;			\ DESELECT 
+: SPI.CS-lo SPI.control c@ 254 and SPI.control c! ;		\ SELECT
 
 : SPI.MOSI-hi SPI.control c@ 2 or SPI.control c! ;
 : SPI.MOSI-lo SPI.control c@ 253 and SPI.control c! ;
@@ -91,7 +91,8 @@ variable SD.ver			\ xxxxx [block/byte] [v2/v1]
 		UNTIL
 			0 sd.ver !			\ SD V1.0
 	THEN
-	1 0 2 0 0 80 sd.cmd sd.get-rsp drop		\ CMD16
+	1 0 2 0 0 80 sd.cmd sd.get-rsp drop	\ CMD16
+	SPI.CS-hi 255 spi.put			\ DESELECT
 	0 timeout
 ;
 
@@ -107,19 +108,18 @@ variable SD.ver			\ xxxxx [block/byte] [v2/v1]
 	R> 24 rshift				\ bits 31 - 24
 ;	
 
-: SD.busy-check ( --, wait for SD card after asserting CS)
-	spi.cs-hi
+: SD.select&check ( --, select and wait for SD card)
+	spi.cs-lo				\ SELECT
 	BEGIN				
 		spi.get 
-		0 <>				\ if CS is asserted while busy card will set D0 low
+		255 =				\ if CS is asserted while busy card will set D0 low
 	UNTIL
-	spi.cs-lo
 ;
 
 
 : SD.read-sector ( addr n --, read 512 bytes from sector n into a buffer at addr)
 	1000 timeout
-	sd.busy-check
+	sd.select&check
 	1 swap					\ checksum
 	sd.sector-code			\ encode sector number
 	81 sd.cmd				\ CMD17
@@ -132,12 +132,13 @@ variable SD.ver			\ xxxxx [block/byte] [v2/v1]
 	UNTIL
 	dup 512 + swap DO spi.get I c! LOOP	\ read sector
 	3 0 DO spi.get drop LOOP			\ drop CRC and read safety byte
+	SPI.CS-hi 255 spi.put			\ DESELECT
 	0 timeout
 ;
 
 : SD.write-sector ( addr n --, write 512 byte to sector n from addr)
-	1000 timeout
-	sd.busy-check
+	2000 timeout
+	sd.select&check	
 	1 swap					\ checksum
 	sd.sector-code			\ encode sector number
 	88 sd.cmd				\ CMD24
@@ -148,9 +149,12 @@ variable SD.ver			\ xxxxx [block/byte] [v2/v1]
 	254 spi.put				\ initiate data packet
 	dup 512 + swap DO I c@ spi.put LOOP	\ write sector
 	2 0 DO 1 spi.put LOOP			\ dummy checksum
-	sd.get-R1 31 and 5 <> IF			\ check data response
-		1011 ERROR				\ write error
+	sd.get-R1 31 and dup 5 <> IF		\ check data response
+		. 1011 ERROR				\ write error
+	ELSE
+		drop
 	THEN	
+	SPI.CS-hi 255 spi.put			\ DESELECT
 	0 timeout
 ;
 	
