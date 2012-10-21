@@ -148,6 +148,11 @@ variable MEM.pointer		\ roving pointer to list of free memory blocks
 	over swap 0 MEM.mark				( Ref)					\ mark the memory size
 	dup MEM.pointer !									\ update the general pointer
 	MEM.freeList swap LIST.INS	 							\ add the free block to the list
+	0
+;
+
+
+: RESIZE ( addr1 u - addr2 ior)
 ;
 
 \ debug
