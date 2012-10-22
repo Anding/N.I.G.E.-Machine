@@ -1,7 +1,7 @@
 \ Double linked list functions
 \ 	All nodes have the structure:
 \		Forward link reference
-\		Backwward link reference
+\		Backward link reference
 \		Value (user defined)
 
 : LIST.fwd ( n -- n, given a list node reference return the next forward list node)
@@ -21,8 +21,8 @@
 	dup LIST.BCK swap LIST.FWD 4 + !	\ forward node now references back node
 ;
 
-: LIST.ins ( n m --, insert list node m in front of list node n)
-	over over 4 + !			\ node m references back to node n
+: LIST.ins ( m n --, insert list node m in front of list node n)
+	swap over over 4 + !			\ node m references back to node n
 	over over swap LIST.FWD swap !	\ node m references forward to node n+1
 	over over swap LIST.FWD 4 + !	\ node n+1 references back to node m
 	swap !					\ node n references forward to node m
@@ -37,11 +37,11 @@
 \  TAIL value field
 \ 
 	dup 12 +	( addrF addrB)	\ address of front and back nodes
-	LIST.VAL 0 swap !				\ zero back node
+	dup LIST.VAL 0 swap !			\ zero back node
 	over over !
 	over over 4 + !
 	swap
-	LIST.VAL 0 swap !				\ zero front node
+	dup LIST.VAL 0 swap !			\ zero front node
 	over over !
 	4 + !		
 ;
@@ -84,12 +84,12 @@
 variable MEM.pointer		\ roving pointer to list of free memory blocks
 
 : MEM.init ( addr size --, initialize heap of this address and size)
-	4 - over over + 1 swap ! 8 - \ need an allocated marker at top of memory
-	MEM.freeList dup list.init	\ create the list header
-	over LIST.VAL !		\ store size field of free memory block	
-	MEM.freeList over LIST.INS	\ insert the free memory block to the list
-	MEM.pointer !			\ initialize ROVER <- addr	
-	mem.usedlist list.init	\ initialize the used memory list
+	4 - over over + 1 swap ! 8 -	( addr size-12)		\ place a dummy marker at top of memory
+	over LIST.VAL !			( addr )			\ store size field of free memory block		
+	dup MEM.pointer !			( addr )			\ initialize roving pointer <- addr		
+	MEM.freeList dup list.init		( addr MEM.freeList)		\ create the list header
+	LIST.INS				( )				\ insert the free memory block to the list
+	mem.usedlist list.init		( )				\ initialize the used memory list
 ;
 
 : MEM.mark	( ref size flag -- mark the block at ref with size and allocated flag (true = allocated)
@@ -113,7 +113,7 @@ variable MEM.pointer		\ roving pointer to list of free memory blocks
 			R@ - 16 + 			( rov ref newsize R: u')	\ 16 bytes for each block
 			over over 0 MEM.mark		( rov ref newsize R: u')	\ mark the free block
 			+ dup R> 16 - -1 MEM.mark	( rov nextRef)		\ mark the allocated block
-			MEM.usedList over LIST.INS					\ add to the used memory list
+			dup MEM.usedList LIST.INS					\ add to the used memory list
 			nip 12 + 0 EXIT		( addr 0)		\ success
 		THEN
 		LIST.FWD				( rov addr' R: u')
@@ -128,7 +128,7 @@ variable MEM.pointer		\ roving pointer to list of free memory blocks
 	12 - dup >R					( R:thisRef)				\ offset to this block's base reference
 	dup LIST.REM										\ remove from the used memory list
 	4 - @						( sizeBelow R:thisRef)		\ check block below
-	dup 1 and 0= IF				( sizeBelow flag R:thisRef)		\ block below is free
+	dup 1 and 0= IF				( sizeBelow R:thisRef)		\ block below is free
 		dup R@ swap - 			( sizeBelow newRef R:thisRef) 	\ calculate new block reference
 		dup LIST.REM				( sizeBelow newRef R:thisRef) 	\ remove lower block from the list
 		R> LIST.VAL @ rot + 1 - 		( newRef newSize)			\ calculate newsize (-1 for allocation marker)
@@ -147,12 +147,20 @@ variable MEM.pointer		\ roving pointer to list of free memory blocks
 	THEN 
 	over swap 0 MEM.mark				( Ref)					\ mark the memory size
 	dup MEM.pointer !									\ update the general pointer
-	MEM.freeList swap LIST.INS	 							\ add the free block to the list
+	MEM.freeList LIST.INS	 							\ add the free block to the list
 	0
 ;
 
 
 : RESIZE ( addr1 u - addr2 ior)
+	over over allocate 0= IF			( addr1 u addr1 addr2)
+		dup >R rot				( addr1 addr1 addr2 u R:addr2)
+		move
+		free drop
+		R> 0 EXIT
+	ELSE
+		-1 EXIT
+	THEN
 ;
 
 \ debug
