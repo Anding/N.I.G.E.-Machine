@@ -221,41 +221,41 @@ FILE.LIST LIST.INIT			\ do not include with MOUNT so that MOUNT can be repeated 
 : DIR ( n --, print the directory at the cluster n)
 	FAT.CurrentDirectory @ dup >R
 	BEGIN
-		FAT.Clus2Sec		( firstSec)
+		FAT.Clus2Sec				( firstSec)
 		dup FAT.SecPerClus @ + swap		( lastSec firstSec)			
 		cr DO										\ examine each sector in the cluster
 			FAT.buf i SD.read-sector
 			FAT.buf dup 512 + swap DO						\ examine each 32 byte entry in the sector
-				i c@ ?dup 0= IF UNLOOP UNLOOP R> drop EXIT THEN			\ empty entry and no following entries
+				i c@ ?dup 0= IF UNLOOP UNLOOP R> drop EXIT THEN		\ empty entry and no following entries
 				229 <> IF							\ non-0xE5 first byte indicates valid entry
 					i 11 + c@ 
 					dup 15 and 15 <> IF					\ is not a long-name entry
 						. 9 emit					\ flags
-						i 28 FAT.read-long 6 u.r 		\ file size
+						i 28 FAT.read-long 6 u.r 			\ file size
 						9 emit
-						i 20 FAT.read-word 65536 *		\ first cluster hi
-						i 26 FAT.read-word + 12 u.r  	\ first cluster lo
+						i 20 FAT.read-word 65536 *			\ first cluster hi
+						i 26 FAT.read-word + 12 u.r  		\ first cluster lo
 						9 emit
 						i FAT.Filename2String type	
-						THEN
+					ELSE
+						drop
 					THEN
-					drop
 				THEN
 			32 +LOOP
 		LOOP	
 		R>					( currentCluster)
 		FAT.get-fat				( nextCluster)
-		dup 268435455 =			( nextCluster flag) 	\ End-of-clusters mark
+		dup 268435455 =			( nextCluster flag) 			\ End-of-clusters mark
 	UNTIL
 	drop
 ;
 
 : CD ( addr n --, set the current diretory)
-	FAT.CurrentDirectory @ rot rot	( dirCurrentCluster addr n --)
-	FAT.find-file                      ( dirSector dirOffset firstCluster size flags TRUE | FALSE)
-	IF 					( dirSector dirOffset firstCluster size flags)
+	FAT.CurrentDirectory @ rot rot		( dirCurrentCluster addr n --)
+	FAT.find-file                      	( dirSector dirOffset firstCluster size flags TRUE | FALSE)
+	IF 						( dirSector dirOffset firstCluster size flags)
 		dup 15 and 15 <> swap 16 = and IF		\ is a directory
-			drop nip nip		( cluster)
+			drop nip nip			( cluster)
 			FAT.CurrentDirectory !
 		ELSE
 		3001 error
@@ -348,7 +348,7 @@ FILE.LIST LIST.INIT			\ do not include with MOUNT so that MOUNT can be repeated 
 	THEN	
 	R@ LIST.rem									\ unlist the fileid	
 	R@ 36 + @ free drop								\ free buffer							
-	R>@ free 							( ior)		\ free header
+	R> free 							( ior)		\ free header
 ;
 
 : DELETE-FILE ( c-addr u -- ior)
