@@ -88,8 +88,8 @@ variable MEM.pointer		\ roving pointer to list of free memory blocks
 	over LIST.VAL !			( addr )			\ store size field of free memory block		
 	dup MEM.pointer !			( addr )			\ initialize roving pointer <- addr		
 	MEM.freeList dup list.init		( addr MEM.freeList)		\ create the list header
-	LIST.INS				( )				\ insert the free memory block to the list
-	mem.usedlist list.init		( )				\ initialize the used memory list
+	LIST.INS				(  )				\ insert the free memory block to the list
+	mem.usedlist list.init		(  )				\ initialize the used memory list
 ;
 
 : MEM.mark	( ref size flag -- mark the block at ref with size and allocated flag (true = allocated)
