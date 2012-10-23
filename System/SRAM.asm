@@ -3355,8 +3355,9 @@ BRA.NF		dc.b	1 128 + IMMED +
 		dc.b	40					; char (
 BRA.SF		dc.w	BRA.Z BRA.CF del
 BRA.CF		#.b	41					; char )
-		#.w	WORD.CF
+		#.w	PARSE.CF
 		jsr		( addr)
+		drop
 BRA.Z		drop,rts	
 ;
 ; \ comment
