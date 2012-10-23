@@ -46,7 +46,7 @@ _input_size	equ	hex ff			; default input buffer size (used by QUIT)
 _PAD		equ	hex 010500		; default PAD location
 _TEXT_ZERO	equ	hex 010700		; default text memory location
 _TEXT_END	equ	hex 017C30
-_SD_buff	equ	hex 072C2F		; SD file system buffer		
+_SD_buff	equ	hex 062C30		; SD file system buffer		
 _END		equ	hex 072C30		; dataspace in SDRAM
 ;
 ; ---------------------------------------------------------------------------------------------
@@ -1625,10 +1625,13 @@ J.LF		dc.l	I.NF
 J.NF		dc.b	1 128 +
 		dc.b	char J
 J.SF		dc.w	J.Z J.CF del
-J.CF		R>	( I R:J)
-		R@	( I J R:J)
-		swap	( J I R:J)
-		>R	( J R:J I)
+J.CF		R>	( I R:L1 J L2)
+		R>	( I L1 R:J L2)
+		R@	( I L1 J R:J L2)
+		rot	( L1 J I R:J L2)
+		rot	( J I L1 R:J L2)
+		>R	( J I R:L1 J L2)
+		>R	( J R:I L1 J L2)
 J.Z		rts
 ;		
 R>.LF		dc.l	J.NF
