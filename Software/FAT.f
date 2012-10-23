@@ -267,9 +267,7 @@ FILE.LIST LIST.INIT			\ do not include with MOUNT so that MOUNT can be repeated 
 	THEN
 ;
 
-depth .
-
-: FAT.load-file ( addr firstCluster, load a file to addr given the first cluster, assuming size <> 0, cluster by cluster)
+: FAT.load-file ( addr firstCluster, load a file to addr given the first cluster, cluster by cluster)
 	BEGIN						( addr currentCluster)
 		dup >R					( addr currentCluster R:currentCluster)
 		FAT.Clus2Sec				( addr firstSec R:currentCluster)
@@ -284,7 +282,7 @@ depth .
 	UNTIL
 	drop drop
 ;
-depth .
+
 : FAT.save-file ( addr size firstCluster , save a file to disk assuming size <> 0)
 	rot rot over + >R swap >R			( startAddr R:endAddr firstCluster)
 	BEGIN
@@ -302,7 +300,7 @@ depth .
 	drop R> drop
 	FAT.UpdateFSInfo								\ save latest free cluster
 ;
-depth .
+
 \ STRUCTURE needed for ANSI FORTH file words (40 bytes)
 \ 00	&nextfile
 \ 04	&priorfile
@@ -318,44 +316,41 @@ depth .
 : FILE-SIZE ( fileid - uD ior)
 	12 + @ 0
 ;
-depth .
+
 : FILE-POSITION ( fileid - uD ior)
 	28 + @ 0
 ;
-depth .
+
 : REPOSITION-FILE ( ud fileid - ior)
 	28 + ! 0
 ;
-depth .
+
 : FILE-BUFFER ( fileid - uD ior)
 	36 + @ 0
 ;
-depth .
+
 : R/O	1 ;
 : W/O 	2 ;
 : R/W	3 ;
-depth .
+
 : FLUSH-FILE ( fileid -- ior, force any buffered contents to disk)
-	dup 8 + @ 4 and IF								\ check modified flag
-		>R R@ 36 + @ R@ 12 + @ R@ 16 + @		( addr size firstCluster R:fileid) 
-		FAT.save-file								\ save the buffer
-		R@ 8 + @ 251 or R@ 8 + !						\ clear modified flag
-	THEN
-	0
-;
-depth .
-: CLOSE-FILE ( fileid - ior, close the file identified by fileid and return an I/O result)
 	>R R@ 8 + @ 4 and IF								\ check modified flag
 		R@ 36 + @ R@ 12 + @ R@ 16 + @			( addr size firstCluster R:fileid) 
+		FAT.save-file						( R:fileid)
 		FAT.buf R@ 24 + @ sd.read-sector 			( R:fileid)	\ read the DirectorySector into the buffer
 		R@ 12 + @ FAT.buf R@ 20 + @ + 28 FAT.write-long	( R:fileid)	\ update the file size
-		FAT.buf R@ 24 + @ sd.write-sector 			( R:fileid)	\ write the modified dir sector to disk
+		FAT.buf R> 24 + @ sd.write-sector 			( R:fileid)	\ write the modified dir sector to disk
 	THEN	
+	0
+;
+
+: CLOSE-FILE ( fileid - ior, close the file identified by fileid and return an I/O result)
+	>R R@ FLUSH-FILE drop							
 	R@ LIST.rem									\ unlist the fileid	
 	R@ 36 + @ free drop								\ free buffer							
 	R> free 							( ior)		\ free header
 ;
-depth .
+
 : DELETE-FILE ( c-addr u -- ior)
 	FAT.CurrentDirectory @ rot rot		( dirCurrentCluster addr n --)
 	FAT.find-file IF
@@ -367,7 +362,7 @@ depth .
 		-1
 	THEN
 ;
-depth .
+
 : FAT.FindFreeEntry ( dirCluster -- dirSector dirOffset TRUE | FALSE, find the first available entry in a directory) 				
 	BEGIN
 		dup >R							( firstCluster R:Cluster)
@@ -376,9 +371,9 @@ depth .
 		DO										\ examine each sector in the cluster
 			FAT.buf i SD.read-sector
 			FAT.buf dup 512 + swap DO						\ examine each 32 byte entry in the sector
-				i c@ dup 0= over 229 = or IF
-					j i 0 not			( dirSector dirOffset R:Cluster)
-					UNLOOP UNLOOP R> drop -1 EXIT 
+				i c@ dup 0= swap 229 = or IF
+					j i FAT.buf - -1		( dirSector dirOffset TRUE R:Cluster)
+					UNLOOP UNLOOP R> drop EXIT 
 				THEN
 			32 +LOOP
 		LOOP	
@@ -388,13 +383,13 @@ depth .
 	UNTIL
 	drop 0								\ no more space in last cluster [ignore expanding DIR to next cluster]
 ;
-depth .
-: FAT.size2space ( size FAM -- space, decide how much space to allocate to a new file)	
+
+: FAT.size2space ( size FAM -- space, decide how much space to allocate to a file)	
 	2 and IF 2* THEN								\ double for existing files with write access
 	FAT.SecPerClus @ 512 * >R			( size R: clusterSize)	\ cluster size in bytes	
 	R@ 1- invert and R> +			( space)			\ round-up to next whole cluster
 ;
-depth .
+
 : FAT.new-file ( dirSector dirOffset firstCluster size fam -- fileid ior)
 	36 allocate 0= IF					
 		>R 	
@@ -416,17 +411,18 @@ depth .
 		drop drop drop drop -1		( fileidDummy ior)
 	THEN
 ;
-depth .
+
 : CREATE-FILE ( c-addr u fam -- fileid ior, if the file already exists, re-create it as a replacement empty file)
 	>R over over >R >R				( addr u R:fam u c-addr)
-	DELETE-FILE drop				( --) 							\ delete existing file
-	FAT.CurrentDirectory @										\ create new directory entry
+	DELETE-FILE drop				( R:fam u c-addr) 						\ delete existing file
+	FAT.CurrentDirectory @											\ create new directory entry
 	FAT.FindFreeEntry IF				( dirSector dirOffset R: fam u c-addr)
 		dup FAT.buf + dup 32 0 fill			( dirSector dirOffset addr R: fam u c-addr)	\ zero the directory entry
 		R> R> FAT.String2Filename			( dirSector dirOffset addr c-addr R: fam )
 		over 11 move					( dirSector dirOffset addr R: fam) 		\ filename
-		32 over 11 + c!											\ FLAGS - archive bit set
-		FAT.FindFreeCluster swap			( dirSector dirOffset firstCluster addr R: fam)
+		32 over 11 + c!				( dirSector dirOffset addr R: fam)			\ FLAGS - archive bit set
+		FAT.FindFreeCluster 				( dirSector dirOffset addr firstCluster R: fam)
+		268435455 over FAT.put-fat swap		( dirSector dirOffset firstCluster addr R: fam)	\ update FAT
 		over 65535 and over 26 FAT.write-word	( dirSector dirOffset firstCluster addr R: fam)	\ DIR_FstClusLO
 		over 65536 / swap 20 FAT.write-word	( dirSector dirOffset firstCluster  R: fam)	\ DIR_FstClusHI		
 		rot dup FAT.buf swap SD.write-sector	( dirOffset firstCluster dirSector R: fam)	\ update dir sector on SD
@@ -434,12 +430,9 @@ depth .
 		FAT.new-file
 	ELSE
 		-1
-		
 	THEN
-	
 ;
 
-depth .
 : OPEN-FILE ( c-addr u fam -- fileid ior, open a file for sequential access)
 	>R
 	FAT.CurrentDirectory @ rot rot		( dirCurrentCluster addr n R:FAM)
@@ -458,13 +451,13 @@ depth .
 		-1 dup					( fileidDummy ior) 					\ file not found
 	THEN	
 ;
-depth .
+
 : RENAME-FILE ( c-addr1 u1 c-addr2 u2 -- ior, rename file1 -> file2) 
 ;
-depth .
+
 : RESIZE-FILE ( ud fileid - ior)
-	>R R@ 36 + @ over			( ud addr1 ud  R:fileid)
-	resize					( ud addr2 ior R:fileid)
+	>R FAT.size2space R@ 36 + @ over	( space addr1 space  R:fileid)
+	resize					( space addr2 ior R:fileid)
 	0= IF
 		R@ 36 + !						\ new buffer address
 		R> 32 + !						\ new size allocation
@@ -473,20 +466,16 @@ depth .
 		R> drop drop drop -1		( ior)
 	THEN
 ;
-depth .
+
 : READ-FILE ( addr u1 fileid -- u2 ior, read u1 characters and store at addr, return u2 the number of characters sucessfully read)
-\ check if the read will go over size
-\ if not, stright copy
-\ otherwise copy bytes available
-\ update file-position
-	>R
-	R@ 16 + @ R@ 32 + @ -		\ remaining un-read characters
-	min 
-	R@ 36 + rot rot 
-	dup >R
-	move
+	>R					( addr u1 R:fileid)
+	R@ 12 + @ R@ 28 + @ -		( addr u1 rem R:fileid)		\ check remaining un-read characters
+	min 					( addr u2 R:fileid)
+	R@ 36 + @ R@ 28 + @ + rot rot 	( src addr u2 R:fileid)		\ calculate source address
+	dup >R					( src addr u2 R:fileid u2)
+	move					( R:fileid u2)
 	R> R> over over			( u2 fileid u2 fileid)
-	32 + @ + swap 32 + !
+	28 + @ + swap 28 + !			( u2) 					\ update FILE-POSITION
 	0
 ;
 depth .

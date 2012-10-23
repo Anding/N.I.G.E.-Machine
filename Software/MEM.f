@@ -46,7 +46,7 @@
 	4 + !		
 ;
 
-: LIST.initL ( addr --, initialize a 24 byte linear list header at addr)
+\ : LIST.initL ( addr --, initialize a 24 byte linear list header at addr)
 \  HEAD forward link -> TAIL
 \  HEAD backward link = 0
 \  HEAD value field 
@@ -54,12 +54,12 @@
 \  TAIL backward link -> HEAD
 \  TAIL value field
 \ 
-	dup 12 +	( addrF addrB)		\ address of front and back nodes
-	over over 4 + !	
-	dup 0 swap !
-	over 4 + 0 swap !
-	swap !
-;
+\	dup 12 +	( addrF addrB)		\ address of front and back nodes
+\	over over 4 + !	
+\	dup 0 swap !
+\	over 4 + 0 swap !
+\	swap !
+\ ;
 
 \ debug
 : LIST.? ( addr -- iterate over a circular list showing references and values)
@@ -71,11 +71,6 @@
 	UNTIL
 	drop drop
 ;
-
-: node? ( addr -- show the contents of a list node)
-	cr dup  12 + swap do i u. i @ u. cr 4 +loop
-;	
-
 
 \ Heap dynamic storage allocation
 
@@ -163,8 +158,13 @@ variable MEM.pointer		\ roving pointer to list of free memory blocks
 	THEN
 ;
 
-\ debug
-8192 BUFFER: RAM
+\ debug only
+500000 BUFFER: RAM
+RAM 500000 MEM.init
+
+: node? ( addr -- show the contents of a list node)
+	cr dup  12 + swap do i u. i @ u. cr 4 +loop
+;
 
 : MEM.free?
 	MEM.freeList LIST.?
