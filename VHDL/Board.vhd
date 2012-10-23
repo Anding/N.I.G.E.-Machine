@@ -51,7 +51,7 @@ architecture RTL of Board_Nexys2_1200 is
 type bank_t is (Sys, Char, Pstack, Rstack, Reg);
 signal bank, bank_n : bank_t;	
 signal counter_clk, counter_ms : std_logic_vector(31 downto 0) := (others =>'0');
-signal timer_ms : std_logic_vector(14 downto 0) := (others =>'0');	
+signal timer_ms : std_logic_vector(15 downto 0) := (others =>'0');	
 signal reset : std_logic;
 signal clk_system, clk_vga, clk_mem : std_logic;
 signal irq, rti, ms_irq : std_logic;
@@ -169,8 +169,8 @@ begin
 	-- ms interrupt
 	process														
 	begin
-		wait until rising_edge(clk_vga);						-- 25MHz clock
-		if timer_ms = CONV_STD_LOGIC_VECTOR(25000,15) then
+		wait until rising_edge(clk_system);						-- 50MHz clock
+		if timer_ms = CONV_STD_LOGIC_VECTOR(50000,16) then
 			timer_ms <=(others =>'0');
 			counter_ms <= counter_ms + 1;
 		else
@@ -178,7 +178,7 @@ begin
 		end if;
 	end process;
 	
-	ms_irq <= '1' when timer_ms = "000000000000000" else '0';
+	ms_irq <= '1' when timer_ms = "0000000000000000" else '0';
 	 
 	-- board level memory logic  
 	 MEM_WRQ_XX(0) <= MEM_WRQ_X;	
