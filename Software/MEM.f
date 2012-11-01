@@ -62,15 +62,15 @@
 \ ;
 
 \ debug
-: LIST.? ( addr -- iterate over a circular list showing references and values)
-	dup CR
-	BEGIN
-		dup . dup LIST.VAL @ . CR
-		LIST.FWD 
-		over over =
-	UNTIL
-	drop drop
-;
+\ : LIST.? ( addr -- iterate over a circular list showing references and values)
+\	dup CR
+\	BEGIN
+\		dup . dup LIST.VAL @ . CR
+\		LIST.FWD 
+\		over over =
+\	UNTIL
+\	drop drop
+\;
 
 \ Heap dynamic storage allocation
 
@@ -162,14 +162,14 @@ variable MEM.pointer		\ roving pointer to list of free memory blocks
 500000 BUFFER: RAM
 RAM 500000 MEM.init
 
-: node? ( addr -- show the contents of a list node)
-	cr dup  12 + swap do i u. i @ u. cr 4 +loop
-;
+\ : node? ( addr -- show the contents of a list node)
+\	cr dup  12 + swap do i u. i @ u. cr 4 +loop
+\ ;
 
-: MEM.free?
-	MEM.freeList LIST.?
-;
+\ : MEM.free?
+\ 	MEM.freeList LIST.?
+\ ;
 
-: MEM.used?
-	MEM.usedList LIST.?
-;
+\ : MEM.used?
+\ 	MEM.usedList LIST.?
+\ ;

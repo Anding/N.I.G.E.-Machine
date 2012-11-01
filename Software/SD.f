@@ -116,7 +116,6 @@ variable SD.ver			\ xxxxx [block/byte] [v2/v1]
 	UNTIL
 ;
 
-
 : SD.read-sector ( addr n --, read 512 bytes from sector n into a buffer at addr)
 	1000 timeout
 	sd.select&check
@@ -160,13 +159,13 @@ variable SD.ver			\ xxxxx [block/byte] [v2/v1]
 	
 
 \ debug tools	
-: dummy 80 0 do 255 spi.put loop ;
-: cmd0 149 0 0 0 0 64 sd.cmd ;
-: cmd1	1 0 0 0 0 65 sd.cmd ;
-: cmd8 135 170 1 0 0 72 sd.cmd ;
-: cmd55 1 0 0 0 0 119 sd.cmd ;
-: cmd41lo 1 0 0 0 0 105 sd.cmd ;
-: cmd41hi 1 0 0 0 64 105 sd.cmd ;
-: cmd16 1 0 2 0 0 80 sd.cmd ;
-: cmd58 1 0 0 0 0 122 sd.cmd ;	
+\ : dummy 80 0 do 255 spi.put loop ;
+\ : cmd0 149 0 0 0 0 64 sd.cmd ;
+\ : cmd1	1 0 0 0 0 65 sd.cmd ;
+\ : cmd8 135 170 1 0 0 72 sd.cmd ;
+\ : cmd55 1 0 0 0 0 119 sd.cmd ;
+\ : cmd41lo 1 0 0 0 0 105 sd.cmd ;
+\ : cmd41hi 1 0 0 0 64 105 sd.cmd ;
+\ : cmd16 1 0 2 0 0 80 sd.cmd ;
+\ : cmd58 1 0 0 0 0 122 sd.cmd ;	
 	
