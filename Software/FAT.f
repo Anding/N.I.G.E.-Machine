@@ -185,11 +185,9 @@ variable FAT.FATinBuf		\ the currently buffered FAT sector
 : _include ( "FILEPATH" --)
 	32 WORD FAT.find-file 				( dirSector dirOffset firstCluster size flags TRUE | FALSE)
 	IF
-		drop dup allocate drop			( dirSector dirOffset firstCluster size addr)
-		dup >R rot	 				( dirSector dirOffset size addr firstCluster R:addr)
-		FAT.load-file 				( dirSector dirOffset size R:addr)
-		R@ swap evaluate drop drop			( R:addr)
-		R> free
+		drop >R nip nip 16744448 dup rot		( addr addr firstCluster R:size)			\ addr is 32K below top of memory
+		FAT.load-file 				( addr R:size)
+		R> evaluate 					( )
 	ELSE
 		4 ERROR
 	THEN

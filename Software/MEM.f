@@ -158,6 +158,23 @@ variable MEM.pointer		\ roving pointer to list of free memory blocks
 	THEN
 ;
 
+: AVAIL ( --, show free memory)
+	0 -2 0 MEM.freeList dup >R >R		( max num sum R:startRef currentRef) \ adjust for list header blocks
+	BEGIN
+		R@ LIST.VAL @ 			( max num sum size R:startRef currentRef)
+		dup >R +				( max num sum+ R:startRef currentRef size)
+		rot R> max				( num sum+ max+ R:startRef currentRef)
+		rot 1+ rot				( max+ num+ sum+ R:startRef currentRef)
+		R> LIST.FWD R@ over >R		( max+ num+ sum+ nextRef startRef R:startRef nextRef)
+		=					( max+ num+ sum+ flag R:startRef nextRef)
+	UNTIL
+	R> R> drop drop
+	cr ." Unused " u.
+	." , Blocks " u.			
+	." , Largest " u. cr
+;
+
+
 \ debug only
 500000 BUFFER: RAM
 RAM 500000 MEM.init
