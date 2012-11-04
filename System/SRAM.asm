@@ -33,21 +33,23 @@ HWstatus	equ	hex f812
 PS2rx		equ	hex f813
 MScounter	equ	hex f818
 intmask	equ	hex f81d
-TBEmask_S0	equ	hex 08
-TBEmask_S1	equ	hex 04
+TBEmask_S0	equ	08
+TBEmask_S1	equ	04
+MSmask		equ	64
 ;
 ; ---------------------------------------------------------------------------------------------	
 ; Memory map (PSDRAM)
-RSrxBUF_S0	equ	hex 010000
-RSrxBUF_S1	equ	hex 010100
-PSBUF		equ	hex 010200
-_input_buff	equ	hex 010300		; default input buffer location (used by QUIT)
-_input_size	equ	hex ff			; default input buffer size (used by QUIT)
-_PAD		equ	hex 010500		; default PAD location
-_TEXT_ZERO	equ	hex 010700		; default text memory location
-_TEXT_END	equ	hex 017C30
-_SD_buff	equ	hex 062C30		; SD file system buffer		
-_END		equ	hex 072C30		; dataspace in SDRAM
+RSrxBUF_S0	equ	hex 010000		; RS232 port 0 buffer (256 bytes)	
+PSBUF		equ	hex 010100		; PS/2 keyboard buffer (256 bytes)
+_input_buff	equ	hex 010200		; default input buffer location (used by ACCEPT)
+_input_size	equ	hex ff			; default input buffer size (used by ACCEPT)
+_PAD		equ	hex 010400		; PAD location (256 bytes below + 256 bytes above here)
+_STRING	equ	hex 010500		; buffer for internal string storage (e.g. S")
+_TEXT_ZERO	equ	hex 010600		; default text memory location (2 screens * 100 * 75 * 2 bytes)
+_TEXT_END	equ	hex 017B30		; one byte beyond the text memory location
+RSrxBUF_S1	equ	hex 017B30		; RS232 port 1 buffer (256 bytes)
+_SD_buff	equ	hex 017C30		; FILE
+_END		equ	hex 020000		; HEAP location
 ;
 ; ---------------------------------------------------------------------------------------------
 ; Machine specifics
@@ -724,8 +726,7 @@ HOLD.Z		rts
 <#.NF		dc.b	2 128 +
 		dc.b	char # char <
 <#.SF		dc.w	<#.Z <#.CF del
-<#.CF		#.w pad_		( pad*)
-		fetch.l		( pad )
+<#.CF		#.l _pad		( pad)
 		#.w hld_		( pad hld*)
 		store.l	
 <#.Z		rts
@@ -738,8 +739,7 @@ U#>.SF		dc.w	U#>.Z U#>.CF del
 U#>.CF		drop  
 		#.w hld_		( hld*)
 		fetch.l		( hld)
-		#.w pad_  		( hld pad*)
-		fetch.l		( hld pad)
+		#.L _pad  		( hld pad)
 		over 			( hld pad hld)
 U#>.Z		-,rts			( hld len)
 ;
@@ -1600,7 +1600,14 @@ ROT.NF		dc.b	3 128 +
 ROT.SF		dc.w	1
 ROT.CF		rot,rts
 ;
->R.LF		dc.l	ROT.NF
+-ROT.LF	dc.l	ROT.NF
+-ROT.NF	dc.b	4 128 +
+		dc.b	char T char O char R char -
+-ROT.SF	dc.w	-ROT.Z -ROT.CF del
+-ROT.CF	rot
+-ROT.Z		rot,rts
+;
+>R.LF		dc.l	-ROT.NF
 >R.NF		dc.b	2 128 +
 		dc.b	char R char >
 >R.SF		dc.w	2
@@ -2134,7 +2141,13 @@ DUMP.CF	over	( addr n addr)
 			#.b	32
 			#.w	EMIT.CF
 			jsr
-			dup		( addr addr)			; keep the address for literal printing
+			dup		( addr addr)			
+			#.b	8	( addr 8)
+			#.w	TYPERAW.CF
+			jsr						; print the literals		
+			#.b	32
+			#.w	EMIT.CF
+			jsr	
 			#.b	8
 			zero
 			DO
@@ -2148,13 +2161,6 @@ DUMP.CF	over	( addr n addr)
 				jsr
 				1+		( addr+)
 			LOOP		( addr addr+8)
-			#.b	32
-			#.w	EMIT.CF
-			jsr
-			swap		( addr+8 addr)
-			#.b	8	( addr+8 addr 8)
-			#.w	TYPERAW.CF
-			jsr						; print the literals
 			dup		( addr+8 addr+8 R: end)
 			R@		( addr+8 addr+8 end R: end)
 			<		( addr+8 flag R: end)
@@ -3276,6 +3282,31 @@ CLITERAL.Z	rts
 		jsr						
 ,".Z		rts
 ;
+; STRINGlOC	( n -- addr, return a pointer to the next space in the string bufffer -- internal function)
+STRINGLOC.CF	#.w	STRINGP
+		dup
+		>R
+		fetch.l
+		#.l	_STRING
+		-
+		over
+		+
+		#.w	256
+		>
+		IF
+			#.l	_STRING
+			R@
+			store.l
+		THEN
+		R@
+		fetch.l
+		dup
+		rot
+		+
+		R>
+		store.l
+STRINGLOC.Z	rts	
+;	
 ; S" <string> ( - addr u), mode dependant string function
 S".LF		dc.l	,".NF
 S".NF		dc.b	2 128 + IMMED +
@@ -3291,14 +3322,16 @@ S".CF		#.w	IN$.CF
 		ELSE						; interpret mode
 			dup						; copy to the pad and return to user
 			>R			( addr n R:n)
-			#.l	_PAD		( addr n pad R:n)
+			dup
+			#.w	STRINGLOC.CF
+			jsr			( addr n str R:n)	
 			dup		
-			>R			( addr n pad R:n pad)
-			swap			( addr pad n R:n pad)
+			>R			( addr n str R:n str)
+			swap			( addr str n R:n str)
 			#.w	MOVE.CF
-			jsr			( R:n pad)
+			jsr			( R:n str)
 			R>
-			R>			( pad n)
+			R>			( str n)
 		THEN
 S".Z		rts
 ;
@@ -3314,8 +3347,10 @@ C".CF		#.w	IN$.CF
 		IF						; compile mode
 			#.w	CLITERAL.CF				
 			jsr						; compile into dictionary
-		ELSE						; interpret mode		
-			#.l	_PAD		( addr n pad ) 	; copy to the pad and return to user
+		ELSE						; interpret mode	
+			dup
+			#.w	STRINGLOC.CF
+			jsr						
 			dup			( addr n pad pad)
 			>R			( addr n pad R:pad)
 			over			( addr n pad n R:pad)
@@ -3388,8 +3423,23 @@ DOTBRA.CF	#.b	41					; char )
 		jsr
 DOTBRA.Z		rts
 ;
-; MARKER, create a deletion boundary
-MARKER.LF	dc.l	DOTBRA.NF
+; ALIGN ( --, align data-space space pointer - NOP on the NIGE Machine)
+ALIGN.LF	dc.l	DOTBRA.NF
+ALIGN.NF	dc.b	5 128 +
+		dc.b	char N char G char I char L char A
+ALIGN.SF	dc.w	1
+		rts
+; ALIGNED  ( addr -- a-addr, align an address)
+ALIGNED.LF	dc.l	ALIGN.NF
+ALIGNED.NF	dc.b	7 128 +
+		dc.b	char D char E char N char G char I char L char A
+ALIGNED.SF	dc.w	ALIGNED.Z ALIGNED.CF -
+ALIGNED.CF	1+
+		lsr
+ALIGNED.Z	lsl,rts
+;
+; MARKER (--, create a deletion boundary)
+MARKER.LF	dc.l	ALIGNED.NF
 MARKER.NF	dc.b	6 128 +
 		dc.b	char R char E char K char R char A char M
 MARKER.SF	dc.w	MARKER.Z MARKER.CF del
@@ -3423,12 +3473,15 @@ MARKER.RUN	dup				( SD LF LF)		; SD is the SDRAM pointer, LF is the LF of the wo
 		store.l
 		rts
 ;	
-; BUFFER: ( n --), create a storate table in SDRAM
+; BUFFER: ( n --), create a storate table in PSDRAM (overwritten by dynamic memory allocation words)
 BUFFER:.LF	dc.l	MARKER.NF
 BUFFER:.NF	dc.b	7 128 +
 		dc.b	58 char R char E char F char F char U char B
 BUFFER:.SF	dc.w	BUFFER:.Z BUFFER:.CF del
-BUFFER:.CF	#.w	COLON.CF
+BUFFER:.CF	1+
+		lsr
+		lsl							; round up next even number
+		#.w	COLON.CF
 		jsr
 		#.w	HERE1
 		fetch.l
@@ -3442,7 +3495,30 @@ BUFFER:.CF	#.w	COLON.CF
 		store.l						; update the position of the SDRAM data pointer
 BUFFER:.Z	rts
 ;
-DEFER.LF	dc.l	BUFFER:.NF
+; SBUFFER: ( n --), create a storate table in SDRAM
+SBUFFER:.LF	dc.l	BUFFER:.NF
+SBUFFER:.NF	dc.b	8 128 +
+		dc.b	58 char R char E char F char F char U char B char S
+SBUFFER:.SF	dc.w	SBUFFER:.Z SBUFFER:.CF del
+SBUFFER:.CF	#.w	COLON.CF
+		jsr
+		zero
+		1-							; dummy value to ensure #.l is used
+		#.w	LITERAL.CF					; compile the location of the buffer as a literal
+		jsr	
+		#.w	SEMICOLON.CF
+		jsr	
+		#.w	HERE_						; actual address
+		fetch.l		
+		dup			( n addr addr)
+		#.b	5
+		-			( n addr loc)
+		store.l
+		#.w	ALLOT.CF					; update the position of the data pointer
+		jsr
+SBUFFER:.Z	rts
+;
+DEFER.LF	dc.l	SBUFFER:.NF
 DEFER.NF	dc.b	5 128 +
 		dc.b	char R char E char F char E char D
 DEFER.SF	dc.w	DEFER.Z DEFER.CF del
@@ -4568,7 +4644,7 @@ SAVE.CF	#.w	S1ZERO.CF
 		#.w	S1EMIT.CF
 		jsr
 		#.w	1000
-		#.w	WAIT.CF
+		#.w	MS.CF
 		jsr					; 1000ms delay - allow SDLogger to prepare file
 		#.l	_SD_buff 1-
 		BEGIN
@@ -4657,12 +4733,12 @@ DOS.CF		#.w	S1ZERO.CF
 		AGAIN
 DOS.Z		rts
 ;
-; WAIT ( n --, wait for n ms)
-WAIT.LF	dc.l	DOS.NF
-WAIT.NF	dc.b	4 128 +
-		dc.b	char T char I char A char W
-WAIT.SF	dc.w	WAIT.Z WAIT.CF del
-WAIT.CF	#.w	MScounter
+; MS ( n --, wait for n ms)
+MS.LF		dc.l	DOS.NF
+MS.NF		dc.b	2 128 +
+		dc.b	char S char M
+MS.SF		dc.w	MS.Z MS.CF del
+MS.CF		#.w	MScounter
 		fetch.l		( n ms)
 		+			( end)
 			begin
@@ -4671,10 +4747,10 @@ WAIT.CF	#.w	MScounter
 				over			( end now end)
 				=
 			until
-WAIT.Z		drop,rts				
+MS.Z		drop,rts				
 ;
 ; RESET ( --)
-RESET.LF	dc.l	WAIT.NF
+RESET.LF	dc.l	MS.NF
 RESET.NF	dc.b	5 128 +
 		dc.b	char T char E char S char E char R
 RESET.SF	dc.w	RESET.Z RESET.CF del
@@ -4705,12 +4781,12 @@ TIMEOUT.CF	?dup
 			store.l
 			#.w	intmask
 			fetch.b
-			#.b	64
+			#.b	MSmask
 			or
 		ELSE
 			#.w	intmask
 			fetch.b
-			#.b	191
+			#.b	255 MSmask -
 			and
 		THEN
 		#.w	intmask
@@ -4832,9 +4908,8 @@ PAD.LF		dc.l	BAUD.NF
 PAD.NF		dc.b	3 128 +
 		dc.b	char D char A char P
 PAD.SF		dc.w	PAD.Z PAD.CF del			; because the PFA is extrated from the return address
-PAD.CF		#.w	PAD_
-PAD.Z		rts
-PAD_		dc.l 	_PAD		
+PAD.CF		#.l	_PAD
+PAD.Z		rts	
 ;
 HERE.LF	dc.l	PAD.NF
 HERE.NF	dc.b	4 128 +
@@ -4974,13 +5049,14 @@ IN_LEN		dc.l	0			; number of characters in input buffer (set by QUIT's inner loo
 IN_LEN_a	dc.l	0			; used by SAVE-INPUT and RESTORE-INPUT
 >IN_a		dc.l	0			; "	"
 HLD_		dc.l 	0			; pointer for number output words (HOLD, etc.)
+STRINGP	dc.l	_STRING		; pointer within the string buffer
 LAST-CF	dc.l	0			; CF of last word created by HEAD
 LAST-SF	dc.l	0			; SF of last word created by HEAD
 input_buff	dc.l 	_input_buff		; input buffer location (returned by SOURCE)
 input_buff_a	dc.l	0
 input_size	dc.l	_input_size		; length of input buffer (returned by SOURCE)
 input_size_a	dc.l	0
-COMPILEstackP	dc.l	_PAD			; location of compiler stack
+COMPILEstackP	dc.l	_PAD			; pointer for the compiler stack
 TYPE_VECTOR	dc.l	VTYPE.CF		; VTYPE.CF
 TYPERAW_VECTOR dc.l	VTYPERAW.CF		; VTYPERAW.CF
 EMIT_VECTOR	dc.l	VEMIT.CF		; VEMIT.CF
