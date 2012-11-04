@@ -95,32 +95,37 @@ variable FAT.FATinBuf		\ the currently buffered FAT sector
 ;
 
 : FAT.string2filename ( addr n -- addr, convert an ordinary string to a short FAT filename)
-	>R >R
-	FAT.filestring dup dup dup
-	12 + swap DO 32 i c! LOOP	 		\ fill the output string with blanks
-	R> R>
-	12 min over + swap 							
-	DO						\ loop over the input string upto 12 characters
-		i c@ dup 46 =				\ .
-		IF
-			drop drop dup 8 +		\ re-position in output string
-		ELSE
-			UPPER over c! 1+		\ save and increment position in output string
-		THEN				
-	LOOP
-	drop
+		>R >R
+		FAT.filestring dup dup dup
+		12 + swap DO 32 i c! LOOP	 			\ fill the output string with blanks
+		R> R>					( filestring filestring addr n)
+	?dup IF		
+		12 min over + swap 			( filestring filestring addrE addr)					
+		DO							\ loop over the input string upto 12 characters
+			i c@ dup 46 = 				\ . 
+			IF
+				drop drop dup 8 +			\ re-position in output string
+			ELSE
+				upper over c! 1+			\ save and increment position in output string
+			THEN				
+		LOOP
+		drop
+	ELSE								\ zero length interpret as ".."
+		drop 46 over c! 1+
+		46 swap c!
+	THEN
 ;
 
 : FAT.find-file-local ( dirCluster addr n -- dirSector dirOffset firstCluster size flags TRUE | FALSE, find in local folder)
 	FAT.String2Filename	( cluster filestring)
-	swap dup >R
+	swap dup >R		( filestring cluster R:cluster)
 	BEGIN
-		FAT.Clus2Sec				( filestring firstSec)
-		dup FAT.SecPerClus @ + swap		( filestring lastSec firstSec)	
-		DO					( filestring)				\ examine each sector in the cluster
+		FAT.Clus2Sec				( filestring firstSec R:cluster)
+		dup FAT.SecPerClus @ + swap		( filestring lastSec firstSec R:cluster)	
+		DO					( filestring R:LOOP cluster)	\ examine each sector in the cluster
 			FAT.buf i SD.read-sector
-			FAT.buf dup 512 + swap DO						\ examine each 32 byte entry in the sector
-				i c@ dup 0= IF UNLOOP UNLOOP R> drop nip EXIT THEN	\ empty entry and no following entries - exit false flag
+			FAT.buf dup 512 + swap DO	( filestring R:LOOP LOOP cluster)	\ examine each 32 byte entry in the sector
+				i c@ dup 0= IF UNLOOP UNLOOP nip R> drop EXIT THEN	\ empty entry and no following entries - exit false flag
 				229 <> IF							\ non-0xE5 first byte indicates valid entry
 					i 11 + c@ 15 and 15 <> IF				\ is not a long-name entry
 						dup 11 i 11 $= IF				\ test string match
@@ -133,8 +138,6 @@ variable FAT.FATinBuf		\ the currently buffered FAT sector
 							UNLOOP UNLOOP R> drop -1 EXIT			\ exit with true flag
 						THEN
 					THEN
-				ELSE
-					drop
 				THEN
 			32 +LOOP
 		LOOP 
@@ -147,13 +150,15 @@ variable FAT.FATinBuf		\ the currently buffered FAT sector
 	
 : FAT.find-file ( addr n -- dirSector dirOffset firstCluster size flags TRUE | FALSE, find from current directory)
 	FAT.CurrentDirectory @ rot rot
-	over + dup >R over 						( cluster startAddr endAddr startAddr R:endAddr)
-	DO								( cluster startAddr R:endAddr)
-		i c@ 92 = IF 
+	over + 1- dup >R over 					( cluster startAddr endAddr startAddr R:endAddr-1)
+	?DO								( cluster startAddr R: LOOP endAddr-1)
+		i c@ dup 92 = swap 47 = or IF 
 			i over -					( cluster Addr n)
 			FAT.find-file-local IF 
 				dup 15 and 15 <> swap 16 = and IF			\ is a directory
-					drop nip nip i 1+		( newCluster newAddr)
+					drop nip nip 
+					?dup 0= IF FAT.RootClus @ THEN		\ root directory adjustment
+					i 1+				( newCluster newAddr)
 				ELSE
 					UNLOOP R> drop drop drop drop drop 0 EXIT	\ cannot parse filepath - not a directory
 				THEN
@@ -161,9 +166,13 @@ variable FAT.FATinBuf		\ the currently buffered FAT sector
 				UNLOOP R> drop 0 EXIT				\ cannot parse filepath - not found
 			THEN
 		THEN
-	LOOP								( cluster Addr R:endAddr)
-	R> over - 							( cluster addr n)
-	FAT.find-file-local								\ clean stack if failed
+	LOOP								( cluster Addr R:endAddr-1)
+	dup c@ dup 92 = swap 47 = or IF 
+		R> drop 0						( cluster addr 0)	\ n=0 interpreted as ".."
+	ELSE
+		R> 1+ over - 						( cluster addr n)
+	THEN
+	FAT.find-file-local 								
 ;
 
 : FAT.load-file ( addr firstCluster --, load a file to addr given the first cluster, cluster by cluster)
@@ -183,7 +192,7 @@ variable FAT.FATinBuf		\ the currently buffered FAT sector
 ;
 
 : _include ( "FILEPATH" --)
-	32 WORD FAT.find-file 				( dirSector dirOffset firstCluster size flags TRUE | FALSE)
+	32 WORD count FAT.find-file 			( dirSector dirOffset firstCluster size flags TRUE | FALSE)
 	IF
 		drop >R nip nip 16744448 dup rot		( addr addr firstCluster R:size)			\ addr is 32K below top of memory
 		FAT.load-file 				( addr R:size)
@@ -193,7 +202,7 @@ variable FAT.FATinBuf		\ the currently buffered FAT sector
 	THEN
 ;	
 
-unused .
+\ --------------------------------------------------------------------------------------------------
 
 \ Functioinality for ANSI FORTH file words 
 
@@ -257,18 +266,18 @@ FILE.LIST LIST.INIT			\ do not include with MOUNT so that MOUNT can be repeated 
 ;
 
 : FILE-SIZE ( fileid - uD ior)
-	12 + @ 0
+	12 + @ 0 0
 ;
 
 : FILE-POSITION ( fileid - uD ior)
-	28 + @ 0
+	28 + @ 0 0
 ;
 
-: REPOSITION-FILE ( ud fileid - ior)
-	28 + ! 0
+: REPOSITION-FILE ( uD fileid - ior)
+	nip 28 + ! 0
 ;
 
-: FILE-BUFFER ( fileid - uD ior)
+: FILE-BUFFER ( fileid - addr ior)
 	36 + @ 0
 ;
 
@@ -277,12 +286,14 @@ FILE.LIST LIST.INIT			\ do not include with MOUNT so that MOUNT can be repeated 
 : R/W	3 ;
 
 : FLUSH-FILE ( fileid -- ior, force any buffered contents to disk)
-	>R R@ 8 + @ 4 and IF								\ check modified flag
-		R@ 36 + @ R@ 12 + @ R@ 16 + @			( addr size firstCluster R:fileid) 
+	dup 8 + @ 4 and IF								\ check modified flag
+		>R R@ 36 + @ R@ 12 + @ R@ 16 + @			( addr size firstCluster R:fileid) 
 		FAT.save-file						( R:fileid)
 		FAT.buf R@ 24 + @ sd.read-sector 			( R:fileid)	\ read the DirectorySector into the buffer
 		R@ 12 + @ FAT.buf R@ 20 + @ + 28 FAT.write-long	( R:fileid)	\ update the file size
 		FAT.buf R> 24 + @ sd.write-sector 			( R:fileid)	\ write the modified dir sector to disk
+	ELSE
+		drop
 	THEN	
 	0
 ;
@@ -315,16 +326,16 @@ FILE.LIST LIST.INIT			\ do not include with MOUNT so that MOUNT can be repeated 
 	drop 0								\ no more space in last cluster [ignore expanding DIR to next cluster]
 ;
 
-: FAT.size2space ( size FAM -- space, decide how much space to allocate to a file)	
-	2 and IF 2* THEN								\ double for existing files with write access
+: FAT.size2space ( size -- space, rule for the space to allocate to a file)	
 	FAT.SecPerClus @ 512 * >R			( size R: clusterSize)	\ cluster size in bytes	
 	R@ 1- invert and R> +			( space)			\ round-up to next whole cluster
 ;
 
 : FAT.new-file ( dirSector dirOffset firstCluster size fam -- fileid ior)
 	36 allocate 0= IF					
-		>R 	
-		over over FAT.size2space R@ 32 + !					\ buffer space
+		>R 					( dirSector dirOffset firstCluster size fam R:fileid)
+		over over 2 and IF 2* THEN		( dirSector dirOffset firstCluster size size* R:fileid)	\ double size when requesting space if W access
+		FAT.size2space R@ 32 + !						\ buffer space
 		R@ 8 + !								\ FAM
 		R@ 12 + !								\ Size
 		R@ 16 + !								\ First cluster 
@@ -340,6 +351,22 @@ FILE.LIST LIST.INIT			\ do not include with MOUNT so that MOUNT can be repeated 
 		THEN
 	ELSE
 		drop drop drop drop -1		( fileidDummy ior)
+	THEN
+;
+
+: DELETE-FILE ( c-addr u -- ior)
+	FAT.find-file IF				( dirSector dirOffset firstCluster size flags)
+		drop drop BEGIN								\ clear the FAT entries
+			dup FAT.get-fat		( dirSector dirOffset cluster nextCluster)
+			0 rot FAT.put-fat		( dirSector dirOffset nextCluster)
+			dup 268435455 =		
+		UNTIL
+		drop FAT.buf +			( dirSector FAT.buf+dirOffset)
+		229 swap c!									\ smudge the directory entry
+		FAT.buf swap SD.write-sector
+		0
+	ELSE
+		-1
 	THEN
 ;
 
@@ -382,8 +409,9 @@ FILE.LIST LIST.INIT			\ do not include with MOUNT so that MOUNT can be repeated 
 	THEN	
 ;
 
-: RESIZE-FILE ( ud fileid - ior)
-	>R FAT.size2space R@ 36 + @ over	( space addr1 space R:fileid)
+: RESIZE-FILE ( uD fileid - ior)
+	>R drop 	 			( n R:fileid)		\ convert double to single
+	FAT.size2space R@ 36 + @ over	( space addr1 space R:fileid)
 	resize					( space addr2 ior R:fileid)
 	0= IF
 		R@ 36 + !						\ new buffer address
@@ -406,16 +434,17 @@ FILE.LIST LIST.INIT			\ do not include with MOUNT so that MOUNT can be repeated 
 	0
 ;
 
+\ update CR and LF characters below for different line ending specifications
 : READ-LINE ( addr u1 fileid -- u2 flag ior)
-	>R over swap						( addrS addr u1 R: fileid)
-	R@ 12 + @						( addrS addr u1 filesize  R: fileid)
-	R@ 28 + @						( addrS addr u1 filesize fileposition R: fileid)
-	- ifdup IF										\ unread characters available	
-		min						( addrS addr u2 R: fileid)
-		R@ 36 + @ R@ 28 + @ + swap over + DO	( addrS addr R: LOOP fileid)
-			i c@ dup 10 = IF			( addrS addr c R: LOOP fileid)
-				drop UNLOOP							\ LF - end
-				i 1+ R@ 36 + @ R@ 28 + @ + - R@ 12 + @ min R> 28 + !	\ update FILE-POSITION
+	>R over swap						( addrS addr u1 R:fileid)
+	R@ 12 + @						( addrS addr u1 filesize  R:fileid)
+	R@ 28 + @						( addrS addr u1 filesize fileposition R:fileid)
+	- ?dup IF												\ unread characters available	
+		min						( addrS addr u2 R:fileid)
+		R@ 36 + @ R@ 28 + @ + swap over + swap DO	( addrS addr R:LOOP fileid)
+			i c@ dup 10 = IF			( addrS addr c R:LOOP fileid)		\ LF - end
+				drop i UNLOOP			( addrS addr lastRead R:fileid)
+				R@ 36 + @ - 1+ R> 28 + !	( addrS addr newPos R: LOOP fileid)	\ update FILE-POSITION					
 				swap - -1 0 EXIT		( u2 true ior)
 			THEN
 			dup 13 = IF
@@ -435,7 +464,7 @@ FILE.LIST LIST.INIT			\ do not include with MOUNT so that MOUNT can be repeated 
 : WRITE-FILE ( addr u fileid -- ior)
 	>R R@ 28 + @ over over +  		( addr u oldPos newPos R:fileid)	
 	dup R@ 32 + @ > IF			( addr u oldPos newPos R:fileid) 	\ check allocated space overrun
-		dup R@ RESIZE-FILE
+		dup 0 R@ RESIZE-FILE							\ RESIZE-FILE takes uD size argument
 	THEN
 	dup R@ 28 + !				( addr u oldpos newPos R:fileid)	\ update FILE-POSITION
 	R@ 12 + @ max R@ 12 + !		( addr u oldpos R:fileid)		\ update FILE-SIZE
@@ -454,22 +483,6 @@ FILE.LIST LIST.INIT			\ do not include with MOUNT so that MOUNT can be repeated 
 	CRLF 2	R> WRITE-FILE
 ;
 
-: DELETE-FILE ( c-addr u -- ior)
-	FAT.find-file IF				( dirSector dirOffset firstCluster size flags)
-		drop drop BEGIN								\ clear the FAT entries
-			dup FAT.get-fat		( dirSector dirOffset cluster nextCluster)
-			0 rot FAT.put-fat		( dirSector dirOffset nextCluster)
-			dup 268435455 =		
-		UNTIL
-		drop FAT.buf +			( dirSector FAT.buf+dirOffset)
-		229 swap c!									\ smudge the directory entry
-		FAT.buf swap SD.write-sector
-		0
-	ELSE
-		-1
-	THEN
-;
-
 : RENAME-FILE ( c-addr1 u1 c-addr2 u2 -- ior, rename file1 -> file2) 
 	>R >R	FAT.find-file IF			( dirSector dirOffset startCluster size flags R:u2 c-addr2)  
 		drop drop drop 				( dirSector dirOffset R:u2 c-addr2)
@@ -479,11 +492,9 @@ FILE.LIST LIST.INIT			\ do not include with MOUNT so that MOUNT can be repeated 
 		FAT.buf swap SD.write-sector
 		0
 	ELSE
-		-1
+		R> R> drop drop -1
 	THEN
 ;
-
-unused .
 
 \ File utility functions
 
@@ -552,6 +563,7 @@ unused .
 	IF 						( dirSector dirOffset firstCluster size flags)
 		dup 15 and 15 <> swap 16 = and IF						\ is a directory
 			drop nip nip			( cluster)
+			?dup 0= IF FAT.RootClus @ THEN					\ subdirectories reference root at 0
 			FAT.CurrentDirectory !
 		ELSE
 			3001 error
@@ -572,7 +584,7 @@ unused .
 ;
 
 : COPY ( "FILE1" "FILE2" --, copy file1 -> file2)
-	32 WORD 32 WORD
+	32 word count 32 word count
 	COPY-FILE
 	IF
 		3000 error
@@ -580,18 +592,16 @@ unused .
 ;
 
 : DELETE ( "FILEPATH" --, delete a file)
-	32 WORD DELETE-FILE
+	32 word count DELETE-FILE
 	IF
 		3000 error
 	THEN
 ;
 
 : RENAME ( "FROM" "TO" -- rename a file)
-	32 WORD 32 WORD
+	32 word count 32 word count
 	RENAME-FILE
 	IF
 		5 error
 	THEN
 ;
-
-unused .
