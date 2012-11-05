@@ -33,6 +33,10 @@ HWstatus	equ	hex f812
 PS2rx		equ	hex f813
 MScounter	equ	hex f818
 intmask	equ	hex f81d
+SPI.data	equ	63521  
+SPI.control	equ	63522  
+SPI.status	equ	63523  
+SPI.divide	equ	63524  
 TBEmask_S0	equ	08
 TBEmask_S1	equ	04
 MSmask		equ	64
@@ -4514,7 +4518,295 @@ TYPERAW.Z	rts
 		#.w	KEY?_VECTOR
 		store.l
 <REMOTE.Z	rts
-;		
+;
+; SPI functions
+SPI.CS-hi	#.w	SPI.control					; DESELECT - CS is active low
+		dup
+		fetch.b	
+		#.b	1 
+		or 
+		swap
+		store.b	 
+		rts
+;
+SPI.CS-lo 	#.w	SPI.control 					; SELECT - CS is active low
+		dup
+		fetch.b
+		#.b	254 
+		and 
+		swap
+		store.b
+		rts	
+;	
+SPI.MOSI-hi	#.w	SPI.control 
+		dup
+		fetch.b
+		#.b	2 
+		or 
+		swap
+		store.b
+		rts
+;
+SPI.MOSI-lo 	#.w	SPI.control 
+		dup
+		fetch.b
+		#.b	253 
+		and 
+		swap
+		store.b 
+		rts
+;
+SPI.slow 	#.b	255 						; 196kHz at 50MHz clock
+		#.w	SPI.divide 
+		store.b
+		rts
+;	
+SPI.fast 	#.b	8 						; 6.25MHz at 50MHz
+		#.w	SPI.divide 
+		store.b	
+		rts
+;
+; SPI.wait ( --, wait until the SPI transfer-bus is available)	
+SPI.wait 	#.w	SPI.status 
+		BEGIN
+			dup
+			fecth.b
+			#.b	1
+			and 
+		UNTIL
+		drop,rts
+;
+; SPI.put ( n --, put a byte to the SPI port)
+SPI.put	#.w	SPI.wait 
+		jsr
+		#.w	SPI.data
+		store.b
+		rts
+;
+; SPI.get ( -- n, get a byte from the SPI port)
+SPI.get	#.b	255 
+		#.w	SPI.put 
+		jsr
+		#.w	SPI.wait 
+		jsr
+		#.w	SPI.data
+		fetch.b
+		rts
+;
+; SD card functions
+; SD.cmd ( chk b1 b2 b3 b4 cmd# --, SD command)
+SD.cmd		#.b	6
+		zero
+		DO
+			#.w	SPI.put 
+			jsr
+		LOOP
+		rts
+;
+; SD.get-rsp ( -- n, get first byte of response from the sd-card)
+SD.get-rsp	zero
+		BEGIN
+			drop
+			#.w	SPI.get
+			jsr
+			dup 
+			#.b	255 
+			<>
+		UNTIL
+		rts
+;
+; SD.get-R1 ( -- n, get an R1 response from the sd-card)
+SD.get-R1	#.w	SD.get-rsp
+		jsr
+		#.w	spi.get 
+		jsr
+		drop		; one further read always required
+		rts
+;
+;SD.ver			; xxxxx [block/byte] [v2/v1];
+SD.ver		dc.l	0	
+;
+; SD.init ( --, SD card reset, version check and initialize)
+SD.init	#.w	5000 
+		#.w	timeout.cf
+		jsr
+		#.w	spi.slow 
+		jsr
+		#.w	spi.cs-hi 		; power sequence dummy clock
+		jsr
+		#.b	80 
+		zero
+		DO
+			#.b	255 
+			#.w	spi.put 
+			jsr
+		LOOP
+		#.w	spi.cs-lo 	
+		jsr
+		BEGIN				; CMD0 repeated until good
+			#.b	149 
+			zero
+			zero
+			zero
+			zero
+			#.b	64 
+			#.w	sd.cmd 
+			jsr
+			#.w	sd.get-R1 
+			jsr
+			#.b	1 
+			<>
+		WHILE				
+			#.b	100 		; 100 ms delay
+			#.w	ms
+			jsr
+		REPEAT
+		#.b	135 			; CMD8	
+		#.b	170 
+		#.b	1 
+		zero
+		zero
+		#.b	72 
+		#.w 	sd.cmd 
+		jsr
+		#.w	sd.get-rsp 
+		jsr
+		#.b	1 
+		= 
+		IF					; CMD8 accepted, read data bytes
+			#.b	4 
+			zero
+			DO 
+				#.w	spi.get 
+				jsr
+			LOOP		( b4 b3 b2 b1)
+			#.w	spi.get 		; one further read always required
+			jsr
+			drop 			
+			#.b	170 
+			= 
+			swap 			( b4 b3 f b2)
+			#.b	1 
+			= 
+			and 
+			nip 
+			nip 
+			IF			( f) 	; 01xAA confirmed, initialize card
+			BEGIN
+				#.b 	1 		; CMD55
+				zero
+				zero
+				zero
+				zero
+				#.b	119 
+				#.w	sd.cmd 
+				jsr
+				#.w	sd.get-R1 	; CMD55 is just a header
+				jsr
+				drop			
+				#.b	1 		; CMD41hi
+				zero 
+				zero
+				zero 
+				#.b	64 
+				#.b	105 
+				#.w	sd.cmd	
+				jsr
+				#.w	sd.get-R1
+				jsr 
+				0= 
+			UNTIL
+			#.b	1 			; CMD58
+			zero
+			zero 
+			zero 
+			zero 
+			#.b	122 
+			#.w	sd.cmd	
+			jsr
+			#.w	sd.get-rsp 		; ignore R1
+			jsr
+			drop		
+			#.b	4
+			zero 
+			DO 
+				#.w	spi.get
+				jsr
+			LOOP		( b4 b3 b2 b1)
+			#.w	spi.get 		; one further read always required
+			jsr
+			drop 			
+			drop 
+			drop 
+			drop 
+			#.b	64 			; test CSS bit in OCR
+			and	
+			IF
+				#.b	3 		; SD V2.0 block address
+				#.w	sd.ver
+				store.l		
+			ELSE
+				#.b	1 		; SD V.20 byte address
+				#.w	sd.ver 
+				store.l		
+			THEN
+			spi.fast			; V2.0 supports high speed
+			jsr
+		ELSE					; 01xAA mismatch
+			#.w	1001 
+			#.w	ERROR
+			jsr
+		THEN
+	ELSE						; CMD8 rejected, initialize card
+		BEGIN
+			#.b	1 			; CMD55
+			zero 
+			zero 
+			zero 
+			zero 
+			#.b	119 
+			#.w	sd.cmd 
+			jsr
+			#.w	sd.get-R1 		; CMD55 is just a header
+			jsr
+			drop		
+			#.b	1 			; CMD41lo
+			zero 
+			zero
+			zero
+			zero
+			#.b	105 
+			#.w	sd.cmd		
+			jsr
+			#.w	sd.get-R1
+			jsr 
+			0=
+		UNTIL
+			0 				; SD V1.0
+			#.w	sd.ver 
+			store.l			
+		THEN
+		#.b	1 				; CMD16
+		zero 
+		#.b	2 
+		zero 
+		zero 
+		#.b	80 
+		#.w	sd.cmd 
+		jsr
+		#.w	sd.get-rsp 
+		jsr
+		drop	
+		#.w 	SPI.CS-hi 			; DESELECT
+		jsr
+		#.b	255 
+		#.w	spi.put			
+		zero	
+		#.w	timeout
+		jsr
+		rts
+;
+;					
 COLOR-TABLE.LF dc.l	<REMOTE.NF
 COLOR-TABLE.NF dc.b	11 128 +
 		 dc.b char E char L char B char A char T char - char R char O char L char O char C
