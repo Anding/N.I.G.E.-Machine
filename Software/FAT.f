@@ -2,23 +2,28 @@
 
 \ Baseline functionality needed for INCLUDE
 
+\ FORTH variables
 variable FAT.SecPerClus		\ sectors per cluster
-variable FAT.RsvdSecCnt		\ number of reserved sectors
-variable FAT.RootClus		\ first cluster of root directory
-variable FAT.FirstDataSector	\ first sector after FAT
-variable FAT.CurrentDirectory	\ cluster number of current directory
-variable FAT.NextFreeCluster	\ where to look for the next free cluster
 variable FAT.TotalSectors		\ total sectors on the disk
-variable FAT.FATinBuf		\ the currently buffered FAT sector
+variable FAT.NextFreeCluster	\ where to look for the next free cluster
+variable FAT.CurrentDirectory	\ cluster number of current directory
+variable FAT.RootClus		\ first cluster of root directory
 512 buffer: FAT.buf			\ buffer for general sector access
-512 buffer: FAT.fatbuf		\ buffer specifically for FAT
-24 buffer: FAT.filestring		\ allow space for overwrite to simplify name conversions
+
+\ internal variables
+variable FAT.RsvdSecCnt		\ number of reserved sectors
+variable FAT.FirstDataSector	\ first sector after FAT
+variable FAT.FATinBuf		\ the currently buffered FAT sector
+: FAT.fatbuf FAT.buf ;		\ reuse the buffer
+\ 512 buffer: FAT.fatbuf		\ buffer specifically for FAT
+\ 24 buffer: FAT.filestring		\ USE PAD instead  \ allow space for overwrite to simplify name conversions
 
 : FAT.read-long ( addr n -- x, get a little endian longword from the buffer)
 	+ dup 4 + swap DO i c@ LOOP
 	3 0 DO 256 * + LOOP
 ;
 
+\ EX
 : FAT.write-long ( x addr n --, write a little endian longword x to the buffer at position n)
 	+ >R >R	( R: x addr+n)
 	R@ 24 rshift 255 and	
@@ -43,6 +48,7 @@ variable FAT.FATinBuf		\ the currently buffered FAT sector
 	R> 1+ c!
 ;
 
+\ EX
 : MOUNT ( --, initiaize the SD card and FAT data structures)
 	sd.init
 	fat.buf 0 sd.read-sector
@@ -65,9 +71,18 @@ variable FAT.FATinBuf		\ the currently buffered FAT sector
 	THEN
 	fat.buf 492 fat.read-long dup -1 = IF drop 2 THEN
 	FAT.NextFreeCluster !
-	0 FAT.FATinBuf !
+	0 FAT.FATinBuf !					\ FAT buffer overwritten
 ;
 
+\ EX
+: FAT.UpdateFSInfo ( --, update the FAT32 FSInfo sector with next free cluster)
+	fat.buf 1 sd.read-sector
+	FAT.NextFreeCluster @ fat.buf 492 FAT.write-long
+	fat.buf 1 sd.write-sector
+	0 FAT.FATinBuf !					\ FAT buffer overwritten
+;
+
+\ EX
 : FAT.clus2sec ( n -- n, given a valid cluster number return the number of the first sector in that cluster)
 	2 -				\ first cluster is number 2
 	fat.secperclus @ *
@@ -87,6 +102,7 @@ variable FAT.FATinBuf		\ the currently buffered FAT sector
 	THEN
 ;
 
+\ EX
 : FAT.get-fat ( n -- x, return the FAT entry for a given cluster)
 	FAT.prep-fat
 	fat.fatbuf swap		( fat.buf ThisFATEntOffset)
@@ -94,9 +110,18 @@ variable FAT.FATinBuf		\ the currently buffered FAT sector
 	268435455 and  \ 0x0FFFFFFF
 ;
 
+\ EX
+: FAT.put-fat ( value cluster --, place value in the FAT location for cluster)
+	FAT.prep-fat			( value ThisFATEntOffset)
+	fat.fatbuf swap		( value fat.buf ThisFATEntOffset)
+	fat.write-long
+	FAT.fatbuf FAT.FATinBuf @ SD.write-sector
+;
+
+\ EX
 : FAT.string2filename ( addr n -- addr, convert an ordinary string to a short FAT filename)
 		>R >R
-		FAT.filestring dup dup dup
+		PAD dup dup dup					\ was FAT.filestring 
 		12 + swap DO 32 i c! LOOP	 			\ fill the output string with blanks
 		R> R>					( filestring filestring addr n)
 	?dup IF		
@@ -147,7 +172,8 @@ variable FAT.FATinBuf		\ the currently buffered FAT sector
 	UNTIL
 	drop drop 0										\ likely bad directory
 ;
-	
+
+\ EX	
 : FAT.find-file ( addr n -- dirSector dirOffset firstCluster size flags TRUE | FALSE, find from current directory)
 	FAT.CurrentDirectory @ rot rot
 	over + 1- dup >R over 					( cluster startAddr endAddr startAddr R:endAddr-1)
@@ -175,6 +201,7 @@ variable FAT.FATinBuf		\ the currently buffered FAT sector
 	FAT.find-file-local 								
 ;
 
+\ EX
 : FAT.load-file ( addr firstCluster --, load a file to addr given the first cluster, cluster by cluster)
 	BEGIN						( addr currentCluster)
 		dup >R					( addr currentCluster R:currentCluster)
@@ -191,6 +218,7 @@ variable FAT.FATinBuf		\ the currently buffered FAT sector
 	drop drop
 ;
 
+\ EX
 : _include ( "FILEPATH" --)
 	32 WORD count FAT.find-file 			( dirSector dirOffset firstCluster size flags TRUE | FALSE)
 	IF
@@ -221,13 +249,6 @@ variable FAT.FATinBuf		\ the currently buffered FAT sector
 24 BUFFER: FILE.LIST			\ list of open files
 FILE.LIST LIST.INIT			\ do not include with MOUNT so that MOUNT can be repeated safely
 
-: FAT.put-fat ( value cluster --, place value in the FAT location for cluster)
-	FAT.prep-fat			( value ThisFATEntOffset)
-	fat.fatbuf swap		( value fat.buf ThisFATEntOffset)
-	fat.write-long
-	FAT.fatbuf FAT.FATinBuf @ SD.write-sector
-;
-
 : FAT.FindFreeCluster ( -- n, return the first free cluster on the disk)
 	FAT.TotalSectors @ Fat.SecPerClus @ / >R	\ total clusters
 	FAT.NextFreeCluster @
@@ -239,12 +260,6 @@ FILE.LIST LIST.INIT			\ do not include with MOUNT so that MOUNT can be repeated 
 	REPEAT
 	dup 1+ FAT.NextFreeCluster !		\ move to next cluster
 	R> drop
-;
-
-: FAT.UpdateFSInfo ( --, update the FAT32 FSInfo sector with next free cluster)
-	fat.buf 1 sd.read-sector
-	FAT.NextFreeCluster @ fat.buf 492 FAT.write-long
-	fat.buf 1 sd.write-sector
 ;
 
 : FAT.save-file ( addr size firstCluster , save a file to disk assuming size <> 0)
@@ -508,7 +523,7 @@ FILE.LIST LIST.INIT			\ do not include with MOUNT so that MOUNT can be repeated 
 ;
 
 : FAT.Filename2String ( addr -- addr n, convert a short FAT filename to an ordinary string)
-	FAT.filestring over 				\ remember address and use FAT.filestring for the return string address
+	PAD over 					\ remember address and use FAT.filestring for the return string address
 	dup 8 + swap DO
 		i FAT.copynonblank
 	LOOP
@@ -521,7 +536,7 @@ FILE.LIST LIST.INIT			\ do not include with MOUNT so that MOUNT can be repeated 
 	ELSE
 		drop	
 	THEN
-	FAT.filestring dup rot swap -	( addr n)
+	PAD dup rot swap -	( addr n)		\ was FAT.filestring
 ;
 
 : DIR ( --, list the current directory)

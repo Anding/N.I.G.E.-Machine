@@ -4570,25 +4570,22 @@ SPI.fast 	#.b	8 						; 6.25MHz at 50MHz
 SPI.wait 	#.w	SPI.status 
 		BEGIN
 			dup
-			fecth.b
+			fetch.b
 			#.b	1
 			and 
 		UNTIL
 		drop,rts
 ;
 ; SPI.put ( n --, put a byte to the SPI port)
-SPI.put	#.w	SPI.wait 
-		jsr
+SPI.put	CALL	SPI.wait 
 		#.w	SPI.data
 		store.b
 		rts
 ;
 ; SPI.get ( -- n, get a byte from the SPI port)
 SPI.get	#.b	255 
-		#.w	SPI.put 
-		jsr
-		#.w	SPI.wait 
-		jsr
+		CALL	SPI.put 
+		CALL	SPI.wait 
 		#.w	SPI.data
 		fetch.b
 		rts
@@ -4598,8 +4595,7 @@ SPI.get	#.b	255
 SD.cmd		#.b	6
 		zero
 		DO
-			#.w	SPI.put 
-			jsr
+			CALL	SPI.put 
 		LOOP
 		rts
 ;
@@ -4607,8 +4603,7 @@ SD.cmd		#.b	6
 SD.get-rsp	zero
 		BEGIN
 			drop
-			#.w	SPI.get
-			jsr
+			CALL	SPI.get
 			dup 
 			#.b	255 
 			<>
@@ -4616,10 +4611,8 @@ SD.get-rsp	zero
 		rts
 ;
 ; SD.get-R1 ( -- n, get an R1 response from the sd-card)
-SD.get-R1	#.w	SD.get-rsp
-		jsr
-		#.w	spi.get 
-		jsr
+SD.get-R1	CALL	SD.get-rsp
+		CALL	spi.get 
 		drop		; one further read always required
 		rts
 ;
@@ -4628,21 +4621,16 @@ SD.ver		dc.l	0
 ;
 ; SD.init ( --, SD card reset, version check and initialize)
 SD.init	#.w	5000 
-		#.w	timeout.cf
-		jsr
-		#.w	spi.slow 
-		jsr
-		#.w	spi.cs-hi 		; power sequence dummy clock
-		jsr
+		CALL	timeout.cf
+		CALL	spi.slow 
+		CALL	spi.cs-hi 		; power sequence dummy clock
 		#.b	80 
 		zero
 		DO
 			#.b	255 
-			#.w	spi.put 
-			jsr
+			CALL	spi.put 
 		LOOP
-		#.w	spi.cs-lo 	
-		jsr
+		CALL	spi.cs-lo 	
 		BEGIN				; CMD0 repeated until good
 			#.b	149 
 			zero
@@ -4650,16 +4638,13 @@ SD.init	#.w	5000
 			zero
 			zero
 			#.b	64 
-			#.w	sd.cmd 
-			jsr
-			#.w	sd.get-R1 
-			jsr
+			CALL	sd.cmd 
+			CALL	sd.get-R1 
 			#.b	1 
 			<>
 		WHILE				
 			#.b	100 		; 100 ms delay
-			#.w	ms
-			jsr
+			CALL	ms
 		REPEAT
 		#.b	135 			; CMD8	
 		#.b	170 
@@ -4667,21 +4652,17 @@ SD.init	#.w	5000
 		zero
 		zero
 		#.b	72 
-		#.w 	sd.cmd 
-		jsr
-		#.w	sd.get-rsp 
-		jsr
+		CALL 	sd.cmd 
+		CALL	sd.get-rsp 
 		#.b	1 
 		= 
 		IF					; CMD8 accepted, read data bytes
 			#.b	4 
 			zero
 			DO 
-				#.w	spi.get 
-				jsr
+				CALL	spi.get 
 			LOOP		( b4 b3 b2 b1)
-			#.w	spi.get 		; one further read always required
-			jsr
+			CALL	spi.get 		; one further read always required
 			drop 			
 			#.b	170 
 			= 
@@ -4699,10 +4680,8 @@ SD.init	#.w	5000
 				zero
 				zero
 				#.b	119 
-				#.w	sd.cmd 
-				jsr
-				#.w	sd.get-R1 	; CMD55 is just a header
-				jsr
+				CALL	sd.cmd 
+				CALL	sd.get-R1 	; CMD55 is just a header
 				drop			
 				#.b	1 		; CMD41hi
 				zero 
@@ -4710,10 +4689,8 @@ SD.init	#.w	5000
 				zero 
 				#.b	64 
 				#.b	105 
-				#.w	sd.cmd	
-				jsr
-				#.w	sd.get-R1
-				jsr 
+				CALL	sd.cmd	
+				CALL	sd.get-R1
 				0= 
 			UNTIL
 			#.b	1 			; CMD58
@@ -4722,19 +4699,15 @@ SD.init	#.w	5000
 			zero 
 			zero 
 			#.b	122 
-			#.w	sd.cmd	
-			jsr
-			#.w	sd.get-rsp 		; ignore R1
-			jsr
+			CALL	sd.cmd	
+			CALL	sd.get-rsp 		; ignore R1
 			drop		
 			#.b	4
 			zero 
 			DO 
-				#.w	spi.get
-				jsr
+				CALL	spi.get
 			LOOP		( b4 b3 b2 b1)
-			#.w	spi.get 		; one further read always required
-			jsr
+			CALL	spi.get 		; one further read always required
 			drop 			
 			drop 
 			drop 
@@ -4750,12 +4723,10 @@ SD.init	#.w	5000
 				#.w	sd.ver 
 				store.l		
 			THEN
-			spi.fast			; V2.0 supports high speed
-			jsr
+			CALL	spi.fast		; V2.0 supports high speed
 		ELSE					; 01xAA mismatch
 			#.w	1001 
-			#.w	ERROR
-			jsr
+			CALL	ERROR
 		THEN
 	ELSE						; CMD8 rejected, initialize card
 		BEGIN
@@ -4765,10 +4736,8 @@ SD.init	#.w	5000
 			zero 
 			zero 
 			#.b	119 
-			#.w	sd.cmd 
-			jsr
-			#.w	sd.get-R1 		; CMD55 is just a header
-			jsr
+			CALL	sd.cmd 
+			CALL	sd.get-R1 		; CMD55 is just a header
 			drop		
 			#.b	1 			; CMD41lo
 			zero 
@@ -4776,13 +4745,11 @@ SD.init	#.w	5000
 			zero
 			zero
 			#.b	105 
-			#.w	sd.cmd		
-			jsr
-			#.w	sd.get-R1
-			jsr 
+			CALL	sd.cmd		
+			CALL	sd.get-R1
 			0=
 		UNTIL
-			0 				; SD V1.0
+			zero 				; SD V1.0
 			#.w	sd.ver 
 			store.l			
 		THEN
@@ -4792,22 +4759,153 @@ SD.init	#.w	5000
 		zero 
 		zero 
 		#.b	80 
-		#.w	sd.cmd 
-		jsr
-		#.w	sd.get-rsp 
-		jsr
+		CALL	sd.cmd 
+		CALL	sd.get-rsp 
 		drop	
-		#.w 	SPI.CS-hi 			; DESELECT
-		jsr
+		CALL 	SPI.CS-hi 			; DESELECT
 		#.b	255 
-		#.w	spi.put			
+		CALL	spi.put			
 		zero	
-		#.w	timeout
-		jsr
+		CALL	timeout.cf
 		rts
 ;
-;					
-COLOR-TABLE.LF dc.l	<REMOTE.NF
+; SD.sector-code ( n -- b4 b3 b2 b1, scale and split sector address)
+SD.sector-code 	#.w	sd.ver 			
+		fetch.l 
+		#.b	2 
+		and			
+		0=
+		IF					; scale sector to bytes
+			#.w	512 
+			multu
+			drop
+		THEN	
+		dup 		
+		#.b	255 
+		and 					; bits 0 - 7
+		swap				
+		#.b	3 
+		zero 
+		DO					; bits 8 - 31
+			#.b	8 
+			CALL	rshift.cf
+			dup
+			#.b	255 
+			and 
+			swap
+		LOOP
+		drop,rts		
+;
+; SD.select&check ( --, select and wait for SD card)
+SD.select&check 	CALL spi.cs-lo		; SELECT
+		BEGIN				
+			CALL spi.get 
+			#.b	255 
+			=				; if CS is asserted while card is busy then card will set D0 low
+		UNTIL
+		rts
+;
+; SD.read-sector ( addr n --, read 512 bytes from sector n into a buffer at addr)
+SD.read-sector.LF	dc.l	<REMOTE.NF
+SD.read-sector.NF	dc.b	14 128 +
+			dc.b	char R char O char T char C char E char S char - char D char A char E char R char . char D char S
+SD.read-sector.SF	dc.w	SD.read-sector.Z SD.read-sector.CF del
+SD.read-sector.CF	#.w	1000 
+		CALL 	timeout.cf
+		CALL 	sd.select&check
+		#.b	1 				; checksum
+		swap					
+		CALL 	sd.sector-code		; encode sector number
+		#.b	81 				; complete CMD17
+		CALL 	sd.cmd				
+		CALL 	sd.get-R1 
+		0<> 
+		IF					; check response OK
+			#.w	1005 
+			CALL	ERROR.CF
+		THEN
+		BEGIN					; wait for data token
+			CALL	spi.get
+			#.b	254 
+			=
+		UNTIL
+		dup 
+		#.w	512 
+		+ 
+		swap 
+		DO 					; read sector
+			CALL 	spi.get 
+			I 
+			store.b 
+		LOOP	
+		#.b	3 
+		zero 
+		DO 					; drop CRC and read safety byte
+			CALL 	spi.get 
+			drop 
+		LOOP			
+		CALL 	SPI.CS-hi 
+		#.b	255 
+		CALL	spi.put			; DESELECT
+		zero 
+		CALL	timeout.CF
+SD.read-sector.Z		rts
+;
+; SD.write-sector ( addr n --, write 512 byte to sector n from addr)
+SD.write-sector.LF	dc.l	SD.read-sector.NF
+SD.write-sector.NF	dc.b	15 128 +
+			dc.b	char R char O char T char C char E char S char - char E char T char I char R char W char . char D char S
+SD.write-sector.SF	dc.w	SD.write-sector.Z SD.write-sector.CF del
+SD.write-sector.CF	#.w	2000
+		CALL	timeout.CF
+		CALL	sd.select&check	
+		#.b	1 				; checksum
+		swap					
+		CALL	sd.sector-code		; encode sector number
+		#.b	88 				; complete CMD24
+		CALL 	sd.cmd				
+		CALL	sd.get-R1 
+		0<> 
+		IF					; check response OK
+			#.w	1010 
+			CALL	ERROR.CF
+		THEN
+		#.b	255 
+		CALL	spi.put			; space
+		#.b	254 
+		CALL	spi.put			; initiate data packet
+		dup 
+		#.w	512 
+		+ 
+		swap 
+		DO 					; write sector
+			I 
+			fetch.b 
+			CALL spi.put 
+		LOOP	
+		#.b	2 
+		zero 
+		DO 					; dummy checksum
+			#.b	1 
+			CALL	spi.put 
+		LOOP			
+		CALL	sd.get-R1 
+		#.b	31 
+		and 
+		#.b	5 
+		<> 
+		IF					; check data response
+			#.w	1011 
+			CALL	ERROR.CF		; write error
+		THEN	
+		CALL	SPI.CS-hi 
+		#.b	255 
+		CALL	spi.put			; DESELECT
+		zero 
+		CALL	timeout.cf
+SD.write-sector.Z		rts
+;				
+COLOR-TABLE.LF dc.l	SD.WRITE-SECTOR.NF
 COLOR-TABLE.NF dc.b	11 128 +
 		 dc.b char E char L char B char A char T char - char R char O char L char O char C
 COLOR-TABLE.SF dc.w	COLOR-TABLE.Z COLOR-TABLE.CF del
