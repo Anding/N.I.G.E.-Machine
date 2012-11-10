@@ -32,8 +32,7 @@
  variable fileid-w2
  variable fileid-w3
  variable lineno					\ 
- variable membuf					\ buffer for writing an output byte
- \ create flow-table 4000 allot			
+ variable membuf					\ buffer for writing an output byte		
  4000 buffer: flow-table				\ table of PC values for IF ELSE THEN statements 
  272 buffer: instruction-count			\ count of instructions
  variable flow-pointer				\ pointer into the flow-table
@@ -233,6 +232,21 @@
 ;
 
 \ Complex instructions
+: _CALL						( pass -- [opcode] size) \ assumes a .W size address
+	if									\ pass 2
+		eval-expr >R 				( r: addr)		\ JSR
+		58					( 58)		\ JSR 
+		R> push-word				( 58 b a)	\ literal
+		54					( 58 b a 54)	\ #.w
+		4					( 58 b a 54 4)\ size
+	else									\ pass 1		
+		4							\ size
+		\ update instruction count
+		instruction-count 54 4 * + 1 swap +!
+		instruction-count 58 4 * + 1 swap +!
+	then
+;
+
 : _LOAD.L						( pass -- [opcode] size)
 	if                              					\ pass 2
 		eval-expr
@@ -247,10 +261,6 @@
 ;
 
 : _#.L
-	_LOAD.L
-;
-
-: _#
 	_LOAD.L
 ;
 
@@ -551,20 +561,6 @@
 	then
 ;
 
-: _LEAVE
-\ Forth code
-\ 	( R: limit index)
-\ R> 	( R: -- limit)
-\ R@	( limit R: -- limit)
-\ >R	( R: -- limit limit)
-	if									\ pass 2
-		8 9 10	
-		3					( code.. size)
-	else									\ pass 1	
-		3					( size)
-	then
-;
- 
 \ Assembler directives
 : _CMD							( pass -- size)
 \ execute the expression field in pass 1
@@ -585,6 +581,17 @@
 		0					( size)
 	then
 ;
+
+: _DC.S						( pass -- size)
+	if									\ pass 2
+		expr @ expr-n @ 1- over +  swap DO
+			i c@
+		LOOP
+		expr-n	@ 1-							\ remove trailing space
+	else									\ pass 1
+		expr-n	@ 1-				( size)	
+	then
+;		
 
 : _DC.L						( pass -- size)
 	if									\ pass 2
