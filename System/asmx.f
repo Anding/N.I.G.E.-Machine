@@ -584,9 +584,9 @@
 
 : _DC.S						( pass -- size)
 	if									\ pass 2
-		expr @ expr-n @ 1- over +  swap DO
+		expr @ expr-n @ 1- over + DO
 			i c@
-		LOOP
+		-1 +LOOP
 		expr-n	@ 1-							\ remove trailing space
 	else									\ pass 1
 		expr-n	@ 1-				( size)	
