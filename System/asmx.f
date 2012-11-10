@@ -582,6 +582,17 @@
 	then
 ;
 
+: _DC.S						( pass -- size)
+	if									\ pass 2
+		expr @ expr-n @ 1- over +  swap DO
+			i c@
+		LOOP
+		expr-n	@ 1-							\ remove trailing space
+	else									\ pass 1
+		expr-n	@ 1-				( size)	
+	then
+;		
+
 : _DC.L						( pass -- size)
 	if									\ pass 2
 		eval-expr
