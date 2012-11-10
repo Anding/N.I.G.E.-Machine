@@ -51,6 +51,7 @@ _PAD		equ	hex 010400		; PAD location (256 bytes below + 256 bytes above here)
 _STRING	equ	hex 010500		; buffer for internal string storage (e.g. S")
 _TEXT_ZERO	equ	hex 010600		; default text memory location (2 screens * 100 * 75 * 2 bytes)
 _TEXT_END	equ	hex 017B30		; one byte beyond the text memory location
+_FAT.buf	equ	hex 017B30		; FAT 512 byte storage space location
 RSrxBUF_S1	equ	hex 017B30		; RS232 port 1 buffer (256 bytes)
 _SD_buff	equ	hex 017C30		; FILE
 _END		equ	hex 020000		; HEAP location
@@ -247,7 +248,31 @@ MS		#.w	MS.TIMEOUT
 		THEN
 		rti
 MS.TIMEOUT	dc.l	hex 00
-; ---------------------------------------------------------------------------------------------
+; -----------------------------------------------------------------------------------------------
+; boot code	within branch distance from 0 
+START.CF	#.w	CLS.CF
+		jsr
+		#.w	START.0	; First part of power-on message
+		#.b	52
+		#.w	TYPE.CF
+		jsr
+		#.w	UNUSED.CF	; Show free bytes
+		jsr
+		#.w 	UDOT.CF
+		jsr
+		#.w	START.1	
+		#.b	12
+		#.w	TYPE.CF
+		jsr
+		#.w	QUIT.CF
+		jmp
+;
+START.0	dc.b	32 char . char E char . char G char . char I char . char N 32 char * char * char * EOL
+		dc.b	EOL EOL char * char * char * 32 char H char T char R char O char F 32 char e char n char i char h char c char a char M 
+		dc.b	char B char M 32 char 6 char 1 32 char M char A char R char D char S char P
+		dc.b	32 char M char A char R char S 32 char ,
+START.1	dc.b	EOL EOL char e char e char r char f 32 char s char e char t char y char b
+; ----------------------------------------------------------------------------------------------
 ; FORTH CORE DICTIONARY
 ;
 S0EMIT.LF	dc.l	0		
@@ -5267,30 +5292,6 @@ BAUD.CF	#.l	3125000		( baud port clock/16)
 			THEN
 		THEN
 BAUD.Z		rts
-; boot code
-START.CF	#.w	CLS.CF
-		jsr
-		#.w	START.0	; First part of power-on message
-		#.b	52
-		#.w	TYPE.CF
-		jsr
-		#.w	UNUSED.CF	; Show free bytes
-		jsr
-		#.w 	UDOT.CF
-		jsr
-		#.w	START.1	
-		#.b	12
-		#.w	TYPE.CF
-		jsr
-		#.w	QUIT.CF
-		jmp
-;
-START.0	dc.b	32 char . char E char . char G char . char I char . char N 32 char * char * char * EOL
-		dc.b	EOL EOL char * char * char * 32 char H char T char R char O char F 32 char e char n char i char h char c char a char M 
-		dc.b	char B char M 32 char 6 char 1 32 char M char A char R char D char S char P
-		dc.b	32 char M char A char R char S 32 char ,
-START.1	dc.b	EOL EOL char e char e char r char f 32 char s char e char t char y char b
-;
 ; ---------------------------------------------------------------------------------------------
 ; Forth global variables
 ;
@@ -5418,11 +5419,19 @@ ROWS		dc.b	60
 ;
 COLS.LF	dc.l	ROWS.NF
 COLS.NF	dc.b	4 128 +
-		dc.b	char S char L char O char CR
+		dc.b	char S char L char O char C
 COLS.SF	dc.w	COLS.Z COLS.CF del
 COLS.CF	#.w	COLS
 COLS.Z		rts
 COLS		dc.b	100
+;
+FAT.SecPerClus.LF	dc.l	COLS.NF
+FAT.SecPerClus	dc.l	0		; sectors per cluster
+FAT.TotalSectors	dc.l 	0		; total sectors on the disk
+FAT.NextFreeCluster	dc.l 	0		; where to look for the next free cluster
+FAT.CurrentDirectory	dc.l 	0		; cluster number of current directory
+FAT.RootClus		dc.l 	0		; first cluster of root directory
+FAT.buf		dc.l	_FAT.buf	; buffer for general sector access
 ;
 ; LAST returns the address of a variable pointing to the last name field in the dictionary
 LAST.LF	dc.l	COLS.NF
@@ -5435,23 +5444,26 @@ LAST-NF	dc.l 	LAST.NF			; NF of last word created by HEAD, must be initialized
 ; ---------------------------------------------------------------------------------------------
 ; Forth internal variables	
 ;
-IN_LEN		dc.l	0			; number of characters in input buffer (set by QUIT's inner loop)
-IN_LEN_a	dc.l	0			; used by SAVE-INPUT and RESTORE-INPUT
->IN_a		dc.l	0			; "	"
-HLD_		dc.l 	0			; pointer for number output words (HOLD, etc.)
-STRINGP	dc.l	_STRING		; pointer within the string buffer
-LAST-CF	dc.l	0			; CF of last word created by HEAD
-LAST-SF	dc.l	0			; SF of last word created by HEAD
-input_buff	dc.l 	_input_buff		; input buffer location (returned by SOURCE)
-input_buff_a	dc.l	0
-input_size	dc.l	_input_size		; length of input buffer (returned by SOURCE)
-input_size_a	dc.l	0
-COMPILEstackP	dc.l	_PAD			; pointer for the compiler stack
-TYPE_VECTOR	dc.l	VTYPE.CF		; VTYPE.CF
-TYPERAW_VECTOR dc.l	VTYPERAW.CF		; VTYPERAW.CF
-EMIT_VECTOR	dc.l	VEMIT.CF		; VEMIT.CF
-KEY_VECTOR	dc.l	KKEY.CF		; KKEY.CF
-KEY?_VECTOR	dc.l	KKEY?.CF		; EKEY?.CF
+IN_LEN			dc.l	0		; number of characters in input buffer (set by QUIT's inner loop)
+IN_LEN_a		dc.l	0		; used by SAVE-INPUT and RESTORE-INPUT
+>IN_a			dc.l	0		; used by SAVE-INPUT and RESTORE-INPUT
+HLD_			dc.l 	0		; pointer for number output words (HOLD, etc.)
+STRINGP		dc.l	_STRING	; pointer within the string buffer
+LAST-CF		dc.l	0		; CF of last word created by HEAD
+LAST-SF		dc.l	0		; SF of last word created by HEAD
+input_buff		dc.l 	_input_buff	; input buffer location (returned by SOURCE)
+input_buff_a		dc.l	0		; used by SAVE-INPUT and RESTORE-INPUT
+input_size		dc.l	_input_size	; length of input buffer (returned by SOURCE)
+input_size_a		dc.l	0		; used by SAVE-INPUT and RESTORE-INPUT
+COMPILEstackP		dc.l	_PAD		; pointer for the compiler stack
+TYPE_VECTOR		dc.l	VTYPE.CF	; VTYPE.CF
+TYPERAW_VECTOR 	dc.l	VTYPERAW.CF	; VTYPERAW.CF
+EMIT_VECTOR		dc.l	VEMIT.CF	; VEMIT.CF
+KEY_VECTOR		dc.l	KKEY.CF	; KKEY.CF
+KEY?_VECTOR		dc.l	KKEY?.CF	; EKEY?.CF
+FAT.RsvdSecCnt	dc.l	0		; number of reserved sectors
+FAT.FirstDataSector	dc.l	0		; first sector after FAT
+FAT.FATinBuf		dc.l	0		; the currently buffered FAT sector
 ;
 ; marker for initializing HERE
 END		dc.l	0
