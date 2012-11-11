@@ -108,8 +108,8 @@ NET "sevenseg<6>" LOC = "H14";
 #NET "BTN<2>"  LOC = "E18"  ;
 #NET "BTN<3>"  LOC = "H13"  ;
 # RS232 on PORT D
-NET "RXD_S1" LOC="P18";
-NET "TXD_S1" LOC="N18";
+#NET "RXD_S1" LOC="P18";
+#NET "TXD_S1" LOC="N18";
 # SD card in PORT A
 NET "SD_CS" LOC="L15";
 NET "MOSI" LOC="K12";

@@ -43,7 +43,7 @@ begin
 			when pause =>
 				reset <= '1';	
 				state_n <= run;										
-				timer <= CONV_STD_LOGIC_VECTOR(150000000,32);	-- three seconds for RAM update
+				timer <= CONV_STD_LOGIC_VECTOR(175000000,32);	-- 3.5 seconds for RAM update
 				
 			when run =>													
 				reset <= '0';

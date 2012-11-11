@@ -1,238 +1,198 @@
-\ FAT file system
+\ LIST functions
+\	Default list structure is a circular, double-linked list
+\ 	All nodes are 12 bytes organized as:
+\		Forward link reference
+\		Backward link reference
+\		Value (user defined, typically 0 for a header node)
+\	List pointers always point to the list node's byte zero
+\ 	A list header is 24 bytes long and comprises two adjacent nodes that circular reference each other
 
-\ Baseline functionality needed for INCLUDE
-
-\ FORTH variables
-variable FAT.SecPerClus		\ sectors per cluster
-variable FAT.TotalSectors		\ total sectors on the disk
-variable FAT.NextFreeCluster	\ where to look for the next free cluster
-variable FAT.CurrentDirectory	\ cluster number of current directory
-variable FAT.RootClus		\ first cluster of root directory
-512 buffer: FAT.buf			\ buffer for general sector access
-
-\ internal variables
-variable FAT.RsvdSecCnt		\ number of reserved sectors
-variable FAT.FirstDataSector	\ first sector after FAT
-variable FAT.FATinBuf		\ the currently buffered FAT sector
-: FAT.fatbuf FAT.buf ;		\ reuse the buffer
-\ 512 buffer: FAT.fatbuf		\ buffer specifically for FAT
-\ 24 buffer: FAT.filestring		\ USE PAD instead  \ allow space for overwrite to simplify name conversions
-
-: FAT.read-long ( addr n -- x, get a little endian longword from the buffer)
-	+ dup 4 + swap DO i c@ LOOP
-	3 0 DO 256 * + LOOP
+: LIST.fwd ( n -- n, given a list node reference return the next forward list node)
+	@
 ;
 
-\ EX
-: FAT.write-long ( x addr n --, write a little endian longword x to the buffer at position n)
-	+ >R >R	( R: x addr+n)
-	R@ 24 rshift 255 and	
-	R@ 16 rshift 255 and	
-	R@ 8 rshift 255 and	
-	R> 255 and
-	R> dup 4 + swap
-	DO i c! LOOP
-;
-	
-: FAT.read-word ( addr n -- x, get a little endian word from the buffer)
-	1 + +
-	dup c@ 256 * swap
-	1- c@ +
+: LIST.bck ( n -- n, given a list node reference return the next back list node)
+	4 + @
 ;
 
-: FAT.write-word ( x addr n --, write a litte endian word to the buffer)
-	+ >R >R	( R : x addr+n)
-	R@ 8 rshift 255 and	
-	R> 255 and
-	R@ c!
-	R> 1+ c!
+: LIST.val ( n -- x, given a list node reference return address of the value field)
+	8 + 
 ;
 
-\ EX
-: MOUNT ( --, initiaize the SD card and FAT data structures)
-	sd.init
-	fat.buf 0 sd.read-sector
-	fat.buf 510 fat.read-word 43605 <> IF		\ confirm sector signature 0xAA55
-		2000 error
-	THEN
-	fat.buf 82 fat.read-word 16710 <> IF		\ confirm FAT32 signature 0x4146
-		2001 error
-	THEN
-	fat.buf 13 + c@ fat.secperclus !
-	fat.buf 44 fat.read-long dup fat.rootclus ! FAT.CurrentDirectory !
-	fat.buf 32 fat.read-long fat.TotalSectors !
-	fat.buf 14 fat.read-word dup fat.rsvdseccnt !	( RsvdSecCnt)
-	fat.buf 16 + c@					( RsvdSecCnt NumFATs)
-	fat.buf 36 fat.read-long				( RsvdSecCnt NumFATs SecPerFAT)
-	* + fat.firstdatasector !
-	fat.buf 1 sd.read-sector				\ FAT32 FSInfo
-	fat.buf 0 fat.read-long 1096897106 <> IF
-		2002 error					\ confirm valid FSInfo sector
-	THEN
-	fat.buf 492 fat.read-long dup -1 = IF drop 2 THEN
-	FAT.NextFreeCluster !
-	0 FAT.FATinBuf !					\ FAT buffer overwritten
+: LIST.rem ( n --, given a list node remove it from the list)
+	dup LIST.FWD over LIST.BCK !	\ back node now references forward node 
+	dup LIST.BCK swap LIST.FWD 4 + !	\ forward node now references back node
 ;
 
-\ EX
-: FAT.UpdateFSInfo ( --, update the FAT32 FSInfo sector with next free cluster)
-	fat.buf 1 sd.read-sector
-	FAT.NextFreeCluster @ fat.buf 492 FAT.write-long
-	fat.buf 1 sd.write-sector
-	0 FAT.FATinBuf !					\ FAT buffer overwritten
+: LIST.ins ( m n --, insert list node m in front of list node n)
+	swap over over 4 + !			\ node m references back to node n
+	over over swap LIST.FWD swap !	\ node m references forward to node n+1
+	over over swap LIST.FWD 4 + !	\ node n+1 references back to node m
+	swap !					\ node n references forward to node m
 ;
 
-\ EX
-: FAT.clus2sec ( n -- n, given a valid cluster number return the number of the first sector in that cluster)
-	2 -				\ first cluster is number 2
-	fat.secperclus @ *
-	fat.firstdatasector @ +
+: LIST.init ( addr --, initialize a 24 byte circular list header at addr)
+	dup 12 +	( addrF addrB)	\ address of front and back nodes
+	dup LIST.VAL 0 swap !			\ zero back node
+	over over !
+	over over 4 + !
+	swap
+	dup LIST.VAL 0 swap !			\ zero front node
+	over over !
+	4 + !		
 ;
 
-: FAT.prep-fat ( n -- ThisFATEntOffset, calulate location and load the appropriate FAT sector into fat.fatbuf)
-	4 *			( FATOffset)
-	512 /MOD		( rem quo)
-	fat.rsvdseccnt @ + 	( ThisFATEntOffset ThisFATSecNum)
-	dup FAT.FATinBuf @ <> IF
-		dup FAT.FATinBuf !			\ remember the buffered sector
-		fat.fatbuf swap	 ( ThisFATEntOffset fat.fatbuf ThisFATSecNum)
-		SD.read-sector	 ( ThisFATEntOffset)
-	ELSE
-		drop			( ThisFATEntOffset)
-	THEN
-;
+\ : LIST.initLin ( addr --, initialize a 24 byte linear list header at addr)
+\	dup 12 +	( addrF addrB)		\ address of front and back nodes
+\	over over 4 + !	
+\	dup 0 swap !
+\	over 4 + 0 swap !
+\	swap !
+\ ;
 
-\ EX
-: FAT.get-fat ( n -- x, return the FAT entry for a given cluster)
-	FAT.prep-fat
-	fat.fatbuf swap		( fat.buf ThisFATEntOffset)
-	fat.read-long
-	268435455 and  \ 0x0FFFFFFF
-;
-
-\ EX
-: FAT.put-fat ( value cluster --, place value in the FAT location for cluster)
-	FAT.prep-fat			( value ThisFATEntOffset)
-	fat.fatbuf swap		( value fat.buf ThisFATEntOffset)
-	fat.write-long
-	FAT.fatbuf FAT.FATinBuf @ SD.write-sector
-;
-
-\ EX
-: FAT.string2filename ( addr n -- addr, convert an ordinary string to a short FAT filename)
-		>R >R
-		PAD dup dup dup					\ was FAT.filestring 
-		12 + swap DO 32 i c! LOOP	 			\ fill the output string with blanks
-		R> R>					( filestring filestring addr n)
-	?dup IF		
-		12 min over + swap 			( filestring filestring addrE addr)					
-		DO							\ loop over the input string upto 12 characters
-			i c@ dup 46 = 				\ . 
-			IF
-				drop drop dup 8 +			\ re-position in output string
-			ELSE
-				upper over c! 1+			\ save and increment position in output string
-			THEN				
-		LOOP
-		drop
-	ELSE								\ zero length interpret as ".."
-		drop 46 over c! 1+
-		46 swap c!
-	THEN
-;
-
-: FAT.find-file-local ( dirCluster addr n -- dirSector dirOffset firstCluster size flags TRUE | FALSE, find in local folder)
-	FAT.String2Filename	( cluster filestring)
-	swap dup >R		( filestring cluster R:cluster)
+: LIST.? ( addr -- iterate over a circular list showing references and values)
+	dup CR
 	BEGIN
-		FAT.Clus2Sec				( filestring firstSec R:cluster)
-		dup FAT.SecPerClus @ + swap		( filestring lastSec firstSec R:cluster)	
-		DO					( filestring R:LOOP cluster)	\ examine each sector in the cluster
-			FAT.buf i SD.read-sector
-			FAT.buf dup 512 + swap DO	( filestring R:LOOP LOOP cluster)	\ examine each 32 byte entry in the sector
-				i c@ dup 0= IF UNLOOP UNLOOP nip R> drop EXIT THEN	\ empty entry and no following entries - exit false flag
-				229 <> IF							\ non-0xE5 first byte indicates valid entry
-					i 11 + c@ 15 and 15 <> IF				\ is not a long-name entry
-						dup 11 i 11 $= IF				\ test string match
-							drop					\ remove filestring	
-							j							\ dirSector
-							i FAT.buf -						\ directory offset 
-							i 20 FAT.read-word 65536 * i 26 FAT.read-word + 	\ startCluster
-							i 28 FAT.read-long 					\ size		
-							i 11 + c@						\ flags
-							UNLOOP UNLOOP R> drop -1 EXIT			\ exit with true flag
-						THEN
-					THEN
-				THEN
-			32 +LOOP
-		LOOP 
-		R>					( filestring currentCluster)
-		FAT.get-fat				( filestring nextCluster)
-		dup 268435455 =			( filestring nextCluster flag) 	\ End-of-clusters mark
-	UNTIL
-	drop drop 0										\ likely bad directory
-;
-
-\ EX	
-: FAT.find-file ( addr n -- dirSector dirOffset firstCluster size flags TRUE | FALSE, find from current directory)
-	FAT.CurrentDirectory @ rot rot
-	over + 1- dup >R over 					( cluster startAddr endAddr startAddr R:endAddr-1)
-	?DO								( cluster startAddr R: LOOP endAddr-1)
-		i c@ dup 92 = swap 47 = or IF 
-			i over -					( cluster Addr n)
-			FAT.find-file-local IF 
-				dup 15 and 15 <> swap 16 = and IF			\ is a directory
-					drop nip nip 
-					?dup 0= IF FAT.RootClus @ THEN		\ root directory adjustment
-					i 1+				( newCluster newAddr)
-				ELSE
-					UNLOOP R> drop drop drop drop drop 0 EXIT	\ cannot parse filepath - not a directory
-				THEN
-			ELSE
-				UNLOOP R> drop 0 EXIT				\ cannot parse filepath - not found
-			THEN
-		THEN
-	LOOP								( cluster Addr R:endAddr-1)
-	dup c@ dup 92 = swap 47 = or IF 
-		R> drop 0						( cluster addr 0)	\ n=0 interpreted as ".."
-	ELSE
-		R> 1+ over - 						( cluster addr n)
-	THEN
-	FAT.find-file-local 								
-;
-
-\ EX
-: FAT.load-file ( addr firstCluster --, load a file to addr given the first cluster, cluster by cluster)
-	BEGIN						( addr currentCluster)
-		dup >R					( addr currentCluster R:currentCluster)
-		FAT.Clus2Sec				( addr firstSec R:currentCluster)
-		dup FAT.SecPerClus @ + swap		( addr lastSec firstSec R:currentCluster)
-		DO
-			dup i SD.read-sector		
-			512 +				( addr)
-		LOOP
-		R>					( addr currentCluster)
-		FAT.get-fat				( addr nextCluster)
-		dup 268435455 =			( addr nextCluster flag) 	\ End-of-clusters mark
+		dup . dup LIST.VAL @ . CR
+		LIST.FWD 
+		over over =
 	UNTIL
 	drop drop
 ;
 
-\ EX
-: _include ( "FILEPATH" --)
-	32 WORD count FAT.find-file 			( dirSector dirOffset firstCluster size flags TRUE | FALSE)
-	IF
-		drop >R nip nip 16744448 dup rot		( addr addr firstCluster R:size)			\ addr is 32K below top of memory
-		FAT.load-file 				( addr R:size)
-		R> evaluate 					( )
-	ELSE
-		4 ERROR
+\ ----------------------------------------------------------------------------------------------------------------
+
+\ Dynamic memory allocation functions (the heap)
+
+24 BUFFER: MEM.freeList	\ header for the free memory block list
+24 BUFFER: MEM.usedList	\ header for the used memory block list
+variable MEM.pointer		\ roving pointer to list of free memory blocks - Knuth's efficiency enhancement
+
+: MEM.init ( addr size --, initialize heap of this address and size)	\ ensure addr and size are aligned!
+	4 - over over + 1 swap ! 8 -	( addr size-12)		\ place a dummy marker at top of memory
+	over LIST.VAL !			( addr )			\ store size field of free memory block		
+	dup MEM.pointer !			( addr )			\ initialize roving pointer <- addr		
+	MEM.freeList dup list.init		( addr MEM.freeList)		\ create the list header
+	LIST.INS				(  )				\ insert the free memory block to the list
+	mem.usedlist list.init		(  )				\ initialize the used memory list
+;
+
+: MEM.? ( MemList --, summarize the used or free memory situation)
+	dup >R >R 0 -2 0 				( max num sum R:startRef currentRef) \ -2 adjustment for list header nodes
+	BEGIN
+		R@ LIST.VAL @ 1 invert and		( max num sum size R:startRef currentRef)
+		dup >R +				( max num sum+ R:startRef currentRef size)
+		rot R> max				( num sum+ max+ R:startRef currentRef)
+		rot 1+ rot				( max+ num+ sum+ R:startRef currentRef)
+		R> LIST.FWD R@ over >R		( max+ num+ sum+ nextRef startRef R:startRef nextRef)
+		=					( max+ num+ sum+ flag R:startRef nextRef)
+	UNTIL
+	R> R> drop drop
+	cr ." Total " u.
+	."  Blocks " u.			
+	."  Largest " u. cr
+;
+
+: MEM.mark	( ref size flag -- mark the block at ref with size and allocated flag (true = allocated)
+	>R swap			( size ref R: flag)
+	over over + 4 -		( size refLo refHi R: flag)
+	ROT R> IF			( refLo refHi size)
+		1 or				\ mark low bit of size field since memory addresses are always even
 	THEN
-;	
+	dup rot !			( refLo size')
+	swap LIST.VAL !
+;
 
-\ --------------------------------------------------------------------------------------------------
+: MEM.SIZE ( addr -- n, show the size of an allocated memory block)
+	4 - @ 17 -				\ -16 for the marker bytes and -1 for the tag flag
+;
 
-\ Functioinality for ANSI FORTH file words 
+: ALLOCATE ( u -- addr ior, allocate u bytes of memory, where u>0 )
+	32 max								\ minimum block allocation to reduce fragmentation
+	32 + >R 							\ need 32 extra bytes for tags in two blocks
+	MEM.pointer @ dup BEGIN			( rov ref R: u)	
+		dup LIST.VAL @ 			( rov ref sizeOfBlock R: u')
+		R@ U< not IF							\ suitable block is available
+			dup LIST.FWD MEM.pointer !					\ move roving pointer on on		
+			dup LIST.VAL @ 		( rov ref size R: u')
+			R@ - 16 + 			( rov ref newsize R: u')	\ 16 bytes for each block
+			over over 0 MEM.mark		( rov ref newsize R: u')	\ mark the free block
+			+ dup R> 16 - -1 MEM.mark	( rov nextRef)		\ mark the allocated block
+			dup MEM.usedList LIST.INS					\ add to the used memory list
+			nip 12 + 0 EXIT		( addr 0)			\ success
+		THEN
+		LIST.FWD				( rov addr' R: u')
+		over over = IF
+			R> drop
+			EXIT							\ complete cycle of the avail list
+		THEN
+	AGAIN
+;
+
+: FREE ( addr -- ior, free the previously allocated memory at u)
+	12 - dup >R					( R:thisRef)				\ offset to this block's base reference
+	dup LIST.REM										\ remove from the used memory list
+	4 - @						( sizeBelow R:thisRef)		\ check block below
+	dup 1 and 0= IF				( sizeBelow R:thisRef)		\ block below is free
+		dup R@ swap - 			( sizeBelow newRef R:thisRef) 	\ calculate new block reference
+		dup LIST.REM				( sizeBelow newRef R:thisRef) 	\ remove lower block from the list
+		R> LIST.VAL @ rot + 1 - 		( newRef newSize)			\ calculate newsize (-1 for allocation marker)
+	ELSE
+		drop R> dup LIST.VAL @ 1 -		( thisRef thisSize)
+	THEN 						( Ref Size)
+	swap >R 					( Size R:thisRef)	
+	R@ over + LIST.VAL @				( Size sizeAbove R:thisRef)		\ check the block above
+	dup 1 and 0= IF 				( Size sizeAbove flag R:thisRef)		\ block above is free
+		over R@ + 				( Size sizeAbove upperRef R:thisRef)	\ reference upper block
+		LIST.REM				( Size sizeAbove R:thisRef)		\ remove upper block from the list
+		+ 					( newSize R:thisRef)			\ calculate newsize (-1 for allocation marker)
+		R> swap 				( thisRef newSize)			
+	ELSE
+		drop R> swap				( thisRef thisSize)
+	THEN 
+	over swap 0 MEM.mark				( Ref)					\ mark the memory size
+	dup MEM.pointer !									\ update the general pointer
+	MEM.freeList LIST.INS	 							\ add the free block to the list
+	0
+;
+
+
+: RESIZE ( addr1 u - addr2 ior)
+	over over allocate 0= IF			( addr1 u addr1 addr2)
+		dup >R rot				( addr1 addr1 addr2 u R:addr2)
+		move
+		free drop
+		R> 0 EXIT
+	ELSE
+		-1 EXIT
+	THEN
+;
+
+: AVAIL ( --, show free memory)
+	MEM.freeList
+	MEM.?
+;
+
+: UNAVAIL ( --, show used memory)
+	MEM.usedList
+	MEM.?
+;
+
+\ redefine BUFFER:
+: BUFFER: ( n "NAME" --) \ NAME ( -- addr)
+	: 					\ create the word
+	55 c, 					\ compile 55, the opcode for #.l, into the definition
+	allocate drop ,			\ store the address in the definition
+	postpone ;				\ finish the word
+;
+
+\ autoconfigure the heap
+here1 16711680 over -				( here1 n)	\ here1 is the bottom of the heap and must be aligned
+MEM.init								\ 16711680 is top of memory less 64K used for include buffer
+
+\ ----------------------------------------------------------------------------------------------------------------
+
+\ FAT file system
 
 \ fileid structure
 \ 00	&nextfile
@@ -247,7 +207,7 @@ variable FAT.FATinBuf		\ the currently buffered FAT sector
 \ 36	pointer to buffer
 
 24 BUFFER: FILE.LIST			\ list of open files
-FILE.LIST LIST.INIT			\ do not include with MOUNT so that MOUNT can be repeated safely
+FILE.LIST LIST.INIT			
 
 : FAT.FindFreeCluster ( -- n, return the first free cluster on the disk)
 	FAT.TotalSectors @ Fat.SecPerClus @ / >R	\ total clusters
@@ -371,14 +331,16 @@ FILE.LIST LIST.INIT			\ do not include with MOUNT so that MOUNT can be repeated 
 
 : DELETE-FILE ( c-addr u -- ior)
 	FAT.find-file IF				( dirSector dirOffset firstCluster size flags)
-		drop drop BEGIN								\ clear the FAT entries
+		drop drop 				( dirSector dirOffset firstCluster)
+		BEGIN					( dirSector dirOffset cluster)	\ clear the FAT entries
 			dup FAT.get-fat		( dirSector dirOffset cluster nextCluster)
 			0 rot FAT.put-fat		( dirSector dirOffset nextCluster)
 			dup 268435455 =		
 		UNTIL
-		drop FAT.buf +			( dirSector FAT.buf+dirOffset)
-		229 swap c!									\ smudge the directory entry
-		FAT.buf swap SD.write-sector
+		drop 	
+		FAT.buf +				( dirSector FAT.buf+dirOffset)
+		229 swap c!				( dirSector)				\ smudge the directory entry
+		FAT.buf swap SD.write-sector	( )	
 		0
 	ELSE
 		-1
@@ -489,7 +451,7 @@ FILE.LIST LIST.INIT			\ do not include with MOUNT so that MOUNT can be repeated 
 	0
 ;
 
-2 BUFFER: CRLF
+2 SBUFFER: CRLF
 13 CRLF c!
 10 CRLF 1+ c!
 
@@ -588,24 +550,6 @@ FILE.LIST LIST.INIT			\ do not include with MOUNT so that MOUNT can be repeated 
 	THEN
 ;
 
-: COPY-FILE ( c-addr1 u1 c-addr2 u2 -- ior, copy file1-> file2)
-	>R >R
-	R/O OPEN-FILE drop			( fileid1 R:u2 c-addr2)
-	R> R> R/W CREATE-FILE drop		( fileid1 fileid2)
-	over 12 + @ over 12 + !		\ copy file 1 size -> file 2
-	over 36 + @ over 36 + !		\ copy file 1 pointer -> file 2
-	7 over 8 + !				\ write modified flag on file 2
-	close-file drop close-file
-;
-
-: COPY ( "FILE1" "FILE2" --, copy file1 -> file2)
-	32 word count 32 word count
-	COPY-FILE
-	IF
-		3000 error
-	THEN
-;
-
 : DELETE ( "FILEPATH" --, delete a file)
 	32 word count DELETE-FILE
 	IF
@@ -613,10 +557,3 @@ FILE.LIST LIST.INIT			\ do not include with MOUNT so that MOUNT can be repeated 
 	THEN
 ;
 
-: RENAME ( "FROM" "TO" -- rename a file)
-	32 word count 32 word count
-	RENAME-FILE
-	IF
-		5 error
-	THEN
-;

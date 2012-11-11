@@ -77,6 +77,10 @@
 	0 <# # # # # #> type space  					\ output number in format 0000
 ;
 
+: NN						( n ---)
+	0 <# # # #> type space  					\ output number in format 0000
+;
+
 : tab
 	9 emit
 ;
@@ -110,7 +114,7 @@
 			dup membuf ! membuf 1 fileid-w3 @ write-file
 			if ." Error writing output file .bin" close-all abort then
 		\	drop	
-		    . space
+		    hex NN space decimal
 		loop	
 	then
 ;
@@ -561,6 +565,21 @@
 	then
 ;
 
+: _UNLOOP
+	if									\ pass 2
+		1 1 10 10 4				( code .. size)
+	else
+		4					( size)
+	then
+;
+
+: _J
+	if
+		8 8 7 7 9 10 10 7			( code .. size)
+	else
+		7					( size)
+	then
+;
 \ Assembler directives
 : _CMD							( pass -- size)
 \ execute the expression field in pass 1
@@ -581,6 +600,17 @@
 		0					( size)
 	then
 ;
+
+: _DC.S						( pass -- size)
+	if									\ pass 2
+		expr @ expr-n @ 1- 1- over + DO
+			i c@
+		-1 +LOOP
+		expr-n	@ 1-							\ remove trailing space
+	else									\ pass 1
+		expr-n	@ 1-				( size)	
+	then
+;		
 
 : _DC.L						( pass -- size)
 	if									\ pass 2
@@ -663,10 +693,11 @@
 		drop
 	else								\ pass 2
 		cr
-		lineno dup @ 1+ dup . swap !  			\ update and print line number
-		tab PC @ NNNN tab					\ print the PC				
+		lineno dup @ 1+ dup 5 .r swap !  			\ update and print line number
+		hex tab PC @ 5 .r tab decimal			\ print the PC				
 		tab line-buffer swap type				\ echo the source line
 	then
+	
 ;
 
 : whitespace                        		( c -- flag)

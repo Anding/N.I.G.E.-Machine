@@ -11,8 +11,6 @@ entity Interrupt is
 			  irq_mask : in STD_LOGIC_VECTOR(15 downto 1);		
            RS232_RDA_S0 : in  STD_LOGIC;
            RS232_TBE_S0 : in  STD_LOGIC;
-           RS232_RDA_S1 : in  STD_LOGIC;
-           RS232_TBE_S1 : in  STD_LOGIC;
            PS2_irq : in  STD_LOGIC;
 			  ms_irq : in STD_LOGIC;
            rti : in  STD_LOGIC;										-- RTI from CPU
@@ -28,13 +26,13 @@ architecture Behavioral of Interrupt is
 	
 begin
 	-- interrupt assignment in priority order
-	ira_input(1) <= irq_mask(1) and RS232_RDA_S1; -- 2
-	ira_input(2) <= irq_mask(2) and RS232_RDA_S0; -- 4
-	ira_input(3) <= irq_mask(3) and RS232_TBE_S1; -- 8
-	ira_input(4) <= irq_mask(4) and RS232_TBE_S0; -- 16
-	ira_input(5) <= irq_mask(5) and PS2_irq; -- 32
-	ira_input(6) <= irq_mask(6) and ms_irq; -- 64		
-	ira_input(7) <= irq_mask(7) and '0';	-- 128						-- unused at present
+	ira_input(1) <= irq_mask(1) and RS232_RDA_S0; 
+	ira_input(2) <= irq_mask(2) and RS232_TBE_S0; 
+	ira_input(3) <= irq_mask(3) and PS2_irq; 
+	ira_input(4) <= irq_mask(4) and ms_irq; 	
+	ira_input(5) <= irq_mask(5) and '0'; 							-- unused at present
+	ira_input(6) <= irq_mask(6) and '0'; 
+	ira_input(7) <= irq_mask(7) and '0';							
 	-- extend here for interrupts 8 - 15
 
 	ira_output <= (ira_input and not ira_input_m1) or ira_register;
