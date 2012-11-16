@@ -1,7 +1,6 @@
 -- RAM for testing CPU
 -- Andrew Read
 -- Created 23 May 2011
--- Modified 7 August 2011
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
@@ -14,17 +13,17 @@ entity RAM_for_Testbench is
            clk : in  STD_LOGIC;
            weA : in  STD_LOGIC;
            addressA : in  STD_LOGIC_VECTOR (31 downto 0);
-           data_inA : in  STD_LOGIC_VECTOR (7 downto 0);
-           data_outA : out  STD_LOGIC_VECTOR (7 downto 0);
+           data_inA : in  STD_LOGIC_VECTOR (31 downto 0);
+           data_outA : out  STD_LOGIC_VECTOR (31 downto 0);
            addressB : in  STD_LOGIC_VECTOR (31 downto 0);
-           data_outB : out  STD_LOGIC_VECTOR (7 downto 0)
+           data_outB : out  STD_LOGIC_VECTOR (31 downto 0)
 			  );
 end RAM_for_Testbench;
 
 architecture Behavioral of RAM_for_Testbench is
-	type memory is array (0 to 8191) of std_logic_vector(7 downto 0);
-	file f : text open read_mode is "e:\nige_machine\nexys2\forth\sRAM.txt";	
-	signal sysRAM : memory := (others=>X"00");
+	type memory is array (0 to 8191) of std_logic_vector(31 downto 0);			-- 32K
+	file f : text open read_mode is "E:\N.I.G.E.-Machine\System\sRAM.txt";	
+	signal sysRAM : memory := (others=>X"00000000");
 	signal addressA_i, addressB_i : integer;
 	signal CE_A, CE_B : std_logic;
 
@@ -62,7 +61,7 @@ CE_B <= '1' when addressB < 8192 else '0';
 			while not endfile(f) loop
 				readline(f,l);
 				read(l,j);
-				sysRAM(i) <= CONV_STD_LOGIC_VECTOR(j,8);
+				sysRAM(i) <= CONV_STD_LOGIC_VECTOR(j,32);
 				i := i + 1;
 			end loop;	
 			--file_close(f);
