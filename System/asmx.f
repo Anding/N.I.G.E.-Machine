@@ -37,6 +37,8 @@
  4000 buffer: flow-table				\ table of PC values for IF ELSE THEN statements 
  272 buffer: instruction-count			\ count of instructions
  variable flow-pointer				\ pointer into the flow-table
+ variable output-value				\ longword written to output files
+ variable output-n					\ byte position to co-ordinate longword writes
  
 : rel									\ useful for branch instructions.  e.g bra b1 b0 rel
 	1+ -
@@ -99,19 +101,26 @@
 	if 									\ Ignore instructions of size zero
 		cr tab tab tab tab tab
 		dup PC +!				( opcode size --)	\ recalculate the PC for display purpose
-		decimal							\ important to guarantee ASCII output file fomat
+		hex								\ important to guarantee ASCII output file fomat
 		qual @ qual-n @ evaluate    				\ implement ,RTS qualifier if applicable
 		0 do			    					\ print and output bytes
-			dup 0 <# [char] , hold #S #> fileid-w1 @ write-line 	( -- flag)
-			if ." Error writing output file .coe" close-all abort then
+			dup . space			
+			output-value @ 256 * or dup output-value !	\ merge opcode into output-value
+			output-n @ 3 = IF
+				0 output-n !
+				dup 0 <# [char] , hold # # # # # # # # #> fileid-w1 @ write-line 	( -- flag)
+				if ." Error writing output file .coe" close-all abort then
 			
-			dup 0 <# #S #> fileid-w2 @ write-line 			( -- flag)
-			if ." Error writing output file .txt" close-all abort then
+				dup 0 <# # # # # # # # # #> fileid-w2 @ write-line 			( -- flag)
+				if ." Error writing output file .txt" close-all abort then
 		
-			dup membuf ! membuf 1 fileid-w3 @ write-file
-			if ." Error writing output file .bin" close-all abort then
-		\	drop	
-		    . space
+				membuf ! membuf 1 fileid-w3 @ write-file
+				if ." Error writing output file .bin" close-all abort then
+				0 output-value !
+			ELSE
+				drop
+				1 output-n +!
+			ENDIF
 		loop	
 	then
 ;
@@ -823,7 +832,7 @@
 	C" E:\N.I.G.E.-Machine\System\SRAM.coe" count w/o create-file
 	abort" Error opening output file .coe"	( fileid-w)
 	fileid-w1 !					( fileid-w)	
-	S" memory_initialization_radix=10;" fileid-w1 @ write-line drop ( fileid-w)
+	S" memory_initialization_radix=16;" fileid-w1 @ write-line drop ( fileid-w)
 	S" memory_initialization_vector=" fileid-w1 @ write-line drop 	 ( )
 	
 	\ clear instruction count memory
@@ -855,8 +864,9 @@
 		\ rewind file for second pass
 		0 fileid @ reposition-file drop
 	loop 
+	0 0 0 3 pass2							\ dummy instruction to complete final longword
 	\ final output, close files and remove locks
-	S" 0;" fileid-w1 @ write-line drop ( )
+	S" 00000000;" fileid-w1 @ write-line drop ( )
 	close-all
 	cr
 ;
