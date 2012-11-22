@@ -115,6 +115,16 @@ signal CLKSPI, SD_wr : STD_LOGIC;
 signal SD_dataout, SD_datain, SD_divide : STD_LOGIC_VECTOR (7 downto 0);
 signal SD_status : STD_LOGIC_VECTOR (3 downto 0);
 signal SD_control : STD_LOGIC_VECTOR (3 downto 0);
+signal douta_sysram : std_logic_vector(31 downto 0);
+signal doutb_sysram : std_logic_vector(31 downto 0);          
+signal wea_sysram : std_logic_vector(0 to 0);
+signal addra_sysram : std_logic_vector(31 downto 2);
+signal dina_sysram : std_logic_vector(31 downto 0);
+signal web_sysram : std_logic_vector(0 to 0);
+signal addrb_sysram : std_logic_vector(31 downto 2);
+signal dinb_sysram : std_logic_vector(31 downto 0);
+signal MEMdataout_XY_32 : std_logic_vector(31 downto 0);
+signal MEMdata_Sys_32 : std_logic_vector(31 downto 0);
 	
 	COMPONENT DCM6
 	PORT(
@@ -239,32 +249,56 @@ begin
 		 doutb => MEMdata_Rstack
 	  );
 	  
-	  inst_SYS_RAM : entity work.Sys_RAM
-	  PORT MAP (
-		 clka => clk_system,
-		 ena => sys_en,
-		 wea => MEM_WRQ_XX,
-		 addra => MEMaddr(15 downto 0),
-		 dina => MEMdataout_XY,
-		 douta => MEMdata_Sys,
-		 clkb => clk_system,
-		 enb => '1',
-		 web => Boot_we,
-		 addrb => Boot_addr,
-		 dinb => Boot_data,
-		 doutb => open
-	  );
+--	  inst_SYS_RAM : entity work.Sys_RAM
+--	  PORT MAP (
+--		 clka => clk_system,
+--		 ena => sys_en,
+--		 wea => wea_sysram,
+--		 addra => addra_sysram(15 downto 2),
+--		 dina => dina_sysram,
+--		 douta => douta_sysram,
+--		 clkb => clk_system,
+--		 enb => sys_en,
+--		 web => web_sysram,
+--		 addrb => addrb_sysram(15 downto 2),
+--		 dinb => dinb_sysram,
+--		 doutb => doutb_sysram
+--	  );
 
---	Inst_RAM_for_Testbench: entity work.RAM_for_Testbench PORT MAP(
---		rst => reset,
---		clk => clk_system,
---		weA => MEM_WRQ_XX(0),
---		addressA => MEMaddr,
---		data_inA => MEMdataout_XY,
---		data_outA => MEMdata_Sys,
---		addressB => (others=>'0'),
---		data_outB => open
---	);
+	Inst_SRAM_controller: entity work.SRAM_controller PORT MAP(
+		RST => reset,
+		CLK => clk_system,
+		ADDR => MEMaddr,
+		size => "01",
+		WE => MEM_WRQ_XX,
+		DATA_in => MEMdataout_XY_32,
+		DATA_out => MEMdata_Sys_32,
+		DATA_out_plus => open,
+		wea => wea_sysram,
+		addra => addra_sysram,
+		dina => dina_sysram,
+		douta => douta_sysram,
+		web => web_sysram,
+		addrb => addrb_sysram,
+		dinb => dinb_sysram,
+		doutb => doutb_sysram
+	);
+	
+MEMdataout_XY_32 <= "000000000000000000000000" & MEMdataout_XY;
+MEMdata_Sys <= MEMdata_Sys_32(7 downto 0);
+
+	Inst_RAM_for_Testbench: entity work.RAM_for_Testbench PORT MAP(
+		rst => reset,
+		clk => clk_system,
+		weA => wea_sysram(0),
+		weB => web_sysram(0),
+		addressA => addra_sysram,
+		data_inA => dina_sysram,
+		data_outA => douta_sysram,
+		addressB => addrb_sysram,
+		data_inB => dinb_sysram,
+		data_outB => doutb_sysram
+	);
 
 	  inst_Char_RAM : entity work.Char_RAM
 	  PORT MAP (

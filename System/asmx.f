@@ -101,17 +101,17 @@
 	if 									\ Ignore instructions of size zero
 		cr tab tab tab tab tab
 		dup PC +!				( opcode size --)	\ recalculate the PC for display purpose
-		hex								\ important to guarantee ASCII output file fomat
 		qual @ qual-n @ evaluate    				\ implement ,RTS qualifier if applicable
 		0 do			    					\ print and output bytes
-			dup . space			
+			hex dup . space			
 			output-value @ 256 * or dup output-value !	\ merge opcode into output-value
 			output-n @ 3 = IF
 				0 output-n !
+
 				dup 0 <# [char] , hold # # # # # # # # #> fileid-w1 @ write-line 	( -- flag)
 				if ." Error writing output file .coe" close-all abort then
-			
-				dup 0 <# # # # # # # # # #> fileid-w2 @ write-line 			( -- flag)
+							
+				binary dup 0 <# 32 0 do # loop #> fileid-w2 @ write-line decimal	( -- flag)
 				if ." Error writing output file .txt" close-all abort then
 		
 				membuf ! membuf 1 fileid-w3 @ write-file
@@ -864,7 +864,7 @@
 		\ rewind file for second pass
 		0 fileid @ reposition-file drop
 	loop 
-	0 0 0 3 pass2							\ dummy instruction to complete final longword
+	0 0 0 0 4 pass2						\ dummy instruction to complete final longword
 	\ final output, close files and remove locks
 	S" 00000000;" fileid-w1 @ write-line drop ( )
 	close-all
