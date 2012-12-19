@@ -1,3 +1,6 @@
-; EuroFORTH 2012 demonstration
-	zero
-	bra -1
+	nop
+	#.l	hex 1a
+	1+
+	dup
+	nop
+	bra 	-1

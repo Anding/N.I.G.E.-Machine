@@ -7,6 +7,7 @@ entity SRAM_controller is
 				CLK : in STD_LOGIC;
 				ADDR : in  STD_LOGIC_VECTOR (31 downto 0);					-- byte address
 				size : in  STD_LOGIC_VECTOR (1 downto 0);						-- length of read or write 01 = byte, 02 = word, 03 = longword
+				size_plus : in  STD_LOGIC_VECTOR (1 downto 0);				-- length of data to read at ADDR+1
 				WE : in  STD_LOGIC_VECTOR (0 downto 0);						-- write enable
 				DATA_in : in  STD_LOGIC_VECTOR (31 downto 0);				-- data to write to memory
 				DATA_out : out  STD_LOGIC_VECTOR (31 downto 0);				-- data read from memory at address ADDR
@@ -57,7 +58,7 @@ begin
 								DATA_out_agg (23 downto 0) & DATA_out_base_plus (15 downto 8) when "10",
 								DATA_out_base_plus when others;
 
-	with size select						-- trim the longword to word or byte length if needed
+	with size_plus select						-- trim the longword to word or byte length if needed
 	DATA_out_plus <=		DATA_out_agg_plus (31 downto 0) when "11",
 								"0000000000000000" & DATA_out_agg_plus (31 downto 16) when "10",
 								"000000000000000000000000" & DATA_out_agg_plus (31 downto 24) when others;
@@ -83,7 +84,7 @@ begin
 								DATA_out_base (31 downto 16) & DATA_in (7 downto 0) & DATA_out_base (7 downto 0) when "1001",
 								DATA_out_base (31 downto 8) & DATA_in (7 downto 0) when others; -- "1101"
 							  
-	with offset_m & size select  -- overlay in preparation for a write for port b
+	with offset_m & size_plus select  -- overlay in preparation for a write for port b
 	DATA_in_base_plus <=	DATA_in (7 downto 0) & DATA_out_base_plus (23 downto 0) when "0111",
 								DATA_in (15 downto 0) & DATA_out_base_plus (15 downto 0) when "1011",
 								DATA_in (23 downto 0) & DATA_out_base_plus (7 downto 0) when "1111",

@@ -9,11 +9,14 @@ use IEEE.STD_LOGIC_UNSIGNED.ALL;
 entity Datapath is
     Port ( rst : in  STD_LOGIC;	 										-- reset
            clk : in  STD_LOGIC;	 										-- clock
-			  Immediate : in STD_LOGIC_VECTOR (31 downto 0);		-- Immediate value read from memory by control unit for writing to TOS
+			  MEMdatain_X : in STD_LOGIC_VECTOR (31 downto 0);	
+			  MEMdatain_X_plus : in STD_LOGIC_VECTOR (31 downto 0);
+			  Accumulator : in STD_LOGIC_VECTOR (31 downto 0);		-- Immediate value read from memory by control unit for writing to TOS
 			  MicroControl : in  STD_LOGIC_VECTOR (13 downto 0);	-- control lines
-			  AuxControl : in STD_LOGIC_VECTOR (0 downto 0);		-- control lines 
+			  AuxControl : in STD_LOGIC_VECTOR (2 downto 0);		-- control lines 
 			  ReturnAddress : in STD_LOGIC_VECTOR (31 downto 0);	-- Return Address for JSR, BSR instructions
 			  TOS : out STD_LOGIC_VECTOR (31 downto 0);				-- Top Of Stack (TOS_n, one cycle ahead of registered value)
+			  TOS_r : out STD_LOGIC_VECTOR (31 downto 0);			-- Top Of Stack (Tthe registered value)			  
 			  NOS : out STD_LOGIC_VECTOR (31 downto 0);				-- Next On Stack (NOS_n)
 			  TORS : out STD_LOGIC_VECTOR (31 downto 0);			   -- Top Of Return Stack
 			  PSaddr : out STD_LOGIC_VECTOR (8 downto 0);			-- Paramater stack memory
@@ -120,6 +123,9 @@ signal PwBuff, RwBuff : std_logic_vector(31 downto 0);
 signal PSP, RSP, PSP_n, RSP_n, RSP_n1, PSP_m1, PSP_p1, RSP_m1, RSP_p1 : std_logic_vector (8 downto 0);
 signal RSdataout_i, PSdataout_i, PSdatain_i, RSdatain_i : std_logic_vector (31 downto 0);
 signal PSw_i, RSw_i, PSw_m1, RSw_m1 : std_logic_vector (0 downto 0);
+signal data : std_logic_vector (31 downto 0);
+signal AuxControl_m1 : STD_LOGIC_VECTOR (2 downto 0);
+signal MEMdatain_X_plus_m1 : std_logic_vector (31 downto 0);
 
 begin
 
@@ -136,6 +142,8 @@ begin
 			RwBuff <= RSdataOUT_i;				-- buffer for last written return stack value
 			PSw_m1 <= PSw_i;
 			RSw_m1 <= RSw_i;
+			AuxControl_m1 <= AuxControl;
+			MEMdatain_X_plus_m1 <= MEMdatain_X_plus;
 		else
 			TOS_i <= (others=>'1');
 			NOS_i <= (others=>'1');
@@ -163,7 +171,8 @@ begin
 	PSw <= PSw_i;
 	RSw <= RSw_i;
 	
-	TOS <= TOS_n;									-- output TOS to control unit, once cycle ahead of registered value			
+	TOS <= TOS_n;									-- output TOS to control unit, once cycle ahead of registered value		
+	TOS_r <= TOS_i;								-- the registered value of TOS
 	NOS <= NOS_n;									-- output NOS to control unit, once cycle ahead of regsitered value
 	TORS <= TORS_n;								-- output TORS to control unit, once cycle ahead of registered value
 							
@@ -182,6 +191,11 @@ begin
 	with AuxControl (0 downto 0) select					-- RTS will override update of TORS
 		TORS_n <= RSdatain_i when "1",
 					 TORS_n1 when others;
+					 
+	with AuxControl_m1 (2 downto 1) select					-- immediate value for loading into TOS (one cycle delay to coincide with microcode)
+		DATA <= 	MEMdatain_X_plus_m1 when "00",			-- load literal
+					MEMdatain_X when "01",						-- SRAM fetch
+					accumulator when others;					-- control unit mediated fetch
 		
 	with MicroControl(13 downto 13) select				-- multiplexer for selecting value to write to TORS
 		TORS_j <= ReturnAddress when "1",
@@ -259,7 +273,7 @@ begin
 	RSdata => TORS_i,
 	PSP => PSP,
 	RSP => RSP,
-	Data => Immediate,
+	Data => Data,
 	Control => MicroControl(2 downto 0),
 	Output => genmux_out);
 

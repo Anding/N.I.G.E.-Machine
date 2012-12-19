@@ -59,8 +59,8 @@ signal irv : std_logic_vector(3 downto 0);
 signal irq_mask : std_logic_vector(15 downto 1);
 signal PSdatain :  std_logic_vector(31 downto 0);
 signal RSdatain :  std_logic_vector(31 downto 0);
-signal MEMdatain_Xi :  std_logic_vector(7 downto 0);
-signal MEMdata_Sys, MEMdata_Pstack, MEMdata_Rstack, MEMdata_Char, MEMdata_Reg :  std_logic_vector(7 downto 0);
+signal MEMdatain_Xi :  std_logic_vector(31 downto 0);
+signal MEMdata_Pstack, MEMdata_Rstack, MEMdata_Char, MEMdata_Reg :  std_logic_vector(7 downto 0);
 signal MEMdatain_Y : std_logic_vector(7 downto 0);
 signal MEM_RDY_Y :  std_logic;
 signal MEMdatain_Z :  std_logic_vector(15 downto 0);
@@ -72,7 +72,8 @@ signal RSaddr :  std_logic_vector(8 downto 0);
 signal RSdataout :  std_logic_vector(31 downto 0);
 signal RSw :  std_logic_vector(0 to 0);
 signal MEMaddr :  std_logic_vector(31 downto 0);
-signal MEMdataout_XY :  std_logic_vector(7 downto 0);
+signal MEMdataout_X :  std_logic_vector(31 downto 0);
+signal MEMdataout_Y :  std_logic_vector(7 downto 0);
 signal MEM_WRQ_X :  std_logic;
 signal MEM_WRQ_XX : std_logic_vector(0 downto 0);
 signal MEM_WRQ_Y :  std_logic;
@@ -123,8 +124,8 @@ signal dina_sysram : std_logic_vector(31 downto 0);
 signal web_sysram : std_logic_vector(0 to 0);
 signal addrb_sysram : std_logic_vector(31 downto 2);
 signal dinb_sysram : std_logic_vector(31 downto 0);
-signal MEMdataout_XY_32 : std_logic_vector(31 downto 0);
-signal MEMdata_Sys_32 : std_logic_vector(31 downto 0);
+signal MEMdata_Sys, MEMdata_Sys_plus : std_logic_vector(31 downto 0);
+signal MEMsize_X, MEMsize_Xp : std_logic_vector(1 downto 0);
 	
 	COMPONENT DCM6
 	PORT(
@@ -213,10 +214,10 @@ begin
 	 Sys_EN <= '1' when bank_n = Sys else '0';
 	 
 	 with bank select														-- one cycle delayed to switch output
-		MEMdatain_Xi <= MEMdata_Pstack when Pstack,
-							MEMdata_Rstack when Rstack,
-							MEMdata_Char when Char,
-							MEMdata_Reg when Reg,
+		MEMdatain_Xi <= "000000000000000000000000" & MEMdata_Pstack when Pstack,
+							"000000000000000000000000" & MEMdata_Rstack when Rstack,
+							"000000000000000000000000" & MEMdata_Char when Char,
+							"000000000000000000000000" & MEMdata_Reg when Reg,
 							MEMdata_Sys when Sys;
 	 		
 		inst_Pstack_RAM : entity work.Pstack_RAM
@@ -230,7 +231,7 @@ begin
 		 enb => Pstack_EN,
 		 web => MEM_WRQ_XX,
 		 addrb => MEMaddr(10 downto 0),
-		 dinb => MEMdataout_XY,
+		 dinb => MEMdataout_X(7 downto 0),
 		 doutb => MEMdata_Pstack
 	  );
 	  
@@ -245,7 +246,7 @@ begin
 		 enb => Rstack_EN,
 		 web => MEM_WRQ_XX,
 		 addrb => MEMaddr(10 downto 0),
-		 dinb => MEMdataout_XY,
+		 dinb => MEMdataout_X(7 downto 0),
 		 doutb => MEMdata_Rstack
 	  );
 	  
@@ -269,11 +270,12 @@ begin
 		RST => reset,
 		CLK => clk_system,
 		ADDR => MEMaddr,
-		size => "01",
+		size => MEMsize_X,
+		size_plus => MEMsize_Xp,
 		WE => MEM_WRQ_XX,
-		DATA_in => MEMdataout_XY_32,
-		DATA_out => MEMdata_Sys_32,
-		DATA_out_plus => open,
+		DATA_in => MEMdataout_X,
+		DATA_out => MEMdata_Sys,
+		DATA_out_plus => MEMdata_Sys_plus,
 		wea => wea_sysram,
 		addra => addra_sysram,
 		dina => dina_sysram,
@@ -284,9 +286,6 @@ begin
 		doutb => doutb_sysram
 	);
 	
-MEMdataout_XY_32 <= "000000000000000000000000" & MEMdataout_XY;
-MEMdata_Sys <= MEMdata_Sys_32(7 downto 0);
-
 	Inst_RAM_for_Testbench: entity work.RAM_for_Testbench PORT MAP(
 		rst => reset,
 		clk => clk_system,
@@ -311,7 +310,7 @@ MEMdata_Sys <= MEMdata_Sys_32(7 downto 0);
 		 enb => Char_EN,
 		 web => MEM_WRQ_XX,
 		 addrb => MEMaddr(10 downto 0),
-		 dinb => MEMdataout_XY,
+		 dinb => MEMdataout_X(7 downto 0),
 		 doutb => MEMdata_Char
 	  );		
 	  
@@ -325,7 +324,7 @@ MEMdata_Sys <= MEMdata_Sys_32(7 downto 0);
 		background => background,
 		en => reg_en,
 		addr => MEMaddr(10 downto 0) ,
-		datain => MEMdataout_XY,
+		datain => MEMdataout_X(7 downto 0),
 		dataout => MEMdata_Reg,
 		wrq => MEM_WRQ_XX,
 		RS232_rx_S0 => RS232_rx_S0,
@@ -369,9 +368,13 @@ MEMdata_Sys <= MEMdata_Sys_32(7 downto 0);
 		RSw => RSw,
 		MEMaddr => MEMaddr,
 		MEMdatain_X => MEMdatain_Xi,
-		MEMdataout_XY => MEMdataout_XY,
+		MEMdatain_X_plus => MEMdata_Sys_plus,
+		MEMdataout_X => MEMdataout_X,
+		MEMsize_X => MEMsize_X,
+		MEMsize_Xp => MEMsize_Xp,
 		MEM_WRQ_X => MEM_WRQ_X,
 		MEMdatain_Y => MEMdatain_Y,
+		MEMdataout_Y => MEMdataout_Y,
 		MEM_WRQ_Y => MEM_WRQ_Y,
 		MEM_REQ_Y => MEM_REQ_Y,
 		MEM_RDY_Y => MEM_RDY_Y,
@@ -413,7 +416,7 @@ MEMdata_Sys <= MEMdata_Sys_32(7 downto 0);
 		ADDR_B => (others=>'0'),
 		WRQ_B => '0',
 		RDY_B => open,
-		DATA_IN_C => MEMdataout_XY,
+		DATA_IN_C => MEMdataout_Y,
 		DATA_OUT_C => MEMdatain_Y,
 		ADDR_C => MEMaddr(23 downto 0),
 		REQ_C => MEM_REQ_Y,

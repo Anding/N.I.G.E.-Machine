@@ -27,15 +27,16 @@ architecture Behavioral of RAM_for_Testbench is
 	file f : text open read_mode is "E:\N.I.G.E.-Machine\System\sram.txt";	
 	signal sysRAM : memory := (others=>X"00000000");
 	signal addressA_i, addressB_i : integer;
+	signal addressA_t, addressB_t : STD_LOGIC_VECTOR (29 downto 0);
 	signal CE_A, CE_B : std_logic;
 
 begin
 addressA_i <= CONV_INTEGER(addressA);
 addressB_i <= CONV_INTEGER(addressB);
-CE_A <= '1' when addressA < 8192 else '0';
-CE_B <= '1' when addressB < 8192 else '0';
+CE_A <= '1' when (addressA_i < 8192) else '0';
+CE_B <= '1' when (addressB_i < 8192) else '0';
 
-	process (clk, rst, CE_A, addressA_i, weA, data_inA, weA, data_inA, CE_B, addressB_i)
+	process (clk, rst, CE_A, addressA_i, weA, data_inA, weB, data_inB, CE_B, addressB_i)
 		variable l : line;
 		variable i : integer := 0;
 		variable j : bit_vector(31 downto 0);
