@@ -97,8 +97,8 @@ type state_T is (common, load_long, load_word, load_byte, ifdup, smult, umult, s
 						Sstore_long, Sstore_long2, Sstore_word, Sstore_byte, Sstore_end,
 						Dfetch_long, Dfetch_long2, Dfetch_word, Dfetch_byte,
 						Dstore_long, Dstore_long2, Dstore_word, Dstore_byte, Dstore2,
-						branch_load, branch_eq_load, branch_ne_load, skip1);
-type offset_T is (none, one, two, four);						
+						branch_load, branch_eq_load, branch_ne_load, skip1, start);
+--type offset_T is (none, one, two, four);						
 						
 signal state, state_n  : state_T;										-- state machine
 signal PC, PC_n, PC_plus, PC_bra_TOS, PC_bra_IMD, PC_m1 : std_logic_vector (31 downto 0);		-- program counter logic
@@ -119,9 +119,9 @@ signal irq_m1, irq_n : std_logic;
 signal irv_i : std_logic_vector (7 downto 0);
 signal retrap, retrap_n : std_logic_vector(1 downto 0);
 signal AuxControl_i, AuxControl_n : std_logic_vector(2 downto 0);
-signal opcode : std_logic_vector(5 downto 0);					-- opcode of current instruction
-signal branch : std_logic_vector(1 downto 0);					-- branch code of current instruction
-signal offset, offset_n : offset_T;									-- used to find the opcode in MEMdatain_X_extended following instructions with non-standard length
+signal opcode, next_opcode : std_logic_vector(5 downto 0);					-- opcode of current and next instructions
+signal branch, next_branch : std_logic_vector(1 downto 0);					-- branch codes of current and next instructions
+signal offset : std_logic;
 
 --alias branch is MEMdatain_X(31 downto 30);						-- branch code of current instruction
 --alias opcode is MEMdatain_X(29 downto 24);						-- opcode of current instruction
@@ -135,18 +135,27 @@ begin
 	 douta => MicroControl
 	);
 	
-	with offset select
-		opcode <= 	MEMdatain_X_extended(37 downto 32) when none,				-- position within 5 byte extended data
-						MEMdatain_X_extended(29 downto 24) when one,
-						MEMdatain_X_extended(21 downto 16) when two,
-						MEMdatain_X_extended(5 downto 0) when four;
+--	with offset select
+	opcode <= MEMdatain_X_extended(37 downto 32); --when none,				-- position within 5 byte extended data
+--						MEMdatain_X_extended(29 downto 24) when one,
+--						MEMdatain_X_extended(21 downto 16) when two,
+--						MEMdatain_X_extended(5 downto 0) when four;
 
+--	with offset select
+	branch <= MEMdatain_X_extended(39 downto 38); -- when none,				-- position within 5 byte extended data
+--						MEMdatain_X_extended(31 downto 30) when one,
+--						MEMdatain_X_extended(23 downto 22) when two,
+--						MEMdatain_X_extended(7 downto 6) when four;
+   
 	with offset select
-		branch <= 	MEMdatain_X_extended(39 downto 38) when none,				-- position within 5 byte extended data
-						MEMdatain_X_extended(31 downto 30) when one,
-						MEMdatain_X_extended(23 downto 22) when two,
-						MEMdatain_X_extended(7 downto 6) when four;
-    
+		next_opcode <= MEMdatain_X_extended(37 downto 32) when '0',
+							MEMdatain_X_extended(29 downto 24) when others;
+	
+	with offset select
+		next_branch <= MEMdatain_X_extended(39 downto 38) when '0',
+							MEMdatain_X_extended(31 downto 30) when others;
+
+ 
 	Accumulator <= Accumulator_i;
 	AuxControl <= AuxControl_i;
 	
@@ -170,8 +179,28 @@ begin
 				  accumulator_X(13) & accumulator_X(13) & accumulator_X(13) & accumulator_X(13) & accumulator_X(13) & accumulator_X(12 downto 0);
 	PC_bra_IMD <= PC_m1 + delta;		-- sign extended 14 bit branch for BRA or BEQ
 						
-	-- control unit state machine
-	process																	
+	
+	-- combinatorial process to determine the size of the next opcode for incrementing the PC
+	process (next_opcode, next_branch)
+	begin
+		if 
+		next_branch = "00" then
+			if next_opcode = ops_LONG then
+				plus <= "101";											-- advance by 5 bytes for a long literal
+			elsif next_opcode = ops_WORD then
+				plus <= "011";											-- 3 bytes for a word literal
+			elsif next_opcode = ops_BYTE then
+				plus <= "010";											-- 2 bytes for a byte literal
+			else															
+				plus <= "001";
+			end if;
+		else								-- branches do not utilize increment so leave PC unchanged as the base
+			plus <= "000";
+		end if;
+	end process;
+	
+	-- main control unit state machine
+	process																			
 	begin																		-- sequential (registered) section of state machine
 		wait until rising_edge(clk);
 		if rst = '0' then													
@@ -183,20 +212,18 @@ begin
 			accumulator_i <= accumulator_n;			
 			retrap <= retrap_n;
 			AuxControl_i <= AuxControl_n;
-			Offset <= Offset_n;
 			if (count >= timer) then 
 				state <= state_n;
 				count <= 0;				
 			end if;	
 		else																	-- synchronous reset
-			state <= skip1;
+			state <= start;
 			count <= 0;
 			PC <= (others=>'0');
 			PC_m1 <= (others=>'0');
 			irq_m1 <= '0';
 			retrap <= "00";
 			AuxControl_i <= "000";
-			Offset <= none;
 		end if;
 	end process;
 
@@ -206,7 +233,7 @@ begin
 				TOS, NOS, TORS, int_trig, MEM_RDY_Y, MEM_RDY_Z, int_vector_ext, int_vector_ext_i, branch, opcode)
 	begin																					-- combinational section of state machine
 		case state is
-		
+
 		when common =>																	-- common state executes most instructions in 1 clock cycle
 		
 		-- Next state logic		
@@ -358,6 +385,8 @@ begin
 			-- Program counter logic
 			if int_trig = '1' then
 				PC_n <= int_vector_ext;								-- PC from external interrupt vector
+			elsif (branch = bps_BEQ and equalzero = '1') or (branch = bps_BRA) then
+				PC_n <= PC;												 -- UPDATE HERE
 			elsif opcode = ops_TRAP or retrap(0) = '1' then
 				PC_n <= int_vector_TRAP;							-- PC from internal interrup vector
 			elsif branch = bps_RTS or opcode = ops_RTI or opcode = ops_RETRAP then
@@ -365,35 +394,28 @@ begin
 			elsif opcode = ops_BSR then
 				PC_n <= PC_bra_TOS;									-- PC is offset with TOS value
 			elsif opcode = ops_JSR or opcode = ops_JMP then
-				PC_n <= TOS;											-- PC from TOS
-			else
-				PC_n <= PC_plus;										-- either +1 for single cycle instructions or +0 for multicycle instructions
-			end if;
-			if opcode = ops_CFETCH or opcode = ops_WFETCH or opcode = ops_LFETCH or
+				PC_n <= TOS;											-- PC from TOS	
+			elsif opcode = ops_CFETCH or opcode = ops_WFETCH or opcode = ops_LFETCH or
 				opcode = ops_SDIVMOD or opcode = ops_UDIVMOD or opcode = ops_IFDUP or
 				opcode = ops_CSTORE or opcode = ops_WSTORE or opcode = ops_LSTORE or
-				opcode = ops_SMULT or opcode = ops_UMULT then  
-				plus <= "000";											-- zero now as PC update is done on the final cycle of multi-cycle instructions
-			elsif opcode = ops_LONG then
-				plus <= "101";											-- advance by 5 bytes for a long literal
-			elsif opcode = ops_WORD then
-				plus <= "011";											-- 3 bytes for a word literal
-			elsif opcode = ops_BYTE then
-				plus <= "010";											-- 2 bytes for a byte literal
-			else															
-				plus <= "001";											-- advance PC by one byte for all other instructions
-			end if;				
-			
-			-- Program counter offset logic
-			if opcode = ops_LONG then
-				offset_n <= four;										-- 4 byte offset for a long literal
-			elsif opcode = ops_WORD then
-				offset_n <= two;										-- 2 byte offset for a word literal
-			elsif opcode = ops_BYTE then
-				offset_n <= one;										-- 1 byte offset for a byte literal
-			else															
-				offset_n <= none;										-- no offset for all other instructions
+				opcode = ops_SMULT or opcode = ops_UMULT then  		
+				PC_n <= PC;
+			else
+				PC_n <= PC_plus;										-- PC update is done on the final cycle of multi-cycle instructions		
 			end if;
+
+--			elsif opcode = ops_LONG then
+--				plus <= "101";											-- advance by 5 bytes for a long literal
+--			elsif opcode = ops_WORD then
+--				plus <= "011";											-- 3 bytes for a word literal
+--			elsif opcode = ops_BYTE then
+--				plus <= "010";											-- 2 bytes for a byte literal
+--			else															
+--				plus <= "001";											-- advance PC by one byte for all other instructions
+--			end if;				
+			
+			-- Program counter next instruction offset logic
+			offset <= '1';
 			
 			-- Microcode logic
 			if int_trig = '1' or opcode = ops_TRAP or retrap(0) = '1' then
@@ -417,7 +439,7 @@ begin
 			end if;
 			
 			-- Data multiplexer logic
-			AuxControl_n(2 downto 1) <= "00";					-- HERE
+			AuxControl_n(2 downto 1) <= "00";					-- UPDATE HERE
 
 			-- Return stack control logic 
 			if (branch = bps_RTS or opcode = ops_RTI or opcode = ops_RETRAP) and (int_trig = '0') then	-- override on interrupt
@@ -448,91 +470,91 @@ begin
 				retrap_n <= "0" & retrap(1);
 			end if;
 			
-		when load_long =>											-- load a LONG immediate value
-			state_n <= load_byte;			
-			accumulator_n <= accumulator_X;						-- shift into accumulator byte by byte	
-			plus <= "001";		
-			offset_n <= none;				
-			timer <= 2;
-			PC_n <= PC_plus;
-			ucode <= ops_NOP;
-			MEMaddr <= PC;			
-			MEM_REQ_Y <= '0';	
-			MEM_REQ_Z <= '0';
-			MEM_WRQ_X <= '0';
-			MEM_WRQ_Y <= '0';	
-			MEM_WRQ_Z <= '0';
-			MEMdataout_X <= (others=>'0');
-			MEMdataout_Y <= (others=>'0');
-			MEMdataout_Z <= (others=>'0');
-			MEMsize_X <= "11";
-			MEMsize_Xp <= "11";
-			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(2 downto 1) <= "00";
-			ReturnAddress_n <= PC;
-			irq_n <= int_trig;	
-			rti <= '0';
-			retrap_n <= retrap;
+--		when load_long =>											-- load a LONG immediate value
+--			state_n <= load_byte;			
+--			timer <= 2;			
+--			accumulator_n <= accumulator_X;						-- shift into accumulator byte by byte	
+----			plus <= "001";		
+--			offset <= '0';				
+--			PC_n <= PC_plus;
+--			ucode <= ops_NOP;
+--			MEMaddr <= PC;			
+--			MEM_REQ_Y <= '0';	
+--			MEM_REQ_Z <= '0';
+--			MEM_WRQ_X <= '0';
+--			MEM_WRQ_Y <= '0';	
+--			MEM_WRQ_Z <= '0';
+--			MEMdataout_X <= (others=>'0');
+--			MEMdataout_Y <= (others=>'0');
+--			MEMdataout_Z <= (others=>'0');
+--			MEMsize_X <= "11";
+--			MEMsize_Xp <= "11";
+--			AuxControl_n(0 downto 0) <= "0";
+--			AuxControl_n(2 downto 1) <= "00";
+--			ReturnAddress_n <= PC;
+--			irq_n <= int_trig;	
+--			rti <= '0';
+--			retrap_n <= retrap;
 				
-		when load_word =>											-- load a WORD immediate value
-			state_n <= load_byte;
-			accumulator_n <= accumulator_X;						-- shift into accumulator byte by byte	
-			plus <= "001";	
-			offset_n <= none;	
-			timer <= 0;
-			PC_n <= PC_plus;
-			ucode <= ops_NOP;
-			MEMaddr <= PC;	
-			MEM_REQ_Y <= '0';	
-			MEM_REQ_Z <= '0';
-			MEM_WRQ_X <= '0';
-			MEM_WRQ_Y <= '0';	
-			MEM_WRQ_Z <= '0';
-			MEMdataout_X <= (others=>'0');
-			MEMdataout_Y <= (others=>'0');
-			MEMdataout_Z <= (others=>'0');
-			MEMsize_X <= "11";
-			MEMsize_Xp <= "11";
-			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(2 downto 1) <= "00";
-			ReturnAddress_n <= PC;
-			irq_n <= int_trig;
-			rti <= '0';
-			retrap_n <= retrap;
+--		when load_word =>											-- load a WORD immediate value
+--			state_n <= load_byte;
+--			accumulator_n <= accumulator_X;						-- shift into accumulator byte by byte	
+--			plus <= "001";	
+--			offset_n <= none;	
+--			timer <= 0;
+--			PC_n <= PC_plus;
+--			ucode <= ops_NOP;
+--			MEMaddr <= PC;	
+--			MEM_REQ_Y <= '0';	
+--			MEM_REQ_Z <= '0';
+--			MEM_WRQ_X <= '0';
+--			MEM_WRQ_Y <= '0';	
+--			MEM_WRQ_Z <= '0';
+--			MEMdataout_X <= (others=>'0');
+--			MEMdataout_Y <= (others=>'0');
+--			MEMdataout_Z <= (others=>'0');
+--			MEMsize_X <= "11";
+--			MEMsize_Xp <= "11";
+--			AuxControl_n(0 downto 0) <= "0";
+--			AuxControl_n(2 downto 1) <= "00";
+--			ReturnAddress_n <= PC;
+--			irq_n <= int_trig;
+--			rti <= '0';
+--			retrap_n <= retrap;
 				
-		when load_byte =>											-- load a BYTE immediate value, or last step of WORD or LONG
-			state_n <= common;
-			accumulator_n <= accumulator_X;	
-			plus <= "001";											-- increment PC for next instruction	
-			offset_n <= none;	
-			ucode <= ops_PUSH;									-- PUSH immediate onto TOS				
-			timer <= 0;
-			PC_n <= PC_plus;
-			MEMaddr <= PC;	
-			MEM_REQ_Y <= '0';	
-			MEM_REQ_Z <= '0';
-			MEM_WRQ_X <= '0';
-			MEM_WRQ_Y <= '0';	
-			MEM_WRQ_Z <= '0';
-			MEMdataout_X <= (others=>'0');
-			MEMdataout_Y <= (others=>'0');
-			MEMdataout_Z <= (others=>'0');
-			MEMsize_X <= "11";
-			MEMsize_Xp <= "11";
-			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(2 downto 1) <= "00";
-			ReturnAddress_n <= PC;
-			irq_n <= int_trig;
-			rti <= '0';
-			retrap_n <= retrap;
+--		when load_byte =>											-- load a BYTE immediate value, or last step of WORD or LONG
+--			state_n <= common;
+--			accumulator_n <= accumulator_X;	
+--			plus <= "001";											-- increment PC for next instruction	
+--			offset_n <= none;	
+--			ucode <= ops_PUSH;									-- PUSH immediate onto TOS				
+--			timer <= 0;
+--			PC_n <= PC_plus;
+--			MEMaddr <= PC;	
+--			MEM_REQ_Y <= '0';	
+--			MEM_REQ_Z <= '0';
+--			MEM_WRQ_X <= '0';
+--			MEM_WRQ_Y <= '0';	
+--			MEM_WRQ_Z <= '0';
+--			MEMdataout_X <= (others=>'0');
+--			MEMdataout_Y <= (others=>'0');
+--			MEMdataout_Z <= (others=>'0');
+--			MEMsize_X <= "11";
+--			MEMsize_Xp <= "11";
+--			AuxControl_n(0 downto 0) <= "0";
+--			AuxControl_n(2 downto 1) <= "00";
+--			ReturnAddress_n <= PC;
+--			irq_n <= int_trig;
+--			rti <= '0';
+--			retrap_n <= retrap;
 			
 		when ifdup =>											-- ifdup when TOS was zero
 			state_n <= common;
 			timer <= 0;
-			PC_n <= PC_plus;
-			offset_n <= none;
+			PC_n <= PC;
+			offset <= '0';	
 			ucode <= ops_DROP;									-- DROP previously DUP'd value
-			plus <= "001";											-- (can make ?DUP a 1 or 2 cycle instruction with most common case in 1 cycle)
+--			plus <= "001";											-- (can make ?DUP a 1 or 2 cycle instruction with most common case in 1 cycle)
 			accumulator_n <= (others=>'0');
 			MEMaddr <= PC;	
 			MEM_REQ_Y <= '0';	
@@ -555,10 +577,10 @@ begin
 		when smult =>										-- signed multiply
 			state_n <= skip1;
 			timer <= 4;  											-- wait for multiplier
-			PC_n <= PC_plus;
-			offset_n <= none;
-			ucode <= ops_SMULT;
-			plus <= "000";
+			PC_n <= PC;
+			offset <= '0';	
+			ucode <= ops_SMULT;							-- UPDATE HERE.  Can we make this just a straight microcode lookup from the opcode?
+--			plus <= "000";
 			accumulator_n <= (others=>'0');	
 			MEMaddr <= PC;	
 			MEM_REQ_Y <= '0';	
@@ -581,10 +603,10 @@ begin
 		when umult =>										-- unsigned multiply
 			state_n <= skip1;
 			timer <= 4;  											-- wait for multiplier
-			PC_n <= PC_plus;
-			offset_n <= none;
-			ucode <= ops_UMULT;
-			plus <= "000";
+			PC_n <= PC;
+			offset <= '0';
+			ucode <= ops_UMULT;									-- UPDATE HERE.  Can we make this just a straight microcode lookup from the opcode?
+--			plus <= "000";
 			accumulator_n <= (others=>'0');	
 			MEMaddr <= PC;	
 			MEM_REQ_Y <= '0';	
@@ -607,10 +629,10 @@ begin
 		when sdivmod =>										-- signed division
 			state_n <= sdivmod_load;
 			timer <= 42;  											-- wait for divider
-			PC_n <= PC_plus;
-			offset_n <= none;
+			PC_n <= PC;
+			offset <= '0';	
 			ucode <= ops_NOP;
-			plus <= "000";
+--			plus <= "000";
 			accumulator_n <= (others=>'0');	
 			MEMaddr <= PC;	
 			MEM_REQ_Y <= '0';	
@@ -633,10 +655,10 @@ begin
 		when udivmod =>										-- unsigned division
 			state_n <= udivmod_load;
 			timer <= 41;											-- wait for divider
-			PC_n <= PC_plus;
-			offset_n <= none;
+			PC_n <= PC;
+			offset <= '0';
 			ucode <= ops_NOP;
-			plus <= "000";
+--			plus <= "000";
 			accumulator_n <= (others=>'0');	
 			MEMaddr <= PC;	
 			MEM_REQ_Y <= '0';	
@@ -657,12 +679,12 @@ begin
 			retrap_n <= retrap;
 			
 		when sdivmod_load =>									-- signed division
-			state_n <= common;
+			state_n <= skip1;									
 			timer <= 0;  
 			PC_n <= PC_plus;
-			offset_n <= none;
+			offset <= '0';
 			ucode <= ops_SDIVMODLD;								-- load TOS and NOS with results
-			plus <= "001";											-- (need to hold them steady until division is complete)
+--			plus <= "001";											-- (need to hold them steady until division is complete)
 			accumulator_n <= (others=>'0');
 			MEMaddr <= PC;	
 			MEM_REQ_Y <= '0';	
@@ -686,9 +708,9 @@ begin
 			state_n <= common;
 			timer <= 0;
 			PC_n <= PC_plus;
-			offset_n <= none;
+			offset <= '0';
 			ucode <= ops_UDIVMODLD;								-- load TOS and NOS with results
-			plus <= "001";											-- (need to hold them steady until division is complete)
+--			plus <= "001";											-- (need to hold them steady until division is complete)
 			accumulator_n <= (others=>'0');
 			MEMaddr <= PC;	
 			MEM_REQ_Y <= '0';	
@@ -714,8 +736,8 @@ begin
 			ucode <= ops_INC;				
 			timer <= 1;
 			PC_n <= PC_plus;
-			offset_n <= none;
-			plus <= "000";	
+			offset <= '0';
+--			plus <= "000";	
 			MEMaddr <= TOS;				
 			MEM_REQ_Y <= '0';	
 			MEM_REQ_Z <= '0';
@@ -740,8 +762,8 @@ begin
 			ucode <= ops_NOP;				
 			timer <= 0;
 			PC_n <= PC_plus;
-			offset_n <= none;
-			plus <= "000";		
+			offset <= '0';
+			--plus <= "000";		
 			MEMaddr <= TOS;				
 			MEM_REQ_Y <= '0';	
 			MEM_REQ_Z <= '0';
@@ -766,8 +788,8 @@ begin
 			ucode <= ops_REPLACE;				
 			timer <= 0;
 			PC_n <= PC_plus;
-			offset_n <= none;
-			plus <= "001";		
+			offset <= '0';
+			--plus <= "001";		
 			MEMaddr <= PC;				
 			MEM_REQ_Y <= '0';	
 			MEM_REQ_Z <= '0';
@@ -791,8 +813,8 @@ begin
 			ucode <= ops_INC;											
 			timer <= 0;
 			PC_n <= PC_plus;
-			offset_n <= none;
-			plus <= "000";		
+			offset <= '0';
+			--plus <= "000";		
 			MEMaddr <= TOS;						
 			MEM_REQ_Y <= '0';	
 			MEM_REQ_Z <= '0';
@@ -817,8 +839,8 @@ begin
 			ucode <= ops_INC;											
 			timer <= 0;
 			PC_n <= PC_plus;
-			plus <= "000";
-			offset_n <= none;
+			--plus <= "000";
+			offset <= '0';
 			MEMaddr <= TOS;				
 			MEM_REQ_Y <= '0';	
 			MEM_REQ_Z <= '0';
@@ -843,8 +865,8 @@ begin
 			ucode <= ops_DROP;								-- drop address			
 			timer <= 0;
 			PC_n <= PC_plus;
-			offset_n <= none;
-			plus <= "000";		
+			offset <= '0';
+			--plus <= "000";		
 			MEMaddr <= TOS;				
 			MEM_REQ_Y <= '0';	
 			MEM_REQ_Z <= '0';
@@ -869,8 +891,8 @@ begin
 			ucode <= ops_DROP;								-- drop address			
 			timer <= 0;
 			PC_n <= PC_plus;
-			offset_n <= none;
-			plus <= "000"; 		
+			offset <= '0';
+--			plus <= "000"; 		
 			MEMaddr <= TOS_r;									-- registered value of TOS still contains address	
 			MEM_REQ_Y <= '0';	
 			MEM_REQ_Z <= '0';
@@ -895,8 +917,8 @@ begin
 			ucode <= ops_DROP;								-- drop value			
 			timer <= 0;
 			PC_n <= PC_plus;
-			plus <= "001"; 		
-			offset_n <= none;
+			--plus <= "001"; 		
+			offset <= '0';
 			MEMaddr <= PC;				
 			MEM_REQ_Y <= '0';	
 			MEM_REQ_Z <= '0';
@@ -927,9 +949,9 @@ begin
 				ucode <= ops_NOP;	
 			end if;
 			timer <= 0;
-			PC_n <= PC_plus;					
-			plus <= "000";	
-			offset_n <= none;
+			PC_n <= PC;					
+--			plus <= "000";	
+			offset <= '0';
 			MEMaddr <= TOS;				
 			MEM_REQ_Y <= '0';	
 			MEM_REQ_Z <= '1';
@@ -953,9 +975,9 @@ begin
 			accumulator_n <= accumulator_i;		
 			ucode <= ops_INC;
 			timer <= 0;
-			PC_n <= PC_plus;					
-			plus <= "000";	
-			offset_n <= none;
+			PC_n <= PC;					
+			--plus <= "000";	
+			offset <= '0';
 			MEMaddr <= TOS;				
 			MEM_REQ_Y <= '0';	
 			MEM_REQ_Z <= '0';
@@ -985,9 +1007,9 @@ begin
 				ucode <= ops_NOP;	
 			end if;
 			timer <= 0;
-			plus <= "000";			
-			PC_n <= PC_plus;
-			offset_n <= none;
+			--plus <= "000";			
+			PC_n <= PC;
+			offset <= '0';
 			MEMaddr <= TOS;			
 			MEM_REQ_Y <= '0';	
 			MEM_REQ_Z <= '1';			
@@ -1017,9 +1039,9 @@ begin
 				ucode <= ops_NOP;		
 			end if;
 			timer <= 0;
-			PC_n <= PC_plus;
-			plus <= "000";						
-			offset_n <= none;
+			PC_n <= PC;
+			--plus <= "000";						
+			offset <= '0';
 			MEMaddr <= TOS;
 			MEM_REQ_Y <= '1';				
 			MEM_REQ_Z <= '0';
@@ -1046,11 +1068,11 @@ begin
 				state_n <= Dstore_long;
 				ucode <= ops_NOP;	
 			end if;
-			offset_n <= none;
+			offset <= '0';
 			MEMaddr <= TOS;	
 			timer <= 0;
-			PC_n <= PC_plus;					
-			plus <= "000";			
+			PC_n <= PC;					
+--			plus <= "000";			
 			MEM_REQ_Y <= '0';	
 			MEM_REQ_Z <= '0';
 			MEM_WRQ_X <= '0';
@@ -1073,10 +1095,10 @@ begin
 			state_n <= Dstore_word;									
 			ucode <= ops_INC;
 			timer <= 0;
-			PC_n <= PC_plus;
+			PC_n <= PC;
 			MEMaddr <= TOS;				
-			plus <= "000";			
-			offset_n <= none;
+			--plus <= "000";			
+			offset <= '0';
 			MEM_REQ_Y <= '0';	
 			MEM_REQ_Z <= '0';
 			MEM_WRQ_X <= '0';
@@ -1104,9 +1126,9 @@ begin
 				ucode <= ops_NOP;	
 			end if;
 			timer <= 0;
-			PC_n <= PC_plus;					
-			plus <= "000";		
-			offset_n <= none;
+			PC_n <= PC;					
+--			plus <= "000";		
+			offset <= '0';
 			MEMaddr <= TOS;				
 			MEM_REQ_Y <= '0';	
 			MEM_REQ_Z <= '0';
@@ -1135,9 +1157,9 @@ begin
 				ucode <= ops_NOP;	
 			end if;
 			timer <= 0;
-			PC_n <= PC_plus;					
-			plus <= "000";	
-			offset_n <= none;
+			PC_n <= PC;					
+--			plus <= "000";	
+			offset <= '0';
 			MEMaddr <= TOS;				
 			MEM_REQ_Y <= '0';	
 			MEM_REQ_Z <= '0';
@@ -1162,8 +1184,8 @@ begin
 			ucode <= ops_DROP;									-- drop address				
 			timer <= 0;
 			PC_n <= PC_plus;					
-			plus <= "001";	
-			offset_n <= none;
+--			plus <= "001";	
+			offset <= '0';
 			MEMaddr <= PC;				
 			MEM_REQ_Y <= '0';	
 			MEM_REQ_Z <= '0';
@@ -1189,8 +1211,8 @@ begin
 			ucode <= ops_DROP;									-- remove flag from TOS
 			accumulator_n <= (others=>'0');				
 			timer <= 0;		
-			plus <= "000";	
-			offset_n <= none;
+--			plus <= "000";	
+			offset <= '0';
 			MEMaddr <= PC;				
 			MEM_REQ_Y <= '0';	
 			MEM_REQ_Z <= '0';
@@ -1213,10 +1235,10 @@ begin
 																		-- state included so that conditional branches have fixed cycle time in either flag case
 			state_n <= skip1;										-- change PC, allow one cycle for memory read
 			timer <= 0;
-			PC_n <= PC_plus;
+			PC_n <= PC;
 			ucode <= ops_DROP;									-- remove flag from TOS
-			plus <= "000";
-			offset_n <= none;
+			--plus <= "000";
+			offset <= '0';
 			accumulator_n <= (others=>'0');
 			MEMaddr <= PC;				
 			MEM_REQ_Y <= '0';	
@@ -1242,8 +1264,8 @@ begin
 			accumulator_n <= (others=>'0');
 			ucode <= ops_NOP;			
 			timer <= 0;
-			plus <= "000";
-			offset_n <= none;
+			--plus <= "000";
+			offset <= '0';
 			MEMaddr <= PC;	
 			MEM_REQ_Y <= '0';	
 			MEM_REQ_Z <= '0';
@@ -1267,9 +1289,9 @@ begin
 			timer <= 0;
 			PC_n <= PC_plus;
 			ucode <= ops_NOP;
-			plus <= "001";										-- continue to fill pipline with next instruction										
+			--plus <= "001";										-- continue to fill pipline with next instruction										
 			accumulator_n <= (others=>'0');
-			offset_n <= none;
+			offset <= '0';
 			MEMaddr <= PC;				
 			MEM_REQ_Y <= '0';	
 			MEM_REQ_Z <= '0';
@@ -1287,6 +1309,35 @@ begin
 			irq_n <= int_trig;
 			rti <= '0';
 			retrap_n <= retrap;
+	
+		when start =>										
+			state_n <= common;
+			timer <= 1;
+			PC_n <= PC_plus;
+			ucode <= ops_NOP;
+			--plus <= "001";										-- continue to fill pipline with next instruction										
+			accumulator_n <= (others=>'0');
+			offset <= '0';
+			MEMaddr <= PC;				
+			MEM_REQ_Y <= '0';	
+			MEM_REQ_Z <= '0';
+			MEM_WRQ_X <= '0';
+			MEM_WRQ_Y <= '0';	
+			MEM_WRQ_Z <= '0';
+			MEMsize_X <= "11";
+			MEMsize_Xp <= "11";
+			MEMdataout_X <= (others=>'0');
+			MEMdataout_Y <= (others=>'0');
+			MEMdataout_Z <= (others=>'0');	
+			AuxControl_n(0 downto 0) <= "0";
+			AuxControl_n(2 downto 1) <= "00";
+			ReturnAddress_n <= PC;
+			irq_n <= int_trig;
+			rti <= '0';
+			retrap_n <= retrap;
+			
+		when others =>
+			null;
 	
 		end case;
 	end process;
