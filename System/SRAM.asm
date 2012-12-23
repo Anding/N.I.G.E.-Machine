@@ -451,7 +451,7 @@ DIGIT.CF	>R			( R: base)
 ; deal with alphanumerics
 	dup 				( char char)
 	dup 				( char char char)
-	#.b char A 			( char char A)
+	#.b char A 			( char char char A)
 	1- 
 	>				( char char flag)
 	IF 				; alphabetic 
@@ -465,7 +465,8 @@ DIGIT.CF	>R			( R: base)
 		#.b char 9 
 		>			( char n flag)
 		IF	; between 9 and A is bad
-			drop 0 	( char 0) ; trigger error below
+			drop 	 	( char) 
+			zero		( char 0) ; trigger error below
 		THEN			
 	THEN
 ; convert modified ASCII value to number
@@ -1615,16 +1616,22 @@ NEGATE.CF	negate,rts
 2/.SF		dc.w	1
 2/.CF		2/,rts
 ;
-M*.LF		dc.l	2/.NF
+U2/.LF		dc.l	2/.NF
+U2/.NF		dc.b 	3 128 +
+		dc.s	U2/
+U2/.SF		dc.w	1
+U2/.CF		lsr,rts
+;
+M*.LF		dc.l	U2/.NF
 M*.NF		dc.b	2 128 +
-		dc.b 	char M char * 
+		dc.s 	M*
 M*.SF		dc.w	2
 M*.CF		mults
 		rts
 ;
 UM*.LF		dc.l	M*.NF
 UM*.NF		dc.b	3 128 +
-		dc.b 	char U char M char * 
+		dc.s 	UM* 
 UM*.SF		dc.w	2
 UM*.CF		multu
 		rts
@@ -1757,7 +1764,14 @@ FALSE.CF	false,rts
 0.SF		dc.w	1
 0.CF		false,rts
 ;
-TRUE.LF	dc.l	0.NF
+-1.LF		dc.l	0.NF
+-1.NF		dc.b	2 128 +
+		dc.s	-1
+-1.SF		dc.w	2		
+-1.CF		zero
+		0=,rts
+;
+TRUE.LF	dc.l	-1.NF
 TRUE.NF	dc.b	4 128 +
 		dc.b	char E char U char R char T
 TRUE.SF	dc.w	2
