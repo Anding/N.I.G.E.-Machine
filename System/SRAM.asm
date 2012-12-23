@@ -438,60 +438,59 @@ UPPER.CF	dup			( char char)
 		THEN	
 UPPER.Z	rts
 ;
-; Convert a single character to a number in the given base.
-; DIGIT   ( char base -- n true | char false )
+; Convert a single character to a number in the current base.
+; DIGIT   ( char -- n true | char false )
 DIGIT.LF	dc.l	UPPER.NF
 DIGIT.NF	dc.b	5 128 +
 		dc.b	char T char I char G char I char D
 DIGIT.SF	dc.w	DIGIT.Z DIGIT.CF del
-DIGIT.CF	>R			( R: base)
-; convert char lower to upper
-		#.w	UPPER.CF
-		jsr			( CHAR R: base)
+DIGIT.CF	#.w	UPPER.CF
+		jsr			( CHAR)	; convert char lower to upper
 ; deal with alphanumerics
-	dup 				( char char)
-	dup 				( char char char)
-	#.b char A 			( char char char A)
-	1- 
-	>				( char char flag)
-	IF 				; alphabetic 
-		#.b char A 
-		- 
-		#.b char 9
-		+ 
-		1+			( char n)
-	ELSE 				; numeric
-		dup 			( char char char)
-		#.b char 9 
-		>			( char n flag)
-		IF	; between 9 and A is bad
-			drop 	 	( char) 
-			zero		( char 0) ; trigger error below
-		THEN			
-	THEN
-; convert modified ASCII value to number
-	#.b char 0 			( char n '0')
-	-				( char n)
-	dup 				( char n n)
-	R> 				( char n n base)
-	<
-; check validity
-	IF 				; within base range
-		dup 			( char n n)
-		1+ 			( char n n)
-		0>			( char n flag)
-		IF 			; a valid digit
-			nip 		( n)
-			zero		
-			not		( n true)
-		ELSE 			; not a valid digit
-			drop 
-			zero		( char false)
+		dup 				( char char)
+		dup 				( char char char)
+		#.b char A 			( char char char A)
+		1- 
+		>				( char char flag)
+		IF 				; alphabetic 
+			#.b char A 
+			- 
+			#.b char 9
+			+ 
+			1+			( char n)
+		ELSE 				; numeric
+			dup 			( char char char)
+			#.b char 9 
+			>			( char n flag)
+			IF	; between 9 and A is bad
+				drop 	 	( char) 
+				zero		( char 0) ; trigger error below
+			THEN			
 		THEN
-	ELSE 				; out of base range
-		drop 			( char)
-		zero			( char false)
-	THEN
+; convert modified ASCII value to number
+		#.b char 0 			( char n '0')
+		-				( char n)
+		dup 				( char n n)
+		#.w BASE_ 	
+		fetch.l			( char n n base)
+		<
+; check validity
+		IF 				; within base range
+			dup 			( char n n)
+			1+ 			( char n n)
+			0>			( char n flag)
+			IF 			; a valid digit
+				nip 		( n)
+				zero		
+				not		( n true)
+			ELSE 			; not a valid digit
+				drop 
+				zero		( char false)
+			THEN
+		ELSE 				; out of base range
+			drop 			( char)
+			zero			( char false)
+		THEN
 DIGIT.Z	rts		
 ;
 ; D+ 	(ud1 ud2 -- ud3)  double precision arithmetic
@@ -499,26 +498,40 @@ D+.LF		dc.l	DIGIT.NF
 D+.NF		dc.b	2 128 +
 		dc.b	char + char D
 D+.SF		dc.w	D+.Z D+.CF del
-D+.CF		>R
+D+.CF		#.w	intmask		; disable interrupts to protect ADDX flag
+		fetch.b
+		>R
+		>R
 		SWAP
 		>R
 		+
 		R>
 		R>
-D+.Z		ADDX,rts
+		ADDX
+		R>
+		#.w	intmask
+		store.b
+D+.Z		rts
 ;
 ; D- 	(ud1 ud2 -- ud3)  double precision arithmetic
 D-.LF		dc.l	D+.NF
 D-.NF		dc.b	2 128 +
 		dc.b	char - char D
 D-.SF		dc.w	D-.Z D-.CF del
-D-.CF		>R
+D-.CF		#.w	intmask		; disable interrupts to protect SUBX flag
+		fetch.b
+		>R	
+		>R
 		SWAP
 		>R
 		-
 		R>
 		R>
-D-.Z		SUBX,rts
+		SUBX
+		R>
+		#.w	intmask
+		store.b
+D-.Z		rts
 ;
 ; >NUMBER ( ud1 c-addr1 u1 -- ud2 c-addr2 u2 , convert till bad char , CORE )
 >NUMBER.LF	dc.l	D-.NF
@@ -532,8 +545,8 @@ D-.Z		SUBX,rts
 		IF
 			dup 		( ud c-addr c-addr)
 			fetch.b 	( ud c-addr char)
-			#.w BASE_ 	
-			fetch.l	( ud c-addr char base)
+;			#.w BASE_ 	
+;			fetch.l	( ud c-addr char base)
 			#.w DIGIT.CF  
 			jsr		( ud c-addr , n true | char false)
 			IF		; is a digit
