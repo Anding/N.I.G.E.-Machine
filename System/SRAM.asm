@@ -4244,12 +4244,16 @@ CSR-TAB.CF	#.w	CSR-X
 		THEN
 CSR-TAB.Z	rts
 ;
-; {VEMITRAW} ( n --, emit a character to the VDU excluding non-printing recognition and cursor update, internal word)
-{VEMITRAW}.CF	#.w	CSR-PLOT.CF		; plot
+; VEMITRAW ( n --, emit a character to the VDU excluding non-printing recognition and cursor update)
+VEMITRAW.LF	dc.l	CSR-TAB.NF
+VEMITRAW.NF	dc.b	8 128 +
+		dc.s	VEMITRAW
+VEMITRAW.SF	dc.w	VEMITRAW.Z VEMITRAW.CF del
+VEMITRAW.CF	#.w	CSR-PLOT.CF		; plot
 		jsr
 		#.w	CSR-FWD.CF		; advance cursor
 		jsr	
-		rts
+VEMITRAW.Z	rts
 ;
 ; {VEMIT} (n --, emit a character to the VDU including non-priniting recognition but excluding cursor update, internal word)
 {VEMIT}.CF 	#.b	EOL
@@ -4293,7 +4297,7 @@ CSR-TAB.Z	rts
 							#.w	{CLS}.CF
 							jsr
 						ELSE				; other literal
-							#.w	{VEMITRAW}.CF		 ; emit the literal
+							#.w	VEMITRAW.CF		 ; emit the literal
 							jsr	
 						THEN
 					THEN
@@ -4303,7 +4307,7 @@ CSR-TAB.Z	rts
 		rts
 ;
 ; VEMIT ( n --, emit a character to the VDU, including non-printing recognition and cursor update)
-VEMIT.LF	dc.l	CSR-TAB.NF
+VEMIT.LF	dc.l	VEMITRAW.NF
 VEMIT.NF	dc.b	5 128 +
 		dc.b	char T char I char M char E char V
 		dc.w	VEMIT.Z VEMIT.CF del
@@ -4330,7 +4334,7 @@ VTYPERAW.CF	#.w	CSR-OFF.CF					; undraw cursor
 			DO
 				R@
 				fetch.b
-				#.w	{VEMITRAW}.CF
+				#.w	VEMITRAW.CF
 				jsr
 			LOOP
 		THEN
