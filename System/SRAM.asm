@@ -3830,7 +3830,7 @@ M*.CF		mults
 ;
 UM*.LF		dc.l	M*.NF
 UM*.NF		dc.b	3 128 +
-		dc.s 	UM* 
+		dc.s 	UM*
 UM*.SF		dc.w	2
 UM*.CF		multu
 		rts
