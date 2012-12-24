@@ -1,5 +1,6 @@
 	nop
-	#.b	hex 1a
-	1+
-	dup
+	#.b	2
+	#.b	3
+	multu
+	drop
 	nop
