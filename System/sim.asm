@@ -1,6 +1,6 @@
 	nop
-	#.b	2
-	#.b	3
-	multu
-	drop
+	zero
+	0=
+	beq 	-1
 	nop
+	

@@ -79,8 +79,8 @@ constant ops_TEST : std_logic_vector(5 downto 0) := CONV_STD_LOGIC_VECTOR(63,6);
 -- internal opcodes used for microcode
 constant ops_PUSH : std_logic_vector(5 downto 0) :=  CONV_STD_LOGIC_VECTOR(59,6);
 constant ops_REPLACE  : std_logic_vector(5 downto 0) := CONV_STD_LOGIC_VECTOR(60,6);
-constant ops_SDIVMODLD : std_logic_vector(5 downto 0) := CONV_STD_LOGIC_VECTOR(61,6);
-constant ops_UDIVMODLD : std_logic_vector(5 downto 0) := CONV_STD_LOGIC_VECTOR(62,6);
+--constant ops_SDIVMODLD : std_logic_vector(5 downto 0) := CONV_STD_LOGIC_VECTOR(61,6);
+--constant ops_UDIVMODLD : std_logic_vector(5 downto 0) := CONV_STD_LOGIC_VECTOR(62,6);
 constant ops_JSI : std_logic_vector(5 downto 0) := CONV_STD_LOGIC_VECTOR(63,6);
 
 -- branch codes (bits 7 downto 6) of the instructions
@@ -97,11 +97,11 @@ type state_T is (common, load_long, load_word, load_byte, ifdup, smult, umult, s
 						Sstore_long, Sstore_long2, Sstore_word, Sstore_byte, Sstore_end,
 						Dfetch_long, Dfetch_long2, Dfetch_word, Dfetch_byte,
 						Dstore_long, Dstore_long2, Dstore_word, Dstore_byte, Dstore2,
-						branch_load, branch_eq_load, branch_ne_load, skip1, start);
+						branchstate, branch_load, branch_eq_load, branch_ne_load, skip1, start);
 type offset_T is (none, one, two, four);						
 						
 signal state, state_n  : state_T;										-- state machine
-signal PC, PC_n, PC_plus, PC_bra_TOS, PC_bra_IMD, PC_m1 : std_logic_vector (31 downto 0);		-- program counter logic
+signal PC, PC_n, PC_plus, PC_bra_TOS, PC_branch, PC_m1, PC_skipbranch : std_logic_vector (31 downto 0);		-- program counter logic
 signal delta :std_logic_vector (31 downto 0);
 signal plus : std_logic_vector (2 downto 0);
 signal accumulator_i, accumulator_n, accumulator_X : std_logic_vector (31 downto 0); -- shift register for compiling LONGS and WORDS with BYTE reads
@@ -122,6 +122,8 @@ signal AuxControl_i, AuxControl_n : std_logic_vector(2 downto 0);
 signal opcode, next_opcode : std_logic_vector(5 downto 0);					-- opcode of current and next instructions
 signal branch, next_branch : std_logic_vector(1 downto 0);					-- branch codes of current and next instructions
 signal offset : std_logic_vector(1 downto 0);	
+
+alias signbit is MEMdatain_X_extended(37);
 
 begin
 
@@ -148,13 +150,13 @@ begin
 		next_opcode <= MEMdatain_X_extended(37 downto 32) when "00",		-- re-prime pipleline
 							MEMdatain_X_extended(29 downto 24) when "01",		-- single byte instruction
 							MEMdatain_X_extended(21 downto 16) when "10",		-- two byte instruction (#.b)
-							MEMdatain_X_extended(5 downto 0) when others;		-- three byte instruction (#.w)
+							MEMdatain_X_extended(13 downto 8) when others;		-- three byte instruction (#.w)
 	
 	with offset select
-		next_branch <= MEMdatain_X_extended(39 downto 38) when "00",
+		next_branch <= MEMdatain_X_extended(39 downto 38) when "00",		-- likely don't need the extra byte in X_extended!
 							MEMdatain_X_extended(31 downto 30) when "01",
 							MEMdatain_X_extended(23 downto 22) when "10",
-							MEMdatain_X_extended(7 downto 6) when others;
+							MEMdatain_X_extended(15 downto 14) when others;
  
 	Accumulator <= Accumulator_i;
 	AuxControl <= AuxControl_i;
@@ -174,11 +176,15 @@ begin
 
 	PC_plus <= PC + plus;												-- states set plus to "000", "001", etc. to increment PC as appropriate
 	PC_bra_TOS <= PC_m1 + TOS;											-- used for BSR instructions(due to one cycle pipeline provides correct return address) 
-	delta   <= accumulator_X(13) & accumulator_X(13) & accumulator_X(13) & accumulator_X(13) & accumulator_X(13) & accumulator_X(13) & accumulator_X(13) & 
-				  accumulator_X(13) & accumulator_X(13) & accumulator_X(13) & accumulator_X(13) & accumulator_X(13) & accumulator_X(13) & accumulator_X(13) & 
-				  accumulator_X(13) & accumulator_X(13) & accumulator_X(13) & accumulator_X(13) & accumulator_X(13) & accumulator_X(12 downto 0);
-	PC_bra_IMD <= PC_m1 + delta;		-- sign extended 14 bit branch for BRA or BEQ
-						
+--	delta   <= accumulator_X(13) & accumulator_X(13) & accumulator_X(13) & accumulator_X(13) & accumulator_X(13) & accumulator_X(13) & accumulator_X(13) & 
+--				  accumulator_X(13) & accumulator_X(13) & accumulator_X(13) & accumulator_X(13) & accumulator_X(13) & accumulator_X(13) & accumulator_X(13) & 
+--				  accumulator_X(13) & accumulator_X(13) & accumulator_X(13) & accumulator_X(13) & accumulator_X(13) & accumulator_X(12 downto 0);
+--	PC_bra_IMD <= PC_m1 + delta;		-- sign extended 14 bit branch for BRA or BEQ
+
+	delta   <= signbit & signbit & signbit & signbit & signbit & signbit & signbit & signbit & signbit & signbit & signbit & signbit & signbit & signbit & 
+				  signbit & signbit & signbit & signbit & signbit & MEMdatain_X_extended(36 downto 24);
+	PC_branch <= PC + delta;												-- sign extended 14 bit branch for BRA or BEQ	
+	PC_skipbranch <= PC + "00000000000000000000000000000010";	-- PC + 2 for skipping a BEQ branch
 	
 	-- combinatorial process to determine the size of the next opcode for incrementing the PC
 	process (next_opcode, next_branch)
@@ -205,8 +211,6 @@ begin
 		wait until rising_edge(clk);
 		if rst = '0' then													
 			count <= count + 1;
-			PC <= PC_n;
-			PC_m1 <= PC;													-- PC_m1 is PC of prior cycle, needed for branch and returns due to 1 stage pipeline
 			irq_m1 <= irq_n;
 			ReturnAddress <= ReturnAddress_n;	
 			accumulator_i <= accumulator_n;			
@@ -214,7 +218,9 @@ begin
 			AuxControl_i <= AuxControl_n;
 			if (count >= timer) then 
 				state <= state_n;
-				count <= 0;				
+				count <= 0;	
+				PC <= PC_n;													-- PC is updated only on the final cycle of multi-cycle opcode states
+				PC_m1 <= PC;													-- PC_m1 is PC of prior cycle, needed for branch and returns due to 1 stage pipeline				
 			end if;	
 		else																	-- synchronous reset
 			state <= start;
@@ -227,7 +233,7 @@ begin
 		end if;
 	end process;
 
-	process (state, state_n, PC, PC_n, PC_plus, PC_bra_TOS, PC_bra_IMD, PC_m1, delta, plus, 
+	process (state, state_n, PC, PC_n, PC_plus, PC_bra_TOS, PC_branch, PC_skipbranch, PC_m1, delta, plus, 
 				accumulator_i, accumulator_n, accumulator_X, accumulator_X, accumulator_Y, accumulator_Z,
 				ucode, equalzero,branch, opcode, SRAM, MEMdatain_X_extended, retrap,
 				TOS, NOS, TORS, int_trig, MEM_RDY_Y, MEM_RDY_Z, int_vector_ext, int_vector_ext_i, branch, opcode)
@@ -238,20 +244,16 @@ begin
 		
 		-- Next state logic		
 			if int_trig = '1' then
-				state_n <= skip1;					-- change PC, allow one cycle for memory read
+				state_n <= skip1;					
+			elsif branch = bps_RTS then											-- check branches first as they use the opcode bits for offsets
+				state_n <= skip1;					
+			elsif branch = bps_BRA  then											
+				state_n <= start;
+			elsif branch = bps_BEQ then				
+				state_n <= branchstate;
 			elsif opcode = ops_JSR or opcode = ops_JMP or opcode = ops_BSR or 
 					opcode = ops_RTI or opcode = ops_TRAP or opcode = ops_RETRAP or retrap(0) = '1' then
 				state_n <= skip1;
-			elsif branch /= "00" then
-				state_n <= skip1;					
---			elsif branch = bps_RTS then
---				state_n <= skip1;					
---			elsif branch = bps_BRA  then											-- check branches first as they use the opcode bits for offsets
---				state_n <= branch_load;
---			elsif branch = bps_BEQ and equalzero = '1' then
---				state_n <= branch_eq_load;											
---			elsif branch = bps_BEQ and equalzero = '0' then
---				state_n <= branch_ne_load;											-- included so that conditional branches have fixed cycle time in either flag case
 			elsif opcode = ops_lfetch then
 				if SRAM = '1' then
 					state_n <= Sfetch_long;					
@@ -385,8 +387,14 @@ begin
 			-- Program counter logic
 			if int_trig = '1' then
 				PC_n <= int_vector_ext;								-- PC from external interrupt vector
-			elsif (branch = bps_BEQ and equalzero = '1') or (branch = bps_BRA) then
-				PC_n <= PC;												 -- UPDATE HERE
+			elsif branch = bps_BRA then
+				PC_n <= PC_branch;				
+			elsif branch = bps_BEQ then
+				if equalzero = '1' then
+					PC_n <= PC_branch;	
+				else
+					PC_n <= PC_skipbranch;
+				end if;
 			elsif opcode = ops_TRAP or retrap(0) = '1' then
 				PC_n <= int_vector_TRAP;							-- PC from internal interrup vector
 			elsif branch = bps_RTS or opcode = ops_RTI or opcode = ops_RETRAP then
@@ -398,21 +406,11 @@ begin
 			elsif opcode = ops_CFETCH or opcode = ops_WFETCH or opcode = ops_LFETCH or
 				opcode = ops_SDIVMOD or opcode = ops_UDIVMOD or opcode = ops_IFDUP or
 				opcode = ops_CSTORE or opcode = ops_WSTORE or opcode = ops_LSTORE or
-				opcode = ops_SMULT or opcode = ops_UMULT then  		
-				PC_n <= PC;
+				opcode = ops_SMULT or opcode = ops_UMULT or opcode = ops_LONG then  		
+				PC_n <= PC;												-- PC update is done on the final cycle of multi-cycle instructions
 			else
-				PC_n <= PC_plus;										-- PC update is done on the final cycle of multi-cycle instructions		
-			end if;
-
---			if opcode = ops_LONG then
---				plus <= "101";											-- advance by 5 bytes for a long literal
---			if opcode = ops_WORD then
---				plus <= "011";											-- 3 bytes for a word literal
---			elsif opcode = ops_BYTE then
---				plus <= "010";											-- 2 bytes for a byte literal
---			else															
---				plus <= "001";											-- advance PC by one byte for all other instructions
---			end if;				
+				PC_n <= PC_plus;												
+			end if;		
 			
 			-- Program counter next instruction offset logic
 			if opcode = ops_WORD then
@@ -430,6 +428,8 @@ begin
 				ucode <= ops_NOP;										-- avoid executing the high 6 bits of the branch offset as an opcode!
 			elsif opcode = ops_RTI or opcode = ops_TRAP or opcode = ops_RETRAP or opcode = ops_TEST or retrap(0) = '1' then
 				ucode <= ops_NOP;										-- these instructions have no microcode but overlap with internal microcode
+			elsif opcode = ops_SDIVMOD or opcode = ops_UDIVMOD then
+				ucode <= ops_NOP;										-- suppress microcode until last cycle of these instructions
 			elsif SRAM = '0' and (opcode = ops_CSTORE or opcode = ops_CFETCH or opcode = ops_WSTORE or
 									   opcode = ops_WFETCH or opcode = ops_LSTORE or opcode = ops_LFETCH) then
 				ucode <= ops_NOP;										-- need to surpress the microcode when accessing DRAM					
@@ -476,7 +476,7 @@ begin
 				retrap_n <= "0" & retrap(1);
 			end if;
 			
---		when load_long =>											-- load a LONG immediate value
+--		when load_long =>											-- load a LONG immediate value	
 --			state_n <= load_byte;			
 --			timer <= 2;			
 --			accumulator_n <= accumulator_X;						-- shift into accumulator byte by byte	
@@ -581,12 +581,11 @@ begin
 			retrap_n <= retrap;
 			
 		when smult =>										-- signed multiply
-			state_n <= skip1;
+			state_n <= common;
 			timer <= 4;  											-- wait for multiplier
-			PC_n <= PC;
-			offset <= "00";	
-			ucode <= ops_SMULT;							-- UPDATE HERE.  Can we make this just a straight microcode lookup from the opcode?
---			plus <= "000";
+			PC_n <= PC_plus;										-- PC update will take place only on transition to next state
+			offset <= "01";	
+			ucode <= ops_SMULT;							
 			accumulator_n <= (others=>'0');	
 			MEMaddr <= PC;	
 			MEM_REQ_Y <= '0';	
@@ -607,12 +606,11 @@ begin
 			retrap_n <= retrap;
 	
 		when umult =>										-- unsigned multiply
-			state_n <= skip1;
+			state_n <= common;
 			timer <= 4;  											-- wait for multiplier
-			PC_n <= PC;
-			offset <= "00";
-			ucode <= ops_UMULT;									-- UPDATE HERE.  Can we make this just a straight microcode lookup from the opcode?
---			plus <= "000";
+			PC_n <= PC_plus;										-- PC update will take place only on transition to next state
+			offset <= "01";
+			ucode <= ops_UMULT;									
 			accumulator_n <= (others=>'0');	
 			MEMaddr <= PC;	
 			MEM_REQ_Y <= '0';	
@@ -685,12 +683,11 @@ begin
 			retrap_n <= retrap;
 			
 		when sdivmod_load =>									-- signed division
-			state_n <= skip1;									
+			state_n <= common;									
 			timer <= 0;  
 			PC_n <= PC_plus;
-			offset <= "00";
-			ucode <= ops_SDIVMODLD;								-- load TOS and NOS with results
---			plus <= "001";											-- (need to hold them steady until division is complete)
+			offset <= "01";
+			ucode <= ops_SDIVMOD;								-- load TOS and NOS with results
 			accumulator_n <= (others=>'0');
 			MEMaddr <= PC;	
 			MEM_REQ_Y <= '0';	
@@ -714,9 +711,8 @@ begin
 			state_n <= common;
 			timer <= 0;
 			PC_n <= PC_plus;
-			offset <= "00";
-			ucode <= ops_UDIVMODLD;								-- load TOS and NOS with results
---			plus <= "001";											-- (need to hold them steady until division is complete)
+			offset <= "01";
+			ucode <= ops_UDIVMOD;								-- load TOS and NOS with results
 			accumulator_n <= (others=>'0');
 			MEMaddr <= PC;	
 			MEM_REQ_Y <= '0';	
@@ -1211,13 +1207,12 @@ begin
 			rti <= '0';
 			retrap_n <= retrap;
 			
-		when branch_eq_load =>							-- BNE when TOS = 0
-			state_n <= skip1;										-- change PC, allow one cycle for memory read
-			PC_n <= PC_bra_IMD;
+		when branchstate =>										-- BNE 
+			state_n <= skip1;										-- change PC, allow one cycle to prime pipeline
+			PC_n <= PC;
 			ucode <= ops_DROP;									-- remove flag from TOS
 			accumulator_n <= (others=>'0');				
 			timer <= 0;		
---			plus <= "000";	
 			offset <= "00";
 			MEMaddr <= PC;				
 			MEM_REQ_Y <= '0';	
@@ -1235,67 +1230,92 @@ begin
 			ReturnAddress_n <= PC;			
 			irq_n <= int_trig;
 			rti <= '0';
-			retrap_n <= retrap;
+			retrap_n <= retrap;	
+	
+--		when branch_eq_load =>							-- BNE when TOS = 0
+--			state_n <= skip1;										-- change PC, allow one cycle for memory read
+--			PC_n <= PC_bra_IMD;
+--			ucode <= ops_DROP;									-- remove flag from TOS
+--			accumulator_n <= (others=>'0');				
+--			timer <= 0;		
+----			plus <= "000";	
+--			offset <= "00";
+--			MEMaddr <= PC;				
+--			MEM_REQ_Y <= '0';	
+--			MEM_REQ_Z <= '0';
+--			MEM_WRQ_X <= '0';
+--			MEM_WRQ_Y <= '0';	
+--			MEM_WRQ_Z <= '0';
+--			MEMdataout_X <= (others=>'0');
+--			MEMdataout_Y <= (others=>'0');
+--			MEMdataout_Z <= (others=>'0');
+--			MEMsize_X <= "11";
+--			MEMsize_Xp <= "11";	
+--			AuxControl_n(0 downto 0) <= "0";
+--			AuxControl_n(2 downto 1) <= "00";
+--			ReturnAddress_n <= PC;			
+--			irq_n <= int_trig;
+--			rti <= '0';
+--			retrap_n <= retrap;
+--			
+--		when branch_ne_load =>							-- BNE when TOS /= 0
+--																		-- state included so that conditional branches have fixed cycle time in either flag case
+--			state_n <= skip1;										-- change PC, allow one cycle for memory read
+--			timer <= 0;
+--			PC_n <= PC;
+--			ucode <= ops_DROP;									-- remove flag from TOS
+--			--plus <= "000";
+--			offset <= "00";
+--			accumulator_n <= (others=>'0');
+--			MEMaddr <= PC;				
+--			MEM_REQ_Y <= '0';	
+--			MEM_REQ_Z <= '0';
+--			MEM_WRQ_X <= '0';
+--			MEM_WRQ_Y <= '0';	
+--			MEM_WRQ_Z <= '0';
+--			MEMdataout_X <= (others=>'0');
+--			MEMdataout_Y <= (others=>'0');
+--			MEMdataout_Z <= (others=>'0');
+--			MEMsize_X <= "11";
+--			MEMsize_Xp <= "11";	
+--			AuxControl_n(0 downto 0) <= "0";
+--			AuxControl_n(2 downto 1) <= "00";
+--			ReturnAddress_n <= PC;		
+--			irq_n <= int_trig;
+--			rti <= '0';
+--			retrap_n <= retrap;
 			
-		when branch_ne_load =>							-- BNE when TOS /= 0
-																		-- state included so that conditional branches have fixed cycle time in either flag case
-			state_n <= skip1;										-- change PC, allow one cycle for memory read
-			timer <= 0;
-			PC_n <= PC;
-			ucode <= ops_DROP;									-- remove flag from TOS
-			--plus <= "000";
-			offset <= "00";
-			accumulator_n <= (others=>'0');
-			MEMaddr <= PC;				
-			MEM_REQ_Y <= '0';	
-			MEM_REQ_Z <= '0';
-			MEM_WRQ_X <= '0';
-			MEM_WRQ_Y <= '0';	
-			MEM_WRQ_Z <= '0';
-			MEMdataout_X <= (others=>'0');
-			MEMdataout_Y <= (others=>'0');
-			MEMdataout_Z <= (others=>'0');
-			MEMsize_X <= "11";
-			MEMsize_Xp <= "11";	
-			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(2 downto 1) <= "00";
-			ReturnAddress_n <= PC;		
-			irq_n <= int_trig;
-			rti <= '0';
-			retrap_n <= retrap;
-			
-		when branch_load =>								-- BRA
-			state_n <= skip1;										-- change PC, allow one cycle for memory read
-			PC_n <= PC_bra_IMD;	
-			accumulator_n <= (others=>'0');
-			ucode <= ops_NOP;			
-			timer <= 0;
-			--plus <= "000";
-			offset <= "00";
-			MEMaddr <= PC;	
-			MEM_REQ_Y <= '0';	
-			MEM_REQ_Z <= '0';
-			MEM_WRQ_X <= '0';
-			MEM_WRQ_Y <= '0';	
-			MEM_WRQ_Z <= '0';
-			MEMsize_X <= "11";
-			MEMsize_Xp <= "11";	
-			MEMdataout_X <= (others=>'0');
-			MEMdataout_Y <= (others=>'0');
-			MEMdataout_Z <= (others=>'0');		
-			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(2 downto 1) <= "00";
-			ReturnAddress_n <= PC;
-			irq_n <= int_trig;
-			rti <= '0';
-			retrap_n <= retrap;
+--		when branch_load =>								-- BRA
+--			state_n <= skip1;										-- change PC, allow one cycle for memory read
+--			PC_n <= PC_bra_IMD;	
+--			accumulator_n <= (others=>'0');
+--			ucode <= ops_NOP;			
+--			timer <= 0;
+--			--plus <= "000";
+--			offset <= "00";
+--			MEMaddr <= PC;	
+--			MEM_REQ_Y <= '0';	
+--			MEM_REQ_Z <= '0';
+--			MEM_WRQ_X <= '0';
+--			MEM_WRQ_Y <= '0';	
+--			MEM_WRQ_Z <= '0';
+--			MEMsize_X <= "11";
+--			MEMsize_Xp <= "11";	
+--			MEMdataout_X <= (others=>'0');
+--			MEMdataout_Y <= (others=>'0');
+--			MEMdataout_Z <= (others=>'0');		
+--			AuxControl_n(0 downto 0) <= "0";
+--			AuxControl_n(2 downto 1) <= "00";
+--			ReturnAddress_n <= PC;
+--			irq_n <= int_trig;
+--			rti <= '0';
+--			retrap_n <= retrap;
 
 		when skip1 =>										-- after changing PC, this wait state allows a memory read before execution of next instruction
 			state_n <= common;
 			timer <= 0;
 			PC_n <= PC_plus;
-			ucode <= ops_NOP;
-			--plus <= "001";										-- continue to fill pipline with next instruction										
+			ucode <= ops_NOP;																			
 			accumulator_n <= (others=>'0');
 			offset <= "00";
 			MEMaddr <= PC;				
@@ -1320,8 +1340,7 @@ begin
 			state_n <= common;
 			timer <= 1;
 			PC_n <= PC_plus;
-			ucode <= ops_NOP;
-			--plus <= "001";										-- continue to fill pipline with next instruction										
+			ucode <= ops_NOP;							
 			accumulator_n <= (others=>'0');
 			offset <= "00";
 			MEMaddr <= PC;				
@@ -1362,3 +1381,17 @@ end RTL;
 --The N.I.G.E Machine is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY 
 --or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details. You should have received a copy of the GNU General Public 
 --License along with this repository.  If not, see <http://www.gnu.org/licenses/>.
+
+
+-- NEXT STEPS
+-- Further testing of branch instructions
+-- JSR/JMP instruction
+-- RTS/RTI instruction  (simplify RTI by making it RTI,RTS by default)
+-- implement JSL instruction & update asmx
+-- check timing on FETCH/STORE instructions for PSDRAM
+-- FETCH/STORE for SRAM
+-- remove BSR, LSL instructions
+-- shorten PC to address 512KB
+-- removed extended byte on MEMDatain_X_extended
+--
+-- consider looptest and +looptest instructions

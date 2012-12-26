@@ -844,6 +844,7 @@
 		0 PC ! 
 		0 lineno !	
 		flow-table flow-pointer !	
+		0 output-n !
 		cr
 		begin
 			\ read a line from source file
@@ -866,7 +867,7 @@
 	loop 
 	0 0 0 0 4 pass2						\ dummy instruction to complete final longword
 	\ final output, close files and remove locks
-	S" 00000000;" fileid-w1 @ write-line drop ( )
+	S" 00000000;" fileid-w1 @ write-line drop ( )		\ semicolon required to finish the file
 	close-all
 	cr
 ;
