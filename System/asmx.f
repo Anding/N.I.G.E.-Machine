@@ -41,7 +41,7 @@
  variable output-n					\ byte position to co-ordinate longword writes
  
 : rel									\ useful for branch instructions.  e.g bra b1 b0 rel
-	1+ -
+	-								\ (was "1+ -" with branch offset from second byte under narrow instruction fetch)
 ;
 
 : del									\ useful for .SF calculations
@@ -210,11 +210,10 @@
 1 51 INSTRUCTION _FETCH.B
 1 52 INSTRUCTION _STORE.B
 1 56 INSTRUCTION _JMP
-1 57 INSTRUCTION _BSR
 1 58 INSTRUCTION _JSR
 1 59 INSTRUCTION _TRAP
-1 60 INSTRUCTION _RETRAP
-1 61 INSTRUCTION _RTI
+1 124 INSTRUCTION _RETRAP	\ RETRAP always includes RTS
+1 125 INSTRUCTION _RTI	\ RTI always includes RTS
 1 63 INSTRUCTION _TEST
 1 64 INSTRUCTION _RTS
 
@@ -225,6 +224,12 @@
 	8 rshift dup 255 and swap			( d c nnnn)
 	8 rshift dup 255 and swap			( d c b nnnn)
 	8 rshift 255 and 				( d c b a)	
+;
+
+: push-triple						( n -- n n n)
+	dup 255 and swap				( c nnnn)
+	8 rshift dup 255 and swap			( c b nnnn)
+	8 rshift 255 and 				( c b a)	
 ;
 
 : push-word						( n -- n n)
@@ -242,6 +247,19 @@
 ;
 
 \ Complex instructions
+: _JSL							( pass -- [opcode] size)
+	if                              					\ pass 2
+		eval-expr
+		push-triple							\ place on stack as 3 bytes
+		57					( d c b a 55)		\ opcode
+		4					( d c b a 55 4)	\ size                      
+	else                            					\ pass 1
+		4  		                   				\ size = 4
+		\ update instruction count
+		instruction-count 57 4 * + 1 swap +!
+	then
+;
+
 : _LOAD.L						( pass -- [opcode] size)
 	if                              					\ pass 2
 		eval-expr
