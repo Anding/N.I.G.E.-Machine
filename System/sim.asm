@@ -1,7 +1,4 @@
-h0	bra 	start h0 rel
-data	dc.l	hex aabbccdd	
-start	#.w	data	
-	fetch.l
-	bra 	0
-	
-	
+	#.l	hex 11223344
+	#.l	655362
+	store.l
+	bra 0	
