@@ -271,12 +271,16 @@ begin
 			end if;
 			timer <= 0;
 			
-			-- Memory logic
-			MEMdataout_X <= NOS;								
+			-- Memory write logic
+			MEMdataout_X <= NOS;											-- 32bit SRAM						
+			MEMdataout_Y <= NOS(7 downto 0);							-- 8bit PSDRAM access
+			if opcode = ops_LSTORE then								-- 16bit PSDRAM access
+				MEMdataout_Z <= NOS(31 downto 16);
+			else
+				MEMdataout_Z <= NOS(15 downto 0);
+			end if;
 			
-			if int_trig = '0' and opcode = ops_CSTORE then 		-- store instructions do not use a shift register as loading it would take an extra cycle
-				MEMdataout_Y <= NOS(7 downto 0);
-				MEMdataout_Z <= (others=>'0');
+			if int_trig = '0' and opcode = ops_CSTORE then 		-- write request trigger
 				if SRAM = '1' then
 					MEM_WRQ_X <= '1';
 					MEM_WRQ_Y <= '0';
@@ -287,8 +291,6 @@ begin
 					MEM_WRQ_Z <= '0';						
 				end if;		
 			elsif int_trig = '0' and opcode = ops_WSTORE then
-				MEMdataout_Y <= NOS(15 downto 8);
-				MEMdataout_Z <= NOS(15 downto 0);
 				if SRAM = '1' then
 					MEM_WRQ_X <= '1';
 					MEM_WRQ_Y <= '0';
@@ -298,9 +300,7 @@ begin
 					MEM_WRQ_Y <= '0';
 					MEM_WRQ_Z <= '1';						
 				end if;				
-			elsif int_trig = '0' and opcode = ops_LSTORE then
-				MEMdataout_Y <= NOS(31 downto 24);	
-				MEMdataout_Z <= NOS(31 downto 16);	
+			elsif int_trig = '0' and opcode = ops_LSTORE then	
 				if SRAM = '1' then
 					MEM_WRQ_X <= '1';
 					MEM_WRQ_Y <= '0';
@@ -311,13 +311,13 @@ begin
 					MEM_WRQ_Z <= '1';						
 				end if;	
 			else
-				MEMdataout_Y <= (others=>'0');
-				MEMdataout_Z <= (others=>'0');
+				MEMdataout_Z <= NOS(15 downto 0);
 				MEM_WRQ_X <= '0';
 				MEM_WRQ_Y <= '0';
 				MEM_WRQ_Z <= '0';
 			end if;
 			
+			-- Memory read logic
 			if int_trig = '0' and (opcode = ops_CFETCH or opcode = ops_CSTORE) then
 				MEMsize_X_n <= "01";														-- MEMsize_X is delayed one cycle to coincide with the one cycle delay in memory read or write
 			elsif int_trig = '0' and (opcode = ops_WFETCH or opcode = ops_WSTORE)  then
@@ -333,16 +333,26 @@ begin
 			else
 				MEMsize_Xp <= "11";
 			end if;
-
+			
+			if (int_trig = '0') and (SRAM = '0') and (opcode = ops_CFETCH) then
+				MEM_REQ_Y <= '1';
+			else
+				MEM_REQ_Y <= '0';
+			end if;
+			
+			if (int_trig = '0') and (SRAM = '0') and (opcode = ops_WFETCH or opcode = ops_LFETCH) then
+				MEM_REQ_Z <= '1';
+			else
+				MEM_REQ_Z <= '0';
+			end if;
+			
+			-- Memory address logic
 			if int_trig = '0' and (opcode = ops_CFETCH or opcode = ops_WFETCH or opcode = ops_LFETCH or
 				opcode = ops_CSTORE or opcode = ops_WSTORE or opcode = ops_LSTORE) then  
 				MEMaddr <= TOS;											
 			else																
 				MEMaddr <= PC_addr;											
 			end if;	
-			
-			MEM_REQ_Y <= '0';	
-			MEM_REQ_Z <= '0';	
 					
 			-- Program counter logic
 			if int_trig = '1' then
@@ -950,7 +960,7 @@ begin
 			
 		when Dfetch_word =>											
 			if MEM_RDY_Z = '1' then
-				state_n <= skip1;									
+				state_n <= skip2;									
 				accumulator_n <= accumulator_Z;
 				ucode <= ops_REPLACE;	
 			else
@@ -981,7 +991,7 @@ begin
 				
 		when Dfetch_byte =>											
 			if MEM_RDY_Y = '1' then
-				state_n <= skip1;									
+				state_n <= skip2;									
 				accumulator_n <= accumulator_Y;
 				ucode <= ops_REPLACE;
 			else
@@ -1126,12 +1136,12 @@ begin
 			retrap_n <= retrap;
 
 		when Dstore2 =>										
-			state_n <= common;
+			state_n <= skip1;
 			ucode <= ops_DROP;									-- drop address				
 			timer <= 0;
-			PC_n <= PC_plus;					
+			PC_n <= PC;					
 			offset <= "00";
-			MEMaddr <= "000000000000" & PC;				
+			MEMaddr <= PC_addr;				
 			MEM_REQ_Y <= '0';	
 			MEM_REQ_Z <= '0';
 			MEM_WRQ_X <= '0';
@@ -1330,5 +1340,4 @@ end RTL;
 -- check timing on FETCH/STORE instructions for PSDRAM
 -- add ,rts to multicycle instructions
 -- remove LSL instruction
--- shorten PC to address 1Mb
 -- removed extended byte on MEMDatain_X_extended
