@@ -156,7 +156,7 @@ begin
 	RSP_m1 <= RSP - 1;
 	RSP_p1 <= RSP + 1;	
 	
-	RSaddr <= RSP_n;								-- return stack address
+	RSaddr <= RSP_n1;								-- return stack address  (use the post-auxiliary override value for RSP so that RTS is processed same cycle)
 	PSaddr <= PSP_n; 								-- parameter stack address
 	
 	PSdataout_i <= NOS_i;						-- for pushing NOS into memory
