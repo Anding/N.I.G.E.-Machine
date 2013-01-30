@@ -60,7 +60,8 @@ signal irq_mask : std_logic_vector(15 downto 1);
 signal PSdatain :  std_logic_vector(31 downto 0);
 signal RSdatain :  std_logic_vector(31 downto 0);
 signal MEMdatain_Xi :  std_logic_vector(31 downto 0);
-signal MEMdata_Pstack, MEMdata_Rstack, MEMdata_Char, MEMdata_Reg :  std_logic_vector(7 downto 0);
+signal MEMdata_Char, MEMdata_Reg :  std_logic_vector(7 downto 0);
+signal MEMdata_Pstack, MEMdata_Rstack : std_logic_vector(31 downto 0);
 signal MEMdatain_Y : std_logic_vector(7 downto 0);
 signal MEM_RDY_Y :  std_logic;
 signal MEMdatain_Z :  std_logic_vector(15 downto 0);
@@ -214,8 +215,8 @@ begin
 	 Sys_EN <= '1' when bank_n = Sys else '0';
 	 
 	 with bank select														-- one cycle delayed to switch output
-		MEMdatain_Xi <= "000000000000000000000000" & MEMdata_Pstack when Pstack,
-							"000000000000000000000000" & MEMdata_Rstack when Rstack,
+		MEMdatain_Xi <= MEMdata_Pstack when Pstack,
+							MEMdata_Rstack when Rstack,
 							"000000000000000000000000" & MEMdata_Char when Char,
 							"000000000000000000000000" & MEMdata_Reg when Reg,
 							MEMdata_Sys when Sys;
@@ -230,8 +231,8 @@ begin
 		 clkb => clk_system,
 		 enb => Pstack_EN,
 		 web => MEM_WRQ_XX,
-		 addrb => MEMaddr(10 downto 0),
-		 dinb => MEMdataout_X(7 downto 0),
+		 addrb => MEMaddr(10 downto 2),
+		 dinb => MEMdataout_X,
 		 doutb => MEMdata_Pstack
 	  );
 	  
@@ -245,8 +246,8 @@ begin
 		 clkb => clk_system,
 		 enb => Rstack_EN,
 		 web => MEM_WRQ_XX,
-		 addrb => MEMaddr(10 downto 0),
-		 dinb => MEMdataout_X(7 downto 0),
+		 addrb => MEMaddr(10 downto 2),
+		 dinb => MEMdataout_X,
 		 doutb => MEMdata_Rstack
 	  );
 	  

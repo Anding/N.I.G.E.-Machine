@@ -255,8 +255,8 @@ BEGIN
    begin		
       -- hold reset state for 100 ns.
 		
---    wait for 500 ns;	
---		send_RS232(tx_line, CONV_STD_LOGIC_VECTOR(54,8));
+    wait for 100 ns;	
+		send_RS232(tx_line, CONV_STD_LOGIC_VECTOR(54,8));
 --		wait for 150 ns;	
 --		send_PS2(PS2C_line, PS2D_line, "01001101");
 --		send_RS232(tx_line, CONV_STD_LOGIC_VECTOR(54,8));	

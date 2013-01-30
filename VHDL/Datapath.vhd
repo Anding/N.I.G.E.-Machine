@@ -163,8 +163,10 @@ begin
 	RSdataout_i <= TORS_i;						-- for pushing TORS into memory
 	
 														-- make big endian for compatability with system memory
-	PSdataout <= PSdataout_i(7 downto 0) & PSdataout_i(15 downto 8) & PSdataout_i(23 downto 16) & PSdataout_i(31 downto 24);			
-	RSdataout <= RSdataout_i(7 downto 0) & RSdataout_i(15 downto 8) & RSdataout_i(23 downto 16) & RSdataout_i(31 downto 24);
+	--PSdataout <= PSdataout_i(7 downto 0) & PSdataout_i(15 downto 8) & PSdataout_i(23 downto 16) & PSdataout_i(31 downto 24);			
+	--RSdataout <= RSdataout_i(7 downto 0) & RSdataout_i(15 downto 8) & RSdataout_i(23 downto 16) & RSdataout_i(31 downto 24);
+	PSdataout <= PSdataout_i;
+	RSdataout <= RSdataout_i;
 	
 	PSw <= PSw_i;
 	RSw <= RSw_i;

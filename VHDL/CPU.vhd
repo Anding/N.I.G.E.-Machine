@@ -87,7 +87,7 @@ architecture Structural of CPU is
 		Accumulator : OUT std_logic_vector(31 downto 0);
 		ReturnAddress : OUT std_logic_vector(31 downto 0);
 		MEMaddr : out STD_LOGIC_VECTOR (31 downto 0);			
-		MEMdatain_X_extended : in STD_LOGIC_VECTOR (39 downto 0);
+		MEMdatain_X : in STD_LOGIC_VECTOR (31 downto 0);
 		MEMdataout_X : out STD_LOGIC_VECTOR (31 downto 0);
 		MEMsize_X : out STD_LOGIC_VECTOR (1 downto 0);
 		MEMsize_Xp : out STD_LOGIC_VECTOR (1 downto 0);	
@@ -112,11 +112,11 @@ architecture Structural of CPU is
 	signal	TOS, TOS_r :  std_logic_vector(31 downto 0);
 	signal	NOS :  std_logic_vector(31 downto 0);
 	signal	TORS :  std_logic_vector(31 downto 0);
-	signal 	MEMdatain_X_extended : std_logic_vector(39 downto 0);
+--	signal 	MEMdatain_X : std_logic_vector(31 downto 0);
 
 begin
 
-	MEMdatain_X_extended <= MEMdatain_X (31 downto 0) & MEMdatain_X_plus (7 downto 0);
+--	MEMdatain_X_extended <= MEMdatain_X (31 downto 0) & MEMdatain_X_plus (7 downto 0);
 
 	Inst_Datapath: Datapath PORT MAP(
 		rst => rst,
@@ -156,7 +156,7 @@ begin
 		Accumulator => Accumulator,
 		ReturnAddress => ReturnAddress,
 		MEMaddr => MEMaddr,
-		MEMdatain_X_extended => MEMdatain_X_extended,
+		MEMdatain_X => MEMdatain_X,
 		MEMdataout_X => MEMdataout_X,
 		MEM_WRQ_X => MEM_WRQ_X,
 		MEMsize_X => MEMsize_X,

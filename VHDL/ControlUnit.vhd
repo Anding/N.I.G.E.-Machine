@@ -22,7 +22,7 @@ entity ControlUnit is
 			  Accumulator : out STD_LOGIC_VECTOR (31 downto 0);		-- literal value captured from memory for writing to TOS
 			  ReturnAddress : out STD_LOGIC_VECTOR (31 downto 0);		-- return address on interrupt, BSR or JSR for writing to TORS
 			  MEMaddr : out STD_LOGIC_VECTOR (31 downto 0);						  	  
-			  MEMdatain_X_extended : in STD_LOGIC_VECTOR (39 downto 0);		-- 5 byte wide SRAM data IN memory bus
+			  MEMdatain_X : in STD_LOGIC_VECTOR (31 downto 0);			-- 32 bit wide SRAM data IN memory bus
 			  MEMdataout_X : out STD_LOGIC_VECTOR (31 downto 0);		-- 32 bit wide SRAM data memory bus
 			  MEMsize_X	: out STD_LOGIC_VECTOR (1 downto 0);			-- 32 bit wide SRAM data memory bus
 			  MEMsize_Xp: out STD_LOGIC_VECTOR (1 downto 0);			-- 32 bit wide SRAM data memory bus
@@ -121,7 +121,7 @@ signal offset : std_logic_vector(1 downto 0);
 signal MEMsize_X_n : STD_LOGIC_VECTOR (1 downto 0);	
 signal delayed_RTS, delayed_RTS_n : STD_LOGIC;
 
-alias signbit is MEMdatain_X_extended(37);
+alias signbit is MEMdatain_X(29);
 
 begin
 
@@ -132,20 +132,20 @@ begin
 	 douta => MicroControl
 	);
 
-	opcode <= MEMdatain_X_extended(37 downto 32); --when none,				-- position within 5 byte extended data
-	branch <= MEMdatain_X_extended(39 downto 38); -- when none,				-- position within 5 byte extended data
+	opcode <= MEMdatain_X(29 downto 24); --when none,				-- position within 5 byte extended data
+	branch <= MEMdatain_X(31 downto 30); -- when none,				-- position within 5 byte extended data
   
 	with offset select
-		next_opcode <= MEMdatain_X_extended(37 downto 32) when "00",		-- re-prime pipleline
-							MEMdatain_X_extended(29 downto 24) when "01",		-- single byte instruction
-							MEMdatain_X_extended(21 downto 16) when "10",		-- two byte instruction (#.b)
-							MEMdatain_X_extended(13 downto 8) when others;		-- three byte instruction (#.w)
+		next_opcode <= MEMdatain_X(29 downto 24) when "00",		-- re-prime pipleline
+							MEMdatain_X(21 downto 16) when "01",		-- single byte instruction
+							MEMdatain_X(13 downto 8) when "10",		-- two byte instruction (#.b)
+							MEMdatain_X(5 downto 0) when others;		-- three byte instruction (#.w)
 	
 	with offset select
-		next_branch <= MEMdatain_X_extended(39 downto 38) when "00",		-- likely don't need the extra byte in X_extended!
-							MEMdatain_X_extended(31 downto 30) when "01",
-							MEMdatain_X_extended(23 downto 22) when "10",
-							MEMdatain_X_extended(15 downto 14) when others;
+		next_branch <= MEMdatain_X(31 downto 30) when "00",		-- likely don't need the extra byte in X_extended!
+							MEMdatain_X(23 downto 22) when "01",
+							MEMdatain_X(15 downto 14) when "10",
+							MEMdatain_X(8 downto 6) when others;
  
 	Accumulator <= Accumulator_i;
 	AuxControl <= AuxControl_i;
@@ -163,8 +163,8 @@ begin
 	int_vector_ext <= "000000000000" & int_vector_ext_i;		-- extend to width of address bus
 
 	PC_plus <= PC + plus;												-- states set plus to "000", "001", etc. to increment PC as appropriate
-	PC_jsl <= MEMdatain_X_extended(27 downto 8);
-	delta  <= signbit & signbit & signbit & signbit & signbit & signbit & signbit & MEMdatain_X_extended(36 downto 24);
+	PC_jsl <= MEMdatain_X(19 downto 0);
+	delta  <= signbit & signbit & signbit & signbit & signbit & signbit & signbit & MEMdatain_X(28 downto 16);
 	PC_branch <= PC + delta;											-- sign extended 14 bit branch for BRA or BEQ	
 	PC_skipbranch <= PC + "00000000000000000010";				-- PC + 2 for skipping a BEQ branch
 	PC_addr <= "000000000000" & PC;
@@ -227,7 +227,7 @@ begin
 
 	process (state, state_n, PC, PC_n, PC_plus, PC_jsl, PC_branch, PC_skipbranch, PC_m1, delta, plus, 
 				accumulator_i, accumulator_n, accumulator_Y, accumulator_Z,
-				ucode, equalzero,branch, opcode, SRAM, MEMdatain_X_extended, retrap,
+				ucode, equalzero,branch, opcode, SRAM, MEMdatain_X, retrap,
 				TOS, NOS, TORS, int_trig, MEM_RDY_Y, MEM_RDY_Z, int_vector_ext, int_vector_ext_i, branch, opcode, delayed_RTS)
 	begin																					-- combinational section of state machine
 		case state is
@@ -1049,6 +1049,4 @@ end RTL;
 
 
 -- NEXT STEPS
--- add ,rts to multicycle instructions
 -- remove LSL instruction
--- removed extended byte on MEMDatain_X_extended
