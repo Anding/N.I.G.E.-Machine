@@ -32,8 +32,7 @@
  variable fileid-w2
  variable fileid-w3
  variable lineno					\ 
- variable membuf					\ buffer for writing an output byte
- \ create flow-table 4000 allot			
+ variable membuf					\ buffer for writing an output byte		
  4000 buffer: flow-table				\ table of PC values for IF ELSE THEN statements 
  272 buffer: instruction-count			\ count of instructions
  variable flow-pointer				\ pointer into the flow-table
@@ -78,6 +77,10 @@
 
 : NNNN 						( n ---)
 	0 <# # # # # #> type space  					\ output number in format 0000
+;
+
+: NN						( n ---)
+	0 <# # # #> type space  					\ output number in format 0000
 ;
 
 : tab
@@ -274,10 +277,6 @@
 ;
 
 : _#.L
-	_LOAD.L
-;
-
-: _#
 	_LOAD.L
 ;
 
@@ -578,20 +577,21 @@
 	then
 ;
 
-: _LEAVE
-\ Forth code
-\ 	( R: limit index)
-\ R> 	( R: -- limit)
-\ R@	( limit R: -- limit)
-\ >R	( R: -- limit limit)
+: _UNLOOP
 	if									\ pass 2
-		8 9 10	
-		3					( code.. size)
-	else									\ pass 1	
-		3					( size)
+		1 1 10 10 4				( code .. size)
+	else
+		4					( size)
 	then
 ;
- 
+
+: _J
+	if
+		8 8 7 7 9 10 10 7			( code .. size)
+	else
+		7					( size)
+	then
+;
 \ Assembler directives
 : _CMD							( pass -- size)
 \ execute the expression field in pass 1
@@ -612,6 +612,17 @@
 		0					( size)
 	then
 ;
+
+: _DC.S						( pass -- size)
+	if									\ pass 2
+		expr @ expr-n @ 1- 1- over + DO
+			i c@
+		-1 +LOOP
+		expr-n	@ 1-							\ remove trailing space
+	else									\ pass 1
+		expr-n	@ 1-				( size)	
+	then
+;		
 
 : _DC.L						( pass -- size)
 	if									\ pass 2
@@ -694,10 +705,11 @@
 		drop
 	else								\ pass 2
 		cr
-		lineno dup @ 1+ dup . swap !  			\ update and print line number
-		tab PC @ NNNN tab					\ print the PC				
+		lineno dup @ 1+ dup 5 .r swap !  			\ update and print line number
+		hex tab PC @ 5 .r tab decimal			\ print the PC				
 		tab line-buffer swap type				\ echo the source line
 	then
+	
 ;
 
 : whitespace                        		( c -- flag)

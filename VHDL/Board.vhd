@@ -23,8 +23,6 @@ entity Board_Nexys2_1200 is
            WAIT_SDRAM : in  STD_LOGIC;
 			  RXD_S0 : in STD_LOGIC;
 			  TXD_S0 : out STD_LOGIC;
-			  RXD_S1 : in STD_LOGIC;
-			  TXD_S1 : out STD_LOGIC;
 			  PS2C : in STD_LOGIC;
 			  PS2D : in STD_LOGIC;
 			  -- Board
@@ -333,13 +331,7 @@ begin
 		RS232_wr_S0 => RS232_wr_S0,
 		RS232_TBE_S0 => RS232_TBE_S0,
 		RS232_RDA_S0 => RS232_RDA_S0,
-		RS232_UBRR_S0 => RS232_UBRR_S0,
-		RS232_rx_S1 => RS232_rx_S1,
-		RS232_tx_S1 => RS232_tx_S1,
-		RS232_wr_S1 => RS232_wr_S1,
-		RS232_TBE_S1 => RS232_TBE_S1,
-		RS232_RDA_S1 => RS232_RDA_S1,
-		RS232_UBRR_S1 => RS232_UBRR_S1,		
+		RS232_UBRR_S0 => RS232_UBRR_S0,		
 		PS2_data => PS2_data,
 		counter_clk => counter_clk,
 		counter_ms => counter_ms,
@@ -458,8 +450,6 @@ begin
 		irq_mask => irq_mask,
 		RS232_RDA_S0 => RS232_RDA_S0,
 		RS232_TBE_S0 => RS232_TBE_S0,
-		RS232_RDA_S1 => RS232_RDA_S1,
-		RS232_TBE_S1 => RS232_TBE_S1,
 		PS2_irq => PS2_irq,
 		ms_irq => ms_irq,
 		rti => rti,
@@ -476,19 +466,6 @@ begin
 		RDA => RS232_RDA_S0,
 		WR => RS232_WR_S0,
 		TBE => RS232_TBE_S0,
-		CLK => CLK_SYSTEM,
-		RST => reset
-	);
-	
-		Inst_RS232_SDB: RS232v2 PORT MAP(
-		RXD => RXD_S1,
-		TXD => TXD_S1,
-		UBRR => RS232_UBRR_S1,
-		TXDATA => RS232_tx_S1,
-		RXDATA => RS232_rx_S1,
-		RDA => RS232_RDA_S1,
-		WR => RS232_WR_S1,
-		TBE => RS232_TBE_S1,
 		CLK => CLK_SYSTEM,
 		RST => reset
 	);

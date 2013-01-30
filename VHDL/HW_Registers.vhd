@@ -31,12 +31,6 @@ entity HW_Registers is
 			  RS232_TBE_S0 : in std_logic;								-- RS232 port 0 Transfer Bus Enable (TBE) signal
 			  RS232_RDA_S0 : in std_logic;								-- RS232 port 0 Read Data Available (RDA) signal
 			  RS232_UBRR_S0 : out std_logic_vector(15 downto 0);	-- RS232 port 0 baud rate setting (UBRR = Clock / (Baud+1) / 16)
-			  RS232_rx_S1 : in std_logic_vector(7 downto 0);		-- RS232 port 1 (PMOD for SDLogger)
-			  RS232_tx_S1 : out std_logic_vector(7 downto 0);
-			  RS232_wr_S1 : out std_logic;
-			  RS232_TBE_S1 : in std_logic;
-			  RS232_RDA_S1 : in std_logic;
-			  RS232_UBRR_S1 : out std_logic_vector(15 downto 0);
 			  PS2_data : in std_logic_vector(7 downto 0);			-- PS/2 port
 			  counter_ms : in std_logic_vector(31 downto 0);		-- 32 bit millisecond timer
 			  counter_clk : in std_logic_vector(31 downto 0);		-- 32 bit clock timer
@@ -62,8 +56,6 @@ architecture Behavioral of HW_Registers is
 	signal irq_mask_r : std_logic_vector(15 downto 1);
 	signal RS232_tx_r_S0 : std_logic_vector(7 downto 0);	
 	signal UBRR_r_S0	: std_logic_vector(15 downto 0);
-	signal RS232_tx_r_S1 : std_logic_vector(7 downto 0);	
-	signal UBRR_r_S1	: std_logic_vector(15 downto 0);
 	signal background_r : std_logic_vector(7 downto 0);
 	signal mode_r : std_logic_vector(4 downto 0);
 	signal ssData_r : std_logic_vector(15 downto 0);
@@ -76,8 +68,7 @@ architecture Behavioral of HW_Registers is
 	signal wrq_r : std_logic_vector (0 downto 0) :="0";
 	-- pipeline registers for hardware read
 	signal RS232_rx_S0_r : std_logic_vector(7 downto 0);
-	signal RS232_rx_S1_r : std_logic_vector(7 downto 0);
-	signal RS232_TBE_S0_r, RS232_RDA_S0_r, RS232_TBE_S1_r, RS232_RDA_S1_r : std_logic;	
+	signal RS232_TBE_S0_r, RS232_RDA_S0_r : std_logic;	
 	signal SW_r : std_logic_vector(7 downto 0);
 	signal PS2_data_r : std_logic_vector(7 downto 0);
 	
@@ -89,11 +80,9 @@ begin
 	gfx_zero <= gfx_zero_r(23 downto 8);
 	txt_zero <= txt_zero_r;
 	RS232_tx_S0 <= RS232_tx_r_S0;
-	RS232_tx_S1 <= RS232_tx_r_S1;
 	background <= background_r;
 	mode <= mode_r;
 	RS232_UBRR_S0 <= UBRR_r_S0;
-	RS232_UBRR_S1 <= UBRR_r_S1;
 	ssData <= ssData_r;
 	addr_i <= addr(7 downto 0);
 	clk_i <= counter_clk(13);
@@ -116,14 +105,12 @@ begin
 			SD_control_r <= (others=>'0');	
 			SD_divide_r <= "11111111";								-- divide by 254	
 			UBRR_r_S0 <= CONV_STD_LOGIC_VECTOR(325,16);		-- 325 = 9600 BAUD at 50 MHz		
-			UBRR_r_S1 <= CONV_STD_LOGIC_VECTOR(54,16);		--  54 = 57600 BAUD at 50 MHz
-			irq_mask_r <= "000000000011111";
-			txt_zero_r <= X"010700";							
-			gfx_zero_r <= X"015200";		
+			irq_mask_r <= "000000000000111";
+			txt_zero_r <= X"010600";							
+			gfx_zero_r <= X"000000";		
 			background_r <= X"00";
 			mode_r <= "11011";
 			RS232_tx_r_S0 <= (others=>'0');	
-			RS232_tx_r_S1 <= (others=>'0');	
 			ssData_r <= (others=>'0');
 			
 		elsif en_r = '1' and wrq_r = "1" then					-- writable registers
@@ -161,34 +148,25 @@ begin
 					when x"0d" =>										-- UBRR_S0 byte 0
 						UBRR_r_S0(7 downto 0) <= datain_r;
 						
-					when x"0f" =>										-- RS232_S1 data_out
-						RS232_tx_r_S1 <= datain_r;
-				
-					when x"10" =>										-- UBRR_S1 byte 1
-						UBRR_r_S1(15 downto 8) <= datain_r;
-						
-					when x"11" =>										-- UBRR_S1 byte 0
-						UBRR_r_S1(7 downto 0) <= datain_r;	
-						
-					when x"1c" =>										-- IRQ_mask byte 1
+					when x"18" =>										-- IRQ_mask byte 1
 						IRQ_mask_r(15 downto 8) <= datain_r;
 					
-					when x"1d" =>										-- IRQ_mask byte 0
+					when x"19" =>										-- IRQ_mask byte 0
 						IRQ_mask_r(7 downto 1) <= datain_r(7 downto 1);
 					
-					when x"1e" =>										-- SEVENSEG byte 1
+					when x"1a" =>										-- SEVENSEG byte 1
 						ssData_r(15 downto 8) <= datain_r;
 						
-					when x"1f" =>										-- SEVENSEG byte 0
+					when x"1b" =>										-- SEVENSEG byte 0
 						ssData_r(7 downto 0) <= datain_r;
 						
-					when x"21" =>										-- SD data
+					when x"1d" =>										-- SD data
 						SD_dataout_r <= datain_r;
 						
-					when x"22" =>										-- SD control
+					when x"1e" =>										-- SD control
 						SD_control_r <= datain_r(3 downto 0);
-					
-					when x"24" =>										-- SD control
+		
+					when x"20" =>										-- SD clock divide
 						SD_divide_r <= datain_r;
 					
 					when others =>
@@ -201,14 +179,8 @@ begin
 			else
 				RS232_wr_S0 <= '0';
 			end if;
-			
-			if en_r = '1' and wrq_r = "1" and addr_r = x"0f" then 
-				RS232_wr_S1 <= '1';	
-			else
-				RS232_wr_S1 <= '0';
-			end if;	
 
-			if en_r = '1' and wrq_r = "1" and addr_r = x"21" then 
+			if en_r = '1' and wrq_r = "1" and addr_r = x"1d" then 
 				SD_wr <= '1';	
 			else
 				SD_wr <= '0';
@@ -220,11 +192,8 @@ begin
 --	begin
 --		wait until rising_edge(clk);
 		RS232_rx_S0_r <= RS232_rx_S0;
-		RS232_rx_S1_r <= RS232_rx_S1;
 		RS232_TBE_S0_r <= RS232_TBE_S0;
 		RS232_RDA_S0_r <= RS232_RDA_S0;
-		RS232_TBE_S1_r <= RS232_TBE_S1;
-		RS232_RDA_S1_r <= RS232_RDA_S1;
 		PS2_data_r <= PS2_data;
 		SW_r <= SW;
 --	end process;
@@ -266,55 +235,53 @@ begin
 				when x"0a" =>										-- RS232_S0 data_in
 					dataout <= RS232_rx_S0_r;
 					
-				when x"0e" =>										-- RS232_S1 data_in
-					dataout <= RS232_rx_S1_r;
 					
-				when x"12" =>										-- RS232 port signals
-					dataout <= "0000" & RS232_TBE_S0_r & RS232_TBE_S1_r & RS232_RDA_S0_r & RS232_RDA_S1_r	;					
+				when x"0e" =>										-- RS232 port signals
+					dataout <= "000000" & RS232_TBE_S0_r & RS232_RDA_S0_r ;					
 					
-				when x"13" =>										-- PS2 data_in
+				when x"0f" =>										-- PS2 data_in
 					dataout <= PS2_data_r;
 					
-				when x"14"	=>										-- timer_clk byte 3
+				when x"10"	=>										-- timer_clk byte 3
 					dataout	<= counter_clk(31 downto 24);
 					
-				when x"15"	=>										-- timer_clk byte 2
+				when x"11"	=>										-- timer_clk byte 2
 					dataout	<= counter_clk(23 downto 16);					
 					
-				when x"16"	=>										-- timer_clk byte 1
+				when x"12"	=>										-- timer_clk byte 1
 					dataout	<= counter_clk(15 downto 8);
 					
-				when x"17"	=>										-- timer_clk byte 0
+				when x"13"	=>										-- timer_clk byte 0
 					dataout	<= counter_clk(7 downto 0);				
 
-				when x"18"	=>										-- timer_ms byte 3
+				when x"14"	=>										-- timer_ms byte 3
 					dataout	<= counter_ms(31 downto 24);
 					
-				when x"19"	=>										-- timer_ms byte 2
+				when x"15"	=>										-- timer_ms byte 2
 					dataout	<= counter_ms(23 downto 16);					
 					
-				when x"1a"	=>										-- timer_ms byte 1
+				when x"16"	=>										-- timer_ms byte 1
 					dataout	<= counter_ms(15 downto 8);
 					
-				when x"1b"	=>										-- timer_ms byte 0
+				when x"17"	=>										-- timer_ms byte 0
 					dataout	<= counter_ms(7 downto 0);		
 					
-				when x"1c" =>										-- IRQ_mask byte 1
+				when x"18" =>										-- IRQ_mask byte 1
 					dataout	<=	IRQ_mask_r(15 downto 8);
 					
-				when x"1d" =>										-- IRQ_mask byte 0
+				when x"19" =>										-- IRQ_mask byte 0
 					dataout	<=	IRQ_mask_r(7 downto 1) & "0";	
 					
-				when x"20"	=>										-- SW
+				when x"1c"	=>										-- SW
 					dataout	<= SW_r;
 
-				when x"21"	=>										-- SD data
+				when x"1d"	=>										-- SD data
 					dataout	<= SD_datain;
 					
-				when x"22" =>
+				when x"1e" =>
 					dataout  <= "0000" & SD_control_r;
 
-				when x"23"	=>										-- SD status
+				when x"1f"	=>										-- SD status
 					dataout	<= "0000" & SD_status;
 
 				when others =>

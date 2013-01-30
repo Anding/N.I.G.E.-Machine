@@ -17,29 +17,33 @@
 		cmd	asmtop			; forget previous label and other definitions
 		cmd	MARKER asmtop
 ;
-; ---------------------------------------------------------------------------------------------	
-; Hardware registers
+; -----------------------------------------------------------------------------------------------
+; ASSEMBLER CONSTANTS
+; -----------------------------------------------------------------------------------------------
+;
+; **** HARDWARE REGISTERS ****
+;
 TEXT_ZERO	equ	hex f800
-GFX_ZERO	equ	hex f804
 background	equ	hex f808
 mode		equ	hex f809
-RS232rx_S0	equ	hex f80a
-RS232tx_S0	equ	hex f80b
-RS232baud_S0	equ	hex f80c
-RS232rx_S1	equ	hex f80e
-RS232tx_S1	equ	hex f80f
-RS232baud_S1	equ	hex f810
-HWstatus	equ	hex f812
-PS2rx		equ	hex f813
-MScounter	equ	hex f818
-intmask	equ	hex f81d
-TBEmask_S0	equ	08
-TBEmask_S1	equ	04
-MSmask		equ	64
+RS232rx	equ	hex f80a
+RS232tx	equ	hex f80b
+RS232baud	equ	hex f80c
+HWstatus	equ	hex f80e
+HWmask_TBE	equ	02
+PS2rx		equ	hex f80f
+CLKcounter	equ	hex ff10
+MScounter	equ	hex f814
+intmask	equ	hex f819		; low byte
+intmask_MS	equ	16
+SPI.data	equ	hex f81d  
+SPI.control	equ	hex f81e  
+SPI.status	equ	hex f81f  
+SPI.divide	equ	hex f820  
 ;
-; ---------------------------------------------------------------------------------------------	
-; Memory map (PSDRAM)
-RSrxBUF_S0	equ	hex 010000		; RS232 port 0 buffer (256 bytes)	
+; **** MEMORY MAP ****
+;
+RSrxBUF	equ	hex 010000		; RS232 buffer (256 bytes)	
 PSBUF		equ	hex 010100		; PS/2 keyboard buffer (256 bytes)
 _input_buff	equ	hex 010200		; default input buffer location (used by ACCEPT)
 _input_size	equ	hex ff			; default input buffer size (used by ACCEPT)
@@ -47,16 +51,14 @@ _PAD		equ	hex 010400		; PAD location (256 bytes below + 256 bytes above here)
 _STRING	equ	hex 010500		; buffer for internal string storage (e.g. S")
 _TEXT_ZERO	equ	hex 010600		; default text memory location (2 screens * 100 * 75 * 2 bytes)
 _TEXT_END	equ	hex 017B30		; one byte beyond the text memory location
-RSrxBUF_S1	equ	hex 017B30		; RS232 port 1 buffer (256 bytes)
-_SD_buff	equ	hex 017C30		; FILE
-_END		equ	hex 020000		; HEAP location
+_FAT.buf	equ	hex 017B30		; FAT 512 byte storage space location 
+_FAT.buffat	equ	hex 017D30		; FAT 512 byte storage space location for file allocation table
+_END		equ	hex 017F30		; HEAP location
 ;
-; ---------------------------------------------------------------------------------------------
-; Machine specifics
+; **** FORTH LANGUAGE CONSTANTS ****
+;
 EOL		equ	10			; line separator = ASCII 10
 ~EOL		equ	13			; ignore this character, not line separator = ASCII 13
-EOF		equ	26			; file systems terminator = ASCII 26
-ERR		equ	27			; file system error signal = ASCII 27
 ;
 ; .NF flags
 PRECEDENCE	equ	128
@@ -67,7 +69,8 @@ SMDGE		equ	32			; SMUDGE
 MUSTINLINE	equ	hex 8000
 NOINLINE	equ	hex 4000
 ;
-; opcodes
+; **** N.I.G.E. MACHINE OPCODES ****
+;
 opDROP		equ	1
 op#.B		equ	53
 op#.W		equ	54
@@ -80,58 +83,60 @@ opOVER=	equ	5 256 * 28 +
 opBEQ		equ	128 256 *
 opBRA		equ	192 256 *
 ;
-; ---------------------------------------------------------------------------------------------
+; ----------------------------------------------------------------------------------------------
 ; Interrupt vectors
+; -----------------------------------------------------------------------------------------------
 ;
 V.RST		BRA	START.CF V.RST rel 			; RESET
 V.TRAP		RTI
 		NOP						; TRAP
-V.RDA_S1	BRA	RDA_S1 V.RDA_S1 rel			; RDA_S1
-V.RDA_S0	BRA	RDA_S0 V.RDA_S0 rel			; RDA_S0
-V.TBE_S1	BRA	TBE_S1 V.TBE_S1 rel			; TBE_S1
-V.TBE_S0	BRA	TBE_S0 V.TBE_S0 rel			; TBE_S0
+V.RDA		BRA	RDA V.RDA rel				; RS232 RDA
+V.TBE		BRA	TBE V.TBE rel				; RS232 TBE
 V.PS2		BRA	PS2 V.PS2 rel				; PS2
 V.MS		BRA	MS V.MS rel				; MS
-;		RTI
-;		NOP
-V.7		RTI
+		RTI
 		NOP
-V.8		RTI
+		RTI
 		NOP
-V.9		RTI
+		RTI
 		NOP
-V.10		RTI
+		RTI
 		NOP
-V.11		RTI
+		RTI
 		NOP
-V.12		RTI
+		RTI
 		NOP
-V.13		RTI
+		RTI
 		NOP
-V.14		RTI
+		RTI
 		NOP
-V.15		RTI
+		RTI
 		NOP
+		RTI
+		NOP		
+		RTI
+		NOP		
 ;	
-; ---------------------------------------------------------------------------------------------
+; ----------------------------------------------------------------------------------------------
 ; Interrupt handlers
+; -----------------------------------------------------------------------------------------------
 ;
-RDA_S0		#.w 	RSrxWPOS_S0	; buffer write position
+RDA		#.w 	RSrxWPOS	; buffer write position
 		fetch.b
 		1+
 		#.b	hex ff		; constrain to 256 byte length
 		and
 		dup			 
-		#.w 	RSrxRPOS_S0	; buffer read position
+		#.w 	RSrxRPOS	; buffer read position
 		fetch.b
 		<>
 		IF			; write equals read => skip input
 			dup			
-			#.w RSrxWPOS_S0
+			#.w RSrxWPOS
 			store.b		; RS_wr
-			#.l RSrxBUF_S0	; RS_wr RSrxBUF_S0
+			#.l RSrxBUF		; RS_wr RSrxBUF_S0
 			+			; RSrxBUF_S0+RS_wr
-			#.w RS232rx_S0	
+			#.w RS232rx	
 			fetch.b
 			swap			; RS232rx_S0 RSrxBUF_S0+RS_wr
 			store.b
@@ -139,35 +144,17 @@ RDA_S0		#.w 	RSrxWPOS_S0	; buffer write position
 		THEN
 		drop			; needed for skip logic
 		rti
-RSrxWPOS_S0	dc.b	hex ff
-RSrxRPOS_S0	dc.b	hex ff
+RSrxWPOS	dc.b	hex ff
+RSrxRPOS	dc.b	hex ff
 ;
-RDA_S1		#.w 	RSrxWPOS_S1	; buffer write position
-		fetch.b
-		1+
-		#.l	hex ff		; constrain to 256 byte length
-		and
-		dup			
-		#.w 	RSrxWPOS_S1
-		store.b		; RS_wr
-		#.l 	RSrxBUF_S1	; RS_wr RSrxBUF_S1
-		+			; RSrxBUF_S1+RS_wr
-		#.w 	RS232rx_S1	
-		fetch.b
-		swap			; RS232rx_S1 RSrxBUF_S1+RS_wr
-		store.b
-		rti
-RSrxWPOS_S1	dc.b	hex ff
-RSrxRPOS_S1	dc.b	hex ff
-;
-TBE_S0		#.l	RStxCNT_S0
+TBE		#.l	RStxCNT
 		fetch.l	
 		?dup
 		IF			; remaining char count zero
 			1-			(count-1 )
-			#.l	RStxCNT_S0	(count addr)
+			#.l	RStxCNT	(count addr)
 			store.l
-			#.l 	RStxBUF_S0	(buf&)
+			#.l 	RStxBUF	(buf&)
 			dup			(buf& buf&)
 			fetch.l		(buf& addr)
 			1+			(buf& addr+1)
@@ -175,34 +162,12 @@ TBE_S0		#.l	RStxCNT_S0
 			rot			(addr+1 addr+1 buf&)
 			store.l		(addr+1)
 			fetch.b		(char)
-			#.w RS232tx_S0	(char RS232tx_S0)
+			#.w RS232tx		(char RS232tx)
 			store.b
 		THEN
 TBE.Z		rti
-RStxCNT_S0	dc.l	hex 00
-RStxBUF_S0	dc.l	hex 00
-;
-TBE_S1		#.l	RStxCNT_S1
-		fetch.l	
-		?dup
-		IF			; remaining char count zero
-			1-			(count-1 )
-			#.l	RStxCNT_S1	(count addr)
-			store.l
-			#.l 	RStxBUF_S1	(buf&)
-			dup			(buf& buf&)
-			fetch.l		(buf& addr)
-			1+			(buf& addr+1)
-			dup			(buf& addr+1 addr+1)
-			rot			(addr+1 addr+1 buf&)
-			store.l		(addr+1)
-			fetch.b		(char)
-			#.w RS232tx_S1	(char RS232tx_S0)
-			store.b
-		THEN
-TBE.Z		rti
-RStxCNT_S1	dc.l	hex 00
-RStxBUF_S1	dc.l	hex 00
+RStxCNT	dc.l	hex 00
+RStxBUF	dc.l	hex 00
 ;
 PS2		#.w 	PS2rx	
 		fetch.b			( raw)
@@ -243,42 +208,115 @@ MS		#.w	MS.TIMEOUT
 		THEN
 		rti
 MS.TIMEOUT	dc.l	hex 00
-; ---------------------------------------------------------------------------------------------
-; FORTH CORE DICTIONARY
 ;
-S0EMIT.LF	dc.l	0		
-S0EMIT.NF	dc.b	6 128 +	
-		dc.b 	char T char I char M char E char 0 char S
-S0EMIT.SF	dc.w 	S0EMIT.Z S0EMIT.CF del 	
+; -----------------------------------------------------------------------------------------------
+; Boot code (within branch distance from 0)
+; -----------------------------------------------------------------------------------------------
+;
+START.CF	#.w	CLS.CF
+		jsr
+		#.w	START.0	; First part of power-on message
+		#.b	52
+		#.w	TYPE.CF
+		jsr
+		#.w	UNUSED.CF	; Show free bytes
+		jsr
+		#.w 	UDOT.CF
+		jsr
+		#.w	START.1	
+		#.b	12
+		#.w	TYPE.CF
+		jsr
+		#.w	QUIT.CF
+		jmp
+;
+START.0	dc.b	EOL
+		dc.s	*** N.I.G.E. Machine FORTH ***
+		dc.b	EOL EOL
+		dc.s	PSDRAM 16 MB, SRAM
+		dc.b	32
+START.1	dc.s	bytes free
+		dc.b	EOL EOL
+;
+; ----------------------------------------------------------------------------------------------
+; Low level hardware control
+; ----------------------------------------------------------------------------------------------
+;
+; **** MILLISECOND TIMER ****
+;
+; TIMEOUT ( n --, set a reset timer for n milliseconds)
+TIMEOUT.LF	dc.l	0
+TIMEOUT.NF	dc.b	7 128 +
+		dc.b	char T char U char O char E char M char I char T
+TIMEOUT.SF	dc.w	TIMEOUT.Z TIMEOUT.CF del
+TIMEOUT.CF	?dup
+		IF
+			#.w	MS.TIMEOUT
+			store.l
+			#.w	intmask
+			fetch.b
+			#.b	intmask_MS
+			or
+		ELSE
+			#.w	intmask
+			fetch.b
+			#.b	255 intmask_MS -
+			and
+		THEN
+		#.w	intmask
+		store.b			
+TIMEOUT.Z	rts
+; MS ( n --, wait for n ms)
+MS.LF		dc.l	TIMEOUT.NF
+MS.NF		dc.b	2 128 +
+		dc.b	char S char M
+MS.SF		dc.w	MS.Z MS.CF del
+MS.CF		#.w	MScounter
+		fetch.l		( n ms)
+		+			( end)
+			begin
+				#.w	MScounter
+				fetch.l		( end now)
+				over			( end now end)
+				=
+			until
+MS.Z		drop,rts
+;
+; **** RS232 ****
+;
+SEMIT.LF	dc.l	MS.NF		
+SEMIT.NF	dc.b	5 128 +	
+		dc.b 	char T char I char M char E char S
+SEMIT.SF	dc.w 	SEMIT.Z SEMIT.CF del 	
 		BEGIN
-S0EMIT.CF		#.w HWstatus
+SEMIT.CF		#.w HWstatus
 			fetch.b	
-			#.b TBEmask_S0
+			#.b HWmask_TBE
 			and			; TBE bit
 		UNTIL		
-		#.w RS232tx_S0
+		#.w RS232tx
 		store.b
-S0EMIT.Z	rts
+SEMIT.Z	rts
 ;	
-S0KEY?.LF	dc.l 	S0EMIT.NF
-S0KEY?.NF	dc.b	6 128 +
-		dc.b	char ? char Y char E char K char 0 char S
-S0KEY?.SF	dc.w	S0KEY?.Z S0KEY?.CF del
-S0KEY?.CF	#.w RSrxWPOS_S0	
+SKEY?.LF	dc.l 	SEMIT.NF
+SKEY?.NF	dc.b	5 128 +
+		dc.b	char ? char Y char E char K char S
+SKEY?.SF	dc.w	SKEY?.Z SKEY?.CF del
+SKEY?.CF	#.w RSrxWPOS	
 		fetch.b
-		#.w RSrxRPOS_S0
+		#.w RSrxRPOS
 		fetch.b
-S0KEY?.Z	<>,rts
+SKEY?.Z	<>,rts
 ;
-S0KEY.LF	dc.l	S0KEY?.NF
-S0KEY.NF	dc.b	5 128 +
-		dc.b	char Y char E char K char 0 char S
-S0KEY.SF	dc.w 	S0KEY.Z S0KEY.CF del
+SKEY.LF	dc.l	SKEY?.NF
+SKEY.NF	dc.b	4 128 +
+		dc.b	char Y char E char K char S
+SKEY.SF	dc.w 	SKEY.Z SKEY.CF del
 		BEGIN
-S0KEY.CF	#.w	S0KEY?.CF
+SKEY.CF	#.w	SKEY?.CF
 		jsr
 		UNTIL
-		#.w 	RSrxRPOS_S0
+		#.w 	RSrxRPOS
 		dup			(rx& rx&)
 		fetch.b		(rx& rx)
 		1+			(rx& rx+1)
@@ -287,129 +325,73 @@ S0KEY.CF	#.w	S0KEY?.CF
 		dup			(rx& rx+1 rx+1)
 		rot			(rx+1 rx+1 rx&)
 		store.b		(rx+1)
-		#.l 	RSrxBUF_S0	(rx+1 addr)
+		#.l 	RSrxBUF	(rx+1 addr)
 		+			(addr+rx+1)
 		fetch.b		(char)
-S0KEY.Z	rts
+SKEY.Z	rts
 ;
-; TYPE		(c-addr n --, type a string to RS232_S0)
-S0TYPE.LF	dc.l	S0KEY.NF
-S0TYPE.NF	dc.b	6 128 +
-		dc.b 	char E char P char Y char T char 0 char S
-S0TYPE.SF	dc.w	S0TYPE.Z S0TYPE.CF del
-S0TYPE.CF	?dup				( c-addr n true | c-addr false)			
+; STYPE	(c-addr n --, type a string to RS232_S0)
+STYPE.LF	dc.l	SKEY.NF
+STYPE.NF	dc.b	5 128 +
+		dc.b 	char E char P char Y char T char S
+STYPE.SF	dc.w	STYPE.Z STYPE.CF del
+STYPE.CF	?dup				( c-addr n true | c-addr false)			
 		IF				; check not zero length string
 ; EMIT the first character
 			over			( c-addr n c-addr)
 			fetch.b		( c-addr n char)
-			#.w	S0EMIT.CF	
+			#.w	SEMIT.CF	
 			jsr			( c-addr n)
 ; check length of remaining string
 			1-			( c-addr n-1)
 			?dup			( c-addr n-1 true | c-addr false)
 			IF			; check more characters remaining
 ; write to TBE interrupt handler
-				#.w RStxCNT_S0	( c-addr n-1 RStxCNT_S0)
+				#.w RStxCNT		( c-addr n-1 RStxCNT)
 				store.l		( c-addr 
-				#.w RStxBUF_S0	( c-addr RStxBUF_S0)
+				#.w RStxBUF		( c-addr RStxBUF)
 				store.l		( )
 				zero			( dummy)
 			THEN
 		THEN
-S0TYPE.Z	drop,rts		( )
+STYPE.Z	drop,rts		( )
 ;	
-S1EMIT.LF	dc.l	S0TYPE.NF		
-S1EMIT.NF	dc.b	6 128 +	
-		dc.b 	char T char I char M char E char 1 char S
-S1EMIT.SF	dc.w 	S1EMIT.Z S1EMIT.CF del 	
-		BEGIN
-S1EMIT.CF		#.w HWstatus
-			fetch.b	
-			#.b TBEmask_S1
-			and			; TBE bit
-		UNTIL		
-		#.w RS232tx_S1
-		store.b
-S1EMIT.Z	rts
-;	
-S1KEY?.LF	dc.l 	S1EMIT.NF
-S1KEY?.NF	dc.b	6 128 +
-		dc.b	char ? char Y char E char K char 1 char S
-S1KEY?.SF	dc.w	S1KEY?.Z S1KEY?.CF del
-S1KEY?.CF	#.w RSrxWPOS_S1	
-		fetch.b
-		#.w RSrxRPOS_S1
-		fetch.b
-S1KEY?.Z	<>,rts
-;
-S1KEY.LF	dc.l	S1KEY?.NF
-S1KEY.NF	dc.b	5 128 +
-		dc.b	char Y char E char K char 1 char S
-S1KEY.SF	dc.w 	S1KEY.Z S1KEY.CF del
-		BEGIN
-S1KEY.CF	#.w	S1KEY?.CF
-		jsr
-		UNTIL
-		#.w 	RSrxRPOS_S1
-		dup			(rx& rx&)
-		fetch.b		(rx& rx)
-		1+			(rx& rx+1)
-		#.b	hex ff
-		and						; maintain 256 byte width
-		dup			(rx& rx+1 rx+1)
-		rot			(rx+1 rx+1 rx&)
-		store.b		(rx+1)
-		#.l 	RSrxBUF_S1	(rx+1 addr)
-		+			(addr+rx+1)
-		fetch.b		(char)
-S1KEY.Z	rts
-;
-; TYPE		(c-addr n --, type a string to RS232_S1)
-S1TYPE.LF	dc.l	S1KEY.NF
-S1TYPE.NF	dc.b	6 128 +
-		dc.b 	char E char P char Y char T char 1 char S
-S1TYPE.SF	dc.w	S1TYPE.Z S1TYPE.CF del
-S1TYPE.CF	?dup				( c-addr n true | c-addr false)			
-		IF				; check not zero length string
-; EMIT the first character
-			over			( c-addr n c-addr)
-			fetch.b		( c-addr n char)
-			#.w	S1EMIT.CF	
-			jsr			( c-addr n)
-; check length of remaining string
-			1-			( c-addr n-1)
-			?dup			( c-addr n-1 true | c-addr false)
-			IF			; check more characters remaining
-; write to TBE interrupt handler
-				#.w RStxCNT_S1	( c-addr n-1 RStxCNT_S1)
-				store.l		( c-addr 
-				#.w RStxBUF_S1	( c-addr RStxBUF_S1)
-				store.l		( )
-				zero			( dummy)
-			THEN
-		THEN
-S1TYPE.Z	drop,rts		( )
-;
-; S1ZERO ( --) reposition the S1 RS232 read buffer
-S1ZERO.LF	dc.l	S1TYPE.NF
-S1ZERO.NF	dc.b	6 128 +
-		dc.b	char O char R char E char Z char 1 char S
-S1ZERO.SF	dc.w	S1ZERO.Z S1ZERO.CF del
-S1ZERO.CF	#.b	hex ff
+; SZERO ( --) reposition the RS232 read buffer
+SZERO.LF	dc.l	STYPE.NF
+SZERO.NF	dc.b	5 128 +
+		dc.b	char O char R char E char Z char S
+SZERO.SF	dc.w	SZERO.Z SZERO.CF del
+SZERO.CF	#.b	hex ff
 		dup
-		#.w	RSrxWPOS_S1
+		#.w	RSrxWPOS
 		store.b
-		#.w	RSrxRPOS_S1
+		#.w	RSrxRPOS
 		store.b
-S1ZERO.Z	rts
+SZERO.Z	rts
 ;
-KKEY?.LF	dc.l 	S1ZERO.NF
+; BAUD ( rate --, set the baud rate)
+BAUD.LF	dc.l	SZERO.NF
+BAUD.NF	dc.b	4 128 +
+		dc.b	char D char U char A char B
+BAUD.SF	dc.w	BAUD.Z BAUD.CF del
+BAUD.CF	#.l	3125000		( baud clock/16)
+		swap				( clock/16 baud)
+		1+
+		divu
+		nip				( ubrr)
+		#.w	RS232baud
+		store.w
+BAUD.Z		rts
+;
+; **** KEYBOARD ****
+;
+KKEY?.LF	dc.l 	BAUD.NF
 KKEY?.NF	dc.b	5 128 +
 		dc.b 	char ? char Y char E char K char K
 KKEY?.SF	dc.w	KKEY?.Z KKEY?.CF del
-KKEY?.CF	#.w PSWPOS	
+KKEY?.CF	#.w 	PSWPOS	
 		fetch.b
-		#.w PSRPOS
+		#.w 	PSRPOS
 		fetch.b
 KKEY?.Z	<>,rts
 ;
@@ -417,9 +399,9 @@ KKEY.LF	dc.l	KKEY?.NF
 KKEY.NF	dc.b	4 128 +
 		dc.b	char Y char E char K char K
 KKEY.SF	dc.w 	KKEY.Z KKEY.CF del
-		BEGIN
-KKEY.CF		#.w	KKEY?.CF
-			jsr
+KKEY.CF	BEGIN
+		#.w	KKEY?.CF
+		jsr
 		UNTIL
 		#.w 	PSRPOS
 		dup			(rx& rx&)
@@ -434,8 +416,2116 @@ KKEY.CF		#.w	KKEY?.CF
 		+			(addr+rx+1)
 		fetch.b		(char)
 KKEY.Z		rts
+; PS2DECODE ( raw -- ascii)
+PS2FLAGS	dc.b	0						; modifier flags
+SHIFT_FLAG 	EQU 	1
+CAPS_FLAG	EQU 	2
+ALT_FLAG	EQU	4
+CTRL_FLAG	EQU	8
+CTRL_STATE	EQU	16
+SPECIAL_FLAG	EQU	32
+UP_FLAG	EQU	64
 ;
-ACCEPT.LF	dc.l	KKEY.NF
+PS2DECODE.LF	dc.l	KKEY.NF
+PS2DECODE.NF	dc.b	9 128 +
+		dc.b	char E char D char O char C char E char D char 2 char S char P
+PS2DECODE.SF	dc.w	PS2DECODE.Z PS2DECODE.CF del
+PS2DECODE.CF	#.b	hex 12	( raw 12)			; LEFT SHIFT
+		over		( raw 12 raw)
+		=		( raw flag)
+		over		( raw flag raw)
+		#.b	hex 59	( raw flag raw 59)		; RIGHT SHIFT
+		=		( raw flag flag)
+		or		( raw flag)
+		IF
+			drop
+			zero
+			#.b	SHIFT_FLAG	( zero SHIFT)
+		ELSE
+			
+			#.b	hex 11		( raw 11)		; ALT
+			over			( raw 11 raw)
+			=			( raw flag)
+			IF
+				drop
+				zero
+				#.b	ALT_FLAG	( zero ALT)
+			ELSE
+				#.b	hex 14		( raw 14)		; CTRL
+				over			( raw 14 raw)
+				=			( raw flag)
+				IF
+					drop
+					zero
+					#.b	CTRL_FLAG	( zero CTRL)
+				ELSE
+					#.b	hex 58		( raw 58)		; CAPS LOCK
+					over			( raw 58 raw)
+					=			( raw flag)
+						IF
+							drop
+							zero
+							#.b	CAPS_FLAG	( zero CAPS)
+						ELSE
+							#.b	hex E0		( raw E0)		; SPECIAL
+							over			( raw E0 raw)
+							=			( raw flag)						
+						IF
+							drop
+							zero
+							#.b	SPECIAL_FLAG	( SPECIAL)
+						ELSE						
+							#.b	hex F0		( raw F0)		; UP
+							over			( raw F0 over)
+							=			( raw flag)
+							IF						
+								drop
+								zero
+								#.b	UP_FLAG	( zero UP)							
+							ELSE				( raw)		; process keystroke	
+								#.w	PS2FLAGS
+								fetch.b		( raw FLAGS)
+								dup			( raw FLAGS FLAGS)
+								#.b	UP_FLAG
+								and			( raw FLAGS UPtest)
+								IF						; ignore if an upstroke
+									drop
+									drop
+									zero
+								ELSE			( raw FLAGS)		; lookup table reference
+									swap		( FLAGS raw)
+									over		( FLAGS raw FLAGS)
+									#.b	SHIFT_FLAG CAPS_FLAG or
+									and		( FLAGS raw ifShiftCaps)
+									dup
+									#.b	1
+									=
+									swap
+									#.b	2
+									=
+									or
+									IF						
+										#.w	PS2ASCII 118 +
+									ELSE										
+										over
+										#.b	SPECIAL_FLAG
+										and	( flags raw ifSpecial)
+										IF
+											dup
+											#.b 74
+											=
+											IF
+												#.w	PS2ASCII 138 +
+											ELSE
+												dup
+												#.b	90
+												=
+												IF
+													#.w	PS2ASCII 123 +
+												ELSE
+													#.w	PS2ASCII 109 +
+												THEN
+											THEN
+										ELSE
+											#.w	PS2ASCII
+										THEN
+									THEN
+									+			
+									fetch.b		( flags ASCII)	
+									over			( flags ASCII flags)	; CTRL modifier
+									#.b	CTRL_FLAG	
+									and			( flags ASCII ifCTRL)
+									IF
+										#.b	96
+										-		( flags ASCII')
+									THEN
+									swap			( ASCII flags)	; ALT modifier
+									#.b	ALT_FLAG	
+									and			( ASCII ifCTRL)
+									IF
+										#.b	128
+										+		( ASCII')
+									THEN	
+									dup			( ASCII ASCII)	; check validity
+									0<			( ASCII flag)
+									IF
+										drop
+										zero
+									THEN
+								THEN
+								zero			( ASCII zero)
+							THEN
+						THEN
+					THEN
+				THEN
+			THEN
+		THEN			( zero flag)		; process a modifier
+		#.w	PS2FLAGS				; update modifier flags
+		dup			( flag &FLAGS &FLAGS)
+		>R			( flag &FLAGS R:&FLAGS)
+		fetch.b		( flag FLAGS)
+		#.b	SPECIAL_FLAG 	invert			; remove prior SPECIAL flag
+		and			( flag FLAGS')					
+		#.b	UP_FLAG					; test if last code was UP
+		over
+		and			( flag FLAGS testUP)
+		IF							; switch off modifier when key UP
+			over		( flag FLAGS flag)
+			#.b	CAPS_FLAG
+			and
+			IF						; ignore caps	
+				nip		( FLAGS)
+			ELSE
+				swap		( FLAGS flag)
+				invert		( FLAGS ~flag)		; remove modifier
+				and		( FLAGS')				
+			THEN
+				#.b		UP_FLAG invert		; remove prior UP flag
+				and		( FLAGS')
+		ELSE							; switch on modifier otherwise
+			over		( flag FLAGS flag)
+			#.b	CAPS_FLAG
+			and
+			IF						; toggle caps
+				xor		( FLAGS')
+			ELSE						; set other modifiers
+				or		( FLAGS')
+			THEN
+		THEN
+		R>			( FLAGS' &FLAGS)
+		store.b	
+PS2DECODE.Z	rts			( zero)
+;
+PS2ASCII    dc.b 0
+ dc.b 22
+ dc.b 0
+ dc.b 18
+ dc.b 16
+ dc.b 14
+ dc.b 15
+ dc.b 25
+ dc.b 0
+ dc.b 23
+ dc.b 21
+ dc.b 19
+ dc.b 17
+ dc.b 9
+ dc.b 96
+ dc.b 0
+ dc.b 0
+ dc.b 0
+ dc.b 0
+ dc.b 0
+ dc.b 0
+ dc.b 113
+ dc.b 49
+ dc.b 0
+ dc.b 0
+ dc.b 0
+ dc.b 122
+ dc.b 115
+ dc.b 97
+ dc.b 119
+ dc.b 50
+ dc.b 0
+ dc.b 0
+ dc.b 99
+ dc.b 120
+ dc.b 100
+ dc.b 101
+ dc.b 52
+ dc.b 51
+ dc.b 0
+ dc.b 0
+ dc.b 32
+ dc.b 118
+ dc.b 102
+ dc.b 116
+ dc.b 114
+ dc.b 53
+ dc.b 0
+ dc.b 0
+ dc.b 110
+ dc.b 98
+ dc.b 104
+ dc.b 103
+ dc.b 121
+ dc.b 54
+ dc.b 0
+ dc.b 0
+ dc.b 0
+ dc.b 109
+ dc.b 106
+ dc.b 117
+ dc.b 55
+ dc.b 56
+ dc.b 0
+ dc.b 0
+ dc.b 44
+ dc.b 107
+ dc.b 105
+ dc.b 111
+ dc.b 48
+ dc.b 57
+ dc.b 0
+ dc.b 0
+ dc.b 46
+ dc.b 47
+ dc.b 108
+ dc.b 59
+ dc.b 112
+ dc.b 45
+ dc.b 0
+ dc.b 0
+ dc.b 0
+ dc.b 39
+ dc.b 0
+ dc.b 91
+ dc.b 61
+ dc.b 0
+ dc.b 0
+ dc.b 0
+ dc.b 0
+ dc.b 10
+ dc.b 93
+ dc.b 0
+ dc.b 92
+ dc.b 0
+ dc.b 0
+ dc.b 0
+ dc.b 0
+ dc.b 0
+ dc.b 0
+ dc.b 0
+ dc.b 0
+ dc.b 8
+ dc.b 0
+ dc.b 0
+ dc.b 49
+ dc.b 0
+ dc.b 52
+ dc.b 55
+ dc.b 0
+ dc.b 0
+ dc.b 0
+ dc.b 48
+ dc.b 46
+ dc.b 50
+ dc.b 53
+ dc.b 54
+ dc.b 56
+ dc.b 27
+ dc.b 0
+ dc.b 24
+ dc.b 43
+ dc.b 51
+ dc.b 45
+ dc.b 42
+ dc.b 57
+ dc.b 0
+ dc.b 0
+ dc.b 0
+ dc.b 0
+ dc.b 0
+ dc.b 20
+ dc.b 126
+ dc.b 0
+ dc.b 0
+ dc.b 0
+ dc.b 0
+ dc.b 0
+ dc.b 0
+ dc.b 81
+ dc.b 33
+ dc.b 0
+ dc.b 0
+ dc.b 0
+ dc.b 90
+ dc.b 83
+ dc.b 65
+ dc.b 87
+ dc.b 64
+ dc.b 0
+ dc.b 0
+ dc.b 67
+ dc.b 88
+ dc.b 68
+ dc.b 69
+ dc.b 36
+ dc.b 35
+ dc.b 0
+ dc.b 0
+ dc.b 32
+ dc.b 86
+ dc.b 70
+ dc.b 84
+ dc.b 82
+ dc.b 37
+ dc.b 0
+ dc.b 0
+ dc.b 78
+ dc.b 66
+ dc.b 72
+ dc.b 71
+ dc.b 89
+ dc.b 94
+ dc.b 0
+ dc.b 0
+ dc.b 0
+ dc.b 77
+ dc.b 74
+ dc.b 85
+ dc.b 38
+ dc.b 42
+ dc.b 0
+ dc.b 0
+ dc.b 60
+ dc.b 75
+ dc.b 73
+ dc.b 79
+ dc.b 41
+ dc.b 40
+ dc.b 0
+ dc.b 0
+ dc.b 62
+ dc.b 63
+ dc.b 76
+ dc.b 58
+ dc.b 80
+ dc.b 95
+ dc.b 0
+ dc.b 0
+ dc.b 0
+ dc.b 34
+ dc.b 0
+ dc.b 123
+ dc.b 43
+ dc.b 0
+ dc.b 0
+ dc.b 0
+ dc.b 0
+ dc.b 10
+ dc.b 125
+ dc.b 0
+ dc.b 124
+ dc.b 47
+ dc.b 10
+ dc.b 3
+ dc.b 0
+ dc.b 6
+ dc.b 12
+ dc.b 0
+ dc.b 0
+ dc.b 0
+ dc.b 11
+ dc.b 127
+ dc.b 5
+ dc.b 0
+ dc.b 7
+ dc.b 4
+ dc.b 0
+ dc.b 0
+ dc.b 0
+ dc.b 0
+ dc.b 30
+ dc.b 0
+ dc.b 0
+ dc.b 29
+;
+; **** SCREEN ****
+;
+; CSR_ADDR ( -- addr, return current cursor address)
+CSR-ADDR.LF	dc.l	PS2DECODE.NF
+CSR-ADDR.NF	dc.b	8 128 +
+		dc.b	char R char D char D char A char - char R char S char C
+CSR-ADDR.SF	dc.w	CSR-ADDR.Z CSR-ADDR.CF del
+CSR-ADDR.CF	#.w	CSR-X			
+		fetch.l
+		lsl
+		#.w	CSR-Y
+		fetch.l
+		#.w	COLS
+		fetch.b
+		2*
+		mults
+		drop
+		+
+		#.w	TEXT_ZERO
+		fetch.l
+CSR-ADDR.Z	+,rts				( addr)
+;	
+; CSR-PLOT ( c --, plot literal character at the current cursor position)
+CSR-PLOT.LF	dc.l	CSR-ADDR.NF
+CSR-PLOT.NF	dc.b	8 128 +
+		dc.b	char T char O char L char P char - char R char S char C
+CSR-PLOT.SF	dc.w	CSR-PLOT.Z CSR-PLOT.CF del
+CSR-PLOT.CF	#.w	INK
+		fetch.w			( _c c_)
+		or				( w)
+		#.w	CSR-ADDR.CF
+		jsr				( w addr)
+		store.w
+CSR-PLOT.Z	rts		
+;
+; CSR-ON
+CSR-ON.LF	dc.l	CSR-PLOT.NF
+CSR-ON.NF	dc.b	6 128 +
+		dc.b	char N char O char - char R char S char C
+CSR-ON.SF	dc.w	CSR-ON.Z CSR-ON.CF del
+CSR-ON.CF	#.b	char _			( c)
+		#.w	CSR-ADDR.CF
+		jsr				
+		1+				( c addr)	; address of character
+		dup				( c addr addr)
+		fetch.b			( c addr char)
+		#.w	CSR			( c addr char csr)
+		store.b			( c addr)
+		store.b		
+CSR-ON.Z	rts
+; saved byte underneath cursor
+CSR		dc.b	32
+;
+CSR-OFF.LF	dc.l	CSR-ON.NF
+CSR-OFF.NF	dc.b	7 128 +
+		dc.b	char F char F char O char - char R char S char C
+CSR-OFF.SF	dc.w	CSR-OFF.Z CSR-ON.Z del
+CSR-OFF.CF	#.w	CSR
+		fetch.b			( char)
+		#.w	CSR-ADDR.CF		
+		jsr
+		1+				( char addr)
+		store.b
+CSR-OFF.Z	rts
+;
+;SCROLL	(n -- flag, scroll the screen fwd or back n lines.  returns true if out of range)
+SCROLL.LF	dc.l	CSR-OFF.NF
+SCROLL.NF	dc.b	6 128 +
+		dc.b	char L char L char O char R char C char S
+SCROLL.SF	dc.w	SCROLL.Z SCROLL.CF del
+SCROLL.CF	#.w	COLS				
+		fetch.b
+		2*				; width of the screen including color bytes
+		mults
+		drop				( delta)
+		#.w	TEXT_ZERO
+		fetch.l			( delta current)	
+		+				( new)
+		dup				( new new)		; check bottom of range
+		#.l	_TEXT_ZERO		( new new base)	
+		<				( new flag)
+		IF							; below bottom of range
+			drop
+			#.l	_TEXT_ZERO
+			zero
+			0=			( new true)
+		ELSE
+			dup				( new new)		; check top of range
+			#.l	_TEXT_ZERO
+			#.w	COLS
+			fetch.b
+			2*
+			#.w	ROWS
+			fetch.b
+			multu
+			drop
+			+				( new new base)
+			dup				( new new base base)
+			rot				( new base base new)
+			<				( new base flag)
+			IF							; above top of range
+					nip
+					zero
+					0=			( base true)	
+			ELSE
+					drop
+					zero			( new false)
+			THEN
+		THEN
+		swap				( result new)
+		#.w	TEXT_ZERO
+		store.l
+SCROLL.Z	rts		
+;
+; clear screen, internal word
+{CLS}.CF	#.l	_TEXT_ZERO		( start start)		; clear screen memory	
+		dup
+		#.w	15000			( start start 15000)			; number of words in 2 screens
+		#.w	PALETTE 4 +
+		fetch.b
+		#.w 	256
+		multu				
+		drop				( start start 15000 color)		; fill word
+		#.w	FILL.W.CF	
+		jsr				( start)
+		#.w	TEXT_ZERO					; reset pointer to TEXT_ZERO
+		store.l
+		zero							; reset cursor position
+		#.w	CSR-X
+		store.l	
+		zero
+		#.w	CSR-Y
+		store.l
+{CLS}.Z	rts		
+;
+CLS.LF		dc.l	SCROLL.NF
+CLS.NF		dc.b	3 128 +
+		dc.b	char S char L char C
+CLS.SF		dc.w	CLS.Z CLS.CF	del
+CLS.CF		#.w	{CLS}.CF
+		jsr
+CLS.Z		rts
+;
+; SCRSET ( --, set the ROWS and COLS according to the video mode)
+SCRSET.LF	dc.l	CLS.NF
+SCRSET.NF	dc.b	6 128 +
+		dc.b	char T char E char S char R char C char S
+SCRSET.SF	dc.w	SCRSET.Z SCRSET.CF del
+SCRSET.CF	#.w	mode			; check screen mode
+		fetch.b
+		#.b	binary 00011000
+		and
+		lsr
+		lsr				( v) ; v is 0, 2, 4, 6
+		#.w	SCRSET
+		+
+		dup
+		fetch.b			; pickup the columns
+		#.w	COLS
+		store.b			; save the variable
+		1+
+		fetch.b			
+		#.w	ROWS			
+		store.b
+SCRSET.Z	rts	
+SCRSET		dc.b	60 80			; VGA, interlace off, ROWS, COLUMNS
+		dc.b	48 80			; VGA, interlace on
+		dc.b	75 100			; SVGA, interlace off
+		dc.b	60 100			; SVGA, interlace on
+;
+; NEWLINE ( --, implement a newline)
+NEWLINE.LF	dc.l	SCRSET.NF
+NEWLINE.NF	dc.b	7 128 +
+		dc.b	char E char N char I char L char W char E char N
+NEWLINE.SF	dc.w	NEWLINE.Z NEWLINE.CF del
+NEWLINE.CF	#.w	CSR-Y
+		fetch.l
+		dup				( y y)
+		#.w	ROWS
+		fetch.b
+		1-
+		=				( y flag)		; test if the cursor is at the bottom of the screen or not
+		IF							; cursor is bottom of screen
+			drop			(  --)
+			#.b	1
+			#.w 	SCROLL.CF				; SCROLL forwards 1 row
+			jsr			( flag)
+			IF						; SCROLL returned true, indicating that the screen page is now at the bottom of the buffer
+				#.w	TEXT_ZERO			; Step 1 is to copy the current screen to the top of the buffer
+				fetch.l
+				#.w	COLS
+				fetch.b
+				2*
+				+						; source for copy begins one line from top of page
+				#.l	_TEXT_ZERO				; destination
+				#.w	14800					; size = maximum full screen less the top line
+				#.w	MOVE.CF				; copy screen contents to top of buffer
+				jsr
+				#.w	ROWS				; Step 2 is to blank the rest of the buffer
+				fetch.b				( rows)
+				1-					( rows-1)
+				#.w	COLS
+				fetch.b				( rows-1 cols)
+				2*					( rows-1 col-bytes)
+				multu
+				drop					( bytes)
+				#.l	_TEXT_ZERO
+				+					( s-addr);  start address at the last line of the first page
+				dup					( s-addr s-addr)
+				#.l 	_TEXT_END			( s-addr s-addr end-addr)
+				swap
+				-					( s-addr bytes)
+				2/					( s-addr words)					
+				#.w	PALETTE 4 +				; set input color (to high byte of fill word)				
+				fetch.b					
+				#.w	256
+				multu
+				drop
+				#.w	FILL.W.CF				; clear remaining screen memory
+				jsr
+				#.l	_TEXT_ZERO			; Step 3 is to reset pointer to TEXT_ZERO	
+				#.w	TEXT_ZERO			
+				store.l				
+			THEN
+		ELSE							; cursor is mid screen - simply need to go down one row
+			1+			( y')		
+			#.w 	CSR-Y		( y &ADDR)
+			store.l
+		THEN
+		zero							; zero x position
+		#.w	CSR-X
+		store.l
+NEWLINE.Z	rts
+;
+CSR-FWD.LF 	dc.l	NEWLINE.NF
+CSR-FWD.NF 	dc.b	7 128 +
+		dc.b	char D char W char F char - char R char S char C
+CSR-FWD.SF	dc.w	CSR-FWD.Z CSR-FWD.CF del
+CSR-FWD.CF	#.w	CSR-X
+		fetch.l
+		dup
+		#.w	COLS
+		fetch.b
+		1-
+		=
+		IF	
+			drop
+			#.w	NEWLINE.CF
+			jsr
+		ELSE
+			1+
+			#.w	CSR-X
+			store.l
+		THEN
+CSR-FWD.Z	rts
+;
+CSR-BACK.LF	dc.l	CSR-FWD.NF
+CSR-BACK.NF	dc.b	8 128 +
+		dc.b	char K char C char A char B char - char R char S char C
+CSR-BACK.SF	dc.w	CSR-BACK.Z CSR-BACK.CF del
+CSR-BACK.CF	#.w	CSR-X
+		fetch.l
+		?dup
+		IF
+			1-
+			#.w	CSR-X
+			store.l
+		THEN
+CSR-BACK.Z	rts
+;
+CSR-TAB.LF	dc.l	CSR-BACK.NF
+CSR-TAB.NF	dc.b	7 128 +
+		dc.b	char B char A char T char - char R char S char C
+CSR-TAB.SF	dc.w	CSR-TAB.Z CSR-TAB.CF del
+CSR-TAB.CF	#.w	CSR-X
+		fetch.l		( x)
+		#.w	TAB
+		fetch.l		( x t)
+		over
+		over			( x t x t)
+		divu	
+		drop			( x t r)
+		-
+		+
+		dup
+		#.w	COLS
+		fetch.b
+		1-
+		>
+		IF
+			drop
+			#.w	NEWLINE.CF
+			jsr
+		ELSE
+			#.w	CSR-X
+			store.l
+		THEN
+CSR-TAB.Z	rts
+;
+; VEMITRAW ( n --, emit a character to the VDU excluding non-printing recognition and cursor update)
+VEMITRAW.LF	dc.l	CSR-TAB.NF
+VEMITRAW.NF	dc.b	8 128 +
+		dc.s	VEMITRAW
+VEMITRAW.SF	dc.w	VEMITRAW.Z VEMITRAW.CF del
+VEMITRAW.CF	#.w	CSR-PLOT.CF		; plot
+		jsr
+		#.w	CSR-FWD.CF		; advance cursor
+		jsr	
+VEMITRAW.Z	rts
+;
+; {VEMIT} (n --, emit a character to the VDU including non-priniting recognition but excluding cursor update, internal word)
+{VEMIT}.CF 	#.b	EOL
+		over
+		=
+		IF								; newline
+			drop
+			#.w 	NEWLINE.CF
+			jsr
+		ELSE
+			#.b	~EOL
+			over
+			=
+			IF							; not newline - ignore
+				drop
+			ELSE
+				#.b	8
+				over
+				=
+				IF						; backspace
+					drop
+					#.w 	CSR-BACK.CF
+					jsr
+					zero
+					#.w 	CSR-PLOT.CF
+					jsr
+				ELSE
+					#.b	9
+					over
+					=
+					IF					; tab
+						drop
+						#.w	CSR-TAB.CF
+						jsr
+					ELSE
+						#.b	12
+						over
+						=
+						IF				; clear screen
+							drop
+							#.w	{CLS}.CF
+							jsr
+						ELSE				; other literal
+							#.w	VEMITRAW.CF		 ; emit the literal
+							jsr	
+						THEN
+					THEN
+				THEN
+			THEN
+		THEN
+		rts
+;
+; VEMIT ( n --, emit a character to the VDU, including non-printing recognition and cursor update)
+VEMIT.LF	dc.l	VEMITRAW.NF
+VEMIT.NF	dc.b	5 128 +
+		dc.b	char T char I char M char E char V
+		dc.w	VEMIT.Z VEMIT.CF del
+VEMIT.CF	#.w	CSR-OFF.CF					; undraw cursor
+		jsr
+		#.w	{VEMIT}.CF
+		jsr
+		#.w	CSR-ON.CF					; draw cursor
+		jsr
+VEMIT.Z	rts
+;
+; VTYPERAW ( addr len, type to VDU, excluding non-printing recognition including cursor update)
+VTYPERAW.LF	dc.l	VEMIT.NF
+VTYPERAW.NF	dc.b	8 128 +
+		dc.b	char W char A char R char E char P char Y char T char V
+VTYPERAW.SF	dc.w	VTYPERAW.Z VTYPERAW.CF del
+VTYPERAW.CF	#.w	CSR-OFF.CF					; undraw cursor
+		jsr
+		?dup
+		IF
+			over			( addr len addr)
+			+			( start end)
+			swap			( end start)
+			DO
+				R@
+				fetch.b
+				#.w	VEMITRAW.CF
+				jsr
+			LOOP
+		THEN
+		#.w	CSR-ON.CF					; draw cursor
+		jsr
+VTYPERAW.Z	rts
+;
+; VTYPE ( addr len, type to VDU, including non-printing recognition and cursor update)
+VTYPE.LF	dc.l	VTYPERAW.NF
+VTYPE.NF	dc.b	5 128 +
+		dc.b	char E char P char Y char T char V
+VTYPE.SF	dc.w	VTYPE.Z VTYPE.CF del
+VTYPE.CF	#.w	CSR-OFF.CF					; undraw cursor
+		jsr
+		?dup
+		IF
+			over			( addr len addr)
+			+			( start end)
+			swap			( end start)
+			DO
+				R@
+				fetch.b
+				#.w	{VEMIT}.CF
+				jsr
+			LOOP
+		THEN
+		#.w	CSR-ON.CF					; draw cursor
+		jsr
+VTYPE.Z	rts
+;				
+;COLOR-TABLE.LF dc.l	include.NF
+;COLOR-TABLE.NF dc.b	11 128 +
+;		 dc.b char E char L char B char A char T char - char R char O char L char O char C
+;COLOR-TABLE.SF dc.w	COLOR-TABLE.Z COLOR-TABLE.CF del
+;COLOR-TABLE.CF #.w	CR.CF
+;		 jsr
+;		 #.w	256
+;		 zero
+;		 DO
+;			R@
+;			#.w	INK
+;			store.b
+;			R@
+;			#.w 	DOT.CF
+;			jsr
+;			#.w	SPACE.CF
+;			jsr
+;		LOOP
+;		#.w	PALETTE 1 +
+;		fetch.b
+;		#.w	INK
+;		store.b
+;COLOR-TABLE.Z	rts
+;
+; BACKGROUND ( n --, set the background color)
+BACKGROUND.LF	dc.l	VTYPE.NF
+BACKGROUND.NF	dc.b	10 128 +
+		dc.b	char D char N char U char O char R char G char K char C char A char B
+BACKGROUND.SF	dc.w	BACKGROUND.Z BACKGROUND.CF del
+BACKGROUND.CF	#.w	background
+		store.b
+BACKGROUND.Z	rts
+;
+; INTERLACE ( flag --, set interlace mode on or off)
+INTERLACE.LF	dc.l	BACKGROUND.NF
+INTERLACE.NF	dc.b	9 128 +
+		dc.b	char E char C char A char L char R char E char T char N char I
+INTERLACE.SF	dc.w	INTERLACE.Z INTERLACE.CF del
+INTERLACE.CF	#.w	mode
+		fetch.b
+		swap
+		IF
+			#.b	8
+			or
+		ELSE
+			#.b	247
+			and
+		THEN
+		#.w	mode
+		store.b	
+		#.w	SCRSET.CF
+		jsr
+INTERLACE.Z	rts
+;
+; VGA ( flag --. set SVGA mode on or off)
+VGA.LF	dc.l	INTERLACE.NF
+VGA.NF	dc.b	3 128 +
+		dc.b	char A char G char V 
+VGA.SF	dc.w	VGA.Z VGA.CF del
+VGA.CF		#.w	CLS.CF
+		jsr
+		#.w	mode
+		fetch.b
+		swap
+		IF
+			#.b	16
+			or
+		ELSE
+			#.b	239
+			and
+		THEN
+		#.w	mode
+		store.b	
+		#.w	SCRSET.CF
+		jsr
+VGA.Z		rts
+;
+;
+PALETTE.LF	dc.l	VGA.NF
+PALETTE.NF	dc.b	7 128 +
+		dc.b	char E char T char T char E char L char A char P
+PALETTE.SF	dc.w	PALETTE.Z PALETTE.CF del
+PALETTE.CF	#.w	PALETTE
+PALETTE.Z	rts
+PALETTE	dc.b	55			; input (yellow)
+		dc.b	58			; output (green)
+		dc.b	7			; error (red)
+		dc.b	240			; dos (blue)
+		dc.b	255			; cursor (white)
+		ds.b	11			; 11 more user colours in the palette
+; 
+INK.LF	dc.l	PALETTE.NF
+INK.NF	dc.b	3 128 +
+		dc.b	char K char N char I
+INK.SF	dc.w	INK.Z INK.CF del
+INK.CF	#.w	INK
+INK.Z		rts
+INK		dc.b	56			; note this variable is BYTE length!
+		ds.b	3			; padding
+;
+CSR-X.LF	dc.l	INK.NF
+CSR-X.NF	dc.b	5 128 +
+		dc.b	char X char - char R char S char C
+CSR-X.SF	dc.w	CSR-X.Z CSR-X.CF del
+CSR-X.CF	#.w	CSR-X
+CSR-X.Z	rts
+CSR-X		dc.l	0
+;
+CSR-Y.LF	dc.l	CSR-X.NF
+CSR-Y.NF	dc.b	5 128 +
+		dc.b	char Y char - char R char S char C
+CSR-Y.SF	dc.w	CSR-Y.Z CSR-Y.CF del
+CSR-Y.CF	#.w	CSR-Y
+CSR-Y.Z	rts
+CSR-Y		dc.l	0
+;
+TAB.LF		dc.l	CSR-Y.NF
+TAB.NF		dc.b	3 128 +
+		dc.b	char B char A char T
+TAB.SF		dc.w	TAB.Z TAB.CF del
+TAB.CF		#.w	TAB
+TAB.Z		rts
+TAB		dc.l	3
+;
+ROWS.LF	dc.l	TAB.NF
+ROWS.NF	dc.b	4 128 +
+		dc.b	char S char W char O char R
+ROWS.SF	dc.w	ROWS.Z ROWS.CF del
+ROWS.CF	#.w	ROWS
+ROWS.Z		rts
+ROWS		dc.b	60
+;
+COLS.LF	dc.l	ROWS.NF
+COLS.NF	dc.b	4 128 +
+		dc.b	char S char L char O char C
+COLS.SF	dc.w	COLS.Z COLS.CF del
+COLS.CF	#.w	COLS
+COLS.Z		rts
+COLS		dc.b	100
+;
+TYPERAW.LF	dc.l	COLS.NF
+TYPERAW.NF	dc.b	7 128 +
+		dc.b	char W char A char R char E char P char Y char T
+TYPERAW.SF	dc.w	TYPERAW.Z TYPERAW.CF del
+TYPERAW.CF	#.w	TYPERAW_VECTOR
+		fetch.l
+		jsr
+TYPERAW.Z	rts
+;
+>REMOTE.LF	dc.l	TYPERAW.NF
+>REMOTE.NF	dc.b	7 128 +
+		dc.b	char E char T char O char M char E char R char >
+>REMOTE.SF	dc.w	>REMOTE.Z >REMOTE.CF del
+>REMOTE.CF	#.w	SEMIT.CF
+		#.w	EMIT_VECTOR
+		store.l
+		#.w	STYPE.CF
+		#.w	TYPE_VECTOR
+		store.l
+		#.w	STYPE.CF
+		#.w	TYPERAW_VECTOR
+		store.l	
+>REMOTE.Z	rts	
+;
+>LOCAL.LF	dc.l	>REMOTE.NF
+>LOCAL.NF	dc.b	6 128 +
+		dc.b	char L char A char C char O char L char >
+>LOCAL.SF	dc.w	>LOCAL.Z >LOCAL.CF del
+>LOCAL.CF	#.w	VEMIT.CF
+		#.w	EMIT_VECTOR
+		store.l
+		#.w	VTYPE.CF
+		#.w	TYPE_VECTOR
+		store.l
+		#.w	VTYPERAW.CF
+		#.w	TYPERAW_VECTOR
+		store.l	
+>LOCAL.Z	rts
+;	
+<LOCAL.LF	dc.l	>LOCAL.NF
+<LOCAL.NF	dc.b	6 128 +
+		dc.b	char L char A char C char O char L char <
+<LOCAL.SF	dc.w	<LOCAL.Z <LOCAL.CF del
+<LOCAL.CF	#.w	KKEY.CF
+		#.w	KEY_VECTOR
+		store.l
+		#.w	KKEY?.CF
+		#.w	KEY?_VECTOR
+		store.l
+<LOCAL.Z	rts
+;
+<REMOTE.LF	dc.l	<LOCAL.NF
+<REMOTE.NF	dc.b	7 128 +
+		dc.b	char E char T char O char M char E char R char <
+<REMOTE.SF	dc.w	<REMOTE.Z <REMOTE.CF del
+<REMOTE.CF	#.w	SKEY.CF
+		#.w	KEY_VECTOR
+		store.l
+		#.w	SKEY?.CF
+		#.w	KEY?_VECTOR
+		store.l
+<REMOTE.Z	rts
+;
+; **** SPI, SD & FAT FILE SYSTEM ****
+; SPI functions
+SPI.CS-hi	#.w	SPI.control					; DESELECT - CS is active low
+		dup
+		fetch.b	
+		#.b	1 
+		or 
+		swap
+		store.b	 
+		rts
+;
+SPI.CS-lo 	#.w	SPI.control 					; SELECT - CS is active low
+		dup
+		fetch.b
+		#.b	254 
+		and 
+		swap
+		store.b
+		rts	
+;	
+SPI.MOSI-hi	#.w	SPI.control 
+		dup
+		fetch.b
+		#.b	2 
+		or 
+		swap
+		store.b
+		rts
+;
+SPI.MOSI-lo 	#.w	SPI.control 
+		dup
+		fetch.b
+		#.b	253 
+		and 
+		swap
+		store.b 
+		rts
+;
+SPI.slow 	#.b	255 						; 196kHz at 50MHz clock
+		#.w	SPI.divide 
+		store.b
+		rts
+;	
+SPI.fast 	#.b	8 						; 6.25MHz at 50MHz
+		#.w	SPI.divide 
+		store.b	
+		rts
+;
+; SPI.wait ( --, wait until the SPI transfer-bus is available)	
+SPI.wait 	#.w	SPI.status 
+		BEGIN
+			dup
+			fetch.b
+			#.b	1
+			and 
+		UNTIL
+		drop,rts
+;
+; SPI.put ( n --, put a byte to the SPI port)
+SPI.put	CALL	SPI.wait 
+		#.w	SPI.data
+		store.b
+		rts
+;
+; SPI.get ( -- n, get a byte from the SPI port)
+SPI.get	#.b	255 
+		CALL	SPI.put 
+		CALL	SPI.wait 
+		#.w	SPI.data
+		fetch.b
+		rts
+;
+; SD card functions
+; SD.cmd ( chk b1 b2 b3 b4 cmd# --, SD command)
+SD.cmd		#.b	6
+		zero
+		DO
+			CALL	SPI.put 
+		LOOP
+		rts
+;
+; SD.get-rsp ( -- n, get first byte of response from the sd-card)
+SD.get-rsp	zero
+		BEGIN
+			drop
+			CALL	SPI.get
+			dup 
+			#.b	255 
+			<>
+		UNTIL
+		rts
+;
+; SD.get-R1 ( -- n, get an R1 response from the sd-card)
+SD.get-R1	CALL	SD.get-rsp
+		CALL	spi.get 
+		drop		; one further read always required
+		rts
+;
+;SD.ver			; xxxxx [block/byte] [v2/v1];
+SD.ver		dc.l	0	
+;
+; SD.init ( --, SD card reset, version check and initialize)
+SD.init.LF	dc.l	<REMOTE.NF
+SD.init.NF	dc.b	7 128 +
+		dc.s	SD.init
+SD.init.SF	dc.w	SD.init.Z SD.init.CF del
+SD.init.CF	#.w	5000 
+		CALL	timeout.cf
+		CALL	spi.slow 
+		CALL	spi.cs-hi 		; power sequence dummy clock
+		#.b	80 
+		zero
+		DO
+			#.b	255 
+			CALL	spi.put 
+		LOOP
+		CALL	spi.cs-lo 	
+		BEGIN				; CMD0 repeated until good
+			#.b	149 
+			zero
+			zero
+			zero
+			zero
+			#.b	64 
+			CALL	sd.cmd 
+			CALL	sd.get-R1 
+			#.b	1 
+			<>
+		WHILE				
+			#.b	100 		; 100 ms delay
+			CALL	ms.cf
+		REPEAT
+		#.b	135 			; CMD8	
+		#.b	170 
+		#.b	1 
+		zero
+		zero
+		#.b	72 
+		CALL 	sd.cmd 
+		CALL	sd.get-rsp 
+		#.b	1 
+		= 
+		IF					; CMD8 accepted, read data bytes
+			#.b	4 
+			zero
+			DO 
+				CALL	spi.get 
+			LOOP		( b4 b3 b2 b1)
+			CALL	spi.get 		; one further read always required
+			drop 			
+			#.b	170 
+			= 
+			swap 			( b4 b3 f b2)
+			#.b	1 
+			= 
+			and 
+			nip 
+			nip 
+			IF			( f) 	; 01xAA confirmed, initialize card
+			BEGIN
+				#.b 	1 		; CMD55
+				zero
+				zero
+				zero
+				zero
+				#.b	119 
+				CALL	sd.cmd 
+				CALL	sd.get-R1 	; CMD55 is just a header
+				drop			
+				#.b	1 		; CMD41hi
+				zero 
+				zero
+				zero 
+				#.b	64 
+				#.b	105 
+				CALL	sd.cmd	
+				CALL	sd.get-R1
+				0= 
+			UNTIL
+			#.b	1 			; CMD58
+			zero
+			zero 
+			zero 
+			zero 
+			#.b	122 
+			CALL	sd.cmd	
+			CALL	sd.get-rsp 		; ignore R1
+			drop		
+			#.b	4
+			zero 
+			DO 
+				CALL	spi.get
+			LOOP		( b4 b3 b2 b1)
+			CALL	spi.get 		; one further read always required
+			drop 			
+			drop 
+			drop 
+			drop 
+			#.b	64 			; test CSS bit in OCR
+			and	
+			IF
+				#.b	3 		; SD V2.0 block address
+				#.w	sd.ver
+				store.l		
+			ELSE
+				#.b	1 		; SD V.20 byte address
+				#.w	sd.ver 
+				store.l		
+			THEN
+			CALL	spi.fast		; V2.0 supports high speed
+		ELSE					; 01xAA mismatch
+			#.w	1001 
+			CALL	ERROR
+		THEN
+	ELSE						; CMD8 rejected, initialize card
+		BEGIN
+			#.b	1 			; CMD55
+			zero 
+			zero 
+			zero 
+			zero 
+			#.b	119 
+			CALL	sd.cmd 
+			CALL	sd.get-R1 		; CMD55 is just a header
+			drop		
+			#.b	1 			; CMD41lo
+			zero 
+			zero
+			zero
+			zero
+			#.b	105 
+			CALL	sd.cmd		
+			CALL	sd.get-R1
+			0=
+		UNTIL
+			zero 				; SD V1.0
+			#.w	sd.ver 
+			store.l			
+		THEN
+		#.b	1 				; CMD16
+		zero 
+		#.b	2 
+		zero 
+		zero 
+		#.b	80 
+		CALL	sd.cmd 
+		CALL	sd.get-rsp 
+		drop	
+		CALL 	SPI.CS-hi 			; DESELECT
+		#.b	255 
+		CALL	spi.put			
+		zero	
+		CALL	timeout.cf
+SD.init.Z	rts
+;
+; SD.sector-code ( n -- b4 b3 b2 b1, scale and split sector address)
+SD.sector-code 	#.w	sd.ver 			
+		fetch.l 
+		#.b	2 
+		and			
+		0=
+		IF					; scale sector to bytes
+			#.w	512 
+			multu
+			drop
+		THEN	
+		dup 		
+		#.b	255 
+		and 					; bits 0 - 7
+		swap				
+		#.b	3 
+		zero 
+		DO					; bits 8 - 31
+			#.b	8 
+			CALL	rshift.cf
+			dup
+			#.b	255 
+			and 
+			swap
+		LOOP
+		drop,rts		
+;
+; SD.select&check ( --, select and wait for SD card)
+SD.select&check 	CALL spi.cs-lo		; SELECT
+		BEGIN				
+			CALL spi.get 
+			#.b	255 
+			=				; if CS is asserted while card is busy then card will set D0 low
+		UNTIL
+		rts
+;
+; SD.read-sector ( addr n --, read 512 bytes from sector n into a buffer at addr)
+SD.read-sector.LF	dc.l	SD.init.NF
+SD.read-sector.NF	dc.b	14 128 +
+			dc.b	char R char O char T char C char E char S char - char D char A char E char R char . char D char S
+SD.read-sector.SF	dc.w	SD.read-sector.Z SD.read-sector.CF del
+SD.read-sector.CF	#.w	1000 
+		CALL 	timeout.cf
+		CALL 	sd.select&check
+		#.b	1 				; checksum
+		swap					
+		CALL 	sd.sector-code		; encode sector number
+		#.b	81 				; complete CMD17
+		CALL 	sd.cmd				
+		CALL 	sd.get-R1 
+		0<> 
+		IF					; check response OK
+			#.w	1005 
+			CALL	ERROR.CF
+		THEN
+		BEGIN					; wait for data token
+			CALL	spi.get
+			#.b	254 
+			=
+		UNTIL
+		dup 
+		#.w	512 
+		+ 
+		swap 
+		DO 					; read sector
+			CALL 	spi.get 
+			I 
+			store.b 
+		LOOP	
+		#.b	3 
+		zero 
+		DO 					; drop CRC and read safety byte
+			CALL 	spi.get 
+			drop 
+		LOOP			
+		CALL 	SPI.CS-hi 
+		#.b	255 
+		CALL	spi.put			; DESELECT
+		zero 
+		CALL	timeout.CF
+SD.read-sector.Z		rts
+;
+; SD.write-sector ( addr n --, write 512 byte to sector n from addr)
+SD.write-sector.LF	dc.l	SD.read-sector.NF
+SD.write-sector.NF	dc.b	15 128 +
+			dc.b	char R char O char T char C char E char S char - char E char T char I char R char W char . char D char S
+SD.write-sector.SF	dc.w	SD.write-sector.Z SD.write-sector.CF del
+SD.write-sector.CF	#.w	2000
+		CALL	timeout.CF
+		CALL	sd.select&check	
+		#.b	1 				; checksum
+		swap					
+		CALL	sd.sector-code		; encode sector number
+		#.b	88 				; complete CMD24
+		CALL 	sd.cmd				
+		CALL	sd.get-R1 
+		0<> 
+		IF					; check response OK
+			#.w	1010 
+			CALL	ERROR.CF
+		THEN
+		#.b	255 
+		CALL	spi.put			; space
+		#.b	254 
+		CALL	spi.put			; initiate data packet
+		dup 
+		#.w	512 
+		+ 
+		swap 
+		DO 					; write sector
+			I 
+			fetch.b 
+			CALL spi.put 
+		LOOP	
+		#.b	2 
+		zero 
+		DO 					; dummy checksum
+			#.b	1 
+			CALL	spi.put 
+		LOOP			
+		CALL	sd.get-R1 
+		#.b	31 
+		and 
+		#.b	5 
+		<> 
+		IF					; check data response
+			#.w	1011 
+			CALL	ERROR.CF		; write error
+		THEN	
+		CALL	SPI.CS-hi 
+		#.b	255 
+		CALL	spi.put			; DESELECT
+		zero 
+		CALL	timeout.cf
+SD.write-sector.Z		rts
+;
+; FAT.read-long ( addr n -- x, get a little endian longword from the buffer)
+FAT.read-long.LF	dc.l	SD.write-sector.NF
+FAT.read-long.NF	dc.b	13 128 +
+			dc.s	FAT.read-long
+FAT.read-long.SF	dc.w	FAT.read-long.Z FAT.read-long.CF del
+FAT.read-long.CF	+
+		dup 
+		#.b	4 
+		+ 
+		swap 
+		DO 
+			i 
+			fetch.b 
+		LOOP
+		#.b	3 
+		zero 
+		DO 
+			#.w	256 
+			multu
+			drop 
+			+ 
+		LOOP
+FAT.read-long.Z	rts
+;
+; FAT.write-long ( x addr n --, write a little endian longword x to the buffer at position n)
+FAT.write-long.LF	dc.l	FAT.read-long.NF
+FAT.write-long.NF	dc.b	14 128 +
+			dc.s	FAT.write-long
+FAT.write-long.SF	dc.w	FAT.write-long.Z FAT.write-long.CF del
+FAT.write-long.CF	+ 
+		>R 
+		>R	( R: x addr+n)
+		R@ 
+		#.b	24 
+		CALL	rshift.cf 
+		#.b	255 
+		and	
+		R@ 
+		#.b	16 
+		CALL	rshift.cf
+		#.b	255 
+		and	
+		R@ 
+		#.b	8 
+		CALL	rshift.cf 
+		#.b	255 
+		and	
+		R> 
+		#.b	255 
+		and
+		R> 
+		dup 
+		#.b	4 
+		+ 
+		swap
+		DO 
+			i 
+			store.b 
+		LOOP
+FAT.write-long.Z	rts
+;
+	
+; FAT.read-word ( addr n -- x, get a little endian word from the buffer)
+FAT.read-word.LF	dc.l	FAT.write-long.NF
+FAT.read-word.NF	dc.b	13 128 +
+			dc.s	FAT.read-word
+FAT.read-word.SF	dc.w	FAT.read-word.Z FAT.read-word.CF del
+FAT.read-word.CF	1+ 
+		+
+		dup 
+		fetch.b 
+		#.w	256 
+		multu
+		drop 
+		swap
+		1- 
+		fetch.b 
+FAT.read-word.Z	+,rts
+;
+; FAT.write-word ( x addr n --, write a litte endian word to the buffer)
+FAT.write-word.LF	dc.l	FAT.read-word.NF
+FAT.write-word.NF	dc.b	14 128 +
+			dc.s	FAT.write-word
+FAT.write-word.SF	dc.w	FAT.write-word.Z FAT.write-word.CF del
+FAT.write-word.CF	+ 
+		>R 
+		>R	( R : x addr+n)
+		R@ 
+		#.b	8 
+		CALL	rshift.cf 
+		#.b	255 
+		and	
+		R> 
+		#.b	255 
+		and
+		R@ 
+		store.b
+		R> 
+		1+ 
+		store.b
+FAT.write-word.Z		rts
+;
+; MOUNT ( --, initiaize the SD card and FAT data structures)
+MOUNT.LF	dc.l	FAT.write-word.NF
+MOUNT.NF	dc.b	5 128 +
+		dc.s	MOUNT
+MOUNT.SF	dc.w	MOUNT.Z MOUNT.CF del
+MOUNT.CF	call	sd.init.cf
+		#.l	_fat.buf 
+		dup
+		>R
+		zero 
+		call	sd.read-sector.cf
+		R@
+		#.w	510 
+		call	fat.read-word.cf 
+		#.w	43605 
+		<> 
+		IF		; confirm sector signature 0xAA55
+			#.w	2000 
+			call	error.cf
+		THEN
+		R@ 
+		#.b	82 
+		CALL	fat.read-word.cf 
+		#.w	16710 
+		<> 
+		IF		; confirm FAT32 signature 0x4146
+			#.w	2001 
+			CALL	error.cf
+		THEN
+		R@			
+		#.b	13 
+		+ 
+		fetch.b 
+		#.w	fat.secperclus 
+		store.l
+		R@
+		#.b	44 
+		CALL	fat.read-long.cf 
+		dup 
+		#.w	fat.rootclus 
+		store.l 
+		#.w	FAT.CurrentDirectory 
+		store.l
+		R@
+		#.b	32 
+		CALL	fat.read-long.cf 
+		#.w	fat.TotalSectors 
+		store.l
+		R@ 
+		#.b	14 
+		CALL	fat.read-word.cf 
+		dup 
+		#.w	fat.rsvdseccnt 
+		store.l				( RsvdSecCnt)
+		R@ 
+		#.b	16 
+		+ 
+		fetch.b				( RsvdSecCnt NumFATs)
+		R@
+		#.b	36 
+		CALL	fat.read-long.cf		( RsvdSecCnt NumFATs SecPerFAT)
+		multu
+		drop
+		+ 
+		#.w	fat.firstdatasector 
+		store.l
+		R@
+		#.b	1 
+		CALL	sd.read-sector.cf		; FAT32 FSInfo
+		R@
+		zero 
+		CALL	fat.read-long.cf 
+		#.l	hex 41615252 
+		<> 
+		IF					; confirm valid FSInfo sector
+			#.w	2002 
+			CALL	error					
+		THEN
+		R>
+		#.w	492 
+		CALL	fat.read-long.cf 
+		dup
+		zero
+		1- 
+		= 
+		IF 
+			drop 
+			#.b	2 
+		THEN
+		#.w	FAT.NextFreeCluster 
+		store.l
+		zero 
+		#.w	FAT.FATinBuf 
+		store.l				; FAT buffer initialized
+MOUNT.Z		rts
+;
+; FAT.UpdateFSInfo ( --, update the FAT32 FSInfo sector with next free cluster)
+FAT.UpdateFSInfo.LF	dc.l	MOUNT.NF
+FAT.UpdateFSInfo.NF	dc.b	16 128 +
+			dc.s	FAT.UpdateFSInfo
+FAT.UpdateFSInfo.SF	dc.w	FAT.UpdateFSInfo.Z FAT.UpdateFSInfo.CF del
+FAT.UpdateFSInfo.CF	#.l	_fat.buf 
+		dup
+		>R
+		#.b	1 
+		CALL	sd.read-sector.cf
+		#.w	FAT.NextFreeCluster 
+		fetch.l 
+		R@	 			
+		#.w	492 
+		CALL	FAT.write-long.CF
+		R> 
+		#.b	1 
+		CALL	sd.write-sector.cf
+FAT.UpdateFSInfo.Z		rts
+;
+; FAT.clus2sec ( n -- n, given a valid cluster number return the number of the first sector in that cluster)
+FAT.clus2sec.LF	dc.l	FAT.UpdateFSInfo.NF
+FAT.clus2sec.NF	dc.b	12 128 +
+			dc.s	FAT.clus2sec
+FAT.clus2sec.SF	dc.w	FAT.clus2sec.Z FAT.clus2sec.CF del
+FAT.clus2sec.CF	1-				
+		1-					; first cluster is number 2
+		#.w	fat.secperclus 
+		fetch.l
+		multu
+		drop
+		#.w	fat.firstdatasector 
+		fetch.l
+FAT.clus2sec.Z	+,rts
+;
+;
+; FAT.prep-fat ( n -- ThisFATEntOffset, calulate location and load the appropriate FAT sector into fat.fatbuf)
+FAT.prep-fat	#.b	4 
+		multu
+		drop			( FATOffset)
+		#.w	512 
+		divu			( rem quo)
+		#.w	fat.rsvdseccnt 
+		fetch.l 
+		+ 			( ThisFATEntOffset ThisFATSecNum)
+		dup 
+		#.w	FAT.FATinBuf 
+		fetch.l 
+		<> 
+		IF
+			dup 
+			#.w	FAT.FATinBuf 
+			store.l			; remember the buffered sector
+			#.l	_fat.buffat 
+			swap	 			( ThisFATEntOffset fat.fatbuf ThisFATSecNum)
+			CALL	SD.read-sector.cf	( ThisFATEntOffset)
+		ELSE
+			drop				( ThisFATEntOffset)
+		THEN
+		rts
+;
+; FAT.get-fat ( n -- x, return the FAT entry for a given cluster)
+FAT.get-fat.LF	dc.l	FAT.clus2sec.NF
+FAT.get-fat.NF	dc.b	11 128 +
+			dc.s	FAT.get-fat
+FAT.get-fat.SF	dc.w	FAT.get-fat.Z FAT.get-fat.CF del
+FAT.get-fat.CF	CALL	FAT.prep-fat
+		#.l	_fat.buffat 
+		swap					( fat.buf ThisFATEntOffset)
+		CALL	fat.read-long.cf
+		#.l	hex	0FFFFFFF
+FAT.get-fat.Z	and,rts
+;
+; FAT.put-fat ( value cluster --, place value in the FAT location for cluster)
+FAT.put-fat.LF	dc.l	FAT.get-fat.NF
+FAT.put-fat.NF	dc.b	11 128 +
+			dc.s	FAT.put-fat
+FAT.put-fat.SF	dc.w	FAT.put-fat.Z FAT.put-fat.CF del
+FAT.put-fat.CF	CALL	FAT.prep-fat		( value ThisFATEntOffset)
+		#.l	_fat.buffat 
+		swap					( value fat.buf ThisFATEntOffset)
+		CALL	fat.write-long.CF
+		#.l	_FAT.buffat 
+		#.w	FAT.FATinBuf 
+		fetch.l
+		CALL	SD.write-sector.cf
+FAT.put-fat.Z		rts
+;
+; FAT.string2filename ( addr n -- addr, convert an ordinary string to a short FAT filename)
+FAT.string2filename.LF	dc.l	FAT.put-fat.NF
+FAT.string2filename.NF	dc.b	19 128 +
+				dc.s 	FAT.string2filename
+FAT.string2filename.SF	dc.w	FAT.string2filename.Z FAT.string2filename.CF del
+FAT.string2filename.CF	>R 
+		>R		
+		#.l	_PAD 				; was FAT.filestring
+		dup 
+		dup 
+		dup					 
+		#.b	12 
+		+ 
+		swap 
+		DO 					; fill the output string with blanks
+			#.b	32 
+			i 
+			store.b 
+		LOOP	 			
+		R> 
+		R>					( filestring filestring addr n)
+		?dup 
+		IF		
+			#.b	12 
+			CALL	min.cf
+			over 
+			+ 
+			swap 				( filestring filestring addrE addr)					
+			DO				; loop over the input string up to 12 characters
+				i 
+				fetch.b 
+				dup 
+				#.b	46 		; .
+				= 				 
+				IF
+					drop 
+					drop 
+					dup 
+					#.b	8 
+					+		; re-position in output string
+				ELSE
+					CALL	upper.cf
+					over 
+					store.b 
+					1+		; save and increment position in output string
+				THEN				
+			LOOP
+			drop
+		ELSE					; zero length interpret as ".." for up directory
+			drop 
+			#.b	46 
+			over 
+			store.b 
+			1+
+			#.b	46 
+			swap 
+			store.b
+		THEN
+FAT.string2filename.Z	rts
+;
+; FAT.find-file-local ( dirCluster addr n -- dirSector dirOffset firstCluster size flags TRUE | FALSE, find in local folder)
+FAT.find-file-local	CALL	FAT.String2Filename.CF	( cluster filestring)
+		swap 
+		dup 
+		>R					( filestring cluster R:cluster)
+		BEGIN
+			CALL	FAT.Clus2Sec.CF	( filestring firstSec R:cluster)
+			dup 
+			#.w	FAT.SecPerClus 
+			fetch.l 
+			+ 
+			swap				( filestring lastSec firstSec R:cluster)	
+		DO					( filestring R:LOOP cluster)	; examine each sector in the cluster
+			#.l	_FAT.buf 
+			i 
+			CALL	SD.read-sector.cf
+			#.l	_FAT.buf 
+			dup 
+			#.w	512 
+			+ 
+			swap 
+			DO				( filestring R:LOOP LOOP cluster)	; examine each 32 byte entry in the sector
+				i 
+				fetch.b 
+				dup 
+				0= 
+				IF 			; empty entry and no following entries - exit false flag
+					UNLOOP
+					UNLOOP 
+					nip 
+					R> 
+					drop 
+					rts 
+				THEN	
+				#.b	229 
+				<> 
+				IF							; non-0xE5 first byte indicates valid entry
+					i 
+					#.b	11 
+					+ 
+					fetch.b 
+					#.b	15 
+					and 
+					#.b	15 
+					<> 
+					IF						; is not a long-name entry
+						dup 
+						#.b	11 
+						i 
+						#.b	11 
+						CALL	$=.cf 
+						IF					; test string match
+							drop							; remove filestring	
+							j							; dirSector
+							i 
+							#.l	_FAT.buf 
+							-							; directory offset 
+							i 
+							#.b	20 
+							CALL	FAT.read-word.cf 
+							#.l	65536 
+							multu
+							drop
+							i 
+							#.b	26 
+							CALL 	FAT.read-word.cf 
+							+ 							; startCluster
+							i 
+							#.b	28 
+							CALL	FAT.read-long.cf 				; size		
+							i 
+							#.b	11 
+							+ 
+							fetch.b						; flags
+							UNLOOP 
+							UNLOOP
+							R> 
+							drop 
+							zero
+							1-
+							rts							; exit with true flag
+						THEN
+					THEN
+				THEN
+				#.b	32 
+				+LOOP
+				LOOP 
+				R>					( filestring currentCluster)
+				CALL	FAT.get-fat.CF		( filestring nextCluster)
+				dup 
+				#.l	hex 0FFFFFFF 								; End-of-clusters mark
+				=					( filestring nextCluster flag) 	
+			UNTIL
+		drop 
+		drop 
+		zero,rts									; likely bad directory
+;
+; FAT.find-file ( addr n -- dirSector dirOffset firstCluster size flags TRUE | FALSE, find from current directory)
+FAT.find-file.LF	dc.l	FAT.string2filename.NF
+FAT.find-file.NF	dc.b	13 128 +
+			dc.s	FAT.find-file
+FAT.find-file.SF	dc.w	FAT.find-file.Z FAT.find-file.CF del
+FAT.find-file.CF	#.w	FAT.CurrentDirectory 
+		fetch.l 
+		rot 
+		rot
+		over 
+		+ 
+		1- 
+		dup 
+		>R 
+		over 								( cluster startAddr endAddr startAddr R:endAddr-1)
+		over
+		over
+		-
+		IF
+			DO							( cluster startAddr R: LOOP endAddr-1)
+				i 
+				fetch.b 
+				dup 
+				#.b	92 
+				= 
+				swap 
+				#.b	47 
+				= 
+				or 
+				IF 
+					i 
+					over 
+					-					( cluster Addr n)
+					CALL	FAT.find-file-local 
+					IF 
+						dup 
+						#.b	15 
+						and 
+						#.b	15 
+						<> 
+						swap 
+						#.b	16 
+						= 
+						and 
+						IF					; is a directory
+							drop 
+							nip 
+							nip 
+							?dup 
+							0= 
+							IF 				; root directory adjustment
+								#.w	FAT.RootClus 
+								fetch.l 
+							THEN		
+							i 
+							1+			( newCluster newAddr)
+						ELSE					; cannot parse filepath - not a directory
+							UNLOOP 
+							R> 
+							drop 
+							drop 
+							drop 
+							drop 
+							drop 
+							zero 
+							rts	
+					THEN
+				ELSE						; cannot parse filepath - not found
+					UNLOOP 
+					R> 
+					drop 
+					zero 
+					rts				
+				THEN
+			THEN
+			LOOP							( cluster Addr R:endAddr-1)
+		ELSE
+			drop
+			drop
+		THEN
+		dup 
+		fetch.b 
+		dup 
+		#.b	92 
+		= 
+		swap 
+		#.b	47 
+		= 
+		or 
+		IF 
+			R> 						( cluster addr 0)	; n=0 will be interpreted as ".."
+			drop 
+			zero						
+		ELSE
+			R> 
+			1+ 
+			over 
+			- 						( cluster addr n)
+		THEN
+		CALL	FAT.find-file-local 	
+FAT.find-file.Z	rts
+;
+; EX
+; FAT.load-file ( addr firstCluster --, load a file to addr given the first cluster, cluster by cluster)
+FAT.load-file.LF	dc.l	FAT.find-file.NF
+FAT.load-file.NF	dc.b	13 128 +
+			dc.s	FAT.load-file
+FAT.load-file.SF	dc.w	FAT.load-file.Z FAT.load-file.CF del
+FAT.load-file.CF	BEGIN						
+			dup 
+			>R					( addr currentCluster R:currentCluster)
+			CALL	FAT.Clus2Sec.CF		( addr firstSec R:currentCluster)
+			dup 
+			#.w	FAT.SecPerClus 
+			fetch.l 
+			+ 
+			swap					( addr lastSec firstSec R:currentCluster)
+			DO
+				dup 
+				i 
+				CALL SD.read-sector.cf		
+				#.w	512 
+				+				( addr)
+			LOOP
+			R>					( addr currentCluster)
+			CALL	FAT.get-fat.CF		( addr nextCluster)
+			dup 
+			#.l	hex 0FFFFFFF 			; End-of-clusters mark
+			=					( addr nextCluster flag) 	
+		UNTIL
+		drop 
+FAT.load-file.Z	drop,rts
+;
+; include ( "FILEPATH" --)
+include.LF	dc.l	FAT.load-file.NF
+include.NF	dc.b	7 128 +
+		dc.s	include
+include.SF	dc.w 	include.Z include.CF del
+include.CF	#.b	32 
+		CALL	word.cf
+		CALL	count.cf 
+		CALL	FAT.find-file.CF 			( dirSector dirOffset firstCluster size flags TRUE | FALSE)
+		IF
+			drop 
+			>R 
+			nip 
+			nip 
+			#.l	hex 00FF0000 			; addr is 64K below top of memory
+			dup 
+			rot					( addr addr firstCluster R:size)			
+			CALL	FAT.load-file.CF 		( addr R:size)
+			R> 
+			CALL	evaluate.cf 			( )
+		ELSE
+			#.b	4 
+			CALL	ERROR.CF
+		THEN
+include.Z		rts
+;
+; FAT variables
+FAT.RsvdSecCnt		dc.l	0		; number of reserved sectors
+FAT.FirstDataSector		dc.l	0		; first sector after FAT
+FAT.FATinBuf			dc.l	0		; the currently buffered FAT sector
+;
+FAT.SecPerClus.LF		dc.l	include.NF
+FAT.SecPerClus.NF		dc.b	14 128 +
+				dc.s	FAT.SecPerClus
+FAT.SecPerClus.SF		dc.w	FAT.SecPerClus.Z FAT.SecPerClus.CF del
+FAT.SecPerClus.CF		#.w	FAT.SecPerClus
+FAT.SecPerClus.Z		rts
+FAT.SecPerClus		dc.l	0	; sectors per cluster
+;
+FAT.TotalSectors.LF		dc.l	FAT.SecPerClus.NF
+FAT.TotalSectors.NF		dc.b	16 128 +
+				dc.s 	FAT.TotalSectors
+FAT.TotalSectors.SF		dc.w	FAT.TotalSectors.Z FAT.TotalSectors.CF del
+FAT.TotalSectors.CF		#.w	FAT.TotalSectors
+FAT.TotalSectors.Z		rts
+FAT.TotalSectors		dc.l 	0	; total sectors on the disk
+;
+FAT.NextFreeCluster.LF	dc.l	FAT.TotalSectors.NF
+FAT.NextFreeCluster.NF	dc.b	19 128 +
+				dc.s	FAT.NextFreeCluster
+FAT.NextFreeCluster.SF	dc.w	FAT.NextFreeCluster.Z FAT.NextFreeCluster.CF del
+FAT.NextFreeCluster.CF	#.w 	FAT.NextFreeCluster
+FAT.NextFreeCluster.Z	rts
+FAT.NextFreeCluster		dc.l 	0	; where to look for the next free cluster
+;
+FAT.CurrentDirectory.LF	dc.l	FAT.NextFreeCluster.NF
+FAT.CurrentDirectory.NF	dc.b	20 128 +	
+				dc.s	FAT.CurrentDirectory
+FAT.CurrentDirectory.SF	dc.w	FAT.CurrentDirectory.Z FAT.CurrentDirectory.CF del
+FAT.CurrentDirectory.CF	#.w	FAT.CurrentDirectory
+FAT.CurrentDirectory.Z	rts
+FAT.CurrentDirectory		dc.l 	0	; cluster number of current directory
+;
+FAT.RootClus.LF		dc.l	FAT.CurrentDirectory.NF
+FAT.RootClus.NF		dc.b	12 128 +
+				dc.s	FAT.RootClus
+FAT.RootClus.SF		dc.w	FAT.RootClus.Z FAT.RootClus.CF del
+FAT.RootClus.CF		#.w	FAT.RootClus
+FAT.RootClus.Z		rts
+FAT.RootClus			dc.l 	0	; first cluster of root directory
+;
+FAT.buf.LF			dc.l	FAT.RootClus.NF
+FAT.buf.NF			dc.b	7 128 +
+				dc.s	FAT.buf
+FAT.buf.SF			dc.w	FAT.buf.Z FAT.buf.CF del
+FAT.buf.CF			#.l	_FAT.buf
+FAT.buf.Z			rts
+;
+; -----------------------------------------------------------------------------------------------------------
+; FORTH CORE DICTIONARY
+; -----------------------------------------------------------------------------------------------------------
+;
+; RESET ( --)
+RESET.LF	dc.l	FAT.buf.NF
+RESET.NF	dc.b	5 128 +
+		dc.b	char T char E char S char E char R
+RESET.SF	dc.w	RESET.Z RESET.CF del
+RESET.CF	#.w	END
+		#.w	HERE_
+		store.l
+		#.w	_END
+		#.w	HERE1
+		store.l
+		#.w	LAST.NF
+		#.w	LAST-NF
+		store.l
+		#.b	10
+		#.w 	BASE_
+		store.l
+		#.w	START.CF
+		jsr
+RESET.Z	rts
+;
+ACCEPT.LF	dc.l	RESET.NF
 ACCEPT.NF	dc.b	6 128 +
 		dc.b	char T char P char E char C char C char A
 ACCEPT.SF	dc.w	ACCEPT.Z ACCEPT.CF del
@@ -526,59 +2616,59 @@ UPPER.CF	dup			( char char)
 		THEN	
 UPPER.Z	rts
 ;
-; Convert a single character to a number in the given base.
-; DIGIT   ( char base -- n true | char false )
+; Convert a single character to a number in the current base.
+; DIGIT   ( char -- n true | char false )
 DIGIT.LF	dc.l	UPPER.NF
 DIGIT.NF	dc.b	5 128 +
 		dc.b	char T char I char G char I char D
 DIGIT.SF	dc.w	DIGIT.Z DIGIT.CF del
-DIGIT.CF	>R			( R: base)
-; convert char lower to upper
-		#.w	UPPER.CF
-		jsr			( CHAR R: base)
+DIGIT.CF	#.w	UPPER.CF
+		jsr			( CHAR)	; convert char lower to upper
 ; deal with alphanumerics
-	dup 				( char char)
-	dup 				( char char char)
-	#.b char A 			( char char A)
-	1- 
-	>				( char char flag)
-	IF 				; alphabetic 
-		#.b char A 
-		- 
-		#.b char 9
-		+ 
-		1+			( char n)
-	ELSE 				; numeric
-		dup 			( char char char)
-		#.b char 9 
-		>			( char n flag)
-		IF	; between 9 and A is bad
-			drop 0 	( char 0) ; trigger error below
-		THEN			
-	THEN
-; convert modified ASCII value to number
-	#.b char 0 			( char n '0')
-	-				( char n)
-	dup 				( char n n)
-	R> 				( char n n base)
-	<
-; check validity
-	IF 				; within base range
-		dup 			( char n n)
-		1+ 			( char n n)
-		0>			( char n flag)
-		IF 			; a valid digit
-			nip 		( n)
-			zero		
-			not		( n true)
-		ELSE 			; not a valid digit
-			drop 
-			zero		( char false)
+		dup 				( char char)
+		dup 				( char char char)
+		#.b char A 			( char char char A)
+		1- 
+		>				( char char flag)
+		IF 				; alphabetic 
+			#.b char A 
+			- 
+			#.b char 9
+			+ 
+			1+			( char n)
+		ELSE 				; numeric
+			dup 			( char char char)
+			#.b char 9 
+			>			( char n flag)
+			IF	; between 9 and A is bad
+				drop 	 	( char) 
+				zero		( char 0) ; trigger error below
+			THEN			
 		THEN
-	ELSE 				; out of base range
-		drop 			( char)
-		zero			( char false)
-	THEN
+; convert modified ASCII value to number
+		#.b char 0 			( char n '0')
+		-				( char n)
+		dup 				( char n n)
+		#.w BASE_ 	
+		fetch.l			( char n n base)
+		<
+; check validity
+		IF 				; within base range
+			dup 			( char n n)
+			1+ 			( char n n)
+			0>			( char n flag)
+			IF 			; a valid digit
+				nip 		( n)
+				zero		
+				not		( n true)
+			ELSE 			; not a valid digit
+				drop 
+				zero		( char false)
+			THEN
+		ELSE 				; out of base range
+			drop 			( char)
+			zero			( char false)
+		THEN
 DIGIT.Z	rts		
 ;
 ; D+ 	(ud1 ud2 -- ud3)  double precision arithmetic
@@ -586,26 +2676,50 @@ D+.LF		dc.l	DIGIT.NF
 D+.NF		dc.b	2 128 +
 		dc.b	char + char D
 D+.SF		dc.w	D+.Z D+.CF del
-D+.CF		>R
+D+.CF		#.w	intmask		; disable interrupts to protect ADDX flag
+		dup
+		fetch.b
+		>R
+		zero
+		swap 
+		store.b
+; D+ code
+		>R
 		SWAP
 		>R
 		+
 		R>
 		R>
-D+.Z		ADDX,rts
+		ADDX
+		R>
+		#.w	intmask
+		store.b
+D+.Z		rts
 ;
 ; D- 	(ud1 ud2 -- ud3)  double precision arithmetic
 D-.LF		dc.l	D+.NF
 D-.NF		dc.b	2 128 +
 		dc.b	char - char D
 D-.SF		dc.w	D-.Z D-.CF del
-D-.CF		>R
+D-.CF		#.w	intmask		; disable interrupts to protect SUBX flag
+		dup
+		fetch.b
+		>R
+		zero
+		swap 
+		store.b
+; D- code	
+		>R
 		SWAP
 		>R
 		-
 		R>
 		R>
-D-.Z		SUBX,rts
+		SUBX
+		R>
+		#.w	intmask
+		store.b
+D-.Z		rts
 ;
 ; >NUMBER ( ud1 c-addr1 u1 -- ud2 c-addr2 u2 , convert till bad char , CORE )
 >NUMBER.LF	dc.l	D-.NF
@@ -619,8 +2733,8 @@ D-.Z		SUBX,rts
 		IF
 			dup 		( ud c-addr c-addr)
 			fetch.b 	( ud c-addr char)
-			#.w BASE_ 	
-			fetch.l	( ud c-addr char base)
+;			#.w BASE_ 	
+;			fetch.l	( ud c-addr char base)
 			#.w DIGIT.CF  
 			jsr		( ud c-addr , n true | char false)
 			IF		; is a digit
@@ -1549,8 +3663,6 @@ EVALUATE.CF	>R
 		jsr
 EVALUATE.Z	rts
 ;
-; FORTH words with direct instructions
-;
 NOP.LF		dc.l	EVALUATE.NF
 NOP.NF		dc.b	3 128 +
 		dc.b	char P char O char N
@@ -1624,14 +3736,14 @@ R@.CF		R@
 I.LF		dc.l	R@.NF
 I.NF		dc.b	1 128 +
 		dc.b	char I
-I.SF		dc.w	2
+I.SF		dc.w	2 MUSTINLINE +
 I.CF		R@
 		rts
 ;
 J.LF		dc.l	I.NF
 J.NF		dc.b	1 128 +
 		dc.b	char J
-J.SF		dc.w	J.Z J.CF del
+J.SF		dc.w	J.Z J.CF del MUSTINLINE +
 J.CF		R>	( I R:L1 J L2)
 		R>	( I L1 R:J L2)
 		R@	( I L1 J R:J L2)
@@ -1703,16 +3815,22 @@ NEGATE.CF	negate,rts
 2/.SF		dc.w	1
 2/.CF		2/,rts
 ;
-M*.LF		dc.l	2/.NF
+U2/.LF		dc.l	2/.NF
+U2/.NF		dc.b 	3 128 +
+		dc.s	U2/
+U2/.SF		dc.w	1
+U2/.CF		lsr,rts
+;
+M*.LF		dc.l	U2/.NF
 M*.NF		dc.b	2 128 +
-		dc.b 	char M char * 
+		dc.s 	M*
 M*.SF		dc.w	2
 M*.CF		mults
 		rts
 ;
 UM*.LF		dc.l	M*.NF
 UM*.NF		dc.b	3 128 +
-		dc.b 	char U char M char * 
+		dc.s 	UM*
 UM*.SF		dc.w	2
 UM*.CF		multu
 		rts
@@ -1839,7 +3957,20 @@ FALSE.NF	dc.b	5 128 +
 FALSE.SF	dc.w	1
 FALSE.CF	false,rts
 ;
-TRUE.LF	dc.l	FALSE.NF
+0.LF		dc.l	FALSE.NF
+0.NF		dc.b	1 128 +
+		dc.s	0
+0.SF		dc.w	1
+0.CF		false,rts
+;
+-1.LF		dc.l	0.NF
+-1.NF		dc.b	2 128 +
+		dc.s	-1
+-1.SF		dc.w	2		
+-1.CF		zero
+		0=,rts
+;
+TRUE.LF	dc.l	-1.NF
 TRUE.NF	dc.b	4 128 +
 		dc.b	char E char U char R char T
 TRUE.SF	dc.w	2
@@ -2317,27 +4448,6 @@ HEAD.CF	#.w	HERE_
 		dup			( addr NF NF)
 		#.w 	LAST-NF	( addr NF NF &LAST-NF)
 		store.l		( addr NF)		; save Name Field in LAST-NF
-; the prior version of HEAD copied the name string from the parse buffer
-;		>R			( addr R:NF)
-;		#.w	COUNT.CF
-;		jsr			( c-addr u R:NF)
-;		dup			( c-addr u u R:NF)
-;		#.b	128		( c-addr u u 128 R:NF)
-;		or			( c-addr u u' R:NF)	; set precedence bit in Name Field
-;		R@			( c-addr u u NF R:NF)
-;		store.b		( c-addr u R:NF)	; save string size in Name Field
-;		R>			( c-addr u NF)
-;		over			( c-addr u NF u)
-;		over			( c-addr u NF u NF)
-;		+		
-;		1+			( c-addr u NF SF)
-;		>R			( c-addr u NF R:SF)
-;		1+			( c-addr u NF+1 R:SF)
-;		swap			( c-addr NF+1 u R:SF)
-;		#.w	MOVE.CF				; copy string in Name Field
-;		jsr			( R:SF)
-;		R>			( SF)
-;		dup			( SF SF)
 		dup			( NF NF)
 		fetch.b		( NF len)
 		dup		
@@ -2770,15 +4880,6 @@ CONSTANT.CF	#.w	COLON.CF				; initiate the word
 		jsr
 		#.w	SEMICOLON.CF				; finish the word
 		jsr
-;	traditional, CREATE, version of CONSTANT is inefficient
-;	because at run-time the PFA is placed on stack and then the literal is called from there
-;		#.w	CREATE.CF
-;		jsr
-;		#.w	COMMA.CF
-;		jsr
-;		#.w	DOES>.CF
-;		jsr
-;		fetch.l
 CONSTANT.Z	rts
 ;
 ; IMMEDIATE , mark the most recently defined word as IMMEDIATE
@@ -3400,10 +5501,6 @@ BRA.Z		drop,rts
 \.NF		dc.b	1 128 + IMMED +
 		dc.b	92					; char \
 \.SF		dc.w	\.Z \.CF del
-;\.CF		#.w	IN_LEN
-;		fetch.l
-;		#.w	>IN_
-;		store.l
 \.CF		#.b	EOL					; end of line
 		#.w	WORD.CF
 		jsr
@@ -3495,7 +5592,7 @@ BUFFER:.CF	1+
 		store.l						; update the position of the SDRAM data pointer
 BUFFER:.Z	rts
 ;
-; SBUFFER: ( n --), create a storate table in SDRAM
+; SBUFFER: ( n --), create a storage table in SDRAM
 SBUFFER:.LF	dc.l	BUFFER:.NF
 SBUFFER:.NF	dc.b	8 128 +
 		dc.b	58 char R char E char F char F char U char B char S
@@ -3573,850 +5670,7 @@ IS.Z		rts
 		jsr
 ?.Z		rts
 ;
-;PS2DECODE ( raw -- ascii)
-PS2FLAGS	dc.b	0						; modifier flags
-SHIFT_FLAG 	EQU 	1
-CAPS_FLAG	EQU 	2
-ALT_FLAG	EQU	4
-CTRL_FLAG	EQU	8
-CTRL_STATE	EQU	16
-SPECIAL_FLAG	EQU	32
-UP_FLAG	EQU	64
-;
-PS2DECODE.LF	dc.l	?.NF
-PS2DECODE.NF	dc.b	9 128 +
-		dc.b	char E char D char O char C char E char D char 2 char S char P
-PS2DECODE.SF	dc.w	PS2DECODE.Z PS2DECODE.CF del
-PS2DECODE.CF	#.b	hex 12	( raw 12)			; LEFT SHIFT
-		over		( raw 12 raw)
-		=		( raw flag)
-		over		( raw flag raw)
-		#.b	hex 59	( raw flag raw 59)		; RIGHT SHIFT
-		=		( raw flag flag)
-		or		( raw flag)
-		IF
-			drop
-			zero
-			#.b	SHIFT_FLAG	( zero SHIFT)
-		ELSE
-			
-			#.b	hex 11		( raw 11)		; ALT
-			over			( raw 11 raw)
-			=			( raw flag)
-			IF
-				drop
-				zero
-				#.b	ALT_FLAG	( zero ALT)
-			ELSE
-				#.b	hex 14		( raw 14)		; CTRL
-				over			( raw 14 raw)
-				=			( raw flag)
-				IF
-					drop
-					zero
-					#.b	CTRL_FLAG	( zero CTRL)
-				ELSE
-					#.b	hex 58		( raw 58)		; CAPS LOCK
-					over			( raw 58 raw)
-					=			( raw flag)
-						IF
-							drop
-							zero
-							#.b	CAPS_FLAG	( zero CAPS)
-						ELSE
-							#.b	hex E0		( raw E0)		; SPECIAL
-							over			( raw E0 raw)
-							=			( raw flag)						
-						IF
-							drop
-							zero
-							#.b	SPECIAL_FLAG	( SPECIAL)
-						ELSE						
-							#.b	hex F0		( raw F0)		; UP
-							over			( raw F0 over)
-							=			( raw flag)
-							IF						
-								drop
-								zero
-								#.b	UP_FLAG	( zero UP)							
-							ELSE				( raw)		; process keystroke	
-								#.w	PS2FLAGS
-								fetch.b		( raw FLAGS)
-								dup			( raw FLAGS FLAGS)
-								#.b	UP_FLAG
-								and			( raw FLAGS UPtest)
-								IF						; ignore if an upstroke
-									drop
-									drop
-									zero
-								ELSE			( raw FLAGS)		; lookup table reference
-									swap		( FLAGS raw)
-									over		( FLAGS raw FLAGS)
-									#.b	SHIFT_FLAG CAPS_FLAG or
-									and		( FLAGS raw ifShiftCaps)
-									dup
-									#.b	1
-									=
-									swap
-									#.b	2
-									=
-									or
-									IF						
-										#.w	PS2ASCII 118 +
-									ELSE										
-										over
-										#.b	SPECIAL_FLAG
-										and	( flags raw ifSpecial)
-										IF
-											dup
-											#.b 74
-											=
-											IF
-												#.w	PS2ASCII 138 +
-											ELSE
-												dup
-												#.b	90
-												=
-												IF
-													#.w	PS2ASCII 123 +
-												ELSE
-													#.w	PS2ASCII 109 +
-												THEN
-											THEN
-										ELSE
-											#.w	PS2ASCII
-										THEN
-									THEN
-									+			
-									fetch.b		( flags ASCII)	
-									over			( flags ASCII flags)	; CTRL modifier
-									#.b	CTRL_FLAG	
-									and			( flags ASCII ifCTRL)
-									IF
-										#.b	96
-										-		( flags ASCII')
-									THEN
-									swap			( ASCII flags)	; ALT modifier
-									#.b	ALT_FLAG	
-									and			( ASCII ifCTRL)
-									IF
-										#.b	128
-										+		( ASCII')
-									THEN	
-									dup			( ASCII ASCII)	; check validity
-									0<			( ASCII flag)
-									IF
-										drop
-										zero
-									THEN
-								THEN
-								zero			( ASCII zero)
-							THEN
-						THEN
-					THEN
-				THEN
-			THEN
-		THEN			( zero flag)		; process a modifier
-		#.w	PS2FLAGS				; update modifier flags
-		dup			( flag &FLAGS &FLAGS)
-		>R			( flag &FLAGS R:&FLAGS)
-		fetch.b		( flag FLAGS)
-		#.b	SPECIAL_FLAG 	invert			; remove prior SPECIAL flag
-		and			( flag FLAGS')					
-		#.b	UP_FLAG					; test if last code was UP
-		over
-		and			( flag FLAGS testUP)
-		IF							; switch off modifier when key UP
-			over		( flag FLAGS flag)
-			#.b	CAPS_FLAG
-			and
-			IF						; ignore caps	
-				nip		( FLAGS)
-			ELSE
-				swap		( FLAGS flag)
-				invert		( FLAGS ~flag)		; remove modifier
-				and		( FLAGS')				
-			THEN
-				#.b		UP_FLAG invert		; remove prior UP flag
-				and		( FLAGS')
-		ELSE							; switch on modifier otherwise
-			over		( flag FLAGS flag)
-			#.b	CAPS_FLAG
-			and
-			IF						; toggle caps
-				xor		( FLAGS')
-			ELSE						; set other modifiers
-				or		( FLAGS')
-			THEN
-		THEN
-		R>			( FLAGS' &FLAGS)
-		store.b	
-PS2DECODE.Z	rts			( zero)
-;
-PS2ASCII    dc.b 0
- dc.b 22
- dc.b 0
- dc.b 18
- dc.b 16
- dc.b 14
- dc.b 15
- dc.b 25
- dc.b 0
- dc.b 23
- dc.b 21
- dc.b 19
- dc.b 17
- dc.b 9
- dc.b 96
- dc.b 0
- dc.b 0
- dc.b 0
- dc.b 0
- dc.b 0
- dc.b 0
- dc.b 113
- dc.b 49
- dc.b 0
- dc.b 0
- dc.b 0
- dc.b 122
- dc.b 115
- dc.b 97
- dc.b 119
- dc.b 50
- dc.b 0
- dc.b 0
- dc.b 99
- dc.b 120
- dc.b 100
- dc.b 101
- dc.b 52
- dc.b 51
- dc.b 0
- dc.b 0
- dc.b 32
- dc.b 118
- dc.b 102
- dc.b 116
- dc.b 114
- dc.b 53
- dc.b 0
- dc.b 0
- dc.b 110
- dc.b 98
- dc.b 104
- dc.b 103
- dc.b 121
- dc.b 54
- dc.b 0
- dc.b 0
- dc.b 0
- dc.b 109
- dc.b 106
- dc.b 117
- dc.b 55
- dc.b 56
- dc.b 0
- dc.b 0
- dc.b 44
- dc.b 107
- dc.b 105
- dc.b 111
- dc.b 48
- dc.b 57
- dc.b 0
- dc.b 0
- dc.b 46
- dc.b 47
- dc.b 108
- dc.b 59
- dc.b 112
- dc.b 45
- dc.b 0
- dc.b 0
- dc.b 0
- dc.b 39
- dc.b 0
- dc.b 91
- dc.b 61
- dc.b 0
- dc.b 0
- dc.b 0
- dc.b 0
- dc.b 10
- dc.b 93
- dc.b 0
- dc.b 92
- dc.b 0
- dc.b 0
- dc.b 0
- dc.b 0
- dc.b 0
- dc.b 0
- dc.b 0
- dc.b 0
- dc.b 8
- dc.b 0
- dc.b 0
- dc.b 49
- dc.b 0
- dc.b 52
- dc.b 55
- dc.b 0
- dc.b 0
- dc.b 0
- dc.b 48
- dc.b 46
- dc.b 50
- dc.b 53
- dc.b 54
- dc.b 56
- dc.b 27
- dc.b 0
- dc.b 24
- dc.b 43
- dc.b 51
- dc.b 45
- dc.b 42
- dc.b 57
- dc.b 0
- dc.b 0
- dc.b 0
- dc.b 0
- dc.b 0
- dc.b 20
- dc.b 126
- dc.b 0
- dc.b 0
- dc.b 0
- dc.b 0
- dc.b 0
- dc.b 0
- dc.b 81
- dc.b 33
- dc.b 0
- dc.b 0
- dc.b 0
- dc.b 90
- dc.b 83
- dc.b 65
- dc.b 87
- dc.b 64
- dc.b 0
- dc.b 0
- dc.b 67
- dc.b 88
- dc.b 68
- dc.b 69
- dc.b 36
- dc.b 35
- dc.b 0
- dc.b 0
- dc.b 32
- dc.b 86
- dc.b 70
- dc.b 84
- dc.b 82
- dc.b 37
- dc.b 0
- dc.b 0
- dc.b 78
- dc.b 66
- dc.b 72
- dc.b 71
- dc.b 89
- dc.b 94
- dc.b 0
- dc.b 0
- dc.b 0
- dc.b 77
- dc.b 74
- dc.b 85
- dc.b 38
- dc.b 42
- dc.b 0
- dc.b 0
- dc.b 60
- dc.b 75
- dc.b 73
- dc.b 79
- dc.b 41
- dc.b 40
- dc.b 0
- dc.b 0
- dc.b 62
- dc.b 63
- dc.b 76
- dc.b 58
- dc.b 80
- dc.b 95
- dc.b 0
- dc.b 0
- dc.b 0
- dc.b 34
- dc.b 0
- dc.b 123
- dc.b 43
- dc.b 0
- dc.b 0
- dc.b 0
- dc.b 0
- dc.b 10
- dc.b 125
- dc.b 0
- dc.b 124
- dc.b 47
- dc.b 10
- dc.b 3
- dc.b 0
- dc.b 6
- dc.b 12
- dc.b 0
- dc.b 0
- dc.b 0
- dc.b 11
- dc.b 127
- dc.b 5
- dc.b 0
- dc.b 7
- dc.b 4
- dc.b 0
- dc.b 0
- dc.b 0
- dc.b 0
- dc.b 30
- dc.b 0
- dc.b 0
- dc.b 29
-;
-;KKEY.LF	dc.l	PS2DECODE.NF
-;KKEY.NF	dc.b	4 128 +
-;		dc.b	char Y char E char K char K
-;KKEY.SF	dc.w	KKEY.Z KKEY.CF del
-;KKEY.CF	BEGIN
-;			#.w	EKEY.CF
-;			jsr
-;			#.w	PS2DECODE.CF
-;			jsr
-;			?dup
-;		UNTIL
-;KKEY.Z		rts	
-;
-; CSR_ADDR ( -- addr, return current cursor address)
-CSR-ADDR.LF	dc.l	PS2DECODE.NF
-CSR-ADDR.NF	dc.b	8 128 +
-		dc.b	char R char D char D char A char - char R char S char C
-CSR-ADDR.SF	dc.w	CSR-ADDR.Z CSR-ADDR.CF del
-CSR-ADDR.CF	#.w	CSR-X			
-		fetch.l
-		lsl
-		#.w	CSR-Y
-		fetch.l
-		#.w	COLS
-		fetch.b
-		2*
-		mults
-		drop
-		+
-		#.w	TEXT_ZERO
-		fetch.l
-CSR-ADDR.Z	+,rts				( addr)
-;	
-; CSR-PLOT ( c --, plot literal character at the current cursor position)
-CSR-PLOT.LF	dc.l	CSR-ADDR.NF
-CSR-PLOT.NF	dc.b	8 128 +
-		dc.b	char T char O char L char P char - char R char S char C
-CSR-PLOT.SF	dc.w	CSR-PLOT.Z CSR-PLOT.CF del
-CSR-PLOT.CF	#.w	INK
-		fetch.w			( _c c_)
-		or				( w)
-		#.w	CSR-ADDR.CF
-		jsr				( w addr)
-		store.w
-CSR-PLOT.Z	rts		
-;
-; CSR-ON
-CSR-ON.LF	dc.l	CSR-PLOT.NF
-CSR-ON.NF	dc.b	6 128 +
-		dc.b	char N char O char - char R char S char C
-CSR-ON.SF	dc.w	CSR-ON.Z CSR-ON.CF del
-CSR-ON.CF	#.b	char _			( c)
-		#.w	CSR-ADDR.CF
-		jsr				
-		1+				( c addr)	; address of character
-		dup				( c addr addr)
-		fetch.b			( c addr char)
-		#.w	CSR			( c addr char csr)
-		store.b			( c addr)
-		store.b		
-CSR-ON.Z	rts
-; saved byte underneath cursor
-CSR		dc.b	32
-;
-CSR-OFF.LF	dc.l	CSR-ON.NF
-CSR-OFF.NF	dc.b	7 128 +
-		dc.b	char F char F char O char - char R char S char C
-CSR-OFF.SF	dc.w	CSR-OFF.Z CSR-ON.Z del
-CSR-OFF.CF	#.w	CSR
-		fetch.b			( char)
-		#.w	CSR-ADDR.CF		
-		jsr
-		1+				( char addr)
-		store.b
-CSR-OFF.Z	rts
-;
-;SCROLL	(n -- flag, scroll the screen fwd or back n lines.  returns true if out of range)
-SCROLL.LF	dc.l	CSR-OFF.NF
-SCROLL.NF	dc.b	6 128 +
-		dc.b	char L char L char O char R char C char S
-SCROLL.SF	dc.w	SCROLL.Z SCROLL.CF del
-SCROLL.CF	#.w	COLS				
-		fetch.b
-		2*				; width of the screen including color bytes
-		mults
-		drop				( delta)
-		#.w	TEXT_ZERO
-		fetch.l			( delta current)	
-		+				( new)
-		dup				( new new)		; check bottom of range
-		#.l	_TEXT_ZERO		( new new base)	
-		<				( new flag)
-		IF							; below bottom of range
-			drop
-			#.l	_TEXT_ZERO
-			zero
-			0=			( new true)
-		ELSE
-			dup				( new new)		; check top of range
-			#.l	_TEXT_ZERO
-			#.w	COLS
-			fetch.b
-			2*
-			#.w	ROWS
-			fetch.b
-			multu
-			drop
-			+				( new new base)
-			dup				( new new base base)
-			rot				( new base base new)
-			<				( new base flag)
-			IF							; above top of range
-					nip
-					zero
-					0=			( base true)	
-			ELSE
-					drop
-					zero			( new false)
-			THEN
-		THEN
-		swap				( result new)
-		#.w	TEXT_ZERO
-		store.l
-SCROLL.Z	rts		
-;
-; clear screen, internal word
-{CLS}.CF	#.l	_TEXT_ZERO		( start start)		; clear screen memory	
-		dup
-		#.w	15000			( start start 15000)			; number of words in 2 screens
-		#.w	PALETTE 4 +
-		fetch.b
-		#.w 	256
-		multu				
-		drop				( start start 15000 color)		; fill word
-		#.w	FILL.W.CF	
-		jsr				( start)
-		#.w	TEXT_ZERO					; reset pointer to TEXT_ZERO
-		store.l
-		zero							; reset cursor position
-		#.w	CSR-X
-		store.l	
-		zero
-		#.w	CSR-Y
-		store.l
-{CLS}.Z	rts		
-;
-CLS.LF		dc.l	SCROLL.NF
-CLS.NF		dc.b	3 128 +
-		dc.b	char S char L char C
-CLS.SF		dc.w	CLS.Z CLS.CF	del
-CLS.CF		#.w	{CLS}.CF
-		jsr
-CLS.Z		rts
-;
-; SCRSET ( --, set the ROWS and COLS according to the video mode)
-SCRSET.LF	dc.l	CLS.NF
-SCRSET.NF	dc.b	6 128 +
-		dc.b	char T char E char S char R char C char S
-SCRSET.SF	dc.w	SCRSET.Z SCRSET.CF del
-SCRSET.CF	#.w	mode			; check screen mode
-		fetch.b
-		#.b	binary 00011000
-		and
-		lsr
-		lsr				( v) ; v is 0, 2, 4, 6
-		#.w	SCRSET
-		+
-		dup
-		fetch.b			; pickup the columns
-		#.w	COLS
-		store.b			; save the variable
-		1+
-		fetch.b			
-		#.w	ROWS			
-		store.b
-SCRSET.Z	rts	
-SCRSET		dc.b	60 80			; VGA, interlace off, ROWS, COLUMNS
-		dc.b	48 80			; VGA, interlace on
-		dc.b	75 100			; SVGA, interlace off
-		dc.b	60 100			; SVGA, interlace on
-;
-; NEWLINE ( --, implement a newline)
-NEWLINE.LF	dc.l	SCRSET.NF
-NEWLINE.NF	dc.b	7 128 +
-		dc.b	char E char N char I char L char W char E char N
-NEWLINE.SF	dc.w	NEWLINE.Z NEWLINE.CF del
-NEWLINE.CF	#.w	CSR-Y
-		fetch.l
-		dup				( y y)
-		#.w	ROWS
-		fetch.b
-		1-
-		=				( y flag)		; test if the cursor is at the bottom of the screen or not
-		IF							; cursor is bottom of screen
-			drop			(  --)
-			#.b	1
-			#.w 	SCROLL.CF				; SCROLL forwards 1 row
-			jsr			( flag)
-			IF						; SCROLL returned true, indicating that the screen page is now at the bottom of the buffer
-				#.w	TEXT_ZERO			; Step 1 is to copy the current screen to the top of the buffer
-				fetch.l
-				#.w	COLS
-				fetch.b
-				2*
-				+						; source for copy begins one line from top of page
-				#.l	_TEXT_ZERO				; destination
-				#.w	14800					; size = maximum full screen less the top line
-				#.w	MOVE.CF				; copy screen contents to top of buffer
-				jsr
-				#.w	ROWS				; Step 2 is to blank the rest of the buffer
-				fetch.b				( rows)
-				1-					( rows-1)
-				#.w	COLS
-				fetch.b				( rows-1 cols)
-				2*					( rows-1 col-bytes)
-				multu
-				drop					( bytes)
-				#.l	_TEXT_ZERO
-				+					( s-addr);  start address at the last line of the first page
-				dup					( s-addr s-addr)
-				#.l 	_TEXT_END			( s-addr s-addr end-addr)
-				swap
-				-					( s-addr bytes)
-				2/					( s-addr words)					
-				#.w	PALETTE 4 +				; set input color (to high byte of fill word)				
-				fetch.b					
-				#.w	256
-				multu
-				drop
-				#.w	FILL.W.CF				; clear remaining screen memory
-				jsr
-				#.l	_TEXT_ZERO			; Step 3 is to reset pointer to TEXT_ZERO	
-				#.w	TEXT_ZERO			
-				store.l				
-			THEN
-		ELSE							; cursor is mid screen - simply need to go down one row
-			1+			( y')		
-			#.w 	CSR-Y		( y &ADDR)
-			store.l
-		THEN
-		zero							; zero x position
-		#.w	CSR-X
-		store.l
-NEWLINE.Z	rts
-;
-CSR-FWD.LF 	dc.l	NEWLINE.NF
-CSR-FWD.NF 	dc.b	7 128 +
-		dc.b	char D char W char F char - char R char S char C
-CSR-FWD.SF	dc.w	CSR-FWD.Z CSR-FWD.CF del
-CSR-FWD.CF	#.w	CSR-X
-		fetch.l
-		dup
-		#.w	COLS
-		fetch.b
-		1-
-		=
-		IF	
-			drop
-			#.w	NEWLINE.CF
-			jsr
-		ELSE
-			1+
-			#.w	CSR-X
-			store.l
-		THEN
-CSR-FWD.Z	rts
-;
-CSR-BACK.LF	dc.l	CSR-FWD.NF
-CSR-BACK.NF	dc.b	8 128 +
-		dc.b	char K char C char A char B char - char R char S char C
-CSR-BACK.SF	dc.w	CSR-BACK.Z CSR-BACK.CF del
-CSR-BACK.CF	#.w	CSR-X
-		fetch.l
-		?dup
-		IF
-			1-
-			#.w	CSR-X
-			store.l
-		THEN
-CSR-BACK.Z	rts
-;
-CSR-TAB.LF	dc.l	CSR-BACK.NF
-CSR-TAB.NF	dc.b	7 128 +
-		dc.b	char B char A char T char - char R char S char C
-CSR-TAB.SF	dc.w	CSR-TAB.Z CSR-TAB.CF del
-CSR-TAB.CF	#.w	CSR-X
-		fetch.l		( x)
-		#.w	TAB
-		fetch.l		( x t)
-		over
-		over			( x t x t)
-		divu	
-		drop			( x t r)
-		-
-		+
-		dup
-		#.w	COLS
-		fetch.b
-		1-
-		>
-		IF
-			drop
-			#.w	NEWLINE.CF
-			jsr
-		ELSE
-			#.w	CSR-X
-			store.l
-		THEN
-CSR-TAB.Z	rts
-;
-; {VEMITRAW} ( n --, emit a character to the VDU excluding non-printing recognition and cursor update, internal word)
-{VEMITRAW}.CF	#.w	CSR-PLOT.CF		; plot
-		jsr
-		#.w	CSR-FWD.CF		; advance cursor
-		jsr	
-		rts
-;
-; {VEMIT} (n --, emit a character to the VDU including non-priniting recognition but excluding cursor update, internal word)
-{VEMIT}.CF 	#.b	EOL
-		over
-		=
-		IF								; newline
-			drop
-			#.w 	NEWLINE.CF
-			jsr
-		ELSE
-			#.b	~EOL
-			over
-			=
-			IF							; not newline - ignore
-				drop
-			ELSE
-				#.b	8
-				over
-				=
-				IF						; backspace
-					drop
-					#.w 	CSR-BACK.CF
-					jsr
-					zero
-					#.w 	CSR-PLOT.CF
-					jsr
-				ELSE
-					#.b	9
-					over
-					=
-					IF					; tab
-						drop
-						#.w	CSR-TAB.CF
-						jsr
-					ELSE
-						#.b	12
-						over
-						=
-						IF				; clear screen
-							drop
-							#.w	{CLS}.CF
-							jsr
-						ELSE				; other literal
-							#.w	{VEMITRAW}.CF		 ; emit the literal
-							jsr	
-						THEN
-					THEN
-				THEN
-			THEN
-		THEN
-		rts
-;
-; VEMIT ( n --, emit a character to the VDU, including non-printing recognition and cursor update)
-VEMIT.LF	dc.l	CSR-TAB.NF
-VEMIT.NF	dc.b	5 128 +
-		dc.b	char T char I char M char E char V
-		dc.w	VEMIT.Z VEMIT.CF del
-VEMIT.CF	#.w	CSR-OFF.CF					; undraw cursor
-		jsr
-		#.w	{VEMIT}.CF
-		jsr
-		#.w	CSR-ON.CF					; draw cursor
-		jsr
-VEMIT.Z	rts
-;
-; VTYPERAW ( addr len, type to VDU, excluding non-printing recognition including cursor update)
-VTYPERAW.LF	dc.l	VEMIT.NF
-VTYPERAW.NF	dc.b	8 128 +
-		dc.b	char W char A char R char E char P char Y char T char V
-VTYPERAW.SF	dc.w	VTYPERAW.Z VTYPERAW.CF del
-VTYPERAW.CF	#.w	CSR-OFF.CF					; undraw cursor
-		jsr
-		?dup
-		IF
-			over			( addr len addr)
-			+			( start end)
-			swap			( end start)
-			DO
-				R@
-				fetch.b
-				#.w	{VEMITRAW}.CF
-				jsr
-			LOOP
-		THEN
-		#.w	CSR-ON.CF					; draw cursor
-		jsr
-VTYPERAW.Z	rts
-;
-; VTYPE ( addr len, type to VDU, including non-printing recognition and cursor update)
-VTYPE.LF	dc.l	VTYPERAW.NF
-VTYPE.NF	dc.b	5 128 +
-		dc.b	char E char P char Y char T char V
-VTYPE.SF	dc.w	VTYPE.Z VTYPE.CF del
-VTYPE.CF	#.w	CSR-OFF.CF					; undraw cursor
-		jsr
-		?dup
-		IF
-			over			( addr len addr)
-			+			( start end)
-			swap			( end start)
-			DO
-				R@
-				fetch.b
-				#.w	{VEMIT}.CF
-				jsr
-			LOOP
-		THEN
-		#.w	CSR-ON.CF					; draw cursor
-		jsr
-VTYPE.Z	rts
-;
-KEY?.LF	dc.l	VTYPE.NF
+KEY?.LF	dc.l	?.NF
 KEY?.NF	dc.b	4 128 +
 		dc.b	char ? char Y char E char K
 KEY?.SF	dc.w	KEY?.Z KEY?.CF del
@@ -4452,459 +5706,7 @@ TYPE.CF	#.w	TYPE_VECTOR
 		jsr
 TYPE.Z		rts
 ;
-TYPERAW.LF	dc.l	TYPE.NF
-TYPERAW.NF	dc.b	7 128 +
-		dc.b	char W char A char R char E char P char Y char T
-TYPERAW.SF	dc.w	TYPERAW.Z TYPERAW.CF del
-TYPERAW.CF	#.w	TYPERAW_VECTOR
-		fetch.l
-		jsr
-TYPERAW.Z	rts
-;
->REMOTE.LF	dc.l	TYPERAW.NF
->REMOTE.NF	dc.b	7 128 +
-		dc.b	char E char T char O char M char E char R char >
->REMOTE.SF	dc.w	>REMOTE.Z >REMOTE.CF del
->REMOTE.CF	#.w	S0EMIT.CF
-		#.w	EMIT_VECTOR
-		store.l
-		#.w	S0TYPE.CF
-		#.w	TYPE_VECTOR
-		store.l
-		#.w	S0TYPE.CF
-		#.w	TYPERAW_VECTOR
-		store.l	
->REMOTE.Z	rts	
-;
->LOCAL.LF	dc.l	>REMOTE.NF
->LOCAL.NF	dc.b	6 128 +
-		dc.b	char L char A char C char O char L char >
->LOCAL.SF	dc.w	>LOCAL.Z >LOCAL.CF del
->LOCAL.CF	#.w	VEMIT.CF
-		#.w	EMIT_VECTOR
-		store.l
-		#.w	VTYPE.CF
-		#.w	TYPE_VECTOR
-		store.l
-		#.w	VTYPERAW.CF
-		#.w	TYPERAW_VECTOR
-		store.l	
->LOCAL.Z	rts
-;	
-<LOCAL.LF	dc.l	>LOCAL.NF
-<LOCAL.NF	dc.b	6 128 +
-		dc.b	char L char A char C char O char L char <
-<LOCAL.SF	dc.w	<LOCAL.Z <LOCAL.CF del
-<LOCAL.CF	#.w	KKEY.CF
-		#.w	KEY_VECTOR
-		store.l
-		#.w	KKEY?.CF
-		#.w	KEY?_VECTOR
-		store.l
-<LOCAL.Z	rts
-;
-<REMOTE.LF	dc.l	<LOCAL.NF
-<REMOTE.NF	dc.b	7 128 +
-		dc.b	char E char T char O char M char E char R char <
-<REMOTE.SF	dc.w	<REMOTE.Z <REMOTE.CF del
-<REMOTE.CF	#.w	S0KEY.CF
-		#.w	KEY_VECTOR
-		store.l
-		#.w	S0KEY?.CF
-		#.w	KEY?_VECTOR
-		store.l
-<REMOTE.Z	rts
-;		
-COLOR-TABLE.LF dc.l	<REMOTE.NF
-COLOR-TABLE.NF dc.b	11 128 +
-		 dc.b char E char L char B char A char T char - char R char O char L char O char C
-COLOR-TABLE.SF dc.w	COLOR-TABLE.Z COLOR-TABLE.CF del
-COLOR-TABLE.CF #.w	CR.CF
-		 jsr
-		 #.w	256
-		 zero
-		 DO
-			R@
-			#.w	INK
-			store.b
-			R@
-			#.w 	DOT.CF
-			jsr
-			#.w	SPACE.CF
-			jsr
-		LOOP
-		#.w	PALETTE 1 +
-		fetch.b
-		#.w	INK
-		store.b
-COLOR-TABLE.Z	rts
-;
-; LOAD ( c-addr n -- len true | false, load a file into the buffer)
-LOAD.LF	dc.l	COLOR-TABLE.NF
-LOAD.NF	dc.b	4 128 +
-		dc.b	char D char A char O char L
-LOAD.SF	dc.w	LOAD.Z LOAD.CF del
-LOAD.CF	#.w	S1ZERO.CF
-		jsr					; clear the buffer
-		#.w	LOAD.0
-		#.b	5				; "LOAD "
-		#.w	S1TYPE.CF
-		jsr					; type "LOAD "
-		#.w	S1TYPE.CF			
-		jsr					; type <filename>
-		#.b	EOL
-		#.w	S1EMIT.CF			; emit return
-		jsr
-		#.w	10000
-		#.w	TIMEOUT.CF			; set a timeout
-		jsr
-		#.l	_SD_buff 1-	( addr-1)
-		BEGIN
-			1+			( addr)
-			#.w	S1KEY.CF	
-			jsr			( addr c)
-			over			( addr c addr)
-			over			( addr c addr c)
-			swap			( addr c c addr)	
-			store.b		( addr c)		; save in buffer		
-			#.b	EOF		( addr c EOF)		; test against EOF
-			over
-			=			( addr c flag)
-			IF						; reached end of file
-				drop
-				#.l	_SD_buff
-				-
-				zero
-				0=					; true flag
-				zero
-				#.w	TIMEOUT.CF			; clear timeout
-				jsr
-				rts
-			THEN
-			#.b	ERR	
-			=			( addr flag)
-			IF						; error code returned
-				drop
-				zero					; false flag
-				zero
-				#.w	TIMEOUT.CF			; clear timeout
-				jsr
-				rts
-			THEN
-		AGAIN
-LOAD.Z		rts					; never reached
-LOAD.0		dc.b	32 char d char a char o char l
-;
-; INCLUDED ( c-addr n --)
-INCLUDED.LF	dc.l	LOAD.NF
-INCLUDED.NF	dc.b	8 128 +
-		dc.b 	char D char E char D char U char L char C char N char I
-INCLUDED.SF	dc.w	INCLUDED.Z INCLUDED.CF del
-INCLUDED.CF	#.w	LOAD.CF
-		jsr
-		IF
-			#.l	_SD_buff
-			swap
-			#.w	EVALUATE.CF
-			jsr
-		ELSE
-			#.b	4
-			#.w	ERROR.CF
-			jsr
-		THEN
-INCLUDED.Z	rts
-;
-INCLUDE.LF	dc.l	INCLUDED.NF
-INCLUDE.NF	dc.b	7 128 +
-		dc.b	char E char D char U char L char C char N char I
-INCLUDE.SF	dc.w	INCLUDE.Z INCLUDE.CF del
-INCLUDE.CF	#.b	32
-		#.w	WORD.CF
-		jsr
-		#.w	COUNT.CF
-		jsr
-		#.w	INCLUDED.CF
-		jsr
-INCLUDE.Z	rts
-;
-; SAVE ( c-addr n -- , save a file from the buffer)
-SAVE.LF	dc.l	INCLUDE.NF
-SAVE.NF	dc.b	4 128 +
-		dc.b	char E char V char A char S
-SAVE.SF	dc.w	SAVE.Z SAVE.CF del
-SAVE.CF	#.w	S1ZERO.CF
-		jsr					; clear the buffer
-		#.w	SAVE.0				; "SAVE "
-		#.b	5
-		#.w	S1TYPE.CF
-		jsr					; type "SAVE "
-		#.w	S1TYPE.CF			
-		jsr					; type <filename>
-		#.b	EOL
-		#.w	S1EMIT.CF
-		jsr
-		#.w	1000
-		#.w	MS.CF
-		jsr					; 1000ms delay - allow SDLogger to prepare file
-		#.l	_SD_buff 1-
-		BEGIN
-			1+
-			dup			( addr addr)
-			fetch.b		( addr c)
-			dup			( addr c c)
-			#.w	S1EMIT.CF
-			jsr			( addr c)
-			#.b	EOF
-			=			( addr flag)
-		UNTIL
-		drop				( )
-		zero					; will become return flag
-		#.w	5000
-		#.w	TIMEOUT.CF			; set a timeout
-		jsr		
-		#.w	S1KEY.CF			; check response
-		jsr
-		#.b	EOF						
-		=					; received EOF ok
-		IF
-			0=
-		THEN
-		zero
-		#.w	TIMEOUT.CF			; clear timeout
-		jsr
-SAVE.Z		rts
-SAVE.0		dc.b	32 char e char v char a char s
-;
-; DOS	, enter communication with the SDLogger
-DOS.LF		dc.l	SAVE.NF
-DOS.NF		dc.b	3 128 +
-		dc.b	char S char O char D
-DOS.SF		dc.w	DOS.Z DOS.CF del
-DOS.CF		#.w	S1ZERO.CF
-		jsr					; clear the buffer
-		#.w	PALETTE 3 + 			; set DOS color
-		fetch.b
-		#.w	INK 
-		store.b
-		#.b	EOL
-		dup
-		#.w	EMIT.CF
-		jsr
-		#.w	S1EMIT.CF
-		jsr
-		BEGIN
-			#.w	KEY?.CF
-			jsr
-		IF
-			#.w	KEY.CF
-			jsr
-			#.b	ERR
-			over
-			=
-			IF				; exit DOS session with ESC
-				drop
-				#.w	PALETTE 1 + 	; set output color
-				fetch.b
-				#.w	INK
-				store.b
-				rts
-			THEN
-			dup
-			#.w	EMIT.CF
-			jsr
-			#.w	S1EMIT.CF
-			jsr
-		THEN
-		#.w	S1KEY?.CF
-		jsr
-		IF
-			#.w	S1KEY.CF
-			jsr
-			dup
-			#.b	13
-			<>
-			IF
-				#.w	EMIT.CF
-				jsr
-			ELSE
-				drop
-			THEN
-		THEN
-		AGAIN
-DOS.Z		rts
-;
-; MS ( n --, wait for n ms)
-MS.LF		dc.l	DOS.NF
-MS.NF		dc.b	2 128 +
-		dc.b	char S char M
-MS.SF		dc.w	MS.Z MS.CF del
-MS.CF		#.w	MScounter
-		fetch.l		( n ms)
-		+			( end)
-			begin
-				#.w	MScounter
-				fetch.l		( end now)
-				over			( end now end)
-				=
-			until
-MS.Z		drop,rts				
-;
-; RESET ( --)
-RESET.LF	dc.l	MS.NF
-RESET.NF	dc.b	5 128 +
-		dc.b	char T char E char S char E char R
-RESET.SF	dc.w	RESET.Z RESET.CF del
-RESET.CF	#.w	END
-		#.w	HERE_
-		store.l
-		#.w	_END
-		#.w	HERE1
-		store.l
-		#.w	LAST.NF
-		#.w	LAST-NF
-		store.l
-		#.b	10
-		#.w 	BASE_
-		store.l
-		#.w	START.CF
-		jsr
-RESET.Z	rts
-;
-; TIMEOUT ( n --, set a reset timer for n milliseconds)
-TIMEOUT.LF	dc.l	RESET.NF
-TIMEOUT.NF	dc.b	7 128 +
-		dc.b	char T char U char O char E char M char I char T
-TIMEOUT.SF	dc.w	TIMEOUT.Z TIMEOUT.CF del
-TIMEOUT.CF	?dup
-		IF
-			#.w	MS.TIMEOUT
-			store.l
-			#.w	intmask
-			fetch.b
-			#.b	MSmask
-			or
-		ELSE
-			#.w	intmask
-			fetch.b
-			#.b	255 MSmask -
-			and
-		THEN
-		#.w	intmask
-		store.b			
-TIMEOUT.Z	rts
-;
-; BACKGROUND ( n --, set the background color)
-BACKGROUND.LF	dc.l	TIMEOUT.NF
-BACKGROUND.NF	dc.b	10 128 +
-		dc.b	char D char N char U char O char R char G char K char C char A char B
-BACKGROUND.SF	dc.w	BACKGROUND.Z BACKGROUND.CF del
-BACKGROUND.CF	#.w	background
-		store.b
-BACKGROUND.Z	rts
-;
-; INTERLACE ( flag --, set interlace mode on or off)
-INTERLACE.LF	dc.l	BACKGROUND.NF
-INTERLACE.NF	dc.b	9 128 +
-		dc.b	char E char C char A char L char R char E char T char N char I
-INTERLACE.SF	dc.w	INTERLACE.Z INTERLACE.CF del
-INTERLACE.CF	#.w	mode
-		fetch.b
-		swap
-		IF
-			#.b	8
-			or
-		ELSE
-			#.b	247
-			and
-		THEN
-		#.w	mode
-		store.b	
-		#.w	SCRSET.CF
-		jsr
-INTERLACE.Z	rts
-;
-; SVGA ( flag --. set SGVA mode on or off)
-VGA.LF	dc.l	INTERLACE.NF
-VGA.NF	dc.b	3 128 +
-		dc.b	char A char G char V 
-VGA.SF	dc.w	VGA.Z VGA.CF del
-VGA.CF		#.w	CLS.CF
-		jsr
-		#.w	mode
-		fetch.b
-		swap
-		IF
-			#.b	16
-			or
-		ELSE
-			#.b	239
-			and
-		THEN
-		#.w	mode
-		store.b	
-		#.w	SCRSET.CF
-		jsr
-VGA.Z		rts
-;
-; BAUD ( rate port --, set the baud rate on port)
-BAUD.LF	dc.l	VGA.NF
-BAUD.NF	dc.b	4 128 +
-		dc.b	char D char U char A char B
-BAUD.SF	dc.w	BAUD.Z BAUD.CF del
-BAUD.CF	#.l	3125000		( baud port clock/16)
-		rot				( port clock/16 baud)
-		1+
-		divu
-		nip				( port ubrr)
-		swap				( ubrr port)
-		dup
-		0=
-		IF
-			drop
-			#.w	RS232baud_S0
-			store.w
-		ELSE
-			dup
-			#.b	1
-			=
-			IF
-				drop
-				#.w	RS232baud_S1
-				store.w
-			ELSE
-				drop
-				drop
-			THEN
-		THEN
-BAUD.Z		rts
-; boot code
-START.CF	#.w	CLS.CF
-		jsr
-		#.w	START.0	; First part of power-on message
-		#.b	52
-		#.w	TYPE.CF
-		jsr
-		#.w	UNUSED.CF	; Show free bytes
-		jsr
-		#.w 	UDOT.CF
-		jsr
-		#.w	START.1	
-		#.b	12
-		#.w	TYPE.CF
-		jsr
-		#.w	QUIT.CF
-		jmp
-;
-START.0	dc.b	32 char . char E char . char G char . char I char . char N 32 char * char * char * EOL
-		dc.b	EOL EOL char * char * char * 32 char H char T char R char O char F 32 char e char n char i char h char c char a char M 
-		dc.b	char B char M 32 char 6 char 1 32 char M char A char R char D char S char P
-		dc.b	32 char M char A char R char S 32 char ,
-START.1	dc.b	EOL EOL char e char e char r char f 32 char s char e char t char y char b
-;
-; ---------------------------------------------------------------------------------------------
-; Forth global variables
-;
-PAD.LF		dc.l	BAUD.NF
+PAD.LF		dc.l	TYPE.NF
 PAD.NF		dc.b	3 128 +
 		dc.b	char D char A char P
 PAD.SF		dc.w	PAD.Z PAD.CF del			; because the PFA is extrated from the return address
@@ -4965,104 +5767,36 @@ STATE_		dc.l	0
 >IN.Z		rts
 >IN_		dc.l	0
 ;
-PALETTE.LF	dc.l	>IN.NF
-PALETTE.NF	dc.b	7 128 +
-		dc.b	char E char T char T char E char L char A char P
-PALETTE.SF	dc.w	PALETTE.Z PALETTE.CF del
-PALETTE.CF	#.w	PALETTE
-PALETTE.Z	rts
-PALETTE	dc.b	55			; input (yellow)
-		dc.b	58			; output (green)
-		dc.b	7			; error (red)
-		dc.b	240			; dos (blue)
-		dc.b	255			; cursor (white)
-		ds.b	11			; 11 more user colours in the palette
-; 
-INK.LF	dc.l	PALETTE.NF
-INK.NF	dc.b	3 128 +
-		dc.b	char K char N char I
-INK.SF	dc.w	INK.Z INK.CF del
-INK.CF	#.w	INK
-INK.Z		rts
-INK		dc.b	56			; note this variable is BYTE length!
-		ds.b	3			; padding
-;
-CSR-X.LF	dc.l	INK.NF
-CSR-X.NF	dc.b	5 128 +
-		dc.b	char X char - char R char S char C
-CSR-X.SF	dc.w	CSR-X.Z CSR-X.CF del
-CSR-X.CF	#.w	CSR-X
-CSR-X.Z	rts
-CSR-X		dc.l	0
-;
-CSR-Y.LF	dc.l	CSR-X.NF
-CSR-Y.NF	dc.b	5 128 +
-		dc.b	char Y char - char R char S char C
-CSR-Y.SF	dc.w	CSR-Y.Z CSR-Y.CF del
-CSR-Y.CF	#.w	CSR-Y
-CSR-Y.Z	rts
-CSR-Y		dc.l	0
-;
-FILE.LF	dc.l	CSR-Y.NF
-FILE.NF	dc.b	4 128 +
-		dc.b	char E char L char I char F
-FILE.SF	dc.w	FILE.Z FILE.CF del
-FILE.CF	#.l	_SD_buff
-FILE.Z		rts
-;
-TAB.LF		dc.l	FILE.NF
-TAB.NF		dc.b	3 128 +
-		dc.b	char B char A char T
-TAB.SF		dc.w	TAB.Z TAB.CF del
-TAB.CF		#.w	TAB
-TAB.Z		rts
-TAB		dc.l	3
-;
-ROWS.LF	dc.l	TAB.NF
-ROWS.NF	dc.b	4 128 +
-		dc.b	char S char W char O char R
-ROWS.SF	dc.w	ROWS.Z ROWS.CF del
-ROWS.CF	#.w	ROWS
-ROWS.Z		rts
-ROWS		dc.b	60
-;
-COLS.LF	dc.l	ROWS.NF
-COLS.NF	dc.b	4 128 +
-		dc.b	char S char L char O char CR
-COLS.SF	dc.w	COLS.Z COLS.CF del
-COLS.CF	#.w	COLS
-COLS.Z		rts
-COLS		dc.b	100
-;
 ; LAST returns the address of a variable pointing to the last name field in the dictionary
-LAST.LF	dc.l	COLS.NF
+LAST.LF	dc.l	>IN.NF
 LAST.NF	dc.b	4 128 +
 		dc.b	char T char S char A char L
 LAST.SF	dc.w	LAST.Z LAST.CF del
 LAST.CF	#.w	LAST-NF
 LAST.Z		rts
 LAST-NF	dc.l 	LAST.NF			; NF of last word created by HEAD, must be initialized
-; ---------------------------------------------------------------------------------------------
-; Forth internal variables	
+; ------------------------------------------------------------------------------------------------------------
+; internal variables	
+; ------------------------------------------------------------------------------------------------------------
 ;
-IN_LEN		dc.l	0			; number of characters in input buffer (set by QUIT's inner loop)
-IN_LEN_a	dc.l	0			; used by SAVE-INPUT and RESTORE-INPUT
->IN_a		dc.l	0			; "	"
-HLD_		dc.l 	0			; pointer for number output words (HOLD, etc.)
-STRINGP	dc.l	_STRING		; pointer within the string buffer
-LAST-CF	dc.l	0			; CF of last word created by HEAD
-LAST-SF	dc.l	0			; SF of last word created by HEAD
-input_buff	dc.l 	_input_buff		; input buffer location (returned by SOURCE)
-input_buff_a	dc.l	0
-input_size	dc.l	_input_size		; length of input buffer (returned by SOURCE)
-input_size_a	dc.l	0
-COMPILEstackP	dc.l	_PAD			; pointer for the compiler stack
-TYPE_VECTOR	dc.l	VTYPE.CF		; VTYPE.CF
-TYPERAW_VECTOR dc.l	VTYPERAW.CF		; VTYPERAW.CF
-EMIT_VECTOR	dc.l	VEMIT.CF		; VEMIT.CF
-KEY_VECTOR	dc.l	KKEY.CF		; KKEY.CF
-KEY?_VECTOR	dc.l	KKEY?.CF		; EKEY?.CF
+IN_LEN			dc.l	0		; number of characters in input buffer (set by QUIT's inner loop)
+IN_LEN_a		dc.l	0		; used by SAVE-INPUT and RESTORE-INPUT
+>IN_a			dc.l	0		; used by SAVE-INPUT and RESTORE-INPUT
+HLD_			dc.l 	0		; pointer for number output words (HOLD, etc.)
+STRINGP		dc.l	_STRING	; pointer within the string buffer
+LAST-CF		dc.l	0		; CF of last word created by HEAD
+LAST-SF		dc.l	0		; SF of last word created by HEAD
+input_buff		dc.l 	_input_buff	; input buffer location (returned by SOURCE)
+input_buff_a		dc.l	0		; used by SAVE-INPUT and RESTORE-INPUT
+input_size		dc.l	_input_size	; length of input buffer (returned by SOURCE)
+input_size_a		dc.l	0		; used by SAVE-INPUT and RESTORE-INPUT
+COMPILEstackP		dc.l	_PAD		; pointer for the compiler stack
+TYPE_VECTOR		dc.l	VTYPE.CF	; VTYPE.CF
+TYPERAW_VECTOR 	dc.l	VTYPERAW.CF	; VTYPERAW.CF
+EMIT_VECTOR		dc.l	VEMIT.CF	; VEMIT.CF
+KEY_VECTOR		dc.l	KKEY.CF	; KKEY.CF
+KEY?_VECTOR		dc.l	KKEY?.CF	; EKEY?.CF
 ;
 ; marker for initializing HERE
-END		dc.l	0
+END			dc.l	0
 ;
