@@ -25,21 +25,21 @@
 ;
 TEXT_ZERO	equ	hex f800
 background	equ	hex f808
-mode		equ	hex f809
-RS232rx	equ	hex f80a
-RS232tx	equ	hex f80b
-RS232baud	equ	hex f80c
+mode		equ	hex f80c
+RS232rx	equ	hex f810
+RS232tx	equ	hex f814
+RS232UBRR	equ	hex f818
 HWstatus	equ	hex f80e
 HWmask_TBE	equ	02
-PS2rx		equ	hex f80f
-CLKcounter	equ	hex ff10
-MScounter	equ	hex f814
-intmask	equ	hex f819		; low byte
+PS2rx		equ	hex f820
+CLKcounter	equ	hex f824
+MScounter	equ	hex f828
+intmask	equ	hex f82c		
 intmask_MS	equ	16
-SPI.data	equ	hex f81d  
-SPI.control	equ	hex f81e  
-SPI.status	equ	hex f81f  
-SPI.divide	equ	hex f820  
+SPI.data	equ	hex f838  
+SPI.control	equ	hex f83C  
+SPI.status	equ	hex f840  
+SPI.divide	equ	hex f844  
 ;
 ; **** MEMORY MAP ****
 ;
@@ -254,17 +254,18 @@ TIMEOUT.CF	?dup
 			#.w	MS.TIMEOUT
 			store.l
 			#.w	intmask
-			fetch.b
+			fetch.l
 			#.b	intmask_MS
 			or
 		ELSE
 			#.w	intmask
-			fetch.b
-			#.b	255 intmask_MS -
+			fetch.l
+			#.b	intmask_MS
+			invert
 			and
 		THEN
 		#.w	intmask
-		store.b			
+		store.l			
 TIMEOUT.Z	rts
 ; MS ( n --, wait for n ms)
 MS.LF		dc.l	TIMEOUT.NF
@@ -379,7 +380,7 @@ BAUD.CF	#.l	3125000		( baud clock/16)
 		1+
 		divu
 		nip				( ubrr)
-		#.w	RS232baud
+		#.w	RS232UBRR
 		store.w
 BAUD.Z		rts
 ;
@@ -1514,15 +1515,15 @@ SPI.wait 	#.w	SPI.status
 		drop,rts
 ;
 ; SPI.put ( n --, put a byte to the SPI port)
-SPI.put	CALL	SPI.wait 
+SPI.put	jsl	SPI.wait 
 		#.w	SPI.data
 		store.b
 		rts
 ;
 ; SPI.get ( -- n, get a byte from the SPI port)
 SPI.get	#.b	255 
-		CALL	SPI.put 
-		CALL	SPI.wait 
+		jsl	SPI.put 
+		jsl	SPI.wait 
 		#.w	SPI.data
 		fetch.b
 		rts
@@ -1532,7 +1533,7 @@ SPI.get	#.b	255
 SD.cmd		#.b	6
 		zero
 		DO
-			CALL	SPI.put 
+			jsl	SPI.put 
 		LOOP
 		rts
 ;
@@ -1540,7 +1541,7 @@ SD.cmd		#.b	6
 SD.get-rsp	zero
 		BEGIN
 			drop
-			CALL	SPI.get
+			jsl	SPI.get
 			dup 
 			#.b	255 
 			<>
@@ -1548,8 +1549,8 @@ SD.get-rsp	zero
 		rts
 ;
 ; SD.get-R1 ( -- n, get an R1 response from the sd-card)
-SD.get-R1	CALL	SD.get-rsp
-		CALL	spi.get 
+SD.get-R1	jsl	SD.get-rsp
+		jsl	spi.get 
 		drop		; one further read always required
 		rts
 ;
@@ -1562,16 +1563,16 @@ SD.init.NF	dc.b	7 128 +
 		dc.s	SD.init
 SD.init.SF	dc.w	SD.init.Z SD.init.CF del
 SD.init.CF	#.w	5000 
-		CALL	timeout.cf
-		CALL	spi.slow 
-		CALL	spi.cs-hi 		; power sequence dummy clock
+		jsl	timeout.cf
+		jsl	spi.slow 
+		jsl	spi.cs-hi 		; power sequence dummy clock
 		#.b	80 
 		zero
 		DO
 			#.b	255 
-			CALL	spi.put 
+			jsl	spi.put 
 		LOOP
-		CALL	spi.cs-lo 	
+		jsl	spi.cs-lo 	
 		BEGIN				; CMD0 repeated until good
 			#.b	149 
 			zero
@@ -1579,13 +1580,13 @@ SD.init.CF	#.w	5000
 			zero
 			zero
 			#.b	64 
-			CALL	sd.cmd 
-			CALL	sd.get-R1 
+			jsl	sd.cmd 
+			jsl	sd.get-R1 
 			#.b	1 
 			<>
 		WHILE				
 			#.b	100 		; 100 ms delay
-			CALL	ms.cf
+			jsl	ms.cf
 		REPEAT
 		#.b	135 			; CMD8	
 		#.b	170 
@@ -1593,17 +1594,17 @@ SD.init.CF	#.w	5000
 		zero
 		zero
 		#.b	72 
-		CALL 	sd.cmd 
-		CALL	sd.get-rsp 
+		jsl 	sd.cmd 
+		jsl	sd.get-rsp 
 		#.b	1 
 		= 
 		IF					; CMD8 accepted, read data bytes
 			#.b	4 
 			zero
 			DO 
-				CALL	spi.get 
+				jsl	spi.get 
 			LOOP		( b4 b3 b2 b1)
-			CALL	spi.get 		; one further read always required
+			jsl	spi.get 		; one further read always required
 			drop 			
 			#.b	170 
 			= 
@@ -1621,8 +1622,8 @@ SD.init.CF	#.w	5000
 				zero
 				zero
 				#.b	119 
-				CALL	sd.cmd 
-				CALL	sd.get-R1 	; CMD55 is just a header
+				jsl	sd.cmd 
+				jsl	sd.get-R1 	; CMD55 is just a header
 				drop			
 				#.b	1 		; CMD41hi
 				zero 
@@ -1630,8 +1631,8 @@ SD.init.CF	#.w	5000
 				zero 
 				#.b	64 
 				#.b	105 
-				CALL	sd.cmd	
-				CALL	sd.get-R1
+				jsl	sd.cmd	
+				jsl	sd.get-R1
 				0= 
 			UNTIL
 			#.b	1 			; CMD58
@@ -1640,15 +1641,15 @@ SD.init.CF	#.w	5000
 			zero 
 			zero 
 			#.b	122 
-			CALL	sd.cmd	
-			CALL	sd.get-rsp 		; ignore R1
+			jsl	sd.cmd	
+			jsl	sd.get-rsp 		; ignore R1
 			drop		
 			#.b	4
 			zero 
 			DO 
-				CALL	spi.get
+				jsl	spi.get
 			LOOP		( b4 b3 b2 b1)
-			CALL	spi.get 		; one further read always required
+			jsl	spi.get 		; one further read always required
 			drop 			
 			drop 
 			drop 
@@ -1664,10 +1665,10 @@ SD.init.CF	#.w	5000
 				#.w	sd.ver 
 				store.l		
 			THEN
-			CALL	spi.fast		; V2.0 supports high speed
+			jsl	spi.fast		; V2.0 supports high speed
 		ELSE					; 01xAA mismatch
 			#.w	1001 
-			CALL	ERROR
+			jsl	ERROR
 		THEN
 	ELSE						; CMD8 rejected, initialize card
 		BEGIN
@@ -1677,8 +1678,8 @@ SD.init.CF	#.w	5000
 			zero 
 			zero 
 			#.b	119 
-			CALL	sd.cmd 
-			CALL	sd.get-R1 		; CMD55 is just a header
+			jsl	sd.cmd 
+			jsl	sd.get-R1 		; CMD55 is just a header
 			drop		
 			#.b	1 			; CMD41lo
 			zero 
@@ -1686,8 +1687,8 @@ SD.init.CF	#.w	5000
 			zero
 			zero
 			#.b	105 
-			CALL	sd.cmd		
-			CALL	sd.get-R1
+			jsl	sd.cmd		
+			jsl	sd.get-R1
 			0=
 		UNTIL
 			zero 				; SD V1.0
@@ -1700,14 +1701,14 @@ SD.init.CF	#.w	5000
 		zero 
 		zero 
 		#.b	80 
-		CALL	sd.cmd 
-		CALL	sd.get-rsp 
+		jsl	sd.cmd 
+		jsl	sd.get-rsp 
 		drop	
-		CALL 	SPI.CS-hi 			; DESELECT
+		jsl 	SPI.CS-hi 			; DESELECT
 		#.b	255 
-		CALL	spi.put			
+		jsl	spi.put			
 		zero	
-		CALL	timeout.cf
+		jsl	timeout.cf
 SD.init.Z	rts
 ;
 ; SD.sector-code ( n -- b4 b3 b2 b1, scale and split sector address)
@@ -1729,7 +1730,7 @@ SD.sector-code 	#.w	sd.ver
 		zero 
 		DO					; bits 8 - 31
 			#.b	8 
-			CALL	rshift.cf
+			jsl	rshift.cf
 			dup
 			#.b	255 
 			and 
@@ -1738,9 +1739,9 @@ SD.sector-code 	#.w	sd.ver
 		drop,rts		
 ;
 ; SD.select&check ( --, select and wait for SD card)
-SD.select&check 	CALL spi.cs-lo		; SELECT
+SD.select&check 	jsl spi.cs-lo		; SELECT
 		BEGIN				
-			CALL spi.get 
+			jsl spi.get 
 			#.b	255 
 			=				; if CS is asserted while card is busy then card will set D0 low
 		UNTIL
@@ -1752,21 +1753,21 @@ SD.read-sector.NF	dc.b	14 128 +
 			dc.b	char R char O char T char C char E char S char - char D char A char E char R char . char D char S
 SD.read-sector.SF	dc.w	SD.read-sector.Z SD.read-sector.CF del
 SD.read-sector.CF	#.w	1000 
-		CALL 	timeout.cf
-		CALL 	sd.select&check
+		jsl 	timeout.cf
+		jsl 	sd.select&check
 		#.b	1 				; checksum
 		swap					
-		CALL 	sd.sector-code		; encode sector number
+		jsl 	sd.sector-code		; encode sector number
 		#.b	81 				; complete CMD17
-		CALL 	sd.cmd				
-		CALL 	sd.get-R1 
+		jsl 	sd.cmd				
+		jsl 	sd.get-R1 
 		0<> 
 		IF					; check response OK
 			#.w	1005 
-			CALL	ERROR.CF
+			jsl	ERROR.CF
 		THEN
 		BEGIN					; wait for data token
-			CALL	spi.get
+			jsl	spi.get
 			#.b	254 
 			=
 		UNTIL
@@ -1775,21 +1776,21 @@ SD.read-sector.CF	#.w	1000
 		+ 
 		swap 
 		DO 					; read sector
-			CALL 	spi.get 
+			jsl 	spi.get 
 			I 
 			store.b 
 		LOOP	
 		#.b	3 
 		zero 
 		DO 					; drop CRC and read safety byte
-			CALL 	spi.get 
+			jsl 	spi.get 
 			drop 
 		LOOP			
-		CALL 	SPI.CS-hi 
+		jsl 	SPI.CS-hi 
 		#.b	255 
-		CALL	spi.put			; DESELECT
+		jsl	spi.put			; DESELECT
 		zero 
-		CALL	timeout.CF
+		jsl	timeout.CF
 SD.read-sector.Z		rts
 ;
 ; SD.write-sector ( addr n --, write 512 byte to sector n from addr)
@@ -1798,23 +1799,23 @@ SD.write-sector.NF	dc.b	15 128 +
 			dc.b	char R char O char T char C char E char S char - char E char T char I char R char W char . char D char S
 SD.write-sector.SF	dc.w	SD.write-sector.Z SD.write-sector.CF del
 SD.write-sector.CF	#.w	2000
-		CALL	timeout.CF
-		CALL	sd.select&check	
+		jsl	timeout.CF
+		jsl	sd.select&check	
 		#.b	1 				; checksum
 		swap					
-		CALL	sd.sector-code		; encode sector number
+		jsl	sd.sector-code		; encode sector number
 		#.b	88 				; complete CMD24
-		CALL 	sd.cmd				
-		CALL	sd.get-R1 
+		jsl 	sd.cmd				
+		jsl	sd.get-R1 
 		0<> 
 		IF					; check response OK
 			#.w	1010 
-			CALL	ERROR.CF
+			jsl	ERROR.CF
 		THEN
 		#.b	255 
-		CALL	spi.put			; space
+		jsl	spi.put			; space
 		#.b	254 
-		CALL	spi.put			; initiate data packet
+		jsl	spi.put			; initiate data packet
 		dup 
 		#.w	512 
 		+ 
@@ -1822,28 +1823,28 @@ SD.write-sector.CF	#.w	2000
 		DO 					; write sector
 			I 
 			fetch.b 
-			CALL spi.put 
+			jsl spi.put 
 		LOOP	
 		#.b	2 
 		zero 
 		DO 					; dummy checksum
 			#.b	1 
-			CALL	spi.put 
+			jsl	spi.put 
 		LOOP			
-		CALL	sd.get-R1 
+		jsl	sd.get-R1 
 		#.b	31 
 		and 
 		#.b	5 
 		<> 
 		IF					; check data response
 			#.w	1011 
-			CALL	ERROR.CF		; write error
+			jsl	ERROR.CF		; write error
 		THEN	
-		CALL	SPI.CS-hi 
+		jsl	SPI.CS-hi 
 		#.b	255 
-		CALL	spi.put			; DESELECT
+		jsl	spi.put			; DESELECT
 		zero 
-		CALL	timeout.cf
+		jsl	timeout.cf
 SD.write-sector.Z		rts
 ;
 ; FAT.read-long ( addr n -- x, get a little endian longword from the buffer)
@@ -1880,17 +1881,17 @@ FAT.write-long.CF	+
 		>R	( R: x addr+n)
 		R@ 
 		#.b	24 
-		CALL	rshift.cf 
+		jsl	rshift.cf 
 		#.b	255 
 		and	
 		R@ 
 		#.b	16 
-		CALL	rshift.cf
+		jsl	rshift.cf
 		#.b	255 
 		and	
 		R@ 
 		#.b	8 
-		CALL	rshift.cf 
+		jsl	rshift.cf 
 		#.b	255 
 		and	
 		R> 
@@ -1935,7 +1936,7 @@ FAT.write-word.CF	+
 		>R	( R : x addr+n)
 		R@ 
 		#.b	8 
-		CALL	rshift.cf 
+		jsl	rshift.cf 
 		#.b	255 
 		and	
 		R> 
@@ -1953,29 +1954,29 @@ MOUNT.LF	dc.l	FAT.write-word.NF
 MOUNT.NF	dc.b	5 128 +
 		dc.s	MOUNT
 MOUNT.SF	dc.w	MOUNT.Z MOUNT.CF del
-MOUNT.CF	call	sd.init.cf
+MOUNT.CF	jsl	sd.init.cf
 		#.l	_fat.buf 
 		dup
 		>R
 		zero 
-		call	sd.read-sector.cf
+		jsl	sd.read-sector.cf
 		R@
 		#.w	510 
-		call	fat.read-word.cf 
+		jsl	fat.read-word.cf 
 		#.w	43605 
 		<> 
 		IF		; confirm sector signature 0xAA55
 			#.w	2000 
-			call	error.cf
+			jsl	error.cf
 		THEN
 		R@ 
 		#.b	82 
-		CALL	fat.read-word.cf 
+		jsl	fat.read-word.cf 
 		#.w	16710 
 		<> 
 		IF		; confirm FAT32 signature 0x4146
 			#.w	2001 
-			CALL	error.cf
+			jsl	error.cf
 		THEN
 		R@			
 		#.b	13 
@@ -1985,7 +1986,7 @@ MOUNT.CF	call	sd.init.cf
 		store.l
 		R@
 		#.b	44 
-		CALL	fat.read-long.cf 
+		jsl	fat.read-long.cf 
 		dup 
 		#.w	fat.rootclus 
 		store.l 
@@ -1993,12 +1994,12 @@ MOUNT.CF	call	sd.init.cf
 		store.l
 		R@
 		#.b	32 
-		CALL	fat.read-long.cf 
+		jsl	fat.read-long.cf 
 		#.w	fat.TotalSectors 
 		store.l
 		R@ 
 		#.b	14 
-		CALL	fat.read-word.cf 
+		jsl	fat.read-word.cf 
 		dup 
 		#.w	fat.rsvdseccnt 
 		store.l				( RsvdSecCnt)
@@ -2008,7 +2009,7 @@ MOUNT.CF	call	sd.init.cf
 		fetch.b				( RsvdSecCnt NumFATs)
 		R@
 		#.b	36 
-		CALL	fat.read-long.cf		( RsvdSecCnt NumFATs SecPerFAT)
+		jsl	fat.read-long.cf		( RsvdSecCnt NumFATs SecPerFAT)
 		multu
 		drop
 		+ 
@@ -2016,19 +2017,19 @@ MOUNT.CF	call	sd.init.cf
 		store.l
 		R@
 		#.b	1 
-		CALL	sd.read-sector.cf		; FAT32 FSInfo
+		jsl	sd.read-sector.cf		; FAT32 FSInfo
 		R@
 		zero 
-		CALL	fat.read-long.cf 
+		jsl	fat.read-long.cf 
 		#.l	hex 41615252 
 		<> 
 		IF					; confirm valid FSInfo sector
 			#.w	2002 
-			CALL	error					
+			jsl	error					
 		THEN
 		R>
 		#.w	492 
-		CALL	fat.read-long.cf 
+		jsl	fat.read-long.cf 
 		dup
 		zero
 		1- 
@@ -2053,15 +2054,15 @@ FAT.UpdateFSInfo.CF	#.l	_fat.buf
 		dup
 		>R
 		#.b	1 
-		CALL	sd.read-sector.cf
+		jsl	sd.read-sector.cf
 		#.w	FAT.NextFreeCluster 
 		fetch.l 
 		R@	 			
 		#.w	492 
-		CALL	FAT.write-long.CF
+		jsl	FAT.write-long.CF
 		R> 
 		#.b	1 
-		CALL	sd.write-sector.cf
+		jsl	sd.write-sector.cf
 FAT.UpdateFSInfo.Z		rts
 ;
 ; FAT.clus2sec ( n -- n, given a valid cluster number return the number of the first sector in that cluster)
@@ -2099,7 +2100,7 @@ FAT.prep-fat	#.b	4
 			store.l			; remember the buffered sector
 			#.l	_fat.buffat 
 			swap	 			( ThisFATEntOffset fat.fatbuf ThisFATSecNum)
-			CALL	SD.read-sector.cf	( ThisFATEntOffset)
+			jsl	SD.read-sector.cf	( ThisFATEntOffset)
 		ELSE
 			drop				( ThisFATEntOffset)
 		THEN
@@ -2110,10 +2111,10 @@ FAT.get-fat.LF	dc.l	FAT.clus2sec.NF
 FAT.get-fat.NF	dc.b	11 128 +
 			dc.s	FAT.get-fat
 FAT.get-fat.SF	dc.w	FAT.get-fat.Z FAT.get-fat.CF del
-FAT.get-fat.CF	CALL	FAT.prep-fat
+FAT.get-fat.CF	jsl	FAT.prep-fat
 		#.l	_fat.buffat 
 		swap					( fat.buf ThisFATEntOffset)
-		CALL	fat.read-long.cf
+		jsl	fat.read-long.cf
 		#.l	hex	0FFFFFFF
 FAT.get-fat.Z	and,rts
 ;
@@ -2122,14 +2123,14 @@ FAT.put-fat.LF	dc.l	FAT.get-fat.NF
 FAT.put-fat.NF	dc.b	11 128 +
 			dc.s	FAT.put-fat
 FAT.put-fat.SF	dc.w	FAT.put-fat.Z FAT.put-fat.CF del
-FAT.put-fat.CF	CALL	FAT.prep-fat		( value ThisFATEntOffset)
+FAT.put-fat.CF	jsl	FAT.prep-fat		( value ThisFATEntOffset)
 		#.l	_fat.buffat 
 		swap					( value fat.buf ThisFATEntOffset)
-		CALL	fat.write-long.CF
+		jsl	fat.write-long.CF
 		#.l	_FAT.buffat 
 		#.w	FAT.FATinBuf 
 		fetch.l
-		CALL	SD.write-sector.cf
+		jsl	SD.write-sector.cf
 FAT.put-fat.Z		rts
 ;
 ; FAT.string2filename ( addr n -- addr, convert an ordinary string to a short FAT filename)
@@ -2156,7 +2157,7 @@ FAT.string2filename.CF	>R
 		?dup 
 		IF		
 			#.b	12 
-			CALL	min.cf
+			jsl	min.cf
 			over 
 			+ 
 			swap 				( filestring filestring addrE addr)					
@@ -2173,7 +2174,7 @@ FAT.string2filename.CF	>R
 					#.b	8 
 					+		; re-position in output string
 				ELSE
-					CALL	upper.cf
+					jsl	upper.cf
 					over 
 					store.b 
 					1+		; save and increment position in output string
@@ -2193,12 +2194,12 @@ FAT.string2filename.CF	>R
 FAT.string2filename.Z	rts
 ;
 ; FAT.find-file-local ( dirCluster addr n -- dirSector dirOffset firstCluster size flags TRUE | FALSE, find in local folder)
-FAT.find-file-local	CALL	FAT.String2Filename.CF	( cluster filestring)
+FAT.find-file-local	jsl	FAT.String2Filename.CF	( cluster filestring)
 		swap 
 		dup 
 		>R					( filestring cluster R:cluster)
 		BEGIN
-			CALL	FAT.Clus2Sec.CF	( filestring firstSec R:cluster)
+			jsl	FAT.Clus2Sec.CF	( filestring firstSec R:cluster)
 			dup 
 			#.w	FAT.SecPerClus 
 			fetch.l 
@@ -2207,7 +2208,7 @@ FAT.find-file-local	CALL	FAT.String2Filename.CF	( cluster filestring)
 		DO					( filestring R:LOOP cluster)	; examine each sector in the cluster
 			#.l	_FAT.buf 
 			i 
-			CALL	SD.read-sector.cf
+			jsl	SD.read-sector.cf
 			#.l	_FAT.buf 
 			dup 
 			#.w	512 
@@ -2242,7 +2243,7 @@ FAT.find-file-local	CALL	FAT.String2Filename.CF	( cluster filestring)
 						#.b	11 
 						i 
 						#.b	11 
-						CALL	$=.cf 
+						jsl	$=.cf 
 						IF					; test string match
 							drop							; remove filestring	
 							j							; dirSector
@@ -2251,17 +2252,17 @@ FAT.find-file-local	CALL	FAT.String2Filename.CF	( cluster filestring)
 							-							; directory offset 
 							i 
 							#.b	20 
-							CALL	FAT.read-word.cf 
+							jsl	FAT.read-word.cf 
 							#.l	65536 
 							multu
 							drop
 							i 
 							#.b	26 
-							CALL 	FAT.read-word.cf 
+							jsl 	FAT.read-word.cf 
 							+ 							; startCluster
 							i 
 							#.b	28 
-							CALL	FAT.read-long.cf 				; size		
+							jsl	FAT.read-long.cf 				; size		
 							i 
 							#.b	11 
 							+ 
@@ -2280,7 +2281,7 @@ FAT.find-file-local	CALL	FAT.String2Filename.CF	( cluster filestring)
 				+LOOP
 				LOOP 
 				R>					( filestring currentCluster)
-				CALL	FAT.get-fat.CF		( filestring nextCluster)
+				jsl	FAT.get-fat.CF		( filestring nextCluster)
 				dup 
 				#.l	hex 0FFFFFFF 								; End-of-clusters mark
 				=					( filestring nextCluster flag) 	
@@ -2322,7 +2323,7 @@ FAT.find-file.CF	#.w	FAT.CurrentDirectory
 					i 
 					over 
 					-					( cluster Addr n)
-					CALL	FAT.find-file-local 
+					jsl	FAT.find-file-local 
 					IF 
 						dup 
 						#.b	15 
@@ -2388,7 +2389,7 @@ FAT.find-file.CF	#.w	FAT.CurrentDirectory
 			over 
 			- 						( cluster addr n)
 		THEN
-		CALL	FAT.find-file-local 	
+		jsl	FAT.find-file-local 	
 FAT.find-file.Z	rts
 ;
 ; EX
@@ -2400,7 +2401,7 @@ FAT.load-file.SF	dc.w	FAT.load-file.Z FAT.load-file.CF del
 FAT.load-file.CF	BEGIN						
 			dup 
 			>R					( addr currentCluster R:currentCluster)
-			CALL	FAT.Clus2Sec.CF		( addr firstSec R:currentCluster)
+			jsl	FAT.Clus2Sec.CF		( addr firstSec R:currentCluster)
 			dup 
 			#.w	FAT.SecPerClus 
 			fetch.l 
@@ -2409,12 +2410,12 @@ FAT.load-file.CF	BEGIN
 			DO
 				dup 
 				i 
-				CALL SD.read-sector.cf		
+				jsl SD.read-sector.cf		
 				#.w	512 
 				+				( addr)
 			LOOP
 			R>					( addr currentCluster)
-			CALL	FAT.get-fat.CF		( addr nextCluster)
+			jsl	FAT.get-fat.CF		( addr nextCluster)
 			dup 
 			#.l	hex 0FFFFFFF 			; End-of-clusters mark
 			=					( addr nextCluster flag) 	
@@ -2428,9 +2429,9 @@ include.NF	dc.b	7 128 +
 		dc.s	include
 include.SF	dc.w 	include.Z include.CF del
 include.CF	#.b	32 
-		CALL	word.cf
-		CALL	count.cf 
-		CALL	FAT.find-file.CF 			( dirSector dirOffset firstCluster size flags TRUE | FALSE)
+		jsl	word.cf
+		jsl	count.cf 
+		jsl	FAT.find-file.CF 			( dirSector dirOffset firstCluster size flags TRUE | FALSE)
 		IF
 			drop 
 			>R 
@@ -2439,12 +2440,12 @@ include.CF	#.b	32
 			#.l	hex 00FF0000 			; addr is 64K below top of memory
 			dup 
 			rot					( addr addr firstCluster R:size)			
-			CALL	FAT.load-file.CF 		( addr R:size)
+			jsl	FAT.load-file.CF 		( addr R:size)
 			R> 
-			CALL	evaluate.cf 			( )
+			jsl	evaluate.cf 			( )
 		ELSE
 			#.b	4 
-			CALL	ERROR.CF
+			jsl	ERROR.CF
 		THEN
 include.Z		rts
 ;
@@ -2678,7 +2679,7 @@ D+.NF		dc.b	2 128 +
 D+.SF		dc.w	D+.Z D+.CF del
 D+.CF		#.w	intmask		; disable interrupts to protect ADDX flag
 		dup
-		fetch.b
+		fetch.l
 		>R
 		zero
 		swap 
@@ -2693,7 +2694,7 @@ D+.CF		#.w	intmask		; disable interrupts to protect ADDX flag
 		ADDX
 		R>
 		#.w	intmask
-		store.b
+		store.l
 D+.Z		rts
 ;
 ; D- 	(ud1 ud2 -- ud3)  double precision arithmetic
@@ -2703,7 +2704,7 @@ D-.NF		dc.b	2 128 +
 D-.SF		dc.w	D-.Z D-.CF del
 D-.CF		#.w	intmask		; disable interrupts to protect SUBX flag
 		dup
-		fetch.b
+		fetch.l
 		>R
 		zero
 		swap 
@@ -2718,7 +2719,7 @@ D-.CF		#.w	intmask		; disable interrupts to protect SUBX flag
 		SUBX
 		R>
 		#.w	intmask
-		store.b
+		store.l
 D-.Z		rts
 ;
 ; >NUMBER ( ud1 c-addr1 u1 -- ud2 c-addr2 u2 , convert till bad char , CORE )

@@ -26,8 +26,8 @@ architecture Behavioral of Interrupt is
 	
 begin
 	-- interrupt assignment in priority order
-	ira_input(1) <= irq_mask(1) and RS232_RDA_S0; 
-	ira_input(2) <= irq_mask(2) and RS232_TBE_S0; 
+	ira_input(1) <= irq_mask(1) and RS232_RDA_S0;
+	ira_input(2) <= irq_mask(2) and RS232_TBE_S0;
 	ira_input(3) <= irq_mask(3) and PS2_irq; 
 	ira_input(4) <= irq_mask(4) and ms_irq; 	
 	ira_input(5) <= irq_mask(5) and '0'; 							-- unused at present
@@ -44,7 +44,7 @@ begin
 		if rst = '1' then
 			state <= run;
 			ira_register <= (others=>'0');
-			ira_input_m1 <= "0001100";									-- default TBE state is high
+			ira_input_m1 <= "0000010";									-- default TBE state is high
 			irv_register <= (others=>'0');
 		else
 			state <= state_n;
@@ -102,27 +102,6 @@ begin
 				end if;		
 				local_mask <= not ira_output;			
 					
---				if ira_output(1) = '1' then
---					irq <= '1';
---					mask <= "110";
---					irv_n <= "001";
---					state_n <= int;
---				elsif ira_output(2) = '1' then
---					irq <= '1';
---					mask <= "101";
---					irv_n <= "010";
---					state_n <= int;					
---				elsif ira_output(3) = '1' then
---					irq <= '1';
---					mask <= "011";	
---					irv_n <= "011";
---					state_n <= int;					
---				else
---					irq <= '0';
---					mask <= "111";
---					irv_n <= "000";
---					state_n <= run;
---				end if;
 			when int =>
 				if rti = '1' then
 					state_n <= run;

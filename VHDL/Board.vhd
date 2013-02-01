@@ -58,8 +58,8 @@ signal irq_mask : std_logic_vector(15 downto 1);
 signal PSdatain :  std_logic_vector(31 downto 0);
 signal RSdatain :  std_logic_vector(31 downto 0);
 signal MEMdatain_Xi :  std_logic_vector(31 downto 0);
-signal MEMdata_Char, MEMdata_Reg :  std_logic_vector(7 downto 0);
-signal MEMdata_Pstack, MEMdata_Rstack : std_logic_vector(31 downto 0);
+signal MEMdata_Char :  std_logic_vector(7 downto 0);
+signal MEMdata_Pstack, MEMdata_Rstack, MEMdata_Reg : std_logic_vector(31 downto 0);
 signal MEMdatain_Y : std_logic_vector(7 downto 0);
 signal MEM_RDY_Y :  std_logic;
 signal MEMdatain_Z :  std_logic_vector(15 downto 0);
@@ -216,7 +216,7 @@ begin
 		MEMdatain_Xi <= MEMdata_Pstack when Pstack,
 							MEMdata_Rstack when Rstack,
 							"000000000000000000000000" & MEMdata_Char when Char,
-							"000000000000000000000000" & MEMdata_Reg when Reg,
+							MEMdata_Reg when Reg,
 							MEMdata_Sys when Sys;
 	 		
 		inst_Pstack_RAM : entity work.Pstack_RAM
@@ -323,7 +323,7 @@ begin
 		background => background,
 		en => reg_en,
 		addr => MEMaddr(10 downto 0) ,
-		datain => MEMdataout_X(7 downto 0),
+		datain => MEMdataout_X,
 		dataout => MEMdata_Reg,
 		wrq => MEM_WRQ_XX,
 		RS232_rx_S0 => RS232_rx_S0,

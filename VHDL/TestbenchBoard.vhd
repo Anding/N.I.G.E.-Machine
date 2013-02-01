@@ -28,8 +28,6 @@ ARCHITECTURE behavior OF TestbenchBoard IS
            WAIT_SDRAM : in  STD_LOGIC;
 			  RXD_S0 : in STD_LOGIC;
 			  TXD_S0 : out STD_LOGIC;
-			  RXD_S1 : in STD_LOGIC;
-			  TXD_S1 : out STD_LOGIC;
 			  PS2C : in STD_LOGIC;
 			  PS2D : in STD_LOGIC;
 			  -- SPI
@@ -136,8 +134,6 @@ BEGIN
           WAIT_SDRAM => WAIT_SDRAM,
 			 TXD_S0 => TXD_S0,  
 			 RXD_S0 => RXD_S0,	-- RXD_S0
-			 TXD_S1 => TXD_S1,
-			 RXD_S1 => RXD_S1,
 			 PS2C => PS2C,
 			 PS2D => PS2D,
 			 SCK => SCK,
