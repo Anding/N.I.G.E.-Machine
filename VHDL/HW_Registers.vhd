@@ -213,7 +213,7 @@ begin
 					dataout	<= counter_ms;
 					
 				when x"2C" =>										-- IRQ_mask
-					dataout	<=	blank2 & IRQ_mask_r;
+					dataout	<=	blank2 & IRQ_mask_r & "1";
 					
 				when x"34" =>										-- SW
 					dataout	<= blank3 & SW_r;

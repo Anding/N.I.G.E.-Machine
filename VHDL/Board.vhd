@@ -96,12 +96,6 @@ signal RS232_RX_S0 : std_logic_vector(7 downto 0);
 signal RS232_RDA_S0 : std_logic;
 signal RS232_TBE_S0 : std_logic;
 signal RS232_UBRR_S0 : std_logic_vector(15 downto 0);
-signal RS232_TX_S1 : std_logic_vector(7 downto 0);
-signal RS232_WR_S1 : std_logic;       
-signal RS232_RX_S1 : std_logic_vector(7 downto 0);
-signal RS232_RDA_S1 : std_logic;
-signal RS232_TBE_S1 : std_logic;
-signal RS232_UBRR_S1 : std_logic_vector(15 downto 0);
 signal Boot_we : STD_LOGIC_VECTOR(0 DOWNTO 0);
 signal Boot_data : STD_LOGIC_VECTOR(7 DOWNTO 0);
 signal Boot_addr : STD_LOGIC_VECTOR(15 DOWNTO 0);
@@ -125,6 +119,10 @@ signal addrb_sysram : std_logic_vector(31 downto 2);
 signal dinb_sysram : std_logic_vector(31 downto 0);
 signal MEMdata_Sys, MEMdata_Sys_plus : std_logic_vector(31 downto 0);
 signal MEMsize_X, MEMsize_Xp : std_logic_vector(1 downto 0);
+signal MEMsize_X_s : std_logic_vector(1 downto 0);
+signal MEMaddr_s :  std_logic_vector(31 downto 0);
+signal MEMdataout_X_s :  std_logic_vector(31 downto 0);
+signal MEM_WRQ_XX_s : std_logic_vector(0 downto 0);
 	
 	COMPONENT DCM6
 	PORT(
@@ -218,6 +216,27 @@ begin
 							"000000000000000000000000" & MEMdata_Char when Char,
 							MEMdata_Reg when Reg,
 							MEMdata_Sys when Sys;
+							
+		  
+	  	-- splice IOExpansion data ahead of the SRAM controller
+	  with Boot_we select
+			--"000000000000000000000000" & Boot_data when "1",
+			MEMdataout_X_s <= MEMdataout_X when others;
+				
+
+	  with Boot_we select
+			--"01" when "01",
+			MEMsize_X_s <= MEMsize_X when others;
+
+	  with Boot_we select
+			--"0000000000000000" & Boot_addr when "1",
+			MEMaddr_s <= MEMaddr when others;
+				
+				
+	 with Boot_we select
+			--Boot_we when "1",
+			MEM_WRQ_XX_s <= MEM_WRQ_XX when others;
+				
 	 		
 		inst_Pstack_RAM : entity work.Pstack_RAM
 	  PORT MAP (
@@ -247,32 +266,16 @@ begin
 		 addrb => MEMaddr(10 downto 2),
 		 dinb => MEMdataout_X,
 		 doutb => MEMdata_Rstack
-	  );
-	  
---	  inst_SYS_RAM : entity work.Sys_RAM
---	  PORT MAP (
---		 clka => clk_system,
---		 ena => sys_en,
---		 wea => wea_sysram,
---		 addra => addra_sysram(15 downto 2),
---		 dina => dina_sysram,
---		 douta => douta_sysram,
---		 clkb => clk_system,
---		 enb => sys_en,
---		 web => web_sysram,
---		 addrb => addrb_sysram(15 downto 2),
---		 dinb => dinb_sysram,
---		 doutb => doutb_sysram
---	  );
+	  );			
 
 	Inst_SRAM_controller: entity work.SRAM_controller PORT MAP(
 		RST => reset,
 		CLK => clk_system,
-		ADDR => MEMaddr,
-		size => MEMsize_X,
+		ADDR => MEMaddr_s,
+		size => MEMsize_X_s,
 		size_plus => MEMsize_Xp,
-		WE => MEM_WRQ_XX,
-		DATA_in => MEMdataout_X,
+		WE => MEM_WRQ_XX_s,
+		DATA_in => MEMdataout_X_s,
 		DATA_out => MEMdata_Sys,
 		DATA_out_plus => MEMdata_Sys_plus,
 		wea => wea_sysram,
@@ -285,18 +288,34 @@ begin
 		doutb => doutb_sysram
 	);
 	
-	Inst_RAM_for_Testbench: entity work.RAM_for_Testbench PORT MAP(
-		rst => reset,
-		clk => clk_system,
-		weA => wea_sysram(0),
-		weB => web_sysram(0),
-		addressA => addra_sysram,
-		data_inA => dina_sysram,
-		data_outA => douta_sysram,
-		addressB => addrb_sysram,
-		data_inB => dinb_sysram,
-		data_outB => doutb_sysram
-	);
+--	Inst_RAM_for_Testbench: entity work.RAM_for_Testbench PORT MAP(
+--		rst => reset,
+--		clk => clk_system,
+--		weA => wea_sysram(0),
+--		weB => web_sysram(0),
+--		addressA => addra_sysram,
+--		data_inA => dina_sysram,
+--		data_outA => douta_sysram,
+--		addressB => addrb_sysram,
+--		data_inB => dinb_sysram,
+--		data_outB => doutb_sysram
+--	);
+	  
+	  inst_SYS_RAM : entity work.Sys_RAM
+	  PORT MAP (
+		 clka => clk_system,
+		 ena => sys_en,
+		 wea => wea_sysram,
+		 addra => addra_sysram (15 downto 2),
+		 dina => dina_sysram,
+		 douta => douta_sysram,
+		 clkb => clk_system,
+		 enb => sys_en,
+		 web => web_sysram,
+		 addrb => addrb_sysram (15 downto 2),
+		 dinb => dinb_sysram,
+		 doutb => doutb_sysram
+	  );
 
 	  inst_Char_RAM : entity work.Char_RAM
 	  PORT MAP (
@@ -477,7 +496,7 @@ begin
 		irq => PS2_irq,
 		data => PS2_data
 	);
-	
+				
 		Inst_IOExpansion: entity work.IOExpansionSYNC PORT MAP(
 		reset => reset,
 		clk => CLK_SYSTEM,

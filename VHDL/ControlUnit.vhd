@@ -107,7 +107,7 @@ signal int_vector_ext : std_logic_vector (19 downto 0);
 signal int_vector_ext_i : std_logic_vector (7 downto 0);
 signal ucode : std_logic_vector (5 downto 0);					-- address driver for microcode BLOCK RAM
 signal equalzero : std_logic;											-- flag '1' when TOS is zero
-signal SRAM : std_logic;
+signal chip_RAM : std_logic;
 signal timer : integer range 0 to 63;								-- timer/counter for state machine
 signal count : integer range 0 to 63;								-- Pedroni, "Circuit Design and Simulation with VHDL" p298
 signal int_trig : std_logic;
@@ -142,17 +142,18 @@ begin
 							MEMdatain_X(5 downto 0) when others;		-- three byte instruction (#.w)
 	
 	with offset select
-		next_branch <= MEMdatain_X(31 downto 30) when "00",		-- likely don't need the extra byte in X_extended!
+		next_branch <= MEMdatain_X(31 downto 30) when "00",		
 							MEMdatain_X(23 downto 22) when "01",
 							MEMdatain_X(15 downto 14) when "10",
-							MEMdatain_X(8 downto 6) when others;
+							MEMdatain_X(7 downto 6) when others;
  
 	Accumulator <= Accumulator_i;
 	AuxControl <= AuxControl_i;
 	
 	equalzero <= '1' when TOS = 0 else '0'; 						-- flag used for ?DUP, BEQ, and TEST instructions
-	SRAM <= '1' when (TOS(31) or TOS(30) or TOS(29) or TOS(28) or TOS(27) or TOS(26) or TOS(25) or TOS(24) or
-						  TOS(23) or TOS(22) or TOS(21) or TOS(20) or TOS(19) or TOS(18) or TOS(17) or TOS(16)) = '0' else '0';
+	chip_RAM <= '1' when (TOS(23) or TOS(22) or TOS(21) or TOS(20) or TOS(19) or TOS(18) or TOS(17) or TOS(16)) = '0' else '0';
+	-- TOS(31) or TOS(30) or TOS(29) or TOS(28) or TOS(27) or TOS(26) or TOS(25) or TOS(24) or    - this memory not accessed
+	--chip_RAM <= '1' when (TOS < 65536) else '0';
 						  
 	accumulator_Y <= accumulator_i(23 downto 0) & MEMdatain_Y;	-- compile WORDs and LONGs from sequential reads
 	accumulator_Z <= accumulator_i(15 downto 0) & MEMdatain_Z;	
@@ -225,10 +226,10 @@ begin
 		end if;
 	end process;
 
-	process (state, state_n, PC, PC_n, PC_plus, PC_jsl, PC_branch, PC_skipbranch, PC_m1, delta, plus, 
+	process (state, state_n, PC, PC_n, PC_plus, PC_jsl, PC_branch, PC_skipbranch, PC_m1, PC_addr, delta, plus, 
 				accumulator_i, accumulator_n, accumulator_Y, accumulator_Z,
-				ucode, equalzero,branch, opcode, SRAM, MEMdatain_X, retrap,
-				TOS, NOS, TORS, int_trig, MEM_RDY_Y, MEM_RDY_Z, int_vector_ext, int_vector_ext_i, branch, opcode, delayed_RTS)
+				ucode, equalzero,branch, opcode, chip_RAM, MEMdatain_X, retrap,
+				TOS, TOS_r, NOS, TORS, int_trig, MEM_RDY_Y, MEM_RDY_Z, int_vector_ext, int_vector_ext_i, branch, opcode, delayed_RTS)
 	begin																					-- combinational section of state machine
 		case state is
 
@@ -243,21 +244,21 @@ begin
 				state_n <= skip2; 
 			elsif opcode = ops_JSR or opcode = ops_JMP or opcode = ops_JSL or opcode = ops_TRAP or opcode = ops_RETRAP then
 				state_n <= skip2;
-			elsif SRAM = '1' and (opcode = ops_CFETCH or opcode = ops_WFETCH or opcode = ops_LFETCH) then
+			elsif chip_RAM = '1' and (opcode = ops_CFETCH or opcode = ops_WFETCH or opcode = ops_LFETCH) then
 				state_n <= skip2;
-			elsif SRAM = '0' and opcode = ops_lfetch then
+			elsif chip_RAM = '0' and opcode = ops_lfetch then
 				state_n <= Dfetch_long;	
-			elsif SRAM = '0' and opcode = ops_wfetch then
+			elsif chip_RAM = '0' and opcode = ops_wfetch then
 				state_n <= Dfetch_word;
-			elsif SRAM = '0' and opcode = ops_cfetch then
+			elsif chip_RAM = '0' and opcode = ops_cfetch then
 				state_n <= Dfetch_byte;	
-			elsif SRAM = '1' and (opcode = ops_CSTORE or opcode = ops_WSTORE or opcode = ops_LSTORE) then
+			elsif chip_RAM = '1' and (opcode = ops_CSTORE or opcode = ops_WSTORE or opcode = ops_LSTORE) then
 				state_n <= SRAM_store;					
-			elsif SRAM = '0' and opcode = ops_lstore then
+			elsif chip_RAM = '0' and opcode = ops_lstore then
 				state_n <= Dstore_long;
-			elsif SRAM = '0' and opcode = ops_wstore then
+			elsif chip_RAM = '0' and opcode = ops_wstore then
 				state_n <= Dstore_word;					
-			elsif SRAM = '0' and opcode = ops_cstore then
+			elsif chip_RAM = '0' and opcode = ops_cstore then
 				state_n <= Dstore_byte;
 			elsif opcode = ops_long and branch /= bps_RTS then
 				state_n <= skip1;														-- extra cycle required since fetch is not wide enough to see beyond long literal
@@ -294,7 +295,7 @@ begin
 			end if;
 			
 			if int_trig = '0' and opcode = ops_CSTORE then 		-- write request trigger
-				if SRAM = '1' then
+				if chip_RAM = '1' then
 					MEM_WRQ_X <= '1';
 					MEM_WRQ_Y <= '0';
 					MEM_WRQ_Z <= '0';	
@@ -304,7 +305,7 @@ begin
 					MEM_WRQ_Z <= '0';						
 				end if;		
 			elsif int_trig = '0' and opcode = ops_WSTORE then
-				if SRAM = '1' then
+				if chip_RAM = '1' then
 					MEM_WRQ_X <= '1';
 					MEM_WRQ_Y <= '0';
 					MEM_WRQ_Z <= '0';	
@@ -314,7 +315,7 @@ begin
 					MEM_WRQ_Z <= '1';						
 				end if;				
 			elsif int_trig = '0' and opcode = ops_LSTORE then	
-				if SRAM = '1' then
+				if chip_RAM = '1' then
 					MEM_WRQ_X <= '1';
 					MEM_WRQ_Y <= '0';
 					MEM_WRQ_Z <= '0';	
@@ -347,13 +348,13 @@ begin
 				MEMsize_Xp <= "11";
 			end if;
 			
-			if (int_trig = '0') and (SRAM = '0') and (opcode = ops_CFETCH) then
+			if (int_trig = '0') and (chip_RAM = '0') and (opcode = ops_CFETCH) then
 				MEM_REQ_Y <= '1';
 			else
 				MEM_REQ_Y <= '0';
 			end if;
 			
-			if (int_trig = '0') and (SRAM = '0') and (opcode = ops_WFETCH or opcode = ops_LFETCH) then
+			if (int_trig = '0') and (chip_RAM = '0') and (opcode = ops_WFETCH or opcode = ops_LFETCH) then
 				MEM_REQ_Z <= '1';
 			else
 				MEM_REQ_Z <= '0';
@@ -418,7 +419,7 @@ begin
 				ucode <= ops_NOP;										-- these instructions have no microcode but overlap with internal microcode
 			elsif opcode = ops_SDIVMOD or opcode = ops_UDIVMOD then
 				ucode <= ops_NOP;										-- suppress microcode until last cycle of these instructions
-			elsif SRAM = '0' and (opcode = ops_CSTORE or opcode = ops_CFETCH or opcode = ops_WSTORE or
+			elsif chip_RAM = '0' and (opcode = ops_CSTORE or opcode = ops_CFETCH or opcode = ops_WSTORE or
 									   opcode = ops_WFETCH or opcode = ops_LSTORE or opcode = ops_LFETCH) then
 				ucode <= ops_NOP;										-- need to surpress the microcode when accessing DRAM					
 			else

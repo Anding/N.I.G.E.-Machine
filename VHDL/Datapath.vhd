@@ -143,8 +143,8 @@ begin
 			RSw_m1 <= RSw_i;
 			MEMdatain_X_plus_m1 <= MEMdatain_X_plus;
 		else
-			TOS_i <= (others=>'1');
-			NOS_i <= (others=>'1');
+			TOS_i <= (others=>'0');
+			NOS_i <= (others=>'0');
 			TORS_i <= (others=>'0');
 			PSP <= (others=>'0');
 			RSP <= (others=>'0');	
