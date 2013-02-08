@@ -72,6 +72,8 @@ architecture Behavioral of HW_Registers is
 	signal SW_r : std_logic_vector(7 downto 0);
 	signal PS2_data_r : std_logic_vector(7 downto 0);
 	
+	signal dataout_i : STD_LOGIC_VECTOR (31 downto 0);
+	
 	constant blank3 : std_logic_vector(23 downto 0) := (others=>'0');
 	constant blank2 : std_logic_vector(15 downto 0) := (others=>'0');
 	constant blank1 : std_logic_vector(7 downto 0) := (others=>'0');
@@ -91,6 +93,8 @@ begin
 	addr_i <= addr(7 downto 0);
 	clk_i <= counter_clk(13);
 	irq_mask <= irq_mask_r;
+	
+	dataout <= dataout_i;
 	
 	write_pipeline: process
 	begin
@@ -189,46 +193,46 @@ begin
 		if en = '1' and wrq = "0" then						-- readable registers
 			case addr_i is
 				when x"00" =>										-- TEXT_ZERO
-					dataout <= blank1 & txt_zero_r;
+					dataout_i <= blank1 & txt_zero_r;
 				
 				when x"04" =>										-- GFX_ZERO
-					dataout <= blank1 & gfx_zero_r;			
+					dataout_i <= blank1 & gfx_zero_r;			
 					
 				when x"0c" =>										-- graphics mode
-					dataout <= blank3 & "000" & mode_r;
+					dataout_i <= blank3 & "000" & mode_r;
 					
 				when x"10" =>										-- RS232_S0 data_in
-					dataout <= blank3 & RS232_rx_S0_r;
+					dataout_i <= blank3 & RS232_rx_S0_r;
 					
 				when x"1c" =>										-- RS232 port signals
-					dataout <= blank3 & "000000" & RS232_TBE_S0_r & RS232_RDA_S0_r ;					
+					dataout_i <= blank3 & "000000" & RS232_TBE_S0_r & RS232_RDA_S0_r ;					
 					
 				when x"20" =>										-- PS2 data_in
-					dataout <= blank3 & PS2_data_r;
+					dataout_i <= blank3 & PS2_data_r;
 					
 				when x"24" =>										-- timer_clk
-					dataout	<= counter_clk;
+					dataout_i	<= counter_clk;
 					
 				when x"28" =>										-- timer_ms byte 3
-					dataout	<= counter_ms;
+					dataout_i	<= counter_ms;
 					
 				when x"2C" =>										-- IRQ_mask
-					dataout	<=	blank2 & IRQ_mask_r & "1";
+					dataout_i	<=	blank2 & IRQ_mask_r & "1";
 					
 				when x"34" =>										-- SW
-					dataout	<= blank3 & SW_r;
+					dataout_i	<= blank3 & SW_r;
 
 				when x"38" =>										-- SD data
-					dataout	<= blank3 & SD_datain;
+					dataout_i	<= blank3 & SD_datain;
 					
 				when x"3C" =>										-- SD control
-					dataout  <= blank3 & "0000" & SD_control_r;
+					dataout_i  <= blank3 & "0000" & SD_control_r;
 
 				when x"40"	=>										-- SD status
-					dataout	<= blank3 & "0000" & SD_status;
+					dataout_i	<= blank3 & "0000" & SD_status;
 
 				when others =>
-					dataout <= (others=>'0');
+					dataout_i <= (others=>'0');
 
 			end case;
 		end if;

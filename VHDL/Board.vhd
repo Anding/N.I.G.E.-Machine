@@ -213,9 +213,9 @@ begin
 	 with bank select														-- one cycle delayed to switch output
 		MEMdatain_Xi <= MEMdata_Pstack when Pstack,
 							MEMdata_Rstack when Rstack,
-							"000000000000000000000000" & MEMdata_Char when Char,
+							--"000000000000000000000000" & MEMdata_Char when Char,
 							MEMdata_Reg when Reg,
-							MEMdata_Sys when Sys;
+							MEMdata_Sys when others;
 							
 		  
 	  	-- splice IOExpansion data ahead of the SRAM controller
@@ -306,13 +306,13 @@ begin
 		 clka => clk_system,
 		 ena => sys_en,
 		 wea => wea_sysram,
-		 addra => addra_sysram (15 downto 2),
+		 addra => addra_sysram (13 downto 2),
 		 dina => dina_sysram,
 		 douta => douta_sysram,
 		 clkb => clk_system,
 		 enb => sys_en,
 		 web => web_sysram,
-		 addrb => addrb_sysram (15 downto 2),
+		 addrb => addrb_sysram (13 downto 2),
 		 dinb => dinb_sysram,
 		 doutb => doutb_sysram
 	  );

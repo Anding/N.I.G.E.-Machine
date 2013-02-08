@@ -120,6 +120,8 @@ signal branch, next_branch : std_logic_vector(1 downto 0);					-- branch codes o
 signal offset : std_logic_vector(1 downto 0);	
 signal MEMsize_X_n : STD_LOGIC_VECTOR (1 downto 0);	
 signal delayed_RTS, delayed_RTS_n : STD_LOGIC;
+signal MEMaddr_i : STD_LOGIC_VECTOR (31 downto 0);	
+signal MEM_WRQ_X_i, MEM_WRQ_Y_i, MEM_WRQ_Z_i  : STD_LOGIC;
 
 alias signbit is MEMdatain_X(29);
 
@@ -151,9 +153,12 @@ begin
 	AuxControl <= AuxControl_i;
 	
 	equalzero <= '1' when TOS = 0 else '0'; 						-- flag used for ?DUP, BEQ, and TEST instructions
-	chip_RAM <= '1' when (TOS(23) or TOS(22) or TOS(21) or TOS(20) or TOS(19) or TOS(18) or TOS(17) or TOS(16)) = '0' else '0';
+	
+	chip_RAM <= '1' when TOS(23 downto 16) = 0 else '0';		-- flag used to identify SRAM vs. PSDRAM memory access
+						
+	--chip_RAM <= '1' when (TOS(23) or TOS(22) or TOS(21) or TOS(20) or TOS(19) or TOS(18) or TOS(17) or TOS(16)) = '0' else '0';
 	-- TOS(31) or TOS(30) or TOS(29) or TOS(28) or TOS(27) or TOS(26) or TOS(25) or TOS(24) or    - this memory not accessed
-	--chip_RAM <= '1' when (TOS < 65536) else '0';
+	-- chip_RAM <= '1' when (TOS < 65536) else '0';
 						  
 	accumulator_Y <= accumulator_i(23 downto 0) & MEMdatain_Y;	-- compile WORDs and LONGs from sequential reads
 	accumulator_Z <= accumulator_i(15 downto 0) & MEMdatain_Z;	
@@ -169,6 +174,11 @@ begin
 	PC_branch <= PC + delta;											-- sign extended 14 bit branch for BRA or BEQ	
 	PC_skipbranch <= PC + "00000000000000000010";				-- PC + 2 for skipping a BEQ branch
 	PC_addr <= "000000000000" & PC;
+	
+	MEMaddr <= MEMaddr_i;
+	MEM_WRQ_X <= MEM_WRQ_X_i;
+	MEM_WRQ_Y <= MEM_WRQ_Y_i;
+	MEM_WRQ_Z <= MEM_WRQ_Z_i;
 	
 	-- combinatorial process to determine the size of the next opcode for incrementing the PC
 	process (next_opcode, next_branch)
@@ -296,39 +306,39 @@ begin
 			
 			if int_trig = '0' and opcode = ops_CSTORE then 		-- write request trigger
 				if chip_RAM = '1' then
-					MEM_WRQ_X <= '1';
-					MEM_WRQ_Y <= '0';
-					MEM_WRQ_Z <= '0';	
+					MEM_WRQ_X_i <= '1';
+					MEM_WRQ_Y_i <= '0';
+					MEM_WRQ_Z_i <= '0';	
 				else
-					MEM_WRQ_X <= '0';
-					MEM_WRQ_Y <= '1';
-					MEM_WRQ_Z <= '0';						
+					MEM_WRQ_X_i <= '0';
+					MEM_WRQ_Y_i <= '1';
+					MEM_WRQ_Z_i <= '0';						
 				end if;		
 			elsif int_trig = '0' and opcode = ops_WSTORE then
 				if chip_RAM = '1' then
-					MEM_WRQ_X <= '1';
-					MEM_WRQ_Y <= '0';
-					MEM_WRQ_Z <= '0';	
+					MEM_WRQ_X_i <= '1';
+					MEM_WRQ_Y_i <= '0';
+					MEM_WRQ_Z_i <= '0';	
 				else
-					MEM_WRQ_X <= '0';
-					MEM_WRQ_Y <= '0';
-					MEM_WRQ_Z <= '1';						
+					MEM_WRQ_X_i <= '0';
+					MEM_WRQ_Y_i <= '0';
+					MEM_WRQ_Z_i <= '1';						
 				end if;				
 			elsif int_trig = '0' and opcode = ops_LSTORE then	
 				if chip_RAM = '1' then
-					MEM_WRQ_X <= '1';
-					MEM_WRQ_Y <= '0';
-					MEM_WRQ_Z <= '0';	
+					MEM_WRQ_X_i <= '1';
+					MEM_WRQ_Y_i <= '0';
+					MEM_WRQ_Z_i <= '0';	
 				else
-					MEM_WRQ_X <= '0';
-					MEM_WRQ_Y <= '0';
-					MEM_WRQ_Z <= '1';						
+					MEM_WRQ_X_i <= '0';
+					MEM_WRQ_Y_i <= '0';
+					MEM_WRQ_Z_i <= '1';						
 				end if;	
 			else
 				MEMdataout_Z <= NOS(15 downto 0);
-				MEM_WRQ_X <= '0';
-				MEM_WRQ_Y <= '0';
-				MEM_WRQ_Z <= '0';
+				MEM_WRQ_X_i <= '0';
+				MEM_WRQ_Y_i <= '0';
+				MEM_WRQ_Z_i <= '0';
 			end if;
 			
 			-- Memory read logic
@@ -363,9 +373,9 @@ begin
 			-- Memory address logic
 			if int_trig = '0' and (opcode = ops_CFETCH or opcode = ops_WFETCH or opcode = ops_LFETCH or
 				opcode = ops_CSTORE or opcode = ops_WSTORE or opcode = ops_LSTORE) then  
-				MEMaddr <= TOS;											
+				MEMaddr_i <= TOS;											
 			else																
-				MEMaddr <= PC_addr;											
+				MEMaddr_i <= PC_addr;											
 			end if;	
 					
 			-- Program counter logic
@@ -486,12 +496,12 @@ begin
 			offset <= "00";	
 			ucode <= ops_DROP;									-- DROP previously DUP'd value
 			accumulator_n <= (others=>'0');
-			MEMaddr <= PC_addr;	
+			MEMaddr_i <= PC_addr;	
 			MEM_REQ_Y <= '0';	
 			MEM_REQ_Z <= '0';
-			MEM_WRQ_X <= '0';
-			MEM_WRQ_Y <= '0';	
-			MEM_WRQ_Z <= '0';
+			MEM_WRQ_X_i <= '0';
+			MEM_WRQ_Y_i <= '0';	
+			MEM_WRQ_Z_i <= '0';
 			MEMdataout_X <= NOS;
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);
@@ -512,12 +522,12 @@ begin
 			offset <= "01";	
 			ucode <= ops_SMULT;							
 			accumulator_n <= (others=>'0');	
-			MEMaddr <= PC_addr;	
+			MEMaddr_i <= PC_addr;	
 			MEM_REQ_Y <= '0';	
 			MEM_REQ_Z <= '0';
-			MEM_WRQ_X <= '0';
-			MEM_WRQ_Y <= '0';	
-			MEM_WRQ_Z <= '0';
+			MEM_WRQ_X_i <= '0';
+			MEM_WRQ_Y_i <= '0';	
+			MEM_WRQ_Z_i <= '0';
 			MEMdataout_X <= NOS;
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);
@@ -542,12 +552,12 @@ begin
 			offset <= "01";
 			ucode <= ops_UMULT;									
 			accumulator_n <= (others=>'0');	
-			MEMaddr <= PC_addr;	
+			MEMaddr_i <= PC_addr;	
 			MEM_REQ_Y <= '0';	
 			MEM_REQ_Z <= '0';
-			MEM_WRQ_X <= '0';
-			MEM_WRQ_Y <= '0';	
-			MEM_WRQ_Z <= '0';
+			MEM_WRQ_X_i <= '0';
+			MEM_WRQ_Y_i <= '0';	
+			MEM_WRQ_Z_i <= '0';
 			MEMdataout_X <= NOS;
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);
@@ -572,12 +582,12 @@ begin
 			offset <= "00";	
 			ucode <= ops_NOP;
 			accumulator_n <= (others=>'0');	
-			MEMaddr <= PC_addr;	
+			MEMaddr_i <= PC_addr;	
 			MEM_REQ_Y <= '0';	
 			MEM_REQ_Z <= '0';
-			MEM_WRQ_X <= '0';
-			MEM_WRQ_Y <= '0';	
-			MEM_WRQ_Z <= '0';
+			MEM_WRQ_X_i <= '0';
+			MEM_WRQ_Y_i <= '0';	
+			MEM_WRQ_Z_i <= '0';
 			MEMdataout_X <= NOS;
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);
@@ -598,12 +608,12 @@ begin
 			offset <= "00";
 			ucode <= ops_NOP;
 			accumulator_n <= (others=>'0');	
-			MEMaddr <= PC_addr;	
+			MEMaddr_i <= PC_addr;	
 			MEM_REQ_Y <= '0';	
 			MEM_REQ_Z <= '0';
-			MEM_WRQ_X <= '0';
-			MEM_WRQ_Y <= '0';	
-			MEM_WRQ_Z <= '0';
+			MEM_WRQ_X_i <= '0';
+			MEM_WRQ_Y_i <= '0';	
+			MEM_WRQ_Z_i <= '0';
 			MEMdataout_X <= NOS;
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);
@@ -624,12 +634,12 @@ begin
 			offset <= "01";
 			ucode <= ops_SDIVMOD;								-- load TOS and NOS with results
 			accumulator_n <= (others=>'0');
-			MEMaddr <= PC_addr;	
+			MEMaddr_i <= PC_addr;	
 			MEM_REQ_Y <= '0';	
 			MEM_REQ_Z <= '0';
-			MEM_WRQ_X <= '0';
-			MEM_WRQ_Y <= '0';	
-			MEM_WRQ_Z <= '0';
+			MEM_WRQ_X_i <= '0';
+			MEM_WRQ_Y_i <= '0';	
+			MEM_WRQ_Z_i <= '0';
 			MEMdataout_X <= NOS;
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);
@@ -654,12 +664,12 @@ begin
 			offset <= "01";
 			ucode <= ops_UDIVMOD;								-- load TOS and NOS with results
 			accumulator_n <= (others=>'0');
-			MEMaddr <= PC_addr;	
+			MEMaddr_i <= PC_addr;	
 			MEM_REQ_Y <= '0';	
 			MEM_REQ_Z <= '0';
-			MEM_WRQ_X <= '0';
-			MEM_WRQ_Y <= '0';	
-			MEM_WRQ_Z <= '0';
+			MEM_WRQ_X_i <= '0';
+			MEM_WRQ_Y_i <= '0';	
+			MEM_WRQ_Z_i <= '0';
 			MEMdataout_X <= NOS;
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);
@@ -683,12 +693,12 @@ begin
 			timer <= 0;
 			PC_n <= PC;
 			offset <= "00";
-			MEMaddr <= TOS_r;											-- address still available in registered TOS					
+			MEMaddr_i <= TOS_r;											-- address still available in registered TOS					
 			MEM_REQ_Y <= '0';	
 			MEM_REQ_Z <= '0';
-			MEM_WRQ_X <= '0';
-			MEM_WRQ_Y <= '0';	
-			MEM_WRQ_Z <= '0';
+			MEM_WRQ_X_i <= '0';
+			MEM_WRQ_Y_i <= '0';	
+			MEM_WRQ_Z_i <= '0';
 			MEMdataout_X <= TOS;										-- data shifted to unregistered TOS in second cycle
 			MEMdataout_Y <= (others=>'0');
 			MEMdataout_Z <= (others=>'0');
@@ -716,12 +726,12 @@ begin
 			timer <= 0;
 			PC_n <= PC;					
 			offset <= "00";
-			MEMaddr <= TOS;				
+			MEMaddr_i <= TOS;				
 			MEM_REQ_Y <= '0';	
 			MEM_REQ_Z <= '1';
-			MEM_WRQ_X <= '0';
-			MEM_WRQ_Y <= '0';	
-			MEM_WRQ_Z <= '0';
+			MEM_WRQ_X_i <= '0';
+			MEM_WRQ_Y_i <= '0';	
+			MEM_WRQ_Z_i <= '0';
 			MEMdataout_X <= NOS;
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);		
@@ -742,12 +752,12 @@ begin
 			timer <= 0;
 			PC_n <= PC;				
 			offset <= "00";
-			MEMaddr <= TOS;				
+			MEMaddr_i <= TOS;				
 			MEM_REQ_Y <= '0';	
 			MEM_REQ_Z <= '0';
-			MEM_WRQ_X <= '0';
-			MEM_WRQ_Y <= '0';	
-			MEM_WRQ_Z <= '0';
+			MEM_WRQ_X_i <= '0';
+			MEM_WRQ_Y_i <= '0';	
+			MEM_WRQ_Z_i <= '0';
 			MEMdataout_X <= NOS;
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);
@@ -774,12 +784,12 @@ begin
 			timer <= 0;	
 			PC_n <= PC;
 			offset <= "00";
-			MEMaddr <= TOS;			
+			MEMaddr_i <= TOS;			
 			MEM_REQ_Y <= '0';	
 			MEM_REQ_Z <= '1';			
-			MEM_WRQ_X <= '0';
-			MEM_WRQ_Y <= '0';	
-			MEM_WRQ_Z <= '0';
+			MEM_WRQ_X_i <= '0';
+			MEM_WRQ_Y_i <= '0';	
+			MEM_WRQ_Z_i <= '0';
 			MEMdataout_X <= NOS;
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);
@@ -806,12 +816,12 @@ begin
 			timer <= 0;
 			PC_n <= PC;					
 			offset <= "00";
-			MEMaddr <= TOS;
+			MEMaddr_i <= TOS;
 			MEM_REQ_Y <= '1';				
 			MEM_REQ_Z <= '0';
-			MEM_WRQ_X <= '0';
-			MEM_WRQ_Y <= '0';	
-			MEM_WRQ_Z <= '0';
+			MEM_WRQ_X_i <= '0';
+			MEM_WRQ_Y_i <= '0';	
+			MEM_WRQ_Z_i <= '0';
 			MEMdataout_X <= NOS;
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);	
@@ -834,14 +844,14 @@ begin
 				ucode <= ops_NOP;	
 			end if;
 			offset <= "00";
-			MEMaddr <= TOS;	
+			MEMaddr_i <= TOS;	
 			timer <= 0;
 			PC_n <= PC;						
 			MEM_REQ_Y <= '0';	
 			MEM_REQ_Z <= '0';
-			MEM_WRQ_X <= '0';
-			MEM_WRQ_Y <= '0';	
-			MEM_WRQ_Z <= '1';
+			MEM_WRQ_X_i <= '0';
+			MEM_WRQ_Y_i <= '0';	
+			MEM_WRQ_Z_i <= '1';
 			MEMdataout_X <= NOS;
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(31 downto 16);	
@@ -861,13 +871,13 @@ begin
 			ucode <= ops_INC;
 			timer <= 0;
 			PC_n <= PC;
-			MEMaddr <= TOS;							
+			MEMaddr_i <= TOS;							
 			offset <= "00";
 			MEM_REQ_Y <= '0';	
 			MEM_REQ_Z <= '0';
-			MEM_WRQ_X <= '0';
-			MEM_WRQ_Y <= '0';	
-			MEM_WRQ_Z <= '0';
+			MEM_WRQ_X_i <= '0';
+			MEM_WRQ_Y_i <= '0';	
+			MEM_WRQ_Z_i <= '0';
 			MEMdataout_X <= NOS;
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);
@@ -893,12 +903,12 @@ begin
 			timer <= 0;
 			PC_n <= PC;					
 			offset <= "00";
-			MEMaddr <= TOS;				
+			MEMaddr_i <= TOS;				
 			MEM_REQ_Y <= '0';	
 			MEM_REQ_Z <= '0';
-			MEM_WRQ_X <= '0';
-			MEM_WRQ_Y <= '0';	
-			MEM_WRQ_Z <= '1';
+			MEM_WRQ_X_i <= '0';
+			MEM_WRQ_Y_i <= '0';	
+			MEM_WRQ_Z_i <= '1';
 			MEMdataout_X <= NOS;
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);
@@ -924,12 +934,12 @@ begin
 			timer <= 0;
 			PC_n <= PC;				
 			offset <= "00";
-			MEMaddr <= TOS;				
+			MEMaddr_i <= TOS;				
 			MEM_REQ_Y <= '0';	
 			MEM_REQ_Z <= '0';
-			MEM_WRQ_X <= '0';
-			MEM_WRQ_Y <= '1';	
-			MEM_WRQ_Z <= '0';
+			MEM_WRQ_X_i <= '0';
+			MEM_WRQ_Y_i <= '1';	
+			MEM_WRQ_Z_i <= '0';
 			MEMdataout_X <= NOS;
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);
@@ -950,12 +960,12 @@ begin
 			timer <= 0;
 			PC_n <= PC;					
 			offset <= "00";
-			MEMaddr <= PC_addr;				
+			MEMaddr_i <= PC_addr;				
 			MEM_REQ_Y <= '0';	
 			MEM_REQ_Z <= '0';
-			MEM_WRQ_X <= '0';
-			MEM_WRQ_Y <= '0';	
-			MEM_WRQ_Z <= '0';
+			MEM_WRQ_X_i <= '0';
+			MEM_WRQ_Y_i <= '0';	
+			MEM_WRQ_Z_i <= '0';
 			MEMdataout_X <= NOS;
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);
@@ -977,12 +987,12 @@ begin
 			ucode <= ops_NOP;																			
 			accumulator_n <= (others=>'0');
 			offset <= "00";
-			MEMaddr <= PC_addr;				
+			MEMaddr_i <= PC_addr;				
 			MEM_REQ_Y <= '0';	
 			MEM_REQ_Z <= '0';
-			MEM_WRQ_X <= '0';
-			MEM_WRQ_Y <= '0';	
-			MEM_WRQ_Z <= '0';
+			MEM_WRQ_X_i <= '0';
+			MEM_WRQ_Y_i <= '0';	
+			MEM_WRQ_Z_i <= '0';
 			MEMsize_X_n <= "11";
 			MEMsize_Xp <= "11";
 			MEMdataout_X <= NOS;
@@ -1007,12 +1017,12 @@ begin
 			ucode <= ops_NOP;							
 			accumulator_n <= (others=>'0');
 			offset <= "00";
-			MEMaddr <= PC_addr;				
+			MEMaddr_i <= PC_addr;				
 			MEM_REQ_Y <= '0';	
 			MEM_REQ_Z <= '0';
-			MEM_WRQ_X <= '0';
-			MEM_WRQ_Y <= '0';	
-			MEM_WRQ_Z <= '0';
+			MEM_WRQ_X_i <= '0';
+			MEM_WRQ_Y_i <= '0';	
+			MEM_WRQ_Z_i <= '0';
 			MEMsize_X_n <= "11";
 			MEMsize_Xp <= "11";
 			MEMdataout_X <= NOS;
