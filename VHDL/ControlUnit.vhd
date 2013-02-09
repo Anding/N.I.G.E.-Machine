@@ -131,8 +131,9 @@ begin
 	AuxControl <= AuxControl_i;
 	
 	equalzero <= '1' when TOS = 0 else '0'; 						-- flag used for ?DUP, BEQ, and TEST instructions
-	SRAM <= '1' when (TOS(31) or TOS(30) or TOS(29) or TOS(28) or TOS(27) or TOS(26) or TOS(25) or TOS(24) or
-						  TOS(23) or TOS(22) or TOS(21) or TOS(20) or TOS(19) or TOS(18) or TOS(17) or TOS(16)) = '0' else '0';
+	SRAM <= '1' when TOS(24 downto 16) = 0 else '0';
+	--SRAM <= '1' when (TOS(31) or TOS(30) or TOS(29) or TOS(28) or TOS(27) or TOS(26) or TOS(25) or TOS(24) or
+	--					  TOS(23) or TOS(22) or TOS(21) or TOS(20) or TOS(19) or TOS(18) or TOS(17) or TOS(16)) = '0' else '0';
 						  
 	accumulator_X <= accumulator(23 downto 0) & MEMdatain_X;	-- compile WORDs and LONGs from sequential reads
 	accumulator_Y <= accumulator(23 downto 0) & MEMdatain_Y;

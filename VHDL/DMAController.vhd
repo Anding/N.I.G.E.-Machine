@@ -73,6 +73,7 @@ signal ADDR_TXT_i : std_logic_vector(7 downto 0);
 signal ADDR_TXT_m1 :  std_logic_vector (6 downto 0);
 signal COLUMNS : std_logic_vector (6 downto 0);
 signal COLUMNS1 : std_logic_vector (6 downto 0);
+signal ADDR_SDRAM_i : STD_LOGIC_VECTOR (23 downto 1);
 
 component BUFFER_VGA																	-- 256 word (512 byte) buffer (i.e. 2* 128 word burst reads)
 	port (
@@ -119,6 +120,8 @@ begin
 			doutb => DATA_TXT_i);
 			
 		--- combinational logic
+		ADDR_SDRAM <= ADDR_SDRAM_i;
+		
 		with ADDR_VGA(0) select												-- Multiplex WORD data of the buffer to BYTE requirment of VGA unit
 			DATA_OUT_VGA <= DATA_VGA_i(7 downto 0) when '1',		-- ADDR_VGA is one cycle ahead of DATA_VGA_i (looks 'wrong way around' but correct)
 							    DATA_VGA_i(15 downto 8) when others;
@@ -228,7 +231,7 @@ begin
 						CRE_SDRAM <= '1';
 						LB_SDRAM <= '0';
 						UB_SDRAM <= '0';
-						ADDR_SDRAM <= "00010000001110100011111";						
+						ADDR_SDRAM_i <= "00010000001110100011111";						
 						counter <= counter + 1;
 						if counter = 5 then 									-- 50MHz =3, 80MHz =5
 							state <= pre_idle;
@@ -275,14 +278,14 @@ begin
 												
 						elsif REQ_A = '1' then 								-- Read request on port A
 							DATA_SDRAM <= (others => 'Z');				-- important to allow DATA_IN from SDRAM
-							ADDR_SDRAM <= ADDR_A;
+							ADDR_SDRAM_i <= ADDR_A;
 							ADV_SDRAM <= '0';
 							CE_SDRAM <= '0';
 							state <= read_A;	
 							
 						elsif WRQ_A = '1' then								-- Write request on port A
 							DATA_SDRAM <= DATA_IN_A;						
-							ADDR_SDRAM <= ADDR_A;	
+							ADDR_SDRAM_i <= ADDR_A;	
 							ADV_SDRAM <= '0';	
 							CE_SDRAM <= '0';						
 							WE_SDRAM <= '0';
@@ -292,7 +295,7 @@ begin
 							LB_SDRAM <= ADDR_B(0);							-- byte write only in word addressable memory
 							UB_SDRAM <= not ADDR_B(0);						-- need to configure which byte to write
 							DATA_SDRAM <= DATA_IN_B & DATA_IN_B;
-							ADDR_SDRAM <= ADDR_B(23 downto 1);			-- change byte address space to word address space
+							ADDR_SDRAM_i <= ADDR_B(23 downto 1);			-- change byte address space to word address space
 							ADV_SDRAM <= '0';
 							CE_SDRAM <= '0';
 							WE_SDRAM <= '0';
@@ -300,7 +303,7 @@ begin
 							
 						elsif REQ_C = '1' then
 							DATA_SDRAM <= (others => 'Z');				
-							ADDR_SDRAM <= ADDR_A;
+							ADDR_SDRAM_i <= ADDR_A;
 							ADV_SDRAM <= '0';
 							CE_SDRAM <= '0';
 							state <= read_C;
@@ -309,7 +312,7 @@ begin
 							LB_SDRAM <= not ADDR_C(0);							
 							UB_SDRAM <= ADDR_C(0);						
 							DATA_SDRAM <= DATA_IN_C & DATA_IN_C;
-							ADDR_SDRAM <= ADDR_C(23 downto 1);			
+							ADDR_SDRAM_i <= ADDR_C(23 downto 1);			
 							ADV_SDRAM <= '0';
 							CE_SDRAM <= '0';
 							WE_SDRAM <= '0';
@@ -360,7 +363,7 @@ begin
 						state <= pre_idle;					
 						
 					when read_burst_0 =>										-- Initialize burst read
-						ADDR_SDRAM <= ADDR_LINE & "0000000";
+						ADDR_SDRAM_i <= ADDR_LINE & "0000000";
 						DATA_SDRAM <= (others => 'Z');							
 						ADV_SDRAM <= '0';
 						CE_SDRAM <= '0';
@@ -387,7 +390,7 @@ begin
 						end if;
 
 					when read_burst_txt_0 =>								-- Initialize burst read for text data
-						ADDR_SDRAM <= ADDR_LINE_TXT;
+						ADDR_SDRAM_i <= ADDR_LINE_TXT;
 						DATA_SDRAM <= (others => 'Z');							
 						ADV_SDRAM <= '0';
 						CE_SDRAM <= '0';
@@ -416,7 +419,7 @@ begin
 						end if;
 						
 					when read_burst_txt_4 =>										-- restart read on next row
-						ADDR_SDRAM <= ADDR_LINE_TXT + counter;
+						ADDR_SDRAM_i <= ADDR_LINE_TXT + counter;
 						DATA_SDRAM <= (others => 'Z');							
 						ADV_SDRAM <= '0';
 						CE_SDRAM <= '0';

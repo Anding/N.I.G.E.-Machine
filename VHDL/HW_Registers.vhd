@@ -72,6 +72,8 @@ architecture Behavioral of HW_Registers is
 	signal SW_r : std_logic_vector(7 downto 0);
 	signal PS2_data_r : std_logic_vector(7 downto 0);
 	
+	signal dataout_i : STD_LOGIC_VECTOR (7 downto 0);
+	
 begin
 	-- connect writable registers to outputs
 	SD_dataout <= SD_dataout_r;
@@ -87,6 +89,7 @@ begin
 	addr_i <= addr(7 downto 0);
 	clk_i <= counter_clk(13);
 	irq_mask <= irq_mask_r;
+	dataout <= dataout_i;
 	
 	write_pipeline: process
 	begin
@@ -206,86 +209,86 @@ begin
 		if en = '1' and wrq = "0" then						-- readable registers
 			case addr_i is
 				when x"00" =>										-- TEXT_ZERO byte 3 (this is a null register)
-					dataout <= (others=>'0');
+					dataout_i <= (others=>'0');
 					
 				when x"01" =>										-- TEXT_ZERO byte 2
-					dataout <= txt_zero_r(23 downto 16);
+					dataout_i <= txt_zero_r(23 downto 16);
 					
 				when x"02" =>										-- TEXT_ZERO byte 1
-					dataout <= txt_zero_r(15 downto 8);
+					dataout_i <= txt_zero_r(15 downto 8);
 					
 				when x"03" =>										-- TEXT_ZERO byte 0
-					dataout <= txt_zero_r(7 downto 0);
+					dataout_i <= txt_zero_r(7 downto 0);
 				
 				when x"04" =>										-- GFX_ZERO byte 3 (this is a null register)
-					dataout <= (others=>'0');
+					dataout_i <= (others=>'0');
 				
 				when x"05" =>										-- GFX_ZERO byte 2
-					dataout <= gfx_zero_r(23 downto 16);
+					dataout_i <= gfx_zero_r(23 downto 16);
 					
 				when x"06" =>										-- GFX_ZERO byte 1
-					dataout <= gfx_zero_r(15 downto 8);	
+					dataout_i <= gfx_zero_r(15 downto 8);	
 
 				when x"07" =>										-- GFX_ZERO byte 0
-					dataout <= txt_zero_r(7 downto 0);					
+					dataout_i <= txt_zero_r(7 downto 0);					
 					
 				when x"09" =>										-- graphics mode
-					dataout <= "000" & mode_r;
+					dataout_i <= "000" & mode_r;
 					
 				when x"0a" =>										-- RS232_S0 data_in
-					dataout <= RS232_rx_S0_r;
+					dataout_i <= RS232_rx_S0_r;
 					
 					
 				when x"0e" =>										-- RS232 port signals
-					dataout <= "000000" & RS232_TBE_S0_r & RS232_RDA_S0_r ;					
+					dataout_i <= "000000" & RS232_TBE_S0_r & RS232_RDA_S0_r ;					
 					
 				when x"0f" =>										-- PS2 data_in
-					dataout <= PS2_data_r;
+					dataout_i <= PS2_data_r;
 					
 				when x"10"	=>										-- timer_clk byte 3
-					dataout	<= counter_clk(31 downto 24);
+					dataout_i	<= counter_clk(31 downto 24);
 					
 				when x"11"	=>										-- timer_clk byte 2
-					dataout	<= counter_clk(23 downto 16);					
+					dataout_i	<= counter_clk(23 downto 16);					
 					
 				when x"12"	=>										-- timer_clk byte 1
-					dataout	<= counter_clk(15 downto 8);
+					dataout_i	<= counter_clk(15 downto 8);
 					
 				when x"13"	=>										-- timer_clk byte 0
-					dataout	<= counter_clk(7 downto 0);				
+					dataout_i	<= counter_clk(7 downto 0);				
 
 				when x"14"	=>										-- timer_ms byte 3
-					dataout	<= counter_ms(31 downto 24);
+					dataout_i	<= counter_ms(31 downto 24);
 					
 				when x"15"	=>										-- timer_ms byte 2
-					dataout	<= counter_ms(23 downto 16);					
+					dataout_i	<= counter_ms(23 downto 16);					
 					
 				when x"16"	=>										-- timer_ms byte 1
-					dataout	<= counter_ms(15 downto 8);
+					dataout_i	<= counter_ms(15 downto 8);
 					
 				when x"17"	=>										-- timer_ms byte 0
-					dataout	<= counter_ms(7 downto 0);		
+					dataout_i	<= counter_ms(7 downto 0);		
 					
 				when x"18" =>										-- IRQ_mask byte 1
-					dataout	<=	IRQ_mask_r(15 downto 8);
+					dataout_i	<=	IRQ_mask_r(15 downto 8);
 					
 				when x"19" =>										-- IRQ_mask byte 0
-					dataout	<=	IRQ_mask_r(7 downto 1) & "0";	
+					dataout_i	<=	IRQ_mask_r(7 downto 1) & "0";	
 					
 				when x"1c"	=>										-- SW
-					dataout	<= SW_r;
+					dataout_i	<= SW_r;
 
 				when x"1d"	=>										-- SD data
-					dataout	<= SD_datain;
+					dataout_i	<= SD_datain;
 					
 				when x"1e" =>
-					dataout  <= "0000" & SD_control_r;
+					dataout_i  <= "0000" & SD_control_r;
 
 				when x"1f"	=>										-- SD status
-					dataout	<= "0000" & SD_status;
+					dataout_i	<= "0000" & SD_status;
 
 				when others =>
-					dataout <= (others=>'0');
+					dataout_i <= (others=>'0');
 
 			end case;
 		end if;

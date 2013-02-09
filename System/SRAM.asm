@@ -4080,15 +4080,40 @@ XWORD.CF	xword,rts
 @.CF		fetch.l
 		rts
 ;
-!.LF		dc.l	@.NF
+2@.LF		dc.l	@.NF
+2@.NF		dc.b	2 128 +
+		dc.s	2@
+2@.SF		dc.w	2@.Z 2@.CF del
+2@.CF		dup
+		#.b	4
+		+
+		fetch.l
+		swap
+		fetch.l
+2@.Z		rts
+;
+!.LF		dc.l	2@.NF
 !.NF		dc.b	1 128 +
 		dc.b 	char !
 !.SF		dc.w 	2
 !.CF		store.l
 		rts
 ;
+2!.LF		dc.l	!.NF
+2!.NF		dc.b	2 128 +
+		dc.s	2!
+2!.SF		dc.w	2!.Z 2!.CF del
+2!.CF		dup
+		rot
+		rot
+		store.l
+		#.b	4
+		+
+		store.l
+2!.Z		rts
+;
 ; +! ( n addr --)
-+!.LF		dc.l	!.NF
++!.LF		dc.l	2!.NF
 +!.NF		dc.b	2 128 +
 		dc.b 	char ! char +
 +!.SF		dc.w 	+!.Z +!.CF del
