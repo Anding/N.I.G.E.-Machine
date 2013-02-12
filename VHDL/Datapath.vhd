@@ -178,11 +178,12 @@ begin
 							
 	PSdatain_i <= PwBuff when PSw_m1 = "1"	-- because of 1 cycle memory latency, need to use the buffered value for a stack memory read
 														--   if the stack memory was written just one cycle before (as memory update will not yet have occured)
-				else (PSdatain(7 downto 0) & PSdatain(15 downto 8) & PSdatain(23 downto 16) & PSdatain(31 downto 24));					
-														
+				--else (PSdatain(7 downto 0) & PSdatain(15 downto 8) & PSdatain(23 downto 16) & PSdatain(31 downto 24));					
+				else PSdatain;										
 														
 	RSdatain_i <= RwBuff when RSw_m1 = "1"	-- anti-latency buffer for return stack memory
-				else (RSdatain(7 downto 0) & RSdatain(15 downto 8) & RSdatain(23 downto 16) & RSdatain(31 downto 24));		
+				--else (RSdatain(7 downto 0) & RSdatain(15 downto 8) & RSdatain(23 downto 16) & RSdatain(31 downto 24));		
+				else RSdatain;
 				
 	with AuxControl (0 downto 0) select					-- instruction RTS requires decrement of return stack pointer
 		RSP_n1 <= RSP_m1 when "1",

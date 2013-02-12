@@ -36,6 +36,7 @@ CLKcounter	equ	hex f824
 MScounter	equ	hex f828
 intmask	equ	hex f82c		
 intmask_MS	equ	16
+sevenseg	equ	hex f830
 SPI.data	equ	hex f838  
 SPI.control	equ	hex f83C  
 SPI.status	equ	hex f840  
@@ -121,7 +122,8 @@ V.MS		BRA	MS V.MS rel				; MS
 ; Interrupt handlers
 ; -----------------------------------------------------------------------------------------------
 ;
-RDA		#.w 	RSrxWPOS	; buffer write position
+RDA		store.w
+		#.w 	RSrxWPOS	; buffer write position
 		fetch.b
 		1+
 		#.b	hex ff		; constrain to 256 byte length
@@ -227,6 +229,7 @@ START.CF	#.w	CLS.CF
 		#.b	12
 		#.w	TYPE.CF
 		jsr
+		jsl	KEY.CF
 		#.w	QUIT.CF
 		jmp
 ;
@@ -4081,15 +4084,39 @@ XWORD.CF	xword,rts
 @.CF		fetch.l
 		rts
 ;
-!.LF		dc.l	@.NF
+2@.LF		dc.l	@.NF
+2@.NF		dc.b	2 128 +
+		dc.s	2@
+2@.SF		dc.w	2@.Z 2@.CF del
+2@.CF		dup	
+		#.b	4
+		+
+		fetch.l
+		swap
+		fetch.l
+2@.Z		rts
+;
+!.LF		dc.l	2@.NF
 !.NF		dc.b	1 128 +
 		dc.b 	char !
 !.SF		dc.w 	2
 !.CF		store.l
 		rts
 ;
+2!.LF		dc.l	!.NF
+2!.NF		dc.b	2 128 +	
+		dc.s	2!
+2!.SF		dc.w	2!.Z 2!.CF del
+2!.CF		dup
+		rot
+		rot
+		store.l
+		#.b	4
+		+	store.l
+2!.Z		rts
+;
 ; +! ( n addr --)
-+!.LF		dc.l	!.NF
++!.LF		dc.l	2!.NF
 +!.NF		dc.b	2 128 +
 		dc.b 	char ! char +
 +!.SF		dc.w 	+!.Z +!.CF del
@@ -5796,7 +5823,7 @@ TYPE_VECTOR		dc.l	VTYPE.CF	; VTYPE.CF
 TYPERAW_VECTOR 	dc.l	VTYPERAW.CF	; VTYPERAW.CF
 EMIT_VECTOR		dc.l	VEMIT.CF	; VEMIT.CF
 KEY_VECTOR		dc.l	KKEY.CF	; KKEY.CF
-KEY?_VECTOR		dc.l	KKEY?.CF	; EKEY?.CF
+KEY?_VECTOR		dc.l	KKEY?.CF	; KKEY?.CF
 ;
 ; marker for initializing HERE
 END			dc.l	0

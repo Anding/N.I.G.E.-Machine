@@ -187,7 +187,9 @@ begin
 	end process;
 	
 	ms_irq <= '1' when timer_ms = "0000000000000000" else '0';
-	 
+	--ms_irq <= '1' when timer_ms(3 downto 0) = "0000" else '0';
+
+	
 	-- board level memory logic  
 	 MEM_WRQ_XX(0) <= MEM_WRQ_X;	
 	
@@ -220,16 +222,16 @@ begin
 		  
 	  	-- splice IOExpansion data ahead of the SRAM controller
 	  with Boot_we select
-			--"000000000000000000000000" & Boot_data when "1",
+			 --"000000000000000000000000" & Boot_data when "1",
 			MEMdataout_X_s <= MEMdataout_X when others;
 				
 
 	  with Boot_we select
-			--"01" when "01",
-			MEMsize_X_s <= MEMsize_X when others;
+			 --"01" when "1",
+			 MEMsize_X_s <= MEMsize_X when others;
 
 	  with Boot_we select
-			--"0000000000000000" & Boot_addr when "1",
+			 --"0000000000000000" & Boot_addr when "1",
 			MEMaddr_s <= MEMaddr when others;
 				
 				

@@ -262,7 +262,7 @@ begin
 				state_n <= Dfetch_word;
 			elsif chip_RAM = '0' and opcode = ops_cfetch then
 				state_n <= Dfetch_byte;	
-			elsif chip_RAM = '1' and (opcode = ops_CSTORE or opcode = ops_WSTORE or opcode = ops_LSTORE) then
+			elsif chip_RAM = '1' and (opcode = ops_CSTORE or  opcode = ops_WSTORE or opcode = ops_LSTORE) then
 				state_n <= SRAM_store;					
 			elsif chip_RAM = '0' and opcode = ops_lstore then
 				state_n <= Dstore_long;
@@ -479,7 +479,7 @@ begin
 			end if;
 			
 			-- Delayed RTS logic
-			if branch = bps_RTS then
+			if branch = bps_RTS and not (int_trig = '1' or retrap(0) = '1') then
 				delayed_RTS_n <= '1';
 			else
 				delayed_RTS_n <= '0';
@@ -519,7 +519,7 @@ begin
 			state_n <= common;
 			timer <= 4;  											-- wait for multiplier
 			PC_n <= PC_plus;										-- PC update will take place only on transition to next state
-			offset <= "01";	
+			offset <= "00";	
 			ucode <= ops_SMULT;							
 			accumulator_n <= (others=>'0');	
 			MEMaddr_i <= PC_addr;	
@@ -549,7 +549,7 @@ begin
 			state_n <= common;
 			timer <= 4;  											-- wait for multiplier
 			PC_n <= PC_plus;										-- PC update will take place only on transition to next state
-			offset <= "01";
+			offset <= "00";
 			ucode <= ops_UMULT;									
 			accumulator_n <= (others=>'0');	
 			MEMaddr_i <= PC_addr;	
@@ -712,7 +712,7 @@ begin
 			rti <= '0';
 			retrap_n <= retrap;
 			delayed_RTS_n <= delayed_RTS;
-
+			
 		when Dfetch_long =>											
 			if MEM_RDY_Z = '1' then
 				state_n <= Dfetch_long2;									

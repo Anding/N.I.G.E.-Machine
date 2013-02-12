@@ -116,9 +116,13 @@
 							
 				binary dup 0 <# 32 0 do # loop #> fileid-w2 @ write-line decimal	( -- flag)
 				if ." Error writing output file .txt" close-all abort then
-		
-				membuf ! membuf 1 fileid-w3 @ write-file
-				if ." Error writing output file .bin" close-all abort then
+				
+				4 0 DO
+					dup 24 rshift 
+					membuf ! membuf 1 fileid-w3 @ write-file
+					if ." Error writing output file .bin" close-all abort then
+					8 lshift
+				LOOP	drop
 				0 output-value !
 			ELSE
 				drop
