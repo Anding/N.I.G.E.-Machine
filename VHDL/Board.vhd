@@ -123,6 +123,7 @@ signal MEMsize_X_s : std_logic_vector(1 downto 0);
 signal MEMaddr_s :  std_logic_vector(31 downto 0);
 signal MEMdataout_X_s :  std_logic_vector(31 downto 0);
 signal MEM_WRQ_XX_s : std_logic_vector(0 downto 0);
+signal boot_active : std_logic;
 	
 	COMPONENT DCM6
 	PORT(
@@ -221,23 +222,23 @@ begin
 							
 		  
 	  	-- splice IOExpansion data ahead of the SRAM controller
-	  with Boot_we select
-			 --"000000000000000000000000" & Boot_data when "1",
-			MEMdataout_X_s <= MEMdataout_X when others;
+	  --with Boot_active select
+			 -- "000000000000000000000000" & Boot_data when '1',
+			MEMdataout_X_s <= MEMdataout_X ;--when others;
 				
 
-	  with Boot_we select
-			 --"01" when "1",
-			 MEMsize_X_s <= MEMsize_X when others;
+	  --with Boot_active select
+			 --"01" when '1',
+			 MEMsize_X_s <= MEMsize_X ;--when others;
 
-	  with Boot_we select
-			 --"0000000000000000" & Boot_addr when "1",
-			MEMaddr_s <= MEMaddr when others;
+	  --with Boot_active select
+			 --"0000000000000000" & Boot_addr when '1',
+			MEMaddr_s <= MEMaddr ;--when others;
 				
 				
-	 with Boot_we select
-			--Boot_we when "1",
-			MEM_WRQ_XX_s <= MEM_WRQ_XX when others;
+	 --with Boot_active select
+			--Boot_we when '1',
+			MEM_WRQ_XX_s <= MEM_WRQ_XX ;--when others;
 				
 	 		
 		inst_Pstack_RAM : entity work.Pstack_RAM
@@ -510,6 +511,7 @@ begin
 		data => Boot_data,
 		addr => Boot_addr,
 		we => Boot_we
+		--active => Boot_active
 		);
 		
 		Inst_ByteHEXdisplay: entity work.ByteHEXdisplay PORT MAP(

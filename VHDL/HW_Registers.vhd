@@ -161,13 +161,13 @@ begin
 				end case;		
 			end if;
 		
-			if en_r = '1' and wrq_r = "1" and addr_r = x"0b" then					-- write triggers
+			if en_r = '1' and wrq_r = "1" and addr_r = x"14" then					-- write triggers
 				RS232_wr_S0 <= '1';	
 			else
 				RS232_wr_S0 <= '0';
 			end if;
 
-			if en_r = '1' and wrq_r = "1" and addr_r = x"1d" then 
+			if en_r = '1' and wrq_r = "1" and addr_r = x"38" then 
 				SD_wr <= '1';	
 			else
 				SD_wr <= '0';

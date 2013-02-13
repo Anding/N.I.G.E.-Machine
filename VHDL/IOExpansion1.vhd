@@ -36,6 +36,7 @@ begin
 	 data <= EppDB;
 	 addr <= addr_i;
 	 we <= "1" when (state = data_write and regEppAdr = X"FF") else "0";
+	 --active <= '1' when (state = data_write or state = data_write_complete) and (regEppAdr = X"FF") else '0';
 	
 -- output to Epp interface (before Z buffer)
     busEppInternal <= 
@@ -156,8 +157,8 @@ begin
 			end if;
 			EppWait <= '1';
 			regEppAdr_n <= regEppAdr;
-			EppDB <= (others=>'Z');
-				
+			EppDB <= (others=>'Z');				
+
 		end case;
 	end process;		
 

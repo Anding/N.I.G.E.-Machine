@@ -96,26 +96,14 @@ variable ms-total	\ cumulative time for a series of tests
 : $/$     .ann ." /"        [$  /prims DUP 1+ 1 DO  1000 I / [o/n] DROP LOOP  $] ;
 : $+$     .ann ." +"        [$  /prims DUP 1+ 1 DO  1000 I + [o/n] DROP  LOOP  $] ;
 : $/MOD$  .ann ." /MOD"     [$  /prims DUP 1+ 1 DO  1000 I /MOD [o/n] 2DROP  LOOP  $] ;
-: $*/$    .ann ." */"       [$  /prims DUP 1+ 1 DO  I I I */ [o/n] DROP  LOOP  $] ;
-
+: $*/$    .ann ." */"       [$  /prims DUP 1+ 1 DO  I I I */ [o/n] DROP  LOOP  $] 
 
 
 \ *************************
 \ The main benchmark driver
 \ *************************
 
-variable CodeSize
-0 CodeSize !
-
-: .CodeSize
-  xcr ." Benchmark code size"
-  time-pos 2- >pos
-  CodeSize @ 7 .r ."  bytes."
-;
-
 : BENCHMARK
-   .CodeSize
-   cr
    .ann ." This system's primitives" CR
    .header
    [[$$
@@ -126,6 +114,4 @@ variable CodeSize
    CR  ." Total:"  1 $$]]
 
 ;
-
 decimal
-here start-here - CodeSize !

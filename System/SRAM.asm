@@ -29,7 +29,7 @@ mode		equ	hex f80c
 RS232rx	equ	hex f810
 RS232tx	equ	hex f814
 RS232UBRR	equ	hex f818
-HWstatus	equ	hex f80e
+HWstatus	equ	hex f81c
 HWmask_TBE	equ	02
 PS2rx		equ	hex f820
 CLKcounter	equ	hex f824
@@ -44,6 +44,7 @@ SPI.divide	equ	hex f844
 ;
 ; **** MEMORY MAP ****
 ;
+SRAMSIZE	equ	16384
 RSrxBUF	equ	hex 010000		; RS232 buffer (256 bytes)	
 PSBUF		equ	hex 010100		; PS/2 keyboard buffer (256 bytes)
 _input_buff	equ	hex 010200		; default input buffer location (used by ACCEPT)
@@ -3513,7 +3514,10 @@ ERROR.LF	dc.l 	INTERPRET.NF
 ERROR.NF	dc.b	5 128 +
 		dc.b	char R char O char R char R char E
 ERROR.SF	dc.w	ERROR.Z ERROR.CF del
-ERROR.CF	#.w 	PALETTE 2 +
+ERROR.CF	R@			; indicate calling address on the display
+		#.w	sevenseg
+		store.w
+		#.w 	PALETTE 2 +
 		fetch.b
 		#.w	INK
 		store.b
@@ -4368,7 +4372,7 @@ UNUSED.LF	dc.l	DOTS.NF
 UNUSED.NF	dc.b	6 128 +
 		dc.b	char D char E char S char U char N char U
 UNUSED.SF	dc.w	UNUSED.Z UNUSED.CF del
-UNUSED.CF	#.w	45056		; 12 * 2K BLOCK RAM
+UNUSED.CF	#.w	SRAMSIZE
 		#.w	HERE_
 		fetch.l
 UNUSED.Z	-,rts
@@ -4376,7 +4380,7 @@ UNUSED.Z	-,rts
 ; CHECKMEM - internal word
 CHECKMEM.CF	#.w	UNUSED.CF
 		jsr		( free)
-		#.b	128	( free 128)
+		#.b	32	( free 32)
 		<
 		IF
 			#.w	CHECKMEM.0
