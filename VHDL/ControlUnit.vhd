@@ -631,7 +631,7 @@ begin
 			state_n <= common;									
 			timer <= 0;  
 			PC_n <= PC_plus;
-			offset <= "01";
+			offset <= "00";
 			ucode <= ops_SDIVMOD;								-- load TOS and NOS with results
 			accumulator_n <= (others=>'0');
 			MEMaddr_i <= PC_addr;	
@@ -661,7 +661,7 @@ begin
 			state_n <= common;
 			timer <= 0;
 			PC_n <= PC_plus;
-			offset <= "01";
+			offset <= "00";
 			ucode <= ops_UDIVMOD;								-- load TOS and NOS with results
 			accumulator_n <= (others=>'0');
 			MEMaddr_i <= PC_addr;	
