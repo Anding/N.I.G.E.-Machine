@@ -78,9 +78,9 @@ op#.B		equ	53
 op#.W		equ	54
 op#.L		equ	55
 opJMP		equ	56
+opJSL		equ	57
 opJSR		equ	58
 opRTS		equ	64
-opJSRRTS	equ	58 256 * 64 +
 opOVER=	equ	5 256 * 28 +
 opBEQ		equ	128 256 *
 opBRA		equ	192 256 *
@@ -4410,7 +4410,7 @@ CREATE.CF	#.w	CHECKMEM.CF
 		dup			( CF CF)
 		1-
 		1-			( CF SF)	
-		#.b	6		( CF SF 6)		; create runtime code is 6 bytes (ignoring >DOES)
+		#.b	6		( CF SF 6)		; create runtime code is 6 bytes (without >DOES)
 		swap			( CF 6 SF)
 		store.w		( CF)			; store 6 in size field
 		#.b	op#.L		( CF op#.L)
@@ -4418,7 +4418,7 @@ CREATE.CF	#.w	CHECKMEM.CF
 		store.b		( CF)			; compile #.L	- do not use LITERAL since #.w or #.l would depend on address size
 		1+			( CF')			; but in this case the distance to the PFA must be known exactly
 		dup
-		#.b	11		( CF CF 11)		; PFA will be 10 bytes from this point
+		#.b	9		( CF CF 9)		; PFA will be so many bytes from this point
 		+			( CF PFA)
 		over			( CF PFA CF)
 		store.l		( CF)			; store PFA
@@ -4427,10 +4427,8 @@ CREATE.CF	#.w	CHECKMEM.CF
 		#.b	opRTS		( CF op)
 		over			( CF op CF)
 		store.b					; compile RTS
-		#.b	7		( CF 7)		; extra bytes to leave space for >DOES redirection code if necessary + RTS 
+		#.b	5		( CF 5)		; extra bytes to leave space for >DOES redirection code if necessary + RTS 
 		+			( CF')	
-;
-; common to both versions
 		#.w	HERE_		( CF &CF)			
 		store.l		( )			; update variable HERE		
 CREATE.Z	rts		
@@ -4442,27 +4440,30 @@ DOES>.NF	dc.b	5 128 +
 DOES>.SF	dc.w	DOES>.Z DOES>.CF del
 DOES>.CF	#.w	LAST-SF				; find SF in create word
 		fetch.l		( SF)
-		#.b	12
-		over			( SF 12 SF)
-		store.w					; update SF: create does> runtime code is 11 bytes
+		#.b	10
+		over			( SF 10 SF)
+		store.w					; update SF: for create does> runtime code size (6 - 1 + 5)
 		#.b	7		( SF 7)		; starting position for does code is 7 bytes ahead of SF
 		+			( CF)			; CF is position of RTS left by create
-		#.b	op#.L		( CF op#.L)
-		over			( CF op#.L CF)	
-		store.b		( CF)			; compile #.L	
-		1+			( CF')			; increment CF	
+;		#.b	op#.L		( CF op#.L)
+;		over			( CF op#.L CF)	
+;		store.b		( CF)			; compile #.L	
+;		1+			( CF')			; increment CF	
 		R>			( CF dest)		; postone words following DOES>
 		over			( CF dest CF)
 		store.l		( CF)			; compile dest 
+		#.b	opJSL
+		over			( CF opJSL CF)
+		store.b		( CF)			; overwrite high byte with JSL instruction, leaving 3 byte address
 		#.b	4		( CF 4)
 		+			( CF')
-		#.b	opJSR		( CF opJSR)
-		over			( CF opJSR CF)
-		store.b					; compile JSR  (need to use a JSR/RTS pair rather than JMP incase inlined)	
-		1+			( CF')
+;		#.b	opJSR		( CF opJSR)
+;		over			( CF opJSR CF)
+;		store.b					
+;		1+			( CF')
 		#.b	opRTS		( CF opRTS)
 		swap
-		store.b					; compile RTS
+		store.b					; compile RTS  (need to use a JSL/RTS pair rather than JMP incase inlined)	
 DOES>.Z	rts
 ;
 ; HEAD ( -- CF, make a dictionary header assuming the name field has already been set by WORD) - internal word
@@ -4785,23 +4786,33 @@ COMPILE,.CF	dup			( CF CF)
 		IF							;  must inline - set len = zero
 			drop
 			zero
-		THEN	
+		THEN			( CF len)
+		#.w	HERE_		( CF len &HERE)
+		dup			( CF len &HERE &HERE)
+		>R			( CF len &HERE R:&HERE)
+		fetch.l		( CF len HERE R:&HERE)
+		>R			( CF len R:&HERE HERE)		
 		#.w	INLINESIZE
-		fetch.l 		(CF len INLINESIZE)
+		fetch.l 		(CF len INLINESIZE R:&HERE HERE)
 		U>			(CF flag)
 		IF	; subroutine thread
-			#.w	LITERAL.CF
-			jsr						; compile execution token as literal
-			#.b	opJSR		( opJSR)
-			#.w	C,.CF
-			jsr						; compile JSR
+			R@		(CF HERE R:&HERE HERE)
+			store.l
+			#.b	opJSL		
+			R@		(opJSL HERE R:&HERE HERE)
+			store.b					; overwrite high byte with JSL leaving 24 bit address
+			R>		( HERE R:&HERE)
+			#.b	4
+			+
+			R>		( HERE &HERE)
+			store.l
+;			#.w	LITERAL.CF
+;			jsr						; compile execution token as literal
+;			#.b	opJSR		( opJSR)
+;			#.w	C,.CF
+;			jsr						; compile JSR
 		ELSE	; compile inline
-			#.w	HERE_		( CF &HERE)
-			dup			( CF &HERE &HERE)
-			>R			( CF &HERE R:&HERE)
-			fetch.l		( CF HERE R:&HERE)
-			dup			( CF HERE HERE R:&HERE)
-			>R			( CF HERE R:&HERE HERE)
+			R@			( CF HERE R:&HERE HERE)
 			over			( CF HERE CF R:&HERE HERE)
 			1-
 			1-			( CF HERE NF R:&HERE HERE)
@@ -4830,6 +4841,26 @@ COMPILE,.CF	dup			( CF CF)
 			store.l						; update HERE				
 		THEN
 COMPILE,.Z	rts
+;
+; triplet ( n -- , compile a number as a 24 bit value, internal word used by compile ,)
+TRIPLET.CF	dup 
+		#.b 	255 
+		and 
+		swap				( c nnnn)
+		#.b	8 
+		jsl	rshift.cf 
+		dup 
+		#.b	255 
+		and 
+		swap				( c b nnnn)
+		#.b	8 
+		jsl	rshift.cf 
+		#.b	255 
+		and 				( c b a, a is the big end)
+		jsl	c,.cf
+		jsl	c,.cf
+		jsl	c,.cf
+		rts
 ;
 ; ' ( NAME -- xt, find a word and return it's execution token or abort)
 TICK.LF	dc.l	COMPILE,.NF
@@ -4899,8 +4930,7 @@ LITERAL.CF	#.w 	HERE_		( n &HERE)
 		+		( HERE' R:&HERE)
 		R>		( HERE' &HERE)
 		store.l
-LITERAL.Z	rts	
-;			
+LITERAL.Z	rts				
 ; CONSTANT 
 CONSTANT.LF	dc.l	LITERAL.NF
 CONSTANT.NF	dc.b	8 128 +
@@ -5302,18 +5332,33 @@ ENDCASE.Z	rts
 		store.l
 ].Z		rts
 ;
-; RECURSE, compile the XT of the current word
+; RECURSE, compile a jsr to the XT of the current word
 RECURSE.LF	dc.l	].NF
 RECURSE.NF	dc.b	7 128 + IMMED +
 		dc.b	char E char S char R char U char C char E char R
 RECURSE.SF	dc.w	RECURSE.Z RECURSE.CF del
 RECURSE.CF	#.w	LAST-CF
 		fetch.l		( xt)
-		#.w	LITERAL.CF
-		jsr						; compile execution token as literal
-		#.b	opJSR		( opJSR)
-		#.w	C,.CF
-		jsr	
+		#.w	HERE_
+		dup
+		>R
+		fetch.l
+		dup
+		>R			(xt HERE R:&HERE HERE)			
+		store.l
+		#.b	opJSL		
+		R@			(opJSL HERE R:&HERE HERE)
+		store.b					; overwrite high byte with JSL leaving 24 bit address
+		R>			( HERE R:&HERE)
+		#.b	4
+		+
+		R>			( HERE &HERE)
+		store.l
+;		#.w	LITERAL.CF
+;		jsr						; compile execution token as literal
+;		#.b	opJSR		( opJSR)
+;		#.w	C,.CF
+;		jsr	
 RECURSE.Z	rts
 ;
 ; EXIT
