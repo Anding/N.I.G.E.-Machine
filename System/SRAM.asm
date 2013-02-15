@@ -4115,7 +4115,8 @@ XWORD.CF	xword,rts
 		rot
 		store.l
 		#.b	4
-		+	store.l
+		+	
+		store.l
 2!.Z		rts
 ;
 ; +! ( n addr --)
