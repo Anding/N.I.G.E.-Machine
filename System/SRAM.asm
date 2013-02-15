@@ -230,7 +230,6 @@ START.CF	#.w	CLS.CF
 		#.b	12
 		#.w	TYPE.CF
 		jsr
-		jsl	KEY.CF
 		#.w	QUIT.CF
 		jmp
 ;
@@ -5362,7 +5361,8 @@ SLITERAL.NF	dc.b	8 128 + IMMED +
 		dc.b 	char L char A char R char E char T char I char L char S
 SLITERAL.SF	dc.w	SLITERAL.Z SLITERAL.CF del
 SLITERAL.CF	dup		( addr u u)
-		1+		( addr u offset)
+		#.b	2
+		+		( addr u offset)
 		#.w	opBRA
 		or		( addr u op)
 		#.w	W,.CF	
@@ -5388,8 +5388,8 @@ CLITERAL.NF	dc.b	8 128 + IMMED +
 		dc.b 	char L char A char R char E char T char I char L char C
 CLITERAL.SF	dc.w	CLITERAL.Z CLITERAL.CF del
 CLITERAL.CF	dup		( addr u u)
-		1+
-		1+		( addr u offset)
+		#.b	3
+		+		( addr u offset)
 		#.w	opBRA					
 		or		( addr u op)
 		#.w	W,.CF					; compile a branch over the body of the string
