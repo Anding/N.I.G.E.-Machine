@@ -870,7 +870,7 @@
 	S" memory_initialization_vector=" fileid-w1 @ write-line drop 	 ( )
 	
 	\ clear instruction count memory
-	instruction-count 268 erase
+	instruction-count 272 erase
 	
 	\ make two passes pass 1 (i=0) and pass 2 (i=1)
 	2 0 do
@@ -913,6 +913,7 @@
 
 : asmx
 	scan-src
+	decimal
 ;
 
 : stats								\ instruction count statistics

@@ -261,8 +261,7 @@ TIMEOUT.CF	?dup
 			and
 		THEN
 		#.w	intmask
-		store.l			
-TIMEOUT.Z	rts
+TIMEOUT.Z	store.l,rts			
 ; MS ( n --, wait for n ms)
 MS.LF		dc.l	TIMEOUT.NF
 MS.NF		dc.b	2 128 +
@@ -292,8 +291,7 @@ SEMIT.CF		#.w HWstatus
 			and			; TBE bit
 		UNTIL		
 		#.w RS232tx
-		store.b
-SEMIT.Z	rts
+SEMIT.Z	store.b,rts
 ;	
 SKEY?.LF	dc.l 	SEMIT.NF
 SKEY?.NF	dc.b	5 128 +
@@ -323,8 +321,7 @@ SKEY.CF	jsl	SKEY?.CF
 		store.b		(rx+1)
 		#.l 	RSrxBUF	(rx+1 addr)
 		+			(addr+rx+1)
-		fetch.b		(char)
-SKEY.Z		rts
+SKEY.Z		fetch.b,rts		(char)
 ;
 ; STYPE	(c-addr n --, type a string to RS232_S0)
 STYPE.LF	dc.l	SKEY.NF
@@ -361,8 +358,7 @@ SZERO.CF	#.b	hex ff
 		#.w	RSrxWPOS
 		store.b
 		#.w	RSrxRPOS
-		store.b
-SZERO.Z	rts
+SZERO.Z	store.b,rts
 ;
 ; BAUD ( rate --, set the baud rate)
 BAUD.LF	dc.l	SZERO.NF
@@ -375,8 +371,7 @@ BAUD.CF	#.l	3125000		( baud clock/16)
 		divu
 		nip				( ubrr)
 		#.w	RS232UBRR
-		store.w
-BAUD.Z		rts
+BAUD.Z		store.w,rts
 ;
 ; **** KEYBOARD ****
 ;
@@ -408,8 +403,7 @@ KKEY.CF	BEGIN
 		store.b		(rx+1)
 		#.l 	PSBUF		(rx+1 addr)
 		+			(addr+rx+1)
-		fetch.b		(char)
-KKEY.Z		rts
+KKEY.Z		fetch.b,rts		(char)
 ; PS2DECODE ( raw -- ascii)
 PS2FLAGS	dc.b	0						; modifier flags
 SHIFT_FLAG 	EQU 	1
@@ -587,8 +581,7 @@ PS2DECODE.CF	#.b	hex 12	( raw 12)			; LEFT SHIFT
 			THEN
 		THEN
 		R>			( FLAGS' &FLAGS)
-		store.b	
-PS2DECODE.Z	rts			( zero)
+PS2DECODE.Z	store.b,rts	
 ;
 PS2ASCII    dc.b 0
  dc.b 22
@@ -857,8 +850,7 @@ CSR-PLOT.CF	#.w	INK
 		fetch.w			( _c c_)
 		or				( w)
 		jsl	CSR-ADDR.CF		( w addr)			
-		store.w
-CSR-PLOT.Z	rts		
+CSR-PLOT.Z	store.w,rts		
 ;
 ; CSR-ON
 CSR-ON.LF	dc.l	CSR-PLOT.NF
@@ -872,8 +864,7 @@ CSR-ON.CF	#.b	char _			( c)
 		fetch.b			( c addr char)
 		#.w	CSR			( c addr char csr)
 		store.b			( c addr)
-		store.b		
-CSR-ON.Z	rts
+CSR-ON.Z	store.b,rts		
 ; saved byte underneath cursor
 CSR		dc.b	32
 ;
@@ -885,8 +876,7 @@ CSR-OFF.CF	#.w	CSR
 		fetch.b			( char)
 		jsl	CSR-ADDR.CF		
 		1+				( char addr)
-		store.b
-CSR-OFF.Z	rts
+CSR-OFF.Z	store.b,rts
 ;
 ;SCROLL	(n -- flag, scroll the screen fwd or back n lines.  returns true if out of range)
 SCROLL.LF	dc.l	CSR-OFF.NF
@@ -934,8 +924,7 @@ SCROLL.CF	#.w	COLS
 		THEN
 		swap				( result new)
 		#.w	TEXT_ZERO
-		store.l
-SCROLL.Z	rts			
+SCROLL.Z	store.l,rts		
 ;
 CLS.LF		dc.l	SCROLL.NF
 CLS.NF		dc.b	3 128 +
@@ -957,8 +946,7 @@ CLS.CF		#.l	_TEXT_ZERO		( start start)		; clear screen memory
 		store.l	
 		zero
 		#.w	CSR-Y
-		store.l
-CLS.Z		rts
+CLS.Z		store.l,rts
 ;
 ; SCRSET ( --, set the ROWS and COLS according to the video mode)
 SCRSET.LF	dc.l	CLS.NF
@@ -980,8 +968,7 @@ SCRSET.CF	#.w	mode			; check screen mode
 		1+
 		fetch.b			
 		#.w	ROWS			
-		store.b
-SCRSET.Z	rts	
+SCRSET.Z	store.b,rts
 SCRSET		dc.b	60 80			; VGA, interlace off, ROWS, COLUMNS
 		dc.b	48 80			; VGA, interlace on
 		dc.b	75 100			; SVGA, interlace off
@@ -1045,8 +1032,7 @@ NEWLINE.CF	#.w	CSR-Y
 		THEN
 		zero							; zero x position
 		#.w	CSR-X
-		store.l
-NEWLINE.Z	rts
+NEWLINE.Z	store.l,rts
 ;
 CSR-FWD.LF 	dc.l	NEWLINE.NF
 CSR-FWD.NF 	dc.b	7 128 +
@@ -1245,8 +1231,7 @@ BACKGROUND.NF	dc.b	10 128 +
 		dc.b	char D char N char U char O char R char G char K char C char A char B
 BACKGROUND.SF	dc.w	BACKGROUND.Z BACKGROUND.CF del
 BACKGROUND.CF	#.w	background
-		store.b
-BACKGROUND.Z	rts
+BACKGROUND.Z	store.b,rts
 ;
 ; INTERLACE ( flag --, set interlace mode on or off)
 INTERLACE.LF	dc.l	BACKGROUND.NF
@@ -1293,9 +1278,9 @@ VGA.Z		rts
 PALETTE.LF	dc.l	VGA.NF
 PALETTE.NF	dc.b	7 128 +
 		dc.b	char E char T char T char E char L char A char P
-PALETTE.SF	dc.w	PALETTE.Z PALETTE.CF del
+PALETTE.SF	dc.w	4
 PALETTE.CF	#.w	PALETTE
-PALETTE.Z	rts
+		rts
 PALETTE	dc.b	55			; input (yellow)
 		dc.b	58			; output (green)
 		dc.b	7			; error (red)
@@ -1303,53 +1288,53 @@ PALETTE	dc.b	55			; input (yellow)
 		dc.b	255			; cursor (white)
 		ds.b	11			; 11 more user colours in the palette
 ; 
-INK.LF	dc.l	PALETTE.NF
-INK.NF	dc.b	3 128 +
+INK.LF		dc.l	PALETTE.NF
+INK.NF		dc.b	3 128 +
 		dc.b	char K char N char I
-INK.SF	dc.w	INK.Z INK.CF del
-INK.CF	#.w	INK
-INK.Z		rts
+INK.SF		dc.w	4
+INK.CF		#.w	INK
+		rts
 INK		dc.b	56			; note this variable is BYTE length!
 		ds.b	3			; padding
 ;
 CSR-X.LF	dc.l	INK.NF
 CSR-X.NF	dc.b	5 128 +
 		dc.b	char X char - char R char S char C
-CSR-X.SF	dc.w	CSR-X.Z CSR-X.CF del
+CSR-X.SF	dc.w	4
 CSR-X.CF	#.w	CSR-X
-CSR-X.Z	rts
+		rts
 CSR-X		dc.l	0
 ;
 CSR-Y.LF	dc.l	CSR-X.NF
 CSR-Y.NF	dc.b	5 128 +
 		dc.b	char Y char - char R char S char C
-CSR-Y.SF	dc.w	CSR-Y.Z CSR-Y.CF del
+CSR-Y.SF	dc.w	4
 CSR-Y.CF	#.w	CSR-Y
-CSR-Y.Z	rts
+		rts
 CSR-Y		dc.l	0
 ;
 TAB.LF		dc.l	CSR-Y.NF
 TAB.NF		dc.b	3 128 +
 		dc.b	char B char A char T
-TAB.SF		dc.w	TAB.Z TAB.CF del
+TAB.SF		dc.w	4
 TAB.CF		#.w	TAB
-TAB.Z		rts
+		rts
 TAB		dc.l	3
 ;
 ROWS.LF	dc.l	TAB.NF
 ROWS.NF	dc.b	4 128 +
 		dc.b	char S char W char O char R
-ROWS.SF	dc.w	ROWS.Z ROWS.CF del
+ROWS.SF	dc.w	4
 ROWS.CF	#.w	ROWS
-ROWS.Z		rts
+		rts
 ROWS		dc.b	60
 ;
 COLS.LF	dc.l	ROWS.NF
 COLS.NF	dc.b	4 128 +
 		dc.b	char S char L char O char C
-COLS.SF	dc.w	COLS.Z COLS.CF del
+COLS.SF	dc.w	4
 COLS.CF	#.w	COLS
-COLS.Z		rts
+		rts
 COLS		dc.b	100
 ;
 TYPERAW.LF	dc.l	COLS.NF
@@ -1373,8 +1358,7 @@ TYPERAW.Z	rts
 		store.l
 		#.w	STYPE.CF
 		#.w	TYPERAW_VECTOR
-		store.l	
->REMOTE.Z	rts	
+>REMOTE.Z	store.l,rts		
 ;
 >LOCAL.LF	dc.l	>REMOTE.NF
 >LOCAL.NF	dc.b	6 128 +
@@ -1388,8 +1372,7 @@ TYPERAW.Z	rts
 		store.l
 		#.w	VTYPERAW.CF
 		#.w	TYPERAW_VECTOR
-		store.l	
->LOCAL.Z	rts
+>LOCAL.Z	store.l,rts	
 ;	
 <LOCAL.LF	dc.l	>LOCAL.NF
 <LOCAL.NF	dc.b	6 128 +
@@ -1400,8 +1383,7 @@ TYPERAW.Z	rts
 		store.l
 		#.w	KKEY?.CF
 		#.w	KEY?_VECTOR
-		store.l
-<LOCAL.Z	rts
+<LOCAL.Z	store.l,rts
 ;
 <REMOTE.LF	dc.l	<LOCAL.NF
 <REMOTE.NF	dc.b	7 128 +
@@ -1412,8 +1394,7 @@ TYPERAW.Z	rts
 		store.l
 		#.w	SKEY?.CF
 		#.w	KEY?_VECTOR
-		store.l
-<REMOTE.Z	rts
+<REMOTE.Z	store.l,rts
 ;
 ; **** SPI, SD & FAT FILE SYSTEM ****
 ; SPI functions
@@ -1423,8 +1404,7 @@ SPI.CS-hi	#.w	SPI.control					; DESELECT - CS is active low
 		#.b	1 
 		or 
 		swap
-		store.b	 
-		rts
+		store.b,rts	 
 ;
 SPI.CS-lo 	#.w	SPI.control 					; SELECT - CS is active low
 		dup
@@ -1432,8 +1412,7 @@ SPI.CS-lo 	#.w	SPI.control 					; SELECT - CS is active low
 		#.b	254 
 		and 
 		swap
-		store.b
-		rts	
+		store.b,rts
 ;	
 SPI.MOSI-hi	#.w	SPI.control 
 		dup
@@ -1441,8 +1420,7 @@ SPI.MOSI-hi	#.w	SPI.control
 		#.b	2 
 		or 
 		swap
-		store.b
-		rts
+		store.b,rts
 ;
 SPI.MOSI-lo 	#.w	SPI.control 
 		dup
@@ -1450,18 +1428,15 @@ SPI.MOSI-lo 	#.w	SPI.control
 		#.b	253 
 		and 
 		swap
-		store.b 
-		rts
+		store.b,rts 
 ;
 SPI.slow 	#.b	255 						; 196kHz at 50MHz clock
 		#.w	SPI.divide 
-		store.b
-		rts
+		store.b,rts
 ;	
 SPI.fast 	#.b	8 						; 6.25MHz at 50MHz
 		#.w	SPI.divide 
-		store.b	
-		rts
+		store.b,rts	
 ;
 ; SPI.wait ( --, wait until the SPI transfer-bus is available)	
 SPI.wait 	#.w	SPI.status 
@@ -1476,16 +1451,14 @@ SPI.wait 	#.w	SPI.status
 ; SPI.put ( n --, put a byte to the SPI port)
 SPI.put	jsl	SPI.wait 
 		#.w	SPI.data
-		store.b
-		rts
+		store.b,rts
 ;
 ; SPI.get ( -- n, get a byte from the SPI port)
 SPI.get	#.b	255 
 		jsl	SPI.put 
 		jsl	SPI.wait 
 		#.w	SPI.data
-		fetch.b
-		rts
+		fetch.b,rts
 ;
 ; SD card functions
 ; SD.cmd ( chk b1 b2 b3 b4 cmd# --, SD command)
@@ -1510,8 +1483,7 @@ SD.get-rsp	zero
 ; SD.get-R1 ( -- n, get an R1 response from the sd-card)
 SD.get-R1	jsl	SD.get-rsp
 		jsl	spi.get 
-		drop		; one further read always required
-		rts
+		drop,rts	; one further read always required
 ;
 ;SD.ver			; xxxxx [block/byte] [v2/v1];
 SD.ver		dc.l	0	
@@ -1905,8 +1877,7 @@ FAT.write-word.CF	+
 		store.b
 		R> 
 		1+ 
-		store.b
-FAT.write-word.Z		rts
+FAT.write-word.Z	store.b,rts
 ;
 ; MOUNT ( --, initiaize the SD card and FAT data structures)
 MOUNT.LF	dc.l	FAT.write-word.NF
@@ -2001,8 +1972,7 @@ MOUNT.CF	jsl	sd.init.cf
 		store.l
 		zero 
 		#.w	FAT.FATinBuf 
-		store.l				; FAT buffer initialized
-MOUNT.Z		rts
+MOUNT.Z	store.l,rts				; FAT buffer initialized
 ;
 ; FAT.UpdateFSInfo ( --, update the FAT32 FSInfo sector with next free cluster)
 FAT.UpdateFSInfo.LF	dc.l	MOUNT.NF
@@ -2071,11 +2041,11 @@ FAT.get-fat.NF	dc.b	11 128 +
 			dc.s	FAT.get-fat
 FAT.get-fat.SF	dc.w	FAT.get-fat.Z FAT.get-fat.CF del
 FAT.get-fat.CF	jsl	FAT.prep-fat
-		#.l	_fat.buffat 
-		swap					( fat.buf ThisFATEntOffset)
-		jsl	fat.read-long.cf
-		#.l	hex	0FFFFFFF
-FAT.get-fat.Z	and,rts
+			#.l	_fat.buffat 
+			swap					( fat.buf ThisFATEntOffset)
+			jsl	fat.read-long.cf
+			#.l	hex	0FFFFFFF
+FAT.get-fat.Z		and,rts
 ;
 ; FAT.put-fat ( value cluster --, place value in the FAT location for cluster)
 FAT.put-fat.LF	dc.l	FAT.get-fat.NF
@@ -2083,13 +2053,13 @@ FAT.put-fat.NF	dc.b	11 128 +
 			dc.s	FAT.put-fat
 FAT.put-fat.SF	dc.w	FAT.put-fat.Z FAT.put-fat.CF del
 FAT.put-fat.CF	jsl	FAT.prep-fat		( value ThisFATEntOffset)
-		#.l	_fat.buffat 
-		swap					( value fat.buf ThisFATEntOffset)
-		jsl	fat.write-long.CF
-		#.l	_FAT.buffat 
-		#.w	FAT.FATinBuf 
-		fetch.l
-		jsl	SD.write-sector.cf
+			#.l	_fat.buffat 
+			swap					( value fat.buf ThisFATEntOffset)
+			jsl	fat.write-long.CF
+			#.l	_FAT.buffat 
+			#.w	FAT.FATinBuf 
+			fetch.l
+			jsl	SD.write-sector.cf
 FAT.put-fat.Z		rts
 ;
 ; FAT.string2filename ( addr n -- addr, convert an ordinary string to a short FAT filename)
@@ -2416,49 +2386,49 @@ FAT.FATinBuf			dc.l	0		; the currently buffered FAT sector
 FAT.SecPerClus.LF		dc.l	include.NF
 FAT.SecPerClus.NF		dc.b	14 128 +
 				dc.s	FAT.SecPerClus
-FAT.SecPerClus.SF		dc.w	FAT.SecPerClus.Z FAT.SecPerClus.CF del
+FAT.SecPerClus.SF		dc.w	4
 FAT.SecPerClus.CF		#.w	FAT.SecPerClus
-FAT.SecPerClus.Z		rts
+				rts
 FAT.SecPerClus		dc.l	0	; sectors per cluster
 ;
 FAT.TotalSectors.LF		dc.l	FAT.SecPerClus.NF
 FAT.TotalSectors.NF		dc.b	16 128 +
 				dc.s 	FAT.TotalSectors
-FAT.TotalSectors.SF		dc.w	FAT.TotalSectors.Z FAT.TotalSectors.CF del
+FAT.TotalSectors.SF		dc.w	4
 FAT.TotalSectors.CF		#.w	FAT.TotalSectors
-FAT.TotalSectors.Z		rts
+				rts
 FAT.TotalSectors		dc.l 	0	; total sectors on the disk
 ;
 FAT.NextFreeCluster.LF	dc.l	FAT.TotalSectors.NF
 FAT.NextFreeCluster.NF	dc.b	19 128 +
 				dc.s	FAT.NextFreeCluster
-FAT.NextFreeCluster.SF	dc.w	FAT.NextFreeCluster.Z FAT.NextFreeCluster.CF del
-FAT.NextFreeCluster.CF	#.w 	FAT.NextFreeCluster
-FAT.NextFreeCluster.Z	rts
+FAT.NextFreeCluster.SF	dc.w	4
+FAT.NextFreeCluster.CF	#.w	FAT.NextFreeCluster
+				rts
 FAT.NextFreeCluster		dc.l 	0	; where to look for the next free cluster
 ;
 FAT.CurrentDirectory.LF	dc.l	FAT.NextFreeCluster.NF
 FAT.CurrentDirectory.NF	dc.b	20 128 +	
 				dc.s	FAT.CurrentDirectory
-FAT.CurrentDirectory.SF	dc.w	FAT.CurrentDirectory.Z FAT.CurrentDirectory.CF del
+FAT.CurrentDirectory.SF	dc.w	4
 FAT.CurrentDirectory.CF	#.w	FAT.CurrentDirectory
-FAT.CurrentDirectory.Z	rts
+				rts
 FAT.CurrentDirectory		dc.l 	0	; cluster number of current directory
 ;
 FAT.RootClus.LF		dc.l	FAT.CurrentDirectory.NF
 FAT.RootClus.NF		dc.b	12 128 +
 				dc.s	FAT.RootClus
-FAT.RootClus.SF		dc.w	FAT.RootClus.Z FAT.RootClus.CF del
+FAT.RootClus.SF		dc.w	4
 FAT.RootClus.CF		#.w	FAT.RootClus
-FAT.RootClus.Z		rts
+				rts
 FAT.RootClus			dc.l 	0	; first cluster of root directory
 ;
 FAT.buf.LF			dc.l	FAT.RootClus.NF
 FAT.buf.NF			dc.b	7 128 +
 				dc.s	FAT.buf
-FAT.buf.SF			dc.w	FAT.buf.Z FAT.buf.CF del
+FAT.buf.SF			dc.w	6
 FAT.buf.CF			#.l	_FAT.buf
-FAT.buf.Z			rts
+				rts
 ;
 ; -----------------------------------------------------------------------------------------------------------
 ; FORTH CORE DICTIONARY
@@ -2487,7 +2457,7 @@ RESET.Z	rts
 ACCEPT.LF	dc.l	RESET.NF
 ACCEPT.NF	dc.b	6 128 +
 		dc.b	char T char P char E char C char C char A
-ACCEPT.SF	dc.w	ACCEPT.Z ACCEPT.CF del
+ACCEPT.SF	dc.w	ACCEPT.Z ACCEPT.CF del NOINLINE +
 ACCEPT.CF	zero			( addr n u) u = current char count
 ; 	check space in buffer
 ACCEPT.0	over			( addr n u n)
@@ -2649,8 +2619,7 @@ D+.CF		#.w	intmask		; disable interrupts to protect ADDX flag
 		ADDX
 		R>
 		#.w	intmask
-		store.l
-D+.Z		rts
+D+.Z		store.l,rts
 ;
 ; D- 	(ud1 ud2 -- ud3)  double precision arithmetic
 D-.LF		dc.l	D+.NF
@@ -2674,8 +2643,7 @@ D-.CF		#.w	intmask		; disable interrupts to protect SUBX flag
 		SUBX
 		R>
 		#.w	intmask
-		store.l
-D-.Z		rts
+D-.Z		store.l,rts
 ;
 ; >NUMBER ( ud1 c-addr1 u1 -- ud2 c-addr2 u2 , convert till bad char , CORE )
 >NUMBER.LF	dc.l	D-.NF
@@ -2768,8 +2736,7 @@ NUMBER?.CF	over			( c-addr1 u1 c-addr)
 		IF
 			negate		( n)
 		THEN
-		#.b	1		( n 1)
-NUMBER?.Z	rts
+NUMBER?.Z	#.b,rts	1		( n 1)
 ;		
 ; HOLD		( char --, output a character)
 HOLD.LF	dc.l	NUMBER?.NF
@@ -2785,8 +2752,7 @@ HOLD.CF	#.w hld_		(char hld*)
 		rot			(char hld-1 hld-1 hld*)
 		store.l		(char hld-1)
 ; Store the character in the new address
-		store.b
-HOLD.Z		rts
+HOLD.Z		store.b,rts
 ;
 ; <#     ( -- , setup conversion )
 <#.LF		dc.l	HOLD.NF
@@ -2795,8 +2761,7 @@ HOLD.Z		rts
 <#.SF		dc.w	<#.Z <#.CF del
 <#.CF		#.l _pad		( pad)
 		#.w hld_		( pad hld*)
-		store.l	
-<#.Z		rts
+<#.Z		store.l,rts	
 ;
 ; u#>     ( u -- addr len , finish single precision conversion )
 U#>.LF		dc.l	<#.NF
@@ -2848,12 +2813,12 @@ U#S.LF		dc.l	U#.NF
 U#S.NF		dc.b	3 128 +
 		dc.b	char S char # char U
 U#S.SF		dc.w	U#S.Z U#S.CF del
-U#S.CF	BEGIN
-		jsl	U#.CF		( u )			
-		dup			( u u)
-		0=			( u flag)
-	UNTIL
-U#S.Z		rts			( u)
+U#S.CF		BEGIN
+			jsl	U#.CF	( u )			
+			dup		( u u)
+			0=		( u flag)
+		UNTIL
+U#S.Z		rts		( u)
 ;
 ; ABS ( n -- +n , make a single precision number positive)
 ABS.LF		dc.l	U#S.NF
@@ -2998,8 +2963,7 @@ COMP.CF	over		(n1 n2 n1)
 		rot		(<flag n1 n2)
 		>		(<flag flag)
 		negate		(<flag >flag)		\ +1 if n1>n2
-		+		(n)			\ combine flags
-COMP.Z	rts	
+COMP.Z		+,rts		(n)			\ combine flags	
 ;
 ; COMPARE ( c-addr1 u1 c-addr2 u2 - n, compare two strings)	
 COMPARE.LF	dc.l	COMP.NF
@@ -3051,7 +3015,7 @@ COMPARE.Z	rts
 $=.LF		dc.l	COMPARE.NF
 $=.NF		dc.b	2 128 +
 		dc.b	char = char $
-$=.SF		dc.w	$=.Z $=.CF del
+$=.SF		dc.w	$=.Z $=.CF del NOINLINE +
 $=.CF		rot	( c-addr1 c-addr2 u2 u1)
 		over	( c-addr1 c-addr2 u2 u1 u2)
 		<>	( c-addr1 c-addr2 u2 flag)
@@ -3059,8 +3023,7 @@ $=.CF		rot	( c-addr1 c-addr2 u2 u1)
 			drop	( c-addr1 c-addr2)
 			drop	( c-addr1)
 			drop 	( )
-			zero 	( 0)
-			rts
+			zero,rts 	( 0)
 		THEN
 		zero	( c-addr1 c-addr2 u2 0)
 		DO	( c-addr1 c-addr2)
@@ -3078,8 +3041,7 @@ $=.CF		rot	( c-addr1 c-addr2 u2 u1)
 				drop
 				R>
 				drop
-				zero	( 0)
-				rts
+				zero,rts	( 0)
 			THEN
 			1+	( c-addr1 c-addr2+)
 			swap	( c-addr2+ c-addr1)
@@ -3100,8 +3062,7 @@ COUNT.SF	dc.w	COUNT.Z COUNT.CF del
 COUNT.CF	dup		( addr addr)
 		1+		( addr c-addr)
 		swap		( c-addr addr)
-		fetch.b	( c-addr n)
-COUNT.Z	rts
+COUNT.Z	fetch.b,rts	( c-addr n)
 ;
 ; FIND (addr -- addr 0 | xt 1 | xt -1)
 ;
@@ -3204,8 +3165,7 @@ WORDS.CF	jsl	CR.CF
 			#.b	4
 			-		( LF)
 		REPEAT
-		store.l			; save original tab setting
-WORDS.Z	rts
+WORDS.Z	store.l,rts			; save original tab setting
 ;
 ; PARSE ( char -- c-addr n, parse the input buffer into the parse buffer)
 PARSE.LF	dc.l	WORDS.NF
@@ -3478,8 +3438,7 @@ SOURCE.SF	dc.w	SOURCE.Z SOURCE.CF del
 SOURCE.CF	#.w	input_buff
 		fetch.l
 		#.w	input_size
-		fetch.l
-SOURCE.Z	rts
+SOURCE.Z	fetch.l,rts
 ;	
 ; SAVE_INPUT ( --), save the current input source specificiation
 SAVE-INPUT.LF	dc.l	SOURCE.NF
@@ -3501,8 +3460,7 @@ SAVE-INPUT.CF	#.w	input_buff
 		#.w	>IN_
 		fetch.l
 		#.w	>IN_a	
-		store.l
-SAVE-INPUT.Z	rts
+SAVE-INPUT.Z	store.l,rts
 ;
 ; RESTORE-INPUT ( --), restore the current input source specification
 RESTORE-INPUT.LF	dc.l	SAVE-INPUT.NF
@@ -3524,8 +3482,7 @@ RESTORE-INPUT.CF	#.w	input_buff_a
 			#.w	>IN_a
 			fetch.l
 			#.w	>IN_	
-			store.l
-RESTORE-INPUT.Z	rts
+RESTORE-INPUT.Z	store.l,rts
 ;
 ; EVALUATE ( c-addr u --)
 EVALUATE.LF	dc.l	RESTORE-INPUT.NF
@@ -3569,9 +3526,8 @@ DUP.CF		dup,rts
 ?DUP.LF	dc.l	DUP.NF
 ?DUP.NF	dc.b	4 128 +
 		dc.b	char P char U char D char ?
-?DUP.SF	dc.w	2
-?DUP.CF	?dup
-		rts
+?DUP.SF	dc.w	1
+?DUP.CF	?dup,rts
 ;
 SWAP.LF	dc.l	?DUP.NF
 SWAP.NF	dc.b	4 128 +
@@ -3656,7 +3612,7 @@ RDEPTH.NF	dc.b	6 128 +
 		dc.b	char H char T char P char E char D char R
 RDEPTH.SF	dc.w	2
 RDEPTH.CF	RSP@
-		rts
+		rts				; separate RST since it changes the return stack size
 ;
 +.LF		dc.l	RDEPTH.NF
 +.NF		dc.b	1 128 +
@@ -3709,16 +3665,14 @@ U2/.CF		lsr,rts
 M*.LF		dc.l	U2/.NF
 M*.NF		dc.b	2 128 +
 		dc.s 	M*
-M*.SF		dc.w	2
-M*.CF		mults
-		rts
+M*.SF		dc.w	1
+M*.CF		mults,rts
 ;
 UM*.LF		dc.l	M*.NF
 UM*.NF		dc.b	3 128 +
 		dc.s 	UM*
-UM*.SF		dc.w	2
-UM*.CF		multu
-		rts
+UM*.SF		dc.w	1
+UM*.CF		multu,rts
 ;
 *.LF		dc.l	UM*.NF
 *.NF		dc.b	1 128 +
@@ -3760,15 +3714,13 @@ MOD.CF		divs
 		mults
 		drop
 		R>
-		divs
-*/MOD.Z	rts
+*/MOD.Z	divs,rts
 ;
 /MOD.LF	dc.l	*/MOD.NF
 /MOD.NF	dc.b	4 128 +
 		dc.b char D char O char M char /
-/MOD.SF	dc.w	2
-/MOD.CF	divs
-		rts
+/MOD.SF	dc.w	1
+/MOD.CF	divs,rts
 ;
 =.LF		dc.l	/MOD.NF
 =.NF		dc.b	1 128 +
@@ -3958,9 +3910,8 @@ XWORD.CF	xword,rts
 @.LF		dc.l	XWORD.NF
 @.NF		dc.b	1 128 +
 		dc.b 	char @
-@.SF		dc.w 	2
-@.CF		fetch.l
-		rts
+@.SF		dc.w 	1
+@.CF		fetch.l,rts
 ;
 2@.LF		dc.l	@.NF
 2@.NF		dc.b	2 128 +
@@ -3971,15 +3922,13 @@ XWORD.CF	xword,rts
 		+
 		fetch.l
 		swap
-		fetch.l
-2@.Z		rts
+2@.Z		fetch.l,rts
 ;
 !.LF		dc.l	2@.NF
 !.NF		dc.b	1 128 +
 		dc.b 	char !
-!.SF		dc.w 	2
-!.CF		store.l
-		rts
+!.SF		dc.w 	1
+!.CF		store.l,rts
 ;
 2!.LF		dc.l	!.NF
 2!.NF		dc.b	2 128 +	
@@ -3991,8 +3940,7 @@ XWORD.CF	xword,rts
 		store.l
 		#.b	4
 		+	
-		store.l
-2!.Z		rts
+2!.Z		store.l,rts
 ;
 ; +! ( n addr --)
 +!.LF		dc.l	2!.NF
@@ -4004,22 +3952,19 @@ XWORD.CF	xword,rts
 		fetch.l	( addr n X)
 		+		( addr Y)
 		swap		( Y addr)
-		store.l	( )
-+!.Z		rts	
++!.Z		store.l,rts	( )	
 ;	
 W@.LF		dc.l	+!.NF
 W@.NF		dc.b	2 128 +
 		dc.b 	char @ char W
-W@.SF		dc.w 	2
-W@.CF		fetch.w
-		rts
+W@.SF		dc.w 	1
+W@.CF		fetch.w,rts
 ;
 W!.LF		dc.l	W@.NF
 W!.NF		dc.b	2 128 +
 		dc.b 	char ! char W
-W!.SF		dc.w 	2
-W!.CF		store.w
-		rts
+W!.SF		dc.w 	1
+W!.CF		store.w,rts
 ;		
 ; W+! ( n addr --)
 W+!.LF		dc.l	W!.NF
@@ -4031,22 +3976,19 @@ W+!.CF		swap		( addr n)
 		fetch.w	( addr n X)
 		+		( addr Y)
 		swap		( Y addr)
-		store.w	( )
-W+!.Z		rts	
+W+!.Z		store.w,rts	( )	
 ;
 C@.LF		dc.l	W+!.NF
 C@.NF		dc.b	2 128 +
 		dc.b 	char @ char C
-C@.SF		dc.w 	2
-C@.CF		fetch.b
-		rts
+C@.SF		dc.w 	1
+C@.CF		fetch.b,rts
 ;
 C!.LF		dc.l	C@.NF
 C!.NF		dc.b	2 128 +
 		dc.b 	char ! char C
-C!.SF		dc.w 	2
-C!.CF		store.b
-		rts
+C!.SF		dc.w 	1
+C!.CF		store.b,rts
 ;
 ; C+! ( n addr --)
 C+!.LF		dc.l	C!.NF
@@ -4058,8 +4000,7 @@ C+!.CF		swap		( addr n)
 		fetch.b	( addr n X)
 		+		( addr Y)
 		swap		( Y addr)
-		store.b	( )
-C+!.Z		rts
+C+!.Z		store.b,rts	( )
 ;	
 DECIMAL.LF	dc.l	C+!.NF
 DECIMAL.NF	dc.b	7 128 +
@@ -4067,8 +4008,7 @@ DECIMAL.NF	dc.b	7 128 +
 DECIMAL.SF	dc.w	DECIMAL.Z DECIMAL.CF del
 DECIMAL.CF	#.b	10
 		#.w	BASE_
-		store.l
-DECIMAL.Z	rts		
+DECIMAL.Z	store.l,rts		
 ;
 HEX.LF		dc.l	DECIMAL.NF
 HEX.NF		dc.b	3 128 +
@@ -4076,8 +4016,7 @@ HEX.NF		dc.b	3 128 +
 HEX.SF		dc.w	HEX.Z HEX.CF del
 HEX.CF		#.b	16
 		#.w	BASE_
-		store.l
-HEX.Z	rts	
+HEX.Z		store.l,rts
 ;
 BINARY.LF	dc.l	HEX.NF
 BINARY.NF	dc.b	6 128 +
@@ -4085,8 +4024,7 @@ BINARY.NF	dc.b	6 128 +
 BINARY.SF	dc.w	BINARY.Z BINARY.CF del
 BINARY.CF	#.b	2
 		#.w	BASE_
-		store.l
-BINARY.Z	rts	
+BINARY.Z	store.l,rts	
 ;	
 CHAR.LF	dc.l	BINARY.NF
 CHAR.NF	dc.b	4 128 +
@@ -4095,15 +4033,14 @@ CHAR.SF	dc.w	CHAR.Z char.CF del
 CHAR.CF	#.b	32
 		jsl	WORD.CF	( addr)		
 		1+			( c-addr)
-		fetch.b		( char)
-CHAR.Z		rts
+CHAR.Z		fetch.b,rts		( char)
 ;
 BL.LF		dc.l	CHAR.NF
 BL.NF		dc.b	2 128 +
 		dc.b	char L char B
-BL.SF		dc.w	BL.Z BL.CF del
+BL.SF		dc.w	2
 BL.CF		#.b	32
-BL.Z		rts
+		rts
 ;
 2DROP.LF	dc.l	BL.NF
 2DROP.NF	dc.b	5 128 +
@@ -4141,7 +4078,6 @@ BL.Z		rts
 2SWAP.Z	rot,rts	( 3 4 1 2)
 ;
 ; PICK ( x2 x1 x0 n -- xn)
-;
 PICK.LF	dc.l	2SWAP.NF
 PICK.NF	dc.b	4 128 +
 		dc.b	char K char C char I char P
@@ -4154,8 +4090,7 @@ PICK.CF	psp@		( n depth)
 		drop		( offset)
 		#.w	hex E004
 		+		( addr)
-		fetch.l	( n)
-PICK.Z		rts
+PICK.Z		fetch.l,rts	( n)
 ;	
 ; DUMP ( addr n --, display memory)
 DUMP.LF	dc.l	PICK.NF
@@ -4285,8 +4220,7 @@ CREATE.CF	jsl	CHECKMEM.CF
 		#.b	5		( CF 5)		; extra bytes to leave space for >DOES redirection code if necessary + RTS 
 		+			( CF')	
 		#.w	HERE_		( CF &CF)			
-		store.l		( )			; update variable HERE		
-CREATE.Z	rts		
+CREATE.Z	store.l,rts		( )			; update variable HERE			
 ;					
 ; DOES> ( -- , run time behaviour of a defining word)
 DOES>.LF	dc.l	CREATE.NF
@@ -4310,8 +4244,7 @@ DOES>.CF	#.w	LAST-SF				; find SF in create word
 		+			( CF')
 		#.b	opRTS		( CF opRTS)
 		swap
-		store.b					; compile RTS  (need to use a JSL/RTS pair rather than JMP incase inlined)	
-DOES>.Z	rts
+DOES>.Z	store.b,rts					; compile RTS  (need to use a JSL/RTS pair rather than JMP incase inlined)	
 ;
 ; HEAD ( -- CF, make a dictionary header assuming the name field has already been set by WORD) - internal word
 HEAD.CF	#.w	HERE_
@@ -4346,8 +4279,7 @@ HEAD.CF	#.w	HERE_
 		+			( CF)
 		dup			( CF CF)
 		#.w	HERE_					; update HERE
-		store.l		(CF)
-		rts
+		store.l,rts		(CF)
 ;
 ; MOVE ( addr-s addr-d n, memory copy)
 MOVE.LF	dc.l	DOES>.NF
@@ -4397,8 +4329,7 @@ MOVE.CF	?dup
 			THEN	
 		THEN
 		drop
-		drop
-MOVE.Z		rts
+MOVE.Z		drop,rts
 ;
 ; FILL ( addr n b --, fill a region of memory with n bytes)
 FILL.LF	dc.l	MOVE.NF
@@ -4457,8 +4388,7 @@ COMMA.CF	#.w	HERE_	( u &HERE)
 		#.b 4		( HERE 4 R:&HERE)
 		+		( HERE' R:&HERE)
 		R>		( HERE &HERE)
-		store.l					; update HERE
-COMMA.Z	rts
+COMMA.Z	store.l,rts					; update HERE
 ;
 ; W, (w -- , allocate 2 bytes and store a word from the stack)
 W,.LF		dc.l	COMMA.NF
@@ -4475,8 +4405,7 @@ W,.CF		#.w	HERE_	( w &HERE)
 		1+		
 		1+		( HERE' R:&HERE)
 		R>		( HERE  &HERE)
-		store.l					; update HERE
-W,.Z		rts
+W,.Z		store.l,rts					; update HERE
 ;
 ; C, (b -- , allocate and store 1 byte from the stack)
 C,.LF		dc.l	W,.NF
@@ -4492,8 +4421,7 @@ C,.CF		#.w	HERE_	( b &HERE)
 		store.b	( HERE R:&HERE)		; compile
 		1+		( HERE' R:&HERE)
 		R>		( HERE' &HERE)
-		store.l					; update HERE
-C,.Z		rts
+C,.Z		store.l,rts					; update HERE
 ;
 ; M, (addr u -- , allocate and store u bytes from addr.  u is not saved)
 M,.LF		dc.l	C,.NF
@@ -4514,8 +4442,7 @@ M,.CF		#.w	HERE_	( addr u &HERE)
 		R>		( u HERE R:&HERE)
 		+		( HERE' R:&HERE)
 		R>		( HERE &HERE)
-		store.l					; update HERE
-M,.Z		rts
+M,.Z		store.l,rts					; update HERE
 ; $, ( addr u -- , compile a counted string)
 $,.LF		dc.l	M,.NF
 $,.NF		dc.b	2 128 +
@@ -4551,8 +4478,7 @@ VARIABLE.CF	jsl	COLON.CF				; initiate the word
 		#.b	4			( PFA 4)	; allocate space for the the PFA
 		+				( HERE')
 		#.w  	HERE_			( HERE' &HERE)						
-		store.l
-VARIABLE.Z	rts
+VARIABLE.Z	store.l,rts
 ; COLON
 COLON.LF	dc.l	VARIABLE.NF
 COLON.NF	dc.b	1 128 +
@@ -4576,8 +4502,7 @@ COLON.1	#.w	LAST-CF	( CF &LAST-CF)
 		zero			( 0)			; set compilation state
 		0=			( true)		
 		#.w	STATE_		( true &STATE)	
-		store.l
-COLON.Z	rts			
+COLON.Z	store.l,rts			
 ;
 ; SEMICOLON
 SEMICOLON.LF	dc.l	COLON.NF
@@ -4604,8 +4529,7 @@ SEMICOLON.CF	#.b	opRTS		( opRTS)
 		store.b
 		zero			( false)		; un-set compilation state
 		#.w	STATE_		( false &STATE)	
-		store.l		
-SEMICOLON.Z	rts		
+SEMICOLON.Z	store.l,rts			
 ;	
 ; COMPILE, ( xt --, compile an execution token)
 COMPILE,.LF	dc.l	SEMICOLON.NF
@@ -4756,8 +4680,7 @@ LITERAL.CF	#.w 	HERE_		( n &HERE)
 		THEN
 		+		( HERE' R:&HERE)
 		R>		( HERE' &HERE)
-		store.l
-LITERAL.Z	rts				
+LITERAL.Z	store.l,rts				
 ; CONSTANT 
 CONSTANT.LF	dc.l	LITERAL.NF
 CONSTANT.NF	dc.b	8 128 +
@@ -4780,8 +4703,7 @@ IMMEDIATE.CF	#.w	LAST-NF
 		#.B	IMMED
 		or		( NF nf')
 		swap		( nf NF)
-		store.b	
-IMMEDIATE.Z	rts
+IMMEDIATE.Z	store.b,rts	
 ;
 ; ['] , compile a reference to the next word so that at run time its XT will be placed on the stack
 ['].LF		dc.l	IMMEDIATE.NF	
@@ -4815,8 +4737,7 @@ or.w!.CF	swap		( addr word)
 		fetch.w	( addr word before)
 		or		( addr after)
 		swap		( after before)
-		store.w	( )
-		rts
+		store.w,rts	( )
 ;
 ; fwd-offset ( org  -- offset) calculate forward offset from HERE - internal word
 fwd-offset.CF	#.w	HERE_	( org &HERE)
@@ -4877,8 +4798,7 @@ BEGIN.NF	dc.b	5 128 + IMMED +
 		dc.b	char N char I char G char E char B
 BEGIN.SF	dc.w	BEGIN.Z BEGIN.CF del
 BEGIN.CF	#.w	HERE_
-		fetch.l			; save destination for backward branch
-BEGIN.Z	rts
+BEGIN.Z	fetch.l,rts			; save destination for backward branch
 ;
 AGAIN.LF	dc.l	BEGIN.NF
 AGAIN.NF	dc.b	5 128 + IMMED +
@@ -4938,8 +4858,7 @@ DO.Z		bra	{DO}.CF DO.Z rel
 		#.w	opBEQ				; compile BEQ for forward branch
 		jsl	W,.CF						
 		#.w	HERE_				; save destination for backward branch from LOOP/+LOOP
-		fetch.l
-{DO}.Z		rts
+{DO}.Z		fetch.l,rts
 ;
 DO0.SF		dc.w	DO0.Z DO0.RUN del
 DO0.RUN	zero		( limit index 0)
@@ -5020,8 +4939,7 @@ LOOP2.RUN	dup
 		not  		( flag1 index+ flag2 R: limit)
 		swap 		( flag1 flag2 index+  R: limit)
 		>R   		( flag1 flag2 R: limit index+)
-		xor		( flag R: limit index+)		; if index variable was negative, invert flag
-LOOP2.Z	rts
+LOOP2.Z	xor,rts	( flag R: limit index+)		; if index variable was negative, invert flag
 ;
 ; UNLOOP, remove loop paramaters
 UNLOOP.LF	dc.l	+LOOP.NF
@@ -5055,8 +4973,7 @@ pushHERE.CF	#.w	COMPILEstackP	( &P)			; save HERE to COMPILE stack
 		#.b	4
 		+		( P' R:&P)
 		R>		( P' &P)			; increment COMPILEstack pointer
-		store.l	
-		rts
+		store.l,rts	
 ;		
 ; CASE, mark the start of a CASE...OF..ENDOF...ENDCASE structure
 CASE.LF	dc.l	LEAVE.NF
@@ -5077,8 +4994,7 @@ OF.CF		>R						; push casecount to the return stack
 		#.b	opDROP
 		jsl	C,.CF					; compile DROP (if test is sucessful and code continues)
 		R>						; get casecount from return stack
-		1+						; increment CASECOUNT
-OF.Z		rts
+OF.Z		1+,rts						; increment CASECOUNT
 ;
 ENDOF.LF	dc.l	OF.NF
 ENDOF.NF	dc.b	5 128 + IMMED +
@@ -5108,8 +5024,7 @@ ENDCASE.Z	rts
 [.SF		dc.w	[.Z [.CF del
 [.CF		zero
 		#.w	STATE_
-		store.l
-[.Z		rts
+[.Z		store.l,rts
 ;
 ; ] , enter compilation state
 ].LF		dc.l	[.NF
@@ -5119,8 +5034,7 @@ ENDCASE.Z	rts
 ].CF		zero			( 0)			
 		0=			( true)		
 		#.w	STATE_		( true &STATE)	
-		store.l
-].Z		rts
+].Z		store.l,rts
 ;
 ; RECURSE, compile a jsl to the XT of the current word
 RECURSE.LF	dc.l	].NF
@@ -5143,8 +5057,7 @@ RECURSE.CF	#.w	LAST-CF
 		#.b	4
 		+
 		R>			( HERE &HERE)
-		store.l
-RECURSE.Z	rts
+RECURSE.Z	store.l,rts
 ;
 ; EXIT
 EXIT.LF	dc.l	RECURSE.NF
@@ -5260,8 +5173,7 @@ STRINGLOC.CF	#.w	STRINGP
 		rot
 		+
 		R>
-		store.l
-STRINGLOC.Z	rts	
+STRINGLOC.Z	store.l,rts	
 ;	
 ; S" <string> ( - addr u), mode dependant string function
 S".LF		dc.l	,".NF
@@ -5399,8 +5311,7 @@ MARKER.RUN	dup				( SD LF LF)		; SD is the SDRAM pointer, LF is the LF of the wo
 		#.w	HERE_						; point HERE at the address of the work
 		store.l			( SD)			
 		#.w	HERE1						; reset the SDRAM pointer too
-		store.l
-		rts
+		store.l,rts
 ;	
 ; BUFFER: ( n --), create a storate table in PSDRAM (definition replaced in dynamic memory allocation wordset)
 BUFFER:.LF	dc.l	MARKER.NF
@@ -5418,8 +5329,7 @@ BUFFER:.CF	1+
 		jsl	SEMICOLON.CF
 		+	
 		#.w	HERE1
-		store.l						; update the position of the SDRAM data pointer
-BUFFER:.Z	rts
+BUFFER:.Z	store.l,rts						; update the position of the SDRAM data pointer
 ;
 ; SBUFFER: ( n --), create a storage table in SDRAM
 SBUFFER:.LF	dc.l	BUFFER:.NF
@@ -5474,8 +5384,7 @@ IS.Z		rts
 ;
 ; {IS} ( XT CF --), implement the vector in a DEFER word, internal word
 {IS}.CF	1+	( XT PF --)					; update the CF to the PF (after the #.l)
-		store.l
-		rts
+		store.l,rts
 ;
 ; ? ( addr --), output the contents of a memory address
 ?.LF		dc.l	IS.NF
@@ -5525,27 +5434,25 @@ TYPE.Z		rts
 PAD.LF		dc.l	TYPE.NF
 PAD.NF		dc.b	3 128 +
 		dc.b	char D char A char P
-PAD.SF		dc.w	PAD.Z PAD.CF del			; because the PFA is extrated from the return address
+PAD.SF		dc.w	6
 PAD.CF		#.l	_PAD
-PAD.Z		rts	
+		rts
 ;
 HERE.LF	dc.l	PAD.NF
 HERE.NF	dc.b	4 128 +
 		dc.b	char E char R char E char H
-HERE.SF	dc.w	HERE.Z HERE.CF del
+HERE.SF	dc.w	4
 HERE.CF	#.w	HERE_
-		fetch.l
-HERE.Z		rts
+		fetch.l,rts
 HERE_		dc.l	END
 ;	
 ; HERE for the SDRAM space
 HERE1.LF	dc.l	HERE.NF
 HERE1.NF	dc.b	5 128 +
 		dc.b	char 1 char E char R char E char H
-HERE1.SF	dc.w	HERE1.Z HERE1.CF del
+HERE1.SF	dc.w	4
 HERE1.CF	#.w	HERE1
-		fetch.l
-HERE1.Z	rts
+		fetch.l,rts
 HERE1		dc.l	_END
 ;
 ; maximum word length for inline compilation 
@@ -5554,42 +5461,42 @@ HERE1		dc.l	_END
 INLINESIZE.LF	dc.l	HERE1.NF
 INLINESIZE.NF	dc.b	10 128 +
 		dc.b	char E char Z char I char S char E char N char I char L char N char I
-INLINESIZE.SF	dc.w	INLINESIZE.Z INLINESIZE.CF del
+INLINESIZE.SF	dc.w	4
 INLINESIZE.CF	#.w	INLINESIZE
-INLINESIZE.Z	rts
+		rts
 INLINESIZE	dc.l	10					 
 ;
 BASE.LF	dc.l	INLINESIZE.NF
 BASE.NF	dc.b	4 128 +
 		dc.b	char E char S char A char B
-BASE.SF	dc.w	BASE.Z BASE.CF del
+BASE.SF	dc.w	4
 BASE.CF	#.w	BASE_
-BASE.Z		rts
+		rts
 BASE_		dc.l 	10
 ;
 STATE.LF	dc.l	BASE.NF
 STATE.NF	dc.b	5 128 +
 		dc.b	char E char T char A char T char S
-STATE.SF	dc.w	STATE.Z STATE.CF del
+STATE.SF	dc.w	4
 STATE.CF	#.w	STATE_
-STATE.Z	rts
+		rts
 STATE_		dc.l	0
 ;
 >IN.LF		dc.l	STATE.NF
 >IN.NF		dc.b	3 128 +
 		dc.b	char N char I 62
->IN.SF		dc.w	>IN.Z >IN.CF del
+>IN.SF		dc.w	4
 >IN.CF		#.w	>IN_
->IN.Z		rts
+		rts
 >IN_		dc.l	0
 ;
 ; LAST returns the address of a variable pointing to the last name field in the dictionary
 LAST.LF	dc.l	>IN.NF
 LAST.NF	dc.b	4 128 +
 		dc.b	char T char S char A char L
-LAST.SF	dc.w	LAST.Z LAST.CF del
+LAST.SF	dc.w	4
 LAST.CF	#.w	LAST-NF
-LAST.Z		rts
+		rts
 LAST-NF	dc.l 	LAST.NF			; NF of last word created by HEAD, must be initialized
 ; ------------------------------------------------------------------------------------------------------------
 ; internal variables	
