@@ -68,8 +68,8 @@ IMMED		equ	64			; IMMEDIATE
 SMDGE		equ	32			; SMUDGE
 ;
 ; .SF flags (hi byte)
-MUSTINLINE	equ	hex 8000
-NOINLINE	equ	hex 4000
+MUSTINLINE	equ	hex 8000		; Force inline compilation
+NOINLINE	equ	hex 4000		; Prohibit inline compilation
 ;
 ; **** N.I.G.E. MACHINE OPCODES ****
 ;
@@ -174,8 +174,7 @@ RStxBUF	dc.l	hex 00
 ;
 PS2		#.w 	PS2rx	
 		fetch.b			( raw)
-		#.w 	PS2DECODE.CF		; decode the raw character
-		jsr				( char)
+		jsl 	PS2DECODE.CF		( char, decode the raw character)			
 		?dup				; process only completed keystrokes
 		IF
 			#.w 	PSWPOS		; buffer write position
@@ -206,7 +205,7 @@ MS		#.w	MS.TIMEOUT
 			IF
 				#.b	5
 				#.w	ERROR.CF
-				>R
+				>R		; return to ERROR after completing interrupt
 			THEN
 		THEN
 		rti
@@ -216,22 +215,16 @@ MS.TIMEOUT	dc.l	hex 00
 ; Boot code (within branch distance from 0)
 ; -----------------------------------------------------------------------------------------------
 ;
-START.CF	#.w	CLS.CF
-		jsr
+START.CF	jsl	CLS.CF
 		#.w	START.0	; First part of power-on message
 		#.b	52
-		#.w	TYPE.CF
-		jsr
-		#.w	UNUSED.CF	; Show free bytes
-		jsr
-		#.w 	UDOT.CF
-		jsr
+		jsl	TYPE.CF
+		jsl	UNUSED.CF	; Show free bytes
+		jsl 	UDOT.CF
 		#.w	START.1	
 		#.b	12
-		#.w	TYPE.CF
-		jsr
-		#.w	QUIT.CF
-		jmp
+		jsl	TYPE.CF
+		jsl	QUIT.CF	; QUIT will not return but JSL is more efficient than #.W JMP
 ;
 START.0	dc.b	EOL
 		dc.s	*** N.I.G.E. Machine FORTH ***
@@ -317,8 +310,7 @@ SKEY.NF	dc.b	4 128 +
 		dc.b	char Y char E char K char S
 SKEY.SF	dc.w 	SKEY.Z SKEY.CF del
 		BEGIN
-SKEY.CF	#.w	SKEY?.CF
-		jsr
+SKEY.CF	jsl	SKEY?.CF
 		UNTIL
 		#.w 	RSrxRPOS
 		dup			(rx& rx&)
@@ -332,7 +324,7 @@ SKEY.CF	#.w	SKEY?.CF
 		#.l 	RSrxBUF	(rx+1 addr)
 		+			(addr+rx+1)
 		fetch.b		(char)
-SKEY.Z	rts
+SKEY.Z		rts
 ;
 ; STYPE	(c-addr n --, type a string to RS232_S0)
 STYPE.LF	dc.l	SKEY.NF
@@ -344,8 +336,7 @@ STYPE.CF	?dup				( c-addr n true | c-addr false)
 ; EMIT the first character
 			over			( c-addr n c-addr)
 			fetch.b		( c-addr n char)
-			#.w	SEMIT.CF	
-			jsr			( c-addr n)
+			jsl	SEMIT.CF	( c-addr n)			
 ; check length of remaining string
 			1-			( c-addr n-1)
 			?dup			( c-addr n-1 true | c-addr false)
@@ -404,8 +395,7 @@ KKEY.NF	dc.b	4 128 +
 		dc.b	char Y char E char K char K
 KKEY.SF	dc.w 	KKEY.Z KKEY.CF del
 KKEY.CF	BEGIN
-		#.w	KKEY?.CF
-		jsr
+		jsl	KKEY?.CF
 		UNTIL
 		#.w 	PSRPOS
 		dup			(rx& rx&)
@@ -866,8 +856,7 @@ CSR-PLOT.SF	dc.w	CSR-PLOT.Z CSR-PLOT.CF del
 CSR-PLOT.CF	#.w	INK
 		fetch.w			( _c c_)
 		or				( w)
-		#.w	CSR-ADDR.CF
-		jsr				( w addr)
+		jsl	CSR-ADDR.CF		( w addr)			
 		store.w
 CSR-PLOT.Z	rts		
 ;
@@ -877,8 +866,7 @@ CSR-ON.NF	dc.b	6 128 +
 		dc.b	char N char O char - char R char S char C
 CSR-ON.SF	dc.w	CSR-ON.Z CSR-ON.CF del
 CSR-ON.CF	#.b	char _			( c)
-		#.w	CSR-ADDR.CF
-		jsr				
+		jsl	CSR-ADDR.CF		
 		1+				( c addr)	; address of character
 		dup				( c addr addr)
 		fetch.b			( c addr char)
@@ -895,8 +883,7 @@ CSR-OFF.NF	dc.b	7 128 +
 CSR-OFF.SF	dc.w	CSR-OFF.Z CSR-ON.Z del
 CSR-OFF.CF	#.w	CSR
 		fetch.b			( char)
-		#.w	CSR-ADDR.CF		
-		jsr
+		jsl	CSR-ADDR.CF		
 		1+				( char addr)
 		store.b
 CSR-OFF.Z	rts
@@ -948,10 +935,13 @@ SCROLL.CF	#.w	COLS
 		swap				( result new)
 		#.w	TEXT_ZERO
 		store.l
-SCROLL.Z	rts		
+SCROLL.Z	rts			
 ;
-; clear screen, internal word
-{CLS}.CF	#.l	_TEXT_ZERO		( start start)		; clear screen memory	
+CLS.LF		dc.l	SCROLL.NF
+CLS.NF		dc.b	3 128 +
+		dc.b	char S char L char C
+CLS.SF		dc.w	CLS.Z CLS.CF	del
+CLS.CF		#.l	_TEXT_ZERO		( start start)		; clear screen memory	
 		dup
 		#.w	15000			( start start 15000)			; number of words in 2 screens
 		#.w	PALETTE 4 +
@@ -959,8 +949,7 @@ SCROLL.Z	rts
 		#.w 	256
 		multu				
 		drop				( start start 15000 color)		; fill word
-		#.w	FILL.W.CF	
-		jsr				( start)
+		jsl	FILL.W.CF		( start)			
 		#.w	TEXT_ZERO					; reset pointer to TEXT_ZERO
 		store.l
 		zero							; reset cursor position
@@ -969,14 +958,6 @@ SCROLL.Z	rts
 		zero
 		#.w	CSR-Y
 		store.l
-{CLS}.Z	rts		
-;
-CLS.LF		dc.l	SCROLL.NF
-CLS.NF		dc.b	3 128 +
-		dc.b	char S char L char C
-CLS.SF		dc.w	CLS.Z CLS.CF	del
-CLS.CF		#.w	{CLS}.CF
-		jsr
 CLS.Z		rts
 ;
 ; SCRSET ( --, set the ROWS and COLS according to the video mode)
@@ -1021,8 +1002,7 @@ NEWLINE.CF	#.w	CSR-Y
 		IF							; cursor is bottom of screen
 			drop			(  --)
 			#.b	1
-			#.w 	SCROLL.CF				; SCROLL forwards 1 row
-			jsr			( flag)
+			jsl	SCROLL.CF	( flag)		; SCROLL forwards 1 row			
 			IF						; SCROLL returned true, indicating that the screen page is now at the bottom of the buffer
 				#.w	TEXT_ZERO			; Step 1 is to copy the current screen to the top of the buffer
 				fetch.l
@@ -1032,8 +1012,7 @@ NEWLINE.CF	#.w	CSR-Y
 				+						; source for copy begins one line from top of page
 				#.l	_TEXT_ZERO				; destination
 				#.w	14800					; size = maximum full screen less the top line
-				#.w	MOVE.CF				; copy screen contents to top of buffer
-				jsr
+				jsl	MOVE.CF				; copy screen contents to top of buffer
 				#.w	ROWS				; Step 2 is to blank the rest of the buffer
 				fetch.b				( rows)
 				1-					( rows-1)
@@ -1054,8 +1033,7 @@ NEWLINE.CF	#.w	CSR-Y
 				#.w	256
 				multu
 				drop
-				#.w	FILL.W.CF				; clear remaining screen memory
-				jsr
+				jsl	FILL.W.CF				; clear remaining screen memory
 				#.l	_TEXT_ZERO			; Step 3 is to reset pointer to TEXT_ZERO	
 				#.w	TEXT_ZERO			
 				store.l				
@@ -1083,8 +1061,7 @@ CSR-FWD.CF	#.w	CSR-X
 		=
 		IF	
 			drop
-			#.w	NEWLINE.CF
-			jsr
+			jsl	NEWLINE.CF
 		ELSE
 			1+
 			#.w	CSR-X
@@ -1127,8 +1104,7 @@ CSR-TAB.CF	#.w	CSR-X
 		>
 		IF
 			drop
-			#.w	NEWLINE.CF
-			jsr
+			jsl	NEWLINE.CF
 		ELSE
 			#.w	CSR-X
 			store.l
@@ -1140,10 +1116,8 @@ VEMITRAW.LF	dc.l	CSR-TAB.NF
 VEMITRAW.NF	dc.b	8 128 +
 		dc.s	VEMITRAW
 VEMITRAW.SF	dc.w	VEMITRAW.Z VEMITRAW.CF del
-VEMITRAW.CF	#.w	CSR-PLOT.CF		; plot
-		jsr
-		#.w	CSR-FWD.CF		; advance cursor
-		jsr	
+VEMITRAW.CF	jsl	CSR-PLOT.CF		; plot
+		jsl	CSR-FWD.CF		; advance cursor	
 VEMITRAW.Z	rts
 ;
 ; {VEMIT} (n --, emit a character to the VDU including non-priniting recognition but excluding cursor update, internal word)
@@ -1152,8 +1126,7 @@ VEMITRAW.Z	rts
 		=
 		IF								; newline
 			drop
-			#.w 	NEWLINE.CF
-			jsr
+			jsl	NEWLINE.CF
 		ELSE
 			#.b	~EOL
 			over
@@ -1166,30 +1139,25 @@ VEMITRAW.Z	rts
 				=
 				IF						; backspace
 					drop
-					#.w 	CSR-BACK.CF
-					jsr
+					jsl 	CSR-BACK.CF
 					zero
-					#.w 	CSR-PLOT.CF
-					jsr
+					jsl 	CSR-PLOT.CF
 				ELSE
 					#.b	9
 					over
 					=
 					IF					; tab
 						drop
-						#.w	CSR-TAB.CF
-						jsr
+						jsl	CSR-TAB.CF
 					ELSE
 						#.b	12
 						over
 						=
 						IF				; clear screen
 							drop
-							#.w	{CLS}.CF
-							jsr
+							jsl	CLS.CF
 						ELSE				; other literal
-							#.w	VEMITRAW.CF		 ; emit the literal
-							jsr	
+							jsl	VEMITRAW.CF		 ; emit the literal	
 						THEN
 					THEN
 				THEN
@@ -1202,12 +1170,9 @@ VEMIT.LF	dc.l	VEMITRAW.NF
 VEMIT.NF	dc.b	5 128 +
 		dc.b	char T char I char M char E char V
 		dc.w	VEMIT.Z VEMIT.CF del
-VEMIT.CF	#.w	CSR-OFF.CF					; undraw cursor
-		jsr
-		#.w	{VEMIT}.CF
-		jsr
-		#.w	CSR-ON.CF					; draw cursor
-		jsr
+VEMIT.CF	jsl	CSR-OFF.CF					; undraw cursor
+		jsl	{VEMIT}.CF
+		jsl	CSR-ON.CF					; draw cursor
 VEMIT.Z	rts
 ;
 ; VTYPERAW ( addr len, type to VDU, excluding non-printing recognition including cursor update)
@@ -1215,8 +1180,7 @@ VTYPERAW.LF	dc.l	VEMIT.NF
 VTYPERAW.NF	dc.b	8 128 +
 		dc.b	char W char A char R char E char P char Y char T char V
 VTYPERAW.SF	dc.w	VTYPERAW.Z VTYPERAW.CF del
-VTYPERAW.CF	#.w	CSR-OFF.CF					; undraw cursor
-		jsr
+VTYPERAW.CF	jsl	CSR-OFF.CF					; undraw cursor
 		?dup
 		IF
 			over			( addr len addr)
@@ -1225,12 +1189,10 @@ VTYPERAW.CF	#.w	CSR-OFF.CF					; undraw cursor
 			DO
 				R@
 				fetch.b
-				#.w	VEMITRAW.CF
-				jsr
+				jsl	VEMITRAW.CF
 			LOOP
 		THEN
-		#.w	CSR-ON.CF					; draw cursor
-		jsr
+		jsl	CSR-ON.CF					; draw cursor
 VTYPERAW.Z	rts
 ;
 ; VTYPE ( addr len, type to VDU, including non-printing recognition and cursor update)
@@ -1238,8 +1200,7 @@ VTYPE.LF	dc.l	VTYPERAW.NF
 VTYPE.NF	dc.b	5 128 +
 		dc.b	char E char P char Y char T char V
 VTYPE.SF	dc.w	VTYPE.Z VTYPE.CF del
-VTYPE.CF	#.w	CSR-OFF.CF					; undraw cursor
-		jsr
+VTYPE.CF	jsl	CSR-OFF.CF					; undraw cursor
 		?dup
 		IF
 			over			( addr len addr)
@@ -1248,12 +1209,10 @@ VTYPE.CF	#.w	CSR-OFF.CF					; undraw cursor
 			DO
 				R@
 				fetch.b
-				#.w	{VEMIT}.CF
-				jsr
+				jsl	{VEMIT}.CF
 			LOOP
 		THEN
-		#.w	CSR-ON.CF					; draw cursor
-		jsr
+		jsl	CSR-ON.CF					; draw cursor
 VTYPE.Z	rts
 ;				
 ;COLOR-TABLE.LF dc.l	include.NF
@@ -1306,8 +1265,7 @@ INTERLACE.CF	#.w	mode
 		THEN
 		#.w	mode
 		store.b	
-		#.w	SCRSET.CF
-		jsr
+		jsl	SCRSET.CF
 INTERLACE.Z	rts
 ;
 ; VGA ( flag --. set SVGA mode on or off)
@@ -1315,8 +1273,7 @@ VGA.LF	dc.l	INTERLACE.NF
 VGA.NF	dc.b	3 128 +
 		dc.b	char A char G char V 
 VGA.SF	dc.w	VGA.Z VGA.CF del
-VGA.CF		#.w	CLS.CF
-		jsr
+VGA.CF		jsl	CLS.CF
 		#.w	mode
 		fetch.b
 		swap
@@ -1329,8 +1286,7 @@ VGA.CF		#.w	CLS.CF
 		THEN
 		#.w	mode
 		store.b	
-		#.w	SCRSET.CF
-		jsr
+		jsl	SCRSET.CF
 VGA.Z		rts
 ;
 ;
@@ -2525,8 +2481,7 @@ RESET.CF	#.w	END
 		#.b	10
 		#.w 	BASE_
 		store.l
-		#.w	START.CF
-		jsr
+		jsl	START.CF
 RESET.Z	rts
 ;
 ACCEPT.LF	dc.l	RESET.NF
@@ -2541,8 +2496,7 @@ ACCEPT.0	over			( addr n u n)
 ACCEPT.1	beq 	ACCEPT.10 ACCEPT.1 rel	; reached maximum input length
 ;	receive next character
 		rot			( n u addr)
-		#.w 	KEY.CF
-		jsr			( n u addr char)
+		jsl 	KEY.CF		( n u addr char)			
 ;	test for LF
 		dup			( n u addr char char)
 		#.b 	EOL		; LF terminator
@@ -2555,8 +2509,7 @@ ACCEPT.2	beq	ACCEPT.6 ACCEPT.2 rel	; terminator received
 ACCEPT.11	beq	ACCEPT.12 ACCEPT.11 rel	; CR received
 ;	emit character (backspace is echoed, CR is not)
 		dup			( n u addr char char)
-		#.w EMIT.CF	
-		jsr			( n u addr char)	
+		jsl	EMIT.CF	( n u addr char)			
 ;	test for backspace	
 		dup			( n u addr char char)
 		#.b 	8		; Backspace
@@ -2626,8 +2579,7 @@ DIGIT.LF	dc.l	UPPER.NF
 DIGIT.NF	dc.b	5 128 +
 		dc.b	char T char I char G char I char D
 DIGIT.SF	dc.w	DIGIT.Z DIGIT.CF del
-DIGIT.CF	#.w	UPPER.CF
-		jsr			( CHAR)	; convert char lower to upper
+DIGIT.CF	jsl	UPPER.CF	( CHAR)	; convert char lower to upper			
 ; deal with alphanumerics
 		dup 				( char char)
 		dup 				( char char char)
@@ -2730,58 +2682,56 @@ D-.Z		rts
 >NUMBER.NF	dc.b	7 128 +
 		dc.b	char R char E char B char M char U char N char >
 >NUMBER.SF	dc.w	>NUMBER.Z >NUMBER.CF del
->NUMBER.CF	>R			( ud c-addr R: u1)
+>NUMBER.CF	>R				( ud c-addr R: u1)
 	BEGIN
-		r@ 			( ud c-addr u1 R: u1)
+		r@ 				( ud c-addr u1 R: u1)
 		0>    ; any characters left?
 		IF
-			dup 		( ud c-addr c-addr)
-			fetch.b 	( ud c-addr char)
+			dup 			( ud c-addr c-addr)
+			fetch.b 		( ud c-addr char)
 ;			#.w BASE_ 	
-;			fetch.l	( ud c-addr char base)
-			#.w DIGIT.CF  
-			jsr		( ud c-addr , n true | char false)
+;			fetch.l		( ud c-addr char base)
+			jsl	DIGIT.CF  ( ud c-addr , n true | char false)	
 			IF		; is a digit
 				zero
-				not	( ud c-addr n true)
+				not		( ud c-addr n true)
 			ELSE		; is not a digit
 				drop 
-				zero	( ud c-addr false)
+				zero		( ud c-addr false)
 			THEN
 		ELSE
-			zero		( ud c-addr false)
+			zero			( ud c-addr false)
 		THEN
-	WHILE 				( -- ud c-addr n)
-		swap 			( ud n c-addr) 
-		>R  			( ud1lo ud1hi n R: u c-addr)
+	WHILE 					( -- ud c-addr n)
+		swap 				( ud n c-addr) 
+		>R  				( ud1lo ud1hi n R: u c-addr)
 ; multiply ud1hi * base
-		swap  			( ud1lo n ud1hi)
+		swap  				( ud1lo n ud1hi)
 		#.w BASE_ 
-		fetch.l		( ud1lo n ud1hi base)
+		fetch.l			( ud1lo n ud1hi base)
 		multu
-		drop 			( ud1lo n ud1hi*baselo)	; discard bits 39 - 32
+		drop 				( ud1lo n ud1hi*baselo)	; discard bits 39 - 32
 ; multiply ud1lo * base
-		rot  			( n ud1hi*baselo ud1lo)
+		rot  				( n ud1hi*baselo ud1lo)
 		#.w BASE_
-		fetch.l		( n ud1hi*baselo ud1lo base)
-		multu			( n ud1hi*baselo ud1lo*basello ud1lo*baselhi )
+		fetch.l			( n ud1hi*baselo ud1lo base)
+		multu				( n ud1hi*baselo ud1lo*basello ud1lo*baselhi )
 ; add in one step the two hi parts of the multiplicaton, and n with the lo part of the multiplciation
-		#.w D+.CF  		
-		jsr			( ud2 )
-		R> 			( ud2 c-addr1 R: u1)
-		1+     		( ud2 c-addr2 R: u1)	; increment address
-		R> 			( ud2 c-addr2 u1 R:)
-		1- 			( ud2 c-addr2 u2 R:)
-		>R  			( ud2 c-addr2 R: u2)	; decrement count
+		jsl	D+.CF  		( ud2 )			
+		R> 				( ud2 c-addr1 R: u1)
+		1+     			( ud2 c-addr2 R: u1)	; increment address
+		R> 				( ud2 c-addr2 u1 R:)
+		1- 				( ud2 c-addr2 u2 R:)
+		>R  				( ud2 c-addr2 R: u2)	; decrement count
 	REPEAT
-		R>			( ud2 c-addr2 u2)
+		R>				( ud2 c-addr2 u2)
 >NUMBER.Z	rts
 ;
 ; NUMBER?	( c-addr u - 0 | n 1 , convert number and return with success flag)
 NUMBER?.LF	dc.l	>NUMBER.NF
 NUMBER?.NF	dc.b	7 128 +
 		dc.b	char ? char R char E char B char M char U char N
-NUMBER?.SF	dc.w	NUMBER?.Z NUMBER?.CF del
+NUMBER?.SF	dc.w	NUMBER?.Z NUMBER?.CF del NOINLINE +	; No inline due to mid-code exit point
 NUMBER?.CF	over			( c-addr1 u1 c-addr)
 		fetch.b		( c-addr1 u1 char)
 		#.b char -		( c-addr1 u1 char '-')
@@ -2803,8 +2753,7 @@ NUMBER?.CF	over			( c-addr1 u1 c-addr)
 		R>			( ud1 c-addr1 R: flag u1)
 		R>			( ud1 c-addr1 u1 R: flag)
 ; convert with >NUMBER
-		#.w	>NUMBER.CF
-		jsr			( ud2 c-addr1 u2 R: flag)
+		jsl	>NUMBER.CF	( ud2 c-addr1 u2 R: flag)		
 		IF			; u2 is number of unconverted chars
 			drop		( ud2 R: flag)
 			drop		( ud2lo R: flag)
@@ -2869,8 +2818,7 @@ SIGN.SF	dc.w	SIGN.Z SIGN.CF del
 SIGN.CF	0<
 		If
 			#.b	char -
-			#.w 	HOLD.CF
-			jsr
+			jsl 	HOLD.CF
 		THEN
 SIGN.Z		rts
 ;
@@ -2892,8 +2840,7 @@ U#.CF		#.w BASE_
 	THEN
 		#.b 	char 0 	( u-quot n char0)
 		+ 			( u-quot char)
-		#.w	HOLD.CF
-		jsr			( u-quot)
+		jsl	HOLD.CF	( u-quot)
 U#.Z		rts
 ;
 ; U#S     ( u -- u , convert remaining digits )
@@ -2902,8 +2849,7 @@ U#S.NF		dc.b	3 128 +
 		dc.b	char S char # char U
 U#S.SF		dc.w	U#S.Z U#S.CF del
 U#S.CF	BEGIN
-		#.w	U#.CF
-		jsr			( u )
+		jsl	U#.CF		( u )			
 		dup			( u u)
 		0=			( u flag)
 	UNTIL
@@ -2927,22 +2873,15 @@ DOT.NF		dc.b	1 128 +
 		dc.b 	char .
 DOT.SF		dc.w	DOT.Z DOT.CF del
 DOT.CF		dup			( n n)			
-		#.w	ABS.CF		( n u)
-		jsr			( n u)
-		#.w 	<#.CF		
-		jsr			( n u)
-		#.w 	U#S.CF
-		jsr
+		jsl	ABS.CF		( n u)
+		jsl	<#.CF		( n u)		
+		jsl 	U#S.CF
 		swap			( u n)
-		#.w	SIGN.CF	( u)
-		jsr
-		#.w 	U#>.CF		
-		jsr			( c-addr len)
-		#.w 	TYPE.CF		
-		jsr			
+		jsl	SIGN.CF	( u)
+		jsl 	U#>.CF		( c-addr len)		
+		jsl 	TYPE.CF				
 		#.b	32
-		#.w	EMIT.CF	
-		jsr
+		jsl	EMIT.CF	
 DOT.Z		rts
 ;
 ; . ( n x -- , print a single precision signed number with at least x printed digits)
@@ -2953,28 +2892,20 @@ DOTR.SF	dc.w	DOTR.Z DOTR.CF del
 DOTR.CF	1-						; deduct 1 since one digit is guaranteed anyway
 		>R			( n R:x)		; push digit count to return stack
 		dup			( n n)			
-		#.w	ABS.CF		( n u)			; prepare for a sign digit
-		jsr			( n u)
-		#.w 	<#.CF					; initiate conversion
-		jsr			( n u)
+		jsl	ABS.CF		( n u)			; prepare for a sign digit
+		jsl 	<#.CF		( n u)			; initiate conversion		
 		R>			( n u x)
 		zero			( n u x 0)
 		DO						; print the fixed digits
-			#.w	U#.CF
-			jsr
+			jsl	U#.CF
 		LOOP
-		#.w 	U#S.CF					; print remaining digits
-		jsr
+		jsl	U#S.CF					; print remaining digits
 		swap			( u n)
-		#.w	SIGN.CF	( u)			; sign
-		jsr
-		#.w 	U#>.CF					; complete conversion
-		jsr			( c-addr len)
-		#.w 	TYPE.CF				; output
-		jsr			
+		jsl	SIGN.CF	( u)			; sign
+		jsl 	U#>.CF		( c-addr len)		; complete conversion		
+		jsl 	TYPE.CF				; output			
 		#.b	32
-		#.w	EMIT.CF	
-		jsr
+		jsl	EMIT.CF	
 DOTR.Z		rts
 ;	
 ; U. ( n -- , print a single precision unsigned number)
@@ -2982,17 +2913,12 @@ UDOT.LF	dc.l	DOTR.NF
 UDOT.NF	dc.b	2 128 +
 		dc.b 	char . char U
 UDOT.SF	dc.w	UDOT.Z UDOT.CF del
-UDOT.CF	#.w 	<#.CF
-		jsr			( u)
-		#.w 	U#S.CF		
-		jsr			( u)
-		#.w 	U#>.CF
-		jsr			( c-addr len)
-		#.w 	TYPE.CF		
-		jsr
+UDOT.CF	jsl 	<#.CF		( u)		
+		jsl 	U#S.CF		( u)		
+		jsl 	U#>.CF		( c-addr len)			
+		jsl 	TYPE.CF		
 		#.b	32
-		#.w	EMIT.CF
-		jsr
+		jsl	EMIT.CF
 UDOT.Z		rts
 ;
 ; U.R ( u x -- , print a single precision unsigned number)
@@ -3002,23 +2928,17 @@ UDOTR.NF	dc.b	3 128 +
 UDOTR.SF	dc.w	UDOTR.Z UDOTR.CF del
 UDOTR.CF	1-
 		>R
-		#.w 	<#.CF
-		jsr			( u)
+		jsl 	<#.CF		( u)			
 		R>			( u x)
 		zero			( u x 0)
 		DO						; print the fixed digits
-			#.w	U#.CF
-			jsr
+			jsl	U#.CF
 		LOOP
-		#.w 	U#S.CF		
-		jsr			( u)
-		#.w 	U#>.CF
-		jsr			( c-addr len)
-		#.w 	TYPE.CF		
-		jsr
+		jsl 	U#S.CF		( u)			
+		jsl 	U#>.CF		( c-addr len)		
+		jsl 	TYPE.CF		
 		#.b	32
-		#.w	EMIT.CF
-		jsr
+		jsl	EMIT.CF
 UDOTR.Z	rts
 ;
 ; MIN	( n1 n2 -- n3, minimum)
@@ -3085,15 +3005,13 @@ COMP.Z	rts
 COMPARE.LF	dc.l	COMP.NF
 COMPARE.NF	dc.b	7 128 +
 		dc.b	char E char R char A char P char M char O char C
-COMPARE.SF	dc.w	COMPARE.Z COMPARE.CF del
+COMPARE.SF	dc.w	COMPARE.Z COMPARE.CF del NOINLINE +
 COMPARE.CF	rot		( addr1 addr2 u2 u1)
 		over		( addr1 addr2 u2 u1 u2)
 		over		( addr1 addr2 u2 u1 u2 u1)		
-		#.w	COMP.CF
-		jsr		( addr1 addr2 u2 u1 ><flag)
+		jsl	COMP.CF ( addr1 addr2 u2 u1 ><flag)		
 		>R		( addr1 addr2 u2 u1 R: ><flag)
-		#.w	MIN.CF
-		jsr		( addr1 addr2 umin)
+		#.w	MIN.CF	( addr1 addr2 umin)		
 		?dup
 	IF
 		zero		( addr1 addr2 u 0)
@@ -3108,8 +3026,7 @@ COMPARE.CF	rot		( addr1 addr2 u2 u1)
 				fetch.b	( addr1 addr2 char1)
 				over		( addr1 addr2 char1 addr2)	
 				fetch.b	( addr1 addr2 char1 char2)	
-				#.w	COMP.CF
-				jsr		( addr1 addr2 ><flag R: I J n)
+				jsl	COMP.CF	( addr1 addr2 ><flag R: I J n)		
 				nip		( addr2 ><flag R: I J n)
 				nip		( ><flag R: I J n)
 				R>
@@ -3149,12 +3066,10 @@ $=.CF		rot	( c-addr1 c-addr2 u2 u1)
 		DO	( c-addr1 c-addr2)
 			over		( c-addr1 c-addr2 c-addr1)
 			fetch.b	( c-addr1 c-addr2 char1)
-			#.w	UPPER.CF
-			jsr
+			jsl	UPPER.CF
 			over		( c-addr1 c-addr2 char1 c-addr2)
 			fetch.b	( c-addr1 c-addr2 char1 char2)
-			#.w	UPPER.CF
-			jsr
+			jsl	UPPER.CF
 			<>		( c-addr1 c-addr2 flag)
 			IF				; unequal characters
 				drop	( c-addr1)
@@ -3193,10 +3108,9 @@ COUNT.Z	rts
 FIND.LF	dc.l	COUNT.NF
 FIND.NF	dc.b	4 128 + 
 		dc.b 	char D char N char I char F
-FIND.SF	dc.w	FIND.Z FIND.CF del
-FIND.CF	dup		( addr addr)
-		#.w	COUNT.CF
-		jsr		( addr c-addr1 n1)			
+FIND.SF	dc.w	FIND.Z FIND.CF del NOINLINE +
+FIND.CF	dup			( addr addr)
+		jsl	COUNT.CF	( addr c-addr1 n1)				
 ; top of dictonary
 		#.w	LAST-NF	( addr c-addr1 n1 &LAST-NF)
 		fetch.l		( addr c-addr1 n1 NF)
@@ -3219,8 +3133,7 @@ FIND.CF	dup		( addr addr)
 				fetch.b		( addr c-addr1 n1 c-addr1 n1 c-addr2 n2' R: NF)
 				#.b 	31		( addr c-addr1 n1 c-addr1 n1 c-addr2 n2' 31 R: NF)
 				and			( addr c-addr1 n1 c-addr1 n1 c-addr2 n2 R: NF)
-				#.w	$=.CF	
-				jsr			( addr c-addr1 n1 flag R: NF)
+				jsl	$=.CF		( addr c-addr1 n1 flag R: NF)		
 				IF			( addr c-addr1 n1 R: NF)
 ; match found
 					drop			( addr c-addr1)
@@ -3266,8 +3179,7 @@ WORDS.LF	dc.l 	FIND.NF
 WORDS.NF	dc.b	5 128 +
 		dc.b	char S char D char R char O char W
 WORDS.SF	dc.w	WORDS.Z WORDS.CF del
-WORDS.CF	#.w	CR.CF
-		jsr
+WORDS.CF	jsl	CR.CF
 		#.w	TAB		( &tab)
 		dup			( &tab &tab)
 		fetch.l		( &tab tab)
@@ -3276,31 +3188,23 @@ WORDS.CF	#.w	CR.CF
 		over			( tab &tab 20 &tab)
 		store.l		( tab &tab)
 		#.w	LAST-NF	( tab &tab LF)
-;		zero
-;		>R	; save count
 		BEGIN
 			fetch.l
 			?dup
 		WHILE
-;			R>			; retrive count
-;			1+
-;			>R			; save count
 			dup		( NF NF)
 			1+		( NF NF+1)
 			over		( NF NF+1 NF)
 			fetch.b	( NF NF+1 n')
 			#.b	31	( NF NF+1 n' 31)
 			and		( NF NF+1 n)
-			#.w	TYPE.CF
-			jsr		( NF)
+			jsl	TYPE.CF ( NF)		
 			#.b	09
-			#.w	EMIT.CF
-			jsr
+			jsl	EMIT.CF
 			#.b	4
 			-		( LF)
 		REPEAT
 		store.l			; save original tab setting
-;		R>			; retrive count
 WORDS.Z	rts
 ;
 ; PARSE ( char -- c-addr n, parse the input buffer into the parse buffer)
@@ -3399,8 +3303,7 @@ WORD.NF	dc.b	4 128 +
 WORD.SF	dc.w	WORD.Z WORD.SF del
 WORD.CF	BEGIN
 			dup		( char char)
-			#.w	PARSE.CF
-			jsr		( char c-addr n)
+			jsl	PARSE.CF	( char c-addr n)		
 			dup		( char c-addr n flag)
 			0=		( char c-addr n flag')
 WORD.0			beq	WORD.2 WORD.0 rel				; parse returned at least one character
@@ -3425,24 +3328,19 @@ INTERPRET.LF	dc.l	WORD.NF
 INTERPRET.NF	dc.b	9 128 +
 		dc.b	char T char E char R char P char R char E char T char N char I
 INTERPRET.SF	dc.w	INTERPRET.Z INTERPRET.CF del
-INTERPRET.CF	#.w	{INTERPRET}.CF
-		jsr							; inner workings of INTERPRET
+INTERPRET.CF	jsl	{INTERPRET}.CF			; inner workings of INTERPRET							
 		#.w	STATE_
 		fetch.l
 		0=
 		IF	; compile is not set		
 			#.w	INTERPRET.1				; TYPE OK-depth CR
 			#.b	4
-			#.w	TYPE.CF
-			jsr
-			#.w	DEPTH.CF
-			jsr
-			#.w	UDOT.CF
-			jsr
+			jsl	TYPE.CF
+			jsl	DEPTH.CF
+			jsl	UDOT.CF
 		THEN
 		#.b	EOL
-		#.w	EMIT.CF
-		jsr
+		jsl	EMIT.CF
 INTERPRET.Z	rts
 INTERPRET.1	dc.b 	 char - char K char O  32
 ;
@@ -3455,13 +3353,11 @@ INTERPRET.1	dc.b 	 char - char K char O  32
 			> 		( flag)		; confirm that input_buff has characters waiting to be processes
 		WHILE
 			#.b	32 
-			#.w	WORD.CF
-			jsr			( char -- addr)	; scan input_buff from >IN, skip leading blanks
+			jsl	WORD.CF	( char -- addr)	; scan input_buff from >IN, skip leading blanks			
 			dup			( addr addr)
 			fetch.b		( addr n)
 			IF						; confirm some characters were parsed
-				#.w	FIND.CF	
-				jsr			( addr -- xt n | addr 0)  	; lookup the word
+				jsl	FIND.CF	( addr -- xt n | addr 0)  	; lookup the word		
 				?dup
 				IF					; valid execution token
 					0<			( xt flag)
@@ -3475,32 +3371,25 @@ INTERPRET.1	dc.b 	 char - char K char O  32
 					jsr					; either execute or compile
 				ELSE					; not an XT
 					dup			( addr addr)
-					#.w	COUNT.CF
-					jsr			( addr c-addr n)
-					#.w	NUMBER?.CF	(
-					jsr			( addr, 0 | n 1)
+					jsl	COUNT.CF	( addr c-addr n)		
+					jsl	NUMBER?.CF	( addr, 0 | n 1)			
 					0=
 					IF						; ERROR if not a valid number
 						#.w 	PALETTE 2 +
 						fetch.b
 						#.w	INK
 						store.b
-						#.w	CR.CF
-						jsr
-						#.w 	COUNT.CF			; echo the input string
-						jsr
-						#.w	TYPE.CF
-						jsr
+						jsl	CR.CF
+						jsl 	COUNT.CF			; echo the input string
+						jsl	TYPE.CF
 						#.b	1				; ERROR#
-						#.w	ERROR.CF
-						jsr					
+						jsl	ERROR.CF					
 					THEN	
 					nip			( n)
 					#.w	STATE_
 					fetch.l
 					IF	; compile is set
-						#.w LITERAL.CF
-						jsr
+						jsl	LITERAL.CF
 					THEN
 				THEN
 			ELSE
@@ -3522,15 +3411,11 @@ ERROR.CF	R@			; indicate calling address on the display
 		store.b
 		#.w	ERROR.0	; TYPE ERROR CR
 		#.b	7
-		#.w	TYPE.CF
-		jsr
-		#.w	DOT.CF
-		jsr
+		jsl	TYPE.CF
+		jsl	DOT.CF
 		#.b	EOL
-		#.w	EMIT.CF
-		jsr
-		#.w	QUIT.CF
-		jsr	
+		jsl	EMIT.CF
+		jsl	QUIT.CF	
 ERROR.Z	rts
 ERROR.0	dc.b 	32 char R char O char R char R char E EOL
 ;
@@ -3539,8 +3424,7 @@ ABORT.LF	dc.l 	ERROR.NF
 ABORT.NF	dc.b	5 128 +
 		dc.b 	char T char R char O char B char A
 ABORT.SF	dc.w	ABORT.Z ABORT.CF del
-ABORT.CF	#.w	QUIT.CF
-		jsr
+ABORT.CF	jsl	QUIT.CF
 ABORT.Z	rts		; never reached
 ;
 ; QUIT
@@ -3549,8 +3433,7 @@ QUIT.NF	dc.b	4 128 +
 		dc.b 	char T char I char U char Q
 QUIT.SF	dc.w	QUIT.Z QUIT.CF del
 QUIT.CF	zero
-		#.w	TIMEOUT.CF				; clear any timeouts
-		jsr
+		jsl	TIMEOUT.CF				; clear any timeouts
 		zero 						; zero stack pointers
 		RSP!
 		zero 
@@ -3573,8 +3456,7 @@ QUIT.CF	zero
 			fetch.l
 			#.w	input_size
 			fetch.l			( input_buff size)
-			#.w	ACCEPT.CF 			; fill input_buff from the terminal 
-			jsr				( input_buff size -- len)	
+			jsl	ACCEPT.CF 		( input_buff size -- len , fill input_buff from the terminal)				
 			#.w	IN_LEN 			; save number of characters in input buffer
 			store.l					
 			zero
@@ -3584,8 +3466,7 @@ QUIT.CF	zero
 			fetch.b
 			#.w	INK
 			store.b
-			#.w	INTERPRET.CF			; INTERPRET the line
-			jsr		
+			jsl	INTERPRET.CF			; INTERPRET the line		
 		AGAIN
 QUIT.Z		rts		; never reached
 ;
@@ -3653,8 +3534,7 @@ EVALUATE.NF	dc.b	8 128 +
 EVALUATE.SF	dc.w	EVALUATE.Z EVALUATE.CF del
 EVALUATE.CF	>R
 		>R
-		#.w 	SAVE-INPUT.CF
-		jsr
+		jsl	SAVE-INPUT.CF
 		R>
 		R>			( <input-state> c-addr u --)
 		#.w	IN_LEN
@@ -3664,10 +3544,8 @@ EVALUATE.CF	>R
 		zero
 		#.w	>IN_
 		store.l
-		#.w	{INTERPRET}.CF
-		jsr
-		#.w	RESTORE-INPUT.CF
-		jsr
+		jsl	{INTERPRET}.CF
+		jsl	RESTORE-INPUT.CF
 EVALUATE.Z	rts
 ;
 NOP.LF		dc.l	EVALUATE.NF
@@ -4043,8 +3921,7 @@ CR.NF		dc.b	2 128 +
 		dc.b	char R char C
 CR.SF		dc.w	CR.Z CR.CF del
 CR.CF		#.b	EOL
-		#.w	EMIT.CF
-		jsr
+		jsl	EMIT.CF
 CR.Z		rts
 ;
 SPACE.LF	dc.l	CR.NF
@@ -4052,8 +3929,7 @@ SPACE.NF	dc.b	5 128 +
 		dc.b	char E char C char A char P char S
 SPACE.SF	dc.w	SPACE.Z SPACE.CF del
 SPACE.CF	#.b	32
-		#.w	EMIT.CF
-		jsr
+		jsl	EMIT.CF
 SPACE.Z	rts
 ;	
 SPACES.LF	dc.l	SPACE.NF
@@ -4063,8 +3939,7 @@ SPACES.SF	dc.w	SPACES.Z SPACES.CF del
 SPACES.CF	zero	( limit index)
 		DO
 			#.b 	32
-			#.w	EMIT.CF
-			jsr
+			jsl	EMIT.CF
 		LOOP
 SPACES.Z	rts
 ;
@@ -4218,8 +4093,7 @@ CHAR.NF	dc.b	4 128 +
 		dc.b	char R char A char H char C
 CHAR.SF	dc.w	CHAR.Z char.CF del
 CHAR.CF	#.b	32
-		#.w	WORD.CF
-		jsr			( addr)
+		jsl	WORD.CF	( addr)		
 		1+			( c-addr)
 		fetch.b		( char)
 CHAR.Z		rts
@@ -4250,11 +4124,9 @@ BL.Z		rts
 		dc.b	char R char E char V char O char 2
 2OVER.SF	dc.w	2OVER.Z 2OVER.CF del
 2OVER.CF	#.b	3
-		#.w	PICK.CF
-		jsr
+		jsl	PICK.CF
 		#.b	3
-		#.w	PICK.CF
-		jsr
+		jsl	PICK.CF
 2OVER.Z	rts
 ;
 2SWAP.LF	dc.l	2OVER.NF
@@ -4295,33 +4167,26 @@ DUMP.CF	over	( addr n addr)
 		>R	( addr R: end)
 		BEGIN
 			#.b	EOL
-			#.w	EMIT.CF
-			jsr		
+			jsl	EMIT.CF		
 			dup		( addr addr)
 			#.b	6					; 6 digit output for the address
-			#.w	UDOTR.CF
-			jsr		( addr)
+			jsl	UDOTR.CF	( addr)	
 			#.b	32
-			#.w	EMIT.CF
-			jsr
+			jsl	EMIT.CF
 			dup		( addr addr)			
 			#.b	8	( addr 8)
-			#.w	TYPERAW.CF
-			jsr						; print the literals		
+			jsl	TYPERAW.CF				; print the literals							
 			#.b	32
-			#.w	EMIT.CF
-			jsr	
+			jsl	EMIT.CF
 			#.b	8
 			zero
 			DO
 				#.b 32
-				#.w EMIT.CF
-				jsr
+				jsl 	EMIT.CF
 				dup		( addr addr)
 				fetch.b	( addr n)
 				#.b	2				; 2 digit output for the byte
-				#.w	UDOTR.CF
-				jsr
+				jsl	UDOTR.CF
 				1+		( addr+)
 			LOOP		( addr addr+8)
 			dup		( addr+8 addr+8 R: end)
@@ -4330,8 +4195,7 @@ DUMP.CF	over	( addr n addr)
 			not		( addr+8 flag' R: end)
 		UNTIL
 		#.b	EOL
-		#.w	EMIT.CF
-		jsr
+		jsl	EMIT.CF
 		R>			( addr end)
 		drop		
 DUMP.Z		drop,rts			
@@ -4353,18 +4217,15 @@ DOTS.CF	psp@			( depth)
 			>
 		WHILE
 			#.b	EOL
-			#.w	EMIT.CF
-			jsr
+			jsl	EMIT.CF
 			dup		( addr addr)
 			fetch.l	( addr n)
-			#.w	DOT.CF
-			jsr	
+			jsl	DOT.CF	
 			#.b	4	( addr 4)
 			-		( addr-4)
 		REPEAT
 		#.b	EOL
-		#.w	EMIT.CF
-		jsr		
+		jsl	EMIT.CF	
 DOTS.Z		drop,rts
 ;
 ; UNUSED ( -- n, number of unused bytes in dataspace)
@@ -4378,17 +4239,14 @@ UNUSED.CF	#.w	SRAMSIZE
 UNUSED.Z	-,rts
 ;
 ; CHECKMEM - internal word
-CHECKMEM.CF	#.w	UNUSED.CF
-		jsr		( free)
-		#.b	32	( free 32)
+CHECKMEM.CF	jsl	UNUSED.CF	( free)	
+		#.b	32		( free 32)
 		<
 		IF
 			#.w	CHECKMEM.0
 			#.b	8
-			#.w	TYPE.CF
-			jsr
-			#.w	ABORT.CF
-			jsr
+			jsl	TYPE.CF
+			jsl	ABORT.CF
 		THEN
 		rts
 CHECKMEM.0	dc.b char M char E char M 32 char W char O char L
@@ -4399,14 +4257,11 @@ CREATE.LF	dc.l	UNUSED.NF
 CREATE.NF	dc.b	6 128 +
 		dc.b	char E char T char A char E char R char C
 CREATE.SF	dc.w	CREATE.Z CREATE.CF del
-CREATE.CF	#.w	CHECKMEM.CF
-		jsr		
+CREATE.CF	jsl	CHECKMEM.CF		
 		#.b	32
-		#.w	WORD.CF			
-		jsr			( addr)		; parse next word
+		jsl	WORD.CF	( addr)		; parse next word				
 		drop						; HEAD assumes that the name field is already complete		
-		#.w	HEAD.CF
-		jsr			( CF)			; create header
+		jsl	HEAD.CF	( CF)			; create header		
 		dup			( CF CF)
 		1-
 		1-			( CF SF)	
@@ -4444,11 +4299,7 @@ DOES>.CF	#.w	LAST-SF				; find SF in create word
 		over			( SF 10 SF)
 		store.w					; update SF: for create does> runtime code size (6 - 1 + 5)
 		#.b	7		( SF 7)		; starting position for does code is 7 bytes ahead of SF
-		+			( CF)			; CF is position of RTS left by create
-;		#.b	op#.L		( CF op#.L)
-;		over			( CF op#.L CF)	
-;		store.b		( CF)			; compile #.L	
-;		1+			( CF')			; increment CF	
+		+			( CF)			; CF is position of RTS left by create	
 		R>			( CF dest)		; postone words following DOES>
 		over			( CF dest CF)
 		store.l		( CF)			; compile dest 
@@ -4457,10 +4308,6 @@ DOES>.CF	#.w	LAST-SF				; find SF in create word
 		store.b		( CF)			; overwrite high byte with JSL instruction, leaving 3 byte address
 		#.b	4		( CF 4)
 		+			( CF')
-;		#.b	opJSR		( CF opJSR)
-;		over			( CF opJSR CF)
-;		store.b					
-;		1+			( CF')
 		#.b	opRTS		( CF opRTS)
 		swap
 		store.b					; compile RTS  (need to use a JSL/RTS pair rather than JMP incase inlined)	
@@ -4662,8 +4509,7 @@ M,.CF		#.w	HERE_	( addr u &HERE)
 		swap		( addr HERE u R:&HERE HERE)
 		dup		( addr HERE u u R:&HERE HERE)
 		>R		( addr HERE u R:&HERE HERE u)
-		#.w	MOVE.CF
-		jsr		( R:&HERE HERE u)
+		jsl	MOVE.CF ( R:&HERE HERE u)		
 		R>		( u R:&HERE HERE)
 		R>		( u HERE R:&HERE)
 		+		( HERE' R:&HERE)
@@ -4676,10 +4522,8 @@ $,.NF		dc.b	2 128 +
 		dc.b	44 char $
 $,.SF		dc.w	$,.Z $,.CF del
 $,.CF		dup			( addr n n)
-		#.w	C,.CF
-		jsr						; compile the count
-		#.w	M,.CF
-		jsr						; compile the characters of the string
+		jsl	C,.CF					; compile the count					
+		jsl	M,.CF					; compile the characters of the string						
 $,.Z		rts
 ;
 ; ALLOT ( n -- allocate n bytes)
@@ -4688,8 +4532,7 @@ ALLOT.NF	dc.b	5 128 +
 		dc.b	char T char O char L char L char A
 ALLOT.SF	dc.w	ALLOT.Z ALLOT.CF del
 ALLOT.CF	#.w	HERE_	( n HERE)
-		#.w	+!.CF
-		jsr
+		jsl	+!.CF
 ALLOT.Z	rts
 ;
 ; VARIABLE ( -- create a variable)
@@ -4697,17 +4540,14 @@ VARIABLE.LF	dc.l	ALLOT.NF
 VARIABLE.NF	dc.b	8 128 +
 		dc.b	char E char L char B char A char I char R char A char V
 VARIABLE.SF	dc.w	VARIABLE.Z VARIABLE.CF del
-VARIABLE.CF	#.w	COLON.CF				; initiate the word
-		jsr
+VARIABLE.CF	jsl	COLON.CF				; initiate the word
 		#.w	HERE_
 		fetch.l
 		#.b	6					; allow enough space for a 4 byte PFA address, load and RTS
 		+
 		dup				(PFA PFA)
-		#.w	LITERAL.CF				; compile the PFA
-		jsr
-		#.w	SEMICOLON.CF
-		jsr
+		jsl	LITERAL.CF				; compile the PFA
+		jsl	SEMICOLON.CF
 		#.b	4			( PFA 4)	; allocate space for the the PFA
 		+				( HERE')
 		#.w  	HERE_			( HERE' &HERE)						
@@ -4718,14 +4558,11 @@ COLON.LF	dc.l	VARIABLE.NF
 COLON.NF	dc.b	1 128 +
 		dc.b	char :
 COLON.SF	dc.w	COLON.Z COLON.CF del
-COLON.CF	#.w	CHECKMEM.CF
-		jsr
+COLON.CF	jsl	CHECKMEM.CF
 		#.b	32
-		#.w	WORD.CF			
-		jsr			( addr)		; parse next word
+		jsl	WORD.CF	( addr)		; parse next word					
 		drop 						; HEAD assumes that the name field is already complete
-		#.w	HEAD.CF
-		jsr			( CF)			; create header
+		jsl	HEAD.CF	( CF)			; create header		
 COLON.1	#.w	LAST-CF	( CF &LAST-CF)
 		store.l					; update LAST-CF		
 		#.w	LAST-NF	( &LAST-NF)		; SMUDGE the word
@@ -4748,8 +4585,7 @@ SEMICOLON.NF	dc.b	1 128 + IMMED +
 		dc.b	59
 SEMICOLON.SF	dc.w	SEMICOLON.Z SEMICOLON.CF del	
 SEMICOLON.CF	#.b	opRTS		( opRTS)		
-		#.w 	C,.CF
-		jsr						; compile RTS
+		jsl 	C,.CF					; compile RTS					
 		#.w	HERE_
 		fetch.l		( HERE)
 		#.w	LAST-CF
@@ -4806,11 +4642,6 @@ COMPILE,.CF	dup			( CF CF)
 			+
 			R>		( HERE &HERE)
 			store.l
-;			#.w	LITERAL.CF
-;			jsr						; compile execution token as literal
-;			#.b	opJSR		( opJSR)
-;			#.w	C,.CF
-;			jsr						; compile JSR
 		ELSE	; compile inline
 			R@			( CF HERE R:&HERE HERE)
 			over			( CF HERE CF R:&HERE HERE)
@@ -4821,8 +4652,7 @@ COMPILE,.CF	dup			( CF CF)
 			and							; wipeout INLINE flags
 			dup			( CF HERE len len R:&HERE HERE)
 			>R			( CF HERE len R:&HERE HERE len)
-			#.w MOVE.CF
-			jsr			( R:&HERE HERE len)		; copy code field
+			jsl	MOVE.CF	( R:&HERE HERE len)		; copy code field		
 			R>			( len R:&HERE HERE)
 			R>			( len HERE R:&HERE)
 			+		
@@ -4868,20 +4698,17 @@ TICK.NF	dc.b	1 128 +
 		dc.b	39
 TICK.SF	dc.w	TICK.Z TICK.CF del NOINLINE +
 TICK.CF	#.b	32 		
-		#.w	WORD.CF		
-		jsr			( addr)
+		jsl	WORD.CF	( addr)				
 		dup			( addr addr)
 		fetch.b		( addr n)
 		IF						; confirm some characters were parsed
-			#.w	FIND.CF
-			jsr			( addr 0 | XT true)
+			jsl	FIND.CF	( addr 0 | XT true)		
 			IF
 				rts		( XT)
 			THEN
 		THEN
 		#.b	2					; ERROR#
-		#.w	ERROR.CF
-		jsr
+		jsl	ERROR.CF
 TICK.Z		rts
 ;
 ; LITERAL ( n -- , compile a LITERAL)
@@ -4936,12 +4763,9 @@ CONSTANT.LF	dc.l	LITERAL.NF
 CONSTANT.NF	dc.b	8 128 +
 		dc.b	char T char N char A char T char S char N char O char C
 CONSTANT.SF	dc.w	CONSTANT.Z CONSTANT.CF del
-CONSTANT.CF	#.w	COLON.CF				; initiate the word
-		jsr
-		#.w	LITERAL.CF				; compile the constant
-		jsr
-		#.w	SEMICOLON.CF				; finish the word
-		jsr
+CONSTANT.CF	jsl	COLON.CF				; initiate the word
+		jsl	LITERAL.CF				; compile the constant
+		jsl	SEMICOLON.CF				; finish the word
 CONSTANT.Z	rts
 ;
 ; IMMEDIATE , mark the most recently defined word as IMMEDIATE
@@ -4964,10 +4788,8 @@ IMMEDIATE.Z	rts
 ['].NF		dc.b	3 128 + 
 		dc.b	93 39 91
 ['].SF		dc.w	['].Z ['].CF del
-['].CF		#.w	TICK.CF
-		jsr
-		#.w	LITERAL.CF
-		jsr
+['].CF		jsl	TICK.CF
+		jsl	LITERAL.CF
 ['].Z		rts
 ;
 ; POSTPONE , force compilation of an immediate word
@@ -4975,10 +4797,8 @@ POSTPONE.LF	dc.l	['].NF
 POSTPONE.NF	dc.b	8 128 + IMMED +
 		dc.b	char E char N char O char P char T char S char O char P
 POSTPONE.SF	dc.w	POSTPONE.Z POSTPONE.CF del
-POSTPONE.CF	#.w	TICK.CF
-		jsr
-		#.w	COMPILE,.CF
-		jsr
+POSTPONE.CF	jsl	TICK.CF
+		jsl	COMPILE,.CF
 POSTPONE.Z	rts
 ;
 ; [CHAR] , IMMEDIATE CHAR
@@ -4986,8 +4806,7 @@ POSTPONE.Z	rts
 [CHAR].NF	dc.b	6 128 + IMMED +
 		dc.b 	93 char R char A char H char C 91
 [CHAR].SF	dc.w	[CHAR].Z [CHAR].CF del
-[CHAR].CF	#.w	CHAR.CF
-		jsr
+[CHAR].CF	jsl	CHAR.CF
 [CHAR].Z	rts
 ;
 ; or.w! ( word addr -- ) or word with memory - internal word
@@ -5024,8 +4843,7 @@ IF.SF		dc.w	IF.Z IF.CF del
 IF.CF		#.w	HERE_
 		fetch.l	
 		#.w	opBEQ			; compile BEQ for forward branch
-		#.w	W,.CF
-		jsr				
+		jsl	W,.CF				
 IF.Z		rts		( HERE)
 ;
 ; THEN
@@ -5034,11 +4852,9 @@ THEN.NF	dc.b	4 128 + IMMED +
 		dc.b 	char N char E char H char T
 THEN.SF	dc.w	THEN.Z THEN.CF del
 THEN.CF	dup		( org org)
-		#.w	fwd-offset.CF		; calculate branch offset
-		jsr		( org offset)	
+		jsl	fwd-offset.CF		( org offset, calculate branch offset)		
 		swap		( offset org)
-		#.w	or.w!.CF		; compile forward branch offset at origin
-		jsr				
+		jsl	or.w!.CF		; compile forward branch offset at origin				
 THEN.Z		rts
 ;	
 ELSE.LF	dc.l	THEN.NF
@@ -5048,15 +4864,12 @@ ELSE.SF	dc.w	ELSE.Z ELSE.CF del
 ELSE.CF	#.w	HERE_	( org &HERE)	
 		fetch.l	( org HERE)
 		#.w	opBRA			; compile BRA for forward branch to THEN
-		#.w	W,.CF
-		jsr		( org HERE)
+		jsl	W,.CF	( org HERE)
 		swap		( HERE org)
 		dup		( HERE org org)
-		#.w	fwd-offset.CF		; calculate forward branch offset from IF		
-		jsr		( HERE org offset)	
+		jsl	fwd-offset.CF		( HERE org offset) ; calculate forward branch offset from IF				
 		swap		( HERE offset org)
-		#.w	or.w!.CF		; compile forward branch offset at IF
-		jsr			
+		jsl	or.w!.CF		; compile forward branch offset at IF			
 ELSE.Z		rts		( HERE)
 ;
 BEGIN.LF	dc.l	ELSE.NF
@@ -5071,32 +4884,27 @@ AGAIN.LF	dc.l	BEGIN.NF
 AGAIN.NF	dc.b	5 128 + IMMED +
 		dc.b	char N char I char A char G char A
 AGAIN.SF	dc.w	AGAIN.Z AGAIN.CF del
-AGAIN.CF	#.w	rev-offset.CF
-		jsr		( offset)	; calculate backward branch offset
+AGAIN.CF	jsl	rev-offset.CF		( offset)	; calculate backward branch offset	
 		#.w	opBRA
 		or		( op)
-		#.w	W,.CF
-		jsr				; compile unconditional backward branch 
+		jsl	W,.CF			; compile unconditional backward branch 				
 AGAIN.Z	rts
 ;
 UNTIL.LF	dc.l	AGAIN.NF
 UNTIL.NF	dc.b	5 128 + IMMED +
 		dc.b	char L char I char T char N char U
 UNTIL.SF	dc.w	UNTIL.Z UNTIL.CF del
-UNTIL.CF	#.w	rev-offset.CF
-		jsr		( offset)	; calculate backward branch offset
+UNTIL.CF	jsl	rev-offset.CF		( offset)	; calculate backward branch offset		
 		#.w	opBEQ
-		or		( op)
-		#.w	W,.CF
-		jsr				; compile conditional backward branch
+		or				( op)
+		jsl	W,.CF			; compile conditional backward branch			
 UNTIL.Z	rts
 ;
 WHILE.LF	dc.l	UNTIL.NF
 WHILE.NF	dc.b	5 128 + IMMED +
 		dc.b	char E char L char I char H char W
 WHILE.SF	dc.w	WHILE.Z WHILE.CF del
-WHILE.CF	#.w	IF.CF
-		jsr		( offset)	; WHILE is equivalent to IF
+WHILE.CF	jsl	IF.CF		( offset)	; WHILE is equivalent to IF		
 WHILE.Z	rts
 ;
 REPEAT.LF	dc.l	WHILE.NF
@@ -5104,11 +4912,9 @@ REPEAT.NF	dc.b	6 128 + IMMED +
 		dc.b	char T char A char E char P char E char R
 REPEAT.SF	dc.w	REPEAT.Z REPEAT.CF del
 REPEAT.CF	swap	( org dest)		; org at WHILE, dest at BEGIN
-		#.w	AGAIN.CF
-		jsr				; compile reverse branch to BEGIN 
-		#.w	THEN.CF
-		jsr				; compile forward branch from WHILE
-REPEAT.Z		rts
+		jsl	AGAIN.CF		; compile reverse branch to BEGIN 		
+		jsl	THEN.CF		; compile forward branch from WHILE			
+REPEAT.Z	rts
 ;
 DO.LF		dc.l	REPEAT.NF
 DO.NF		dc.b	2 128 + IMMED +
@@ -5125,16 +4931,12 @@ DO.Z		bra	{DO}.CF DO.Z rel
 ?DO.Z		bra	{DO}.CF ?DO.Z rel	
 ;
 ; {DO} common to DO and ?DO  - internal word
-{DO}.CF	#.w	COMPILE,.CF			; code to set flag for IF
-		jsr
+{DO}.CF	jsl	COMPILE,.CF			; code to set flag for IF
 		#.w	DO1.RUN			; code to initialize return stack
-		#.w	COMPILE,.CF	
-		jsr				
-		#.w	pushHERE.CF			; place origin of forward branch on compile stack
-		jsr
+		jsl	COMPILE,.CF					
+		jsl	pushHERE.CF			; place origin of forward branch on compile stack
 		#.w	opBEQ				; compile BEQ for forward branch
-		#.w	W,.CF
-		jsr							
+		jsl	W,.CF						
 		#.w	HERE_				; save destination for backward branch from LOOP/+LOOP
 		fetch.l
 {DO}.Z		rts
@@ -5173,10 +4975,8 @@ LOOP.Z		bra	{LOOP}.CF LOOP.Z rel
 +LOOP.Z	bra	{LOOP}.CF +LOOP.Z rel
 ;
 ;{LOOP} common to LOOP and +LOOP, internal word
-{LOOP}.CF	#.w	COMPILE,.CF				; code to add/increment and test loop paramaters
-		jsr
-		#.w	UNTIL.CF				; conditional backwards branch to DO
-		jsr
+{LOOP}.CF	jsl	COMPILE,.CF				; code to add/increment and test loop paramaters
+		jsl	UNTIL.CF				; conditional backwards branch to DO
 		#.w	COMPILESTACKP				; compile forward branch to LEAVE's (including implicit conditional LEAVE before DO)
 		dup			( &P &P)
 		fetch.l		( &P limit)
@@ -5188,13 +4988,11 @@ LOOP.Z		bra	{LOOP}.CF LOOP.Z rel
 		DO
 			R@		( pstack)
 			fetch.l	( dest)
-			#.w	THEN.CF		
-			jsr
+			jsl	THEN.CF		
 			#.b	4	( 4)
 		+LOOP
 		#.w	UNLOOP.CF				; code to remove loop parameters
-		#.w	COMPILE,.CF
-		jsr
+		jsl	COMPILE,.CF
 {LOOP}.Z	rts
 ;
 ; LOOP1 ( R: limit index), increment and test loop paramaters	
@@ -5240,11 +5038,9 @@ LEAVE.LF	dc.l	UNLOOP.NF
 LEAVE.NF	dc.b	5 128 + IMMED +
 		dc.b	char E char V char A char E char L
 LEAVE.SF	dc.w	LEAVE.Z LEAVE.CF del
-LEAVE.CF	#.w	pushHERE.CF
-		jsr
+LEAVE.CF	jsl	pushHERE.CF
 		#.w	opBRA					; compile BRA for forward branch
-		#.w	W,.CF
-		jsr			
+		jsl	W,.CF			
 LEAVE.Z	rts
 ;
 ;pushHERE, place HERE on COMPILEstack  - internal word
@@ -5276,13 +5072,10 @@ OF.NF		dc.b	2 128 + IMMED +
 OF.SF		dc.w	OF.Z OF.CF del
 OF.CF		>R						; push casecount to the return stack
 		#.w	opOVER=
-		#.w	W,.CF					; compile OVER = for making the test
-		jsr
-		#.w	IF.CF					; push HERE and prepare BEQ for forward branch = IF 
-		jsr
+		jsl	W,.CF					; compile OVER = for making the test
+		jsl	IF.CF					; push HERE and prepare BEQ for forward branch = IF 
 		#.b	opDROP
-		#.w	C,.CF					; compile DROP (if test is sucessful and code continues)
-		jsr
+		jsl	C,.CF					; compile DROP (if test is sucessful and code continues)
 		R>						; get casecount from return stack
 		1+						; increment CASECOUNT
 OF.Z		rts
@@ -5291,10 +5084,9 @@ ENDOF.LF	dc.l	OF.NF
 ENDOF.NF	dc.b	5 128 + IMMED +
 		dc.b	char F char O char D char N char E
 ENDOF.SF	dc.w	ENDOF.Z ENDOF.CF del
-ENDOF.CF	>R						; push casecount to the return stack
-		#.w	ELSE.CF				
-		jsr						; push here and prepare BRA for forward branch, then resolve prior forward branch from OF = ELSE
-		R>						; get casecount from the return stack
+ENDOF.CF	>R				; push casecount to the return stack
+		jsl	ELSE.CF		; push here and prepare BRA for forward branch, then resolve prior forward branch from OF = ELSE
+		R>				; get casecount from the return stack
 ENDOF.Z	rts
 ;
 ENDCASE.LF	dc.l	ENDOF.NF
@@ -5302,12 +5094,10 @@ ENDCASE.NF	dc.b	7 128 + IMMED +
 		dc.b	char E char S char A char C char D char N char E
 ENDCASE.SF	dc.w	ENDCASE.Z ENDCASE.CF del
 ENDCASE.CF	#.b	opDROP
-		#.w	C,.CF
-		jsr						; compile DROP  (remove test variable in default case)
+		jsl	C,.CF			; compile DROP  (remove test variable in default case)						
 		zero				( casecount zero)
 		DO
-			#.w	THEN.CF
-			jsr					; resolve forward branch from each ENDOF = THEN
+			jsl	THEN.CF	; resolve forward branch from each ENDOF = THEN					
 		LOOP
 ENDCASE.Z	rts
 ;
@@ -5332,7 +5122,7 @@ ENDCASE.Z	rts
 		store.l
 ].Z		rts
 ;
-; RECURSE, compile a jsr to the XT of the current word
+; RECURSE, compile a jsl to the XT of the current word
 RECURSE.LF	dc.l	].NF
 RECURSE.NF	dc.b	7 128 + IMMED +
 		dc.b	char E char S char R char U char C char E char R
@@ -5354,11 +5144,6 @@ RECURSE.CF	#.w	LAST-CF
 		+
 		R>			( HERE &HERE)
 		store.l
-;		#.w	LITERAL.CF
-;		jsr						; compile execution token as literal
-;		#.b	opJSR		( opJSR)
-;		#.w	C,.CF
-;		jsr	
 RECURSE.Z	rts
 ;
 ; EXIT
@@ -5373,8 +5158,9 @@ EXIT.Z		jmp						; simple 'RTS' would be discarded by inline compiler
 RTI.LF		dc.l	EXIT.NF
 RTI.NF		dc.b	3 128 +
 		dc.b	char I char T char R
-RTI.CF		dc.w	1
+RTI.SF		dc.w	2
 		RTI
+		RTS						; never reached - to comply with needs of inline compiler
 ;
 ; EXECUTE ( xt --)
 EXECUTE.LF	dc.l	RTI.NF
@@ -5411,21 +5197,17 @@ SLITERAL.CF	dup		( addr u u)
 		+		( addr u offset)
 		#.w	opBRA
 		or		( addr u op)
-		#.w	W,.CF	
-		jsr		( addr u)	
+		jsl	W,.CF	( addr u)		
 		dup		( addr u u)
 		>R		( addr u R:u)
 		#.w	HERE_ 	( addr u &HERE R:u)
 		fetch.l	( addr u HERE R:u)
 		>R		( addr u R:u HERE)
-		#.w	M,.CF					; compile the characters of the string
-		jsr		( R:u HERE)
+		jsl	M,.CF	( R:u HERE)			; compile the characters of the string		
 		R>		( HERE R:u)
-		#.w	LITERAL.CF
-		jsr		( R:u)
+		jsl	LITERAL.CF	( R:u)		
 		R>		( u)
-		#.w	LITERAL.CF
-		jsr
+		jsl	LITERAL.CF
 SLITERAL.Z	rts
 ;
 ; CLITERAL ( addr u, compile a string literal as an executable that will be re-presented at run time as a counted string c-addr)
@@ -5438,16 +5220,13 @@ CLITERAL.CF	dup		( addr u u)
 		+		( addr u offset)
 		#.w	opBRA					
 		or		( addr u op)
-		#.w	W,.CF					; compile a branch over the body of the string
-		jsr		( addr u)	
+		jsl	W,.CF	( addr u)			; compile a branch over the body of the string			
 		#.w	HERE_ 	( addr u &HERE R:u)		; save the address of the string
 		fetch.l	( addr u HERE R:u)
 		>R		( addr u R:u HERE)
-		#.w	$,.CF					; compile the count and characters of the string
-		jsr		( R:u HERE)
+		jsl	$,.CF	( R:u HERE)			; compile the count and characters of the string		
 		R>		( HERE R:u)
-		#.w	LITERAL.CF				; compile the address	
-		jsr
+		jsl	LITERAL.CF				; compile the address	
 CLITERAL.Z	rts
 ;
 ; ," <string> ( --) compile the following string into the data space as a counted string)
@@ -5455,10 +5234,8 @@ CLITERAL.Z	rts
 ,".NF		dc.b	2 128 +
 		dc.b	34 44
 ,".SF		dc.w	,".Z ,".CF del
-,".CF		#.w	IN$.CF
-		jsr				( addr n)	; string held in parse buffer
-		#.w	$,.CF					; compile the string
-		jsr						
+,".CF		jsl	IN$.CF			( addr n)	; string held in parse buffer			
+		jsl	$,.CF					; compile the string					
 ,".Z		rts
 ;
 ; STRINGlOC	( n -- addr, return a pointer to the next space in the string bufffer -- internal function)
@@ -5491,24 +5268,20 @@ S".LF		dc.l	,".NF
 S".NF		dc.b	2 128 + IMMED +
 		dc.b	34 char S
 S".SF		dc.w	S".Z S".CF del
-S".CF		#.w	IN$.CF
-		jsr				( addr n)	; string held in parse buffer	
+S".CF		jsl	IN$.CF			( addr n)	; string held in parse buffer				
 		#.w	STATE_
 		fetch.l
 		IF						; compile mode
-			#.w	SLITERAL.CF				; compile into dictionary
-			jsr					
+			jsl	SLITERAL.CF				; compile into dictionary				
 		ELSE						; interpret mode
 			dup						; copy to the pad and return to user
 			>R			( addr n R:n)
 			dup
-			#.w	STRINGLOC.CF
-			jsr			( addr n str R:n)	
+			jsl	STRINGLOC.CF	( addr n str R:n)				
 			dup		
 			>R			( addr n str R:n str)
 			swap			( addr str n R:n str)
-			#.w	MOVE.CF
-			jsr			( R:n str)
+			jsl	MOVE.CF	( R:n str)		
 			R>
 			R>			( str n)
 		THEN
@@ -5519,17 +5292,14 @@ C".LF		dc.l	S".NF
 C".NF		dc.b	2 128 + IMMED +
 		dc.b 	34 char C
 C".SF		dc.w	C".Z C".CF del
-C".CF		#.w	IN$.CF
-		jsr				( addr n)	; string held in parse buffer
+C".CF		jsl	IN$.CF			( addr n)	; string held in parse buffer			
 		#.w	STATE_
 		fetch.l
 		IF						; compile mode
-			#.w	CLITERAL.CF				
-			jsr						; compile into dictionary
+			jsl	CLITERAL.CF			; compile into dictionary						
 		ELSE						; interpret mode	
 			dup
-			#.w	STRINGLOC.CF
-			jsr						
+			jsl	STRINGLOC.CF						
 			dup			( addr n pad pad)
 			>R			( addr n pad R:pad)
 			over			( addr n pad n R:pad)
@@ -5537,18 +5307,15 @@ C".CF		#.w	IN$.CF
 			store.b		( addr n pad R:pad)	; copy the length byte to the PAD
 			1+			( addr n pad+1 R:pad)
 			swap			( addr pad+1 n R:pad)
-			#.w	MOVE.CF				; copy the string to the PAD's second byte
-			jsr			( R:pad)
+			jsl	MOVE.CF	( R:pad)		; copy the string to the PAD's second byte			
 			R>			( pad)		
 		THEN
 C".Z		rts
 ;
 ; IN$ <string> ( -- addr n), read a string - internal word
 IN$.CF		#.b 	34					; char "
-		#.w	WORD.CF
-		jsr				( addr)
-		#.w	COUNT.CF
-		jsr				( addr n)	
+		jsl	WORD.CF		( addr)			
+		jsl	COUNT.CF		( addr n)				
 IN$.Z		rts
 ;
 ; ." <string>, print a string
@@ -5556,11 +5323,9 @@ IN$.Z		rts
 .".NF		dc.b	2 128 + IMMED +
 		dc.b	34 46
 .".SF		dc.w	.".Z .".CF del
-.".CF		#.w	S".CF					; compile
-		jsr
+.".CF		jsl	S".CF					; compile
 		#.w	TYPE.CF
-		#.w	COMPILE,.CF
-		jsr
+		jsl	COMPILE,.CF
 .".Z		rts
 ;
 ; ( comment
@@ -5569,8 +5334,7 @@ BRA.NF		dc.b	1 128 + IMMED +
 		dc.b	40					; char (
 BRA.SF		dc.w	BRA.Z BRA.CF del
 BRA.CF		#.b	41					; char )
-		#.w	PARSE.CF
-		jsr		( addr)
+		jsl	PARSE.CF	( addr)	
 		drop
 BRA.Z		drop,rts	
 ;
@@ -5580,8 +5344,7 @@ BRA.Z		drop,rts
 		dc.b	92					; char \
 \.SF		dc.w	\.Z \.CF del
 \.CF		#.b	EOL					; end of line
-		#.w	WORD.CF
-		jsr
+		jsl	WORD.CF
 \.Z		drop,rts	
 ;
 ; .( printing comment
@@ -5590,13 +5353,10 @@ DOTBRA.NF	dc.b	2 128 +
 		dc.b	40 46
 DOTBRA.SF	dc.w	DOTBRA.Z DOTBRA.CF del
 DOTBRA.CF	#.b	41					; char )
-		#.w	WORD.CF
-		jsr
-		#.w	COUNT.CF
-		jsr
-		#.w	TYPE.CF
-		jsr
-DOTBRA.Z		rts
+		jsl	WORD.CF
+		jsl	COUNT.CF
+		jsl	TYPE.CF
+DOTBRA.Z	rts
 ;
 ; ALIGN ( --, align data-space space pointer - NOP on the NIGE Machine)
 ALIGN.LF	dc.l	DOTBRA.NF
@@ -5622,33 +5382,27 @@ MARKER.CF	#.w	HERE_						; current HERE will be the LF of the MARKER word
 		fetch.l
 		#.w	HERE1						; current SDRAM POINTER
 		fetch.l		
-		#.w	COLON.CF					; create the word (*after* placing HERE on the stack)
-		jsr	
-		#.w	LITERAL.CF					; compile the SDRAM pointer as a literal to be pushed onto the stack at runtime
-		jsr				
-		#.w	LITERAL.CF					; compile the LF as a literal to be pushed onto the stack at runtime
-		jsr		
+		jsl	COLON.CF					; create the word (*after* placing HERE on the stack)	
+		jsl	LITERAL.CF			; compile the SDRAM pointer as a literal to be pushed onto the stack at runtime			
+		jsl	LITERAL.CF					; compile the LF as a literal to be pushed onto the stack at runtime	
 		#.w	MARKER.RUN					
-		#.w	LITERAL.CF					; compile address of the MARKER runtime code
-		jsr
+		jsl	LITERAL.CF					; compile address of the MARKER runtime code
 		#.b	opJMP						
-		#.w	C,.CF						; compile a jump to the MARKET runtime code
-		jsr
-		#.w	SEMICOLON.CF					; finish the word
-		jsr
+		jsl	C,.CF						; compile a jump to the MARKET runtime code
+		jsl	SEMICOLON.CF					; finish the word
 MARKER.Z	rts
 ; runtime code for MARKER
 MARKER.RUN	dup				( SD LF LF)		; SD is the SDRAM pointer, LF is the LF of the word
 		fetch.l			( SD LF NF')		; NF' is the NF of the prior word
 		#.w	LAST-NF
-		store.l			( SD LF)		; store the NF of the previous word in the last word variable (used by HEAD for linking)
+		store.l			( SD LF)	; store the NF of the previous word in the last word variable (used by HEAD for linking)
 		#.w	HERE_						; point HERE at the address of the work
 		store.l			( SD)			
 		#.w	HERE1						; reset the SDRAM pointer too
 		store.l
 		rts
 ;	
-; BUFFER: ( n --), create a storate table in PSDRAM (overwritten by dynamic memory allocation words)
+; BUFFER: ( n --), create a storate table in PSDRAM (definition replaced in dynamic memory allocation wordset)
 BUFFER:.LF	dc.l	MARKER.NF
 BUFFER:.NF	dc.b	7 128 +
 		dc.b	58 char R char E char F char F char U char B
@@ -5656,15 +5410,12 @@ BUFFER:.SF	dc.w	BUFFER:.Z BUFFER:.CF del
 BUFFER:.CF	1+
 		lsr
 		lsl							; round up next even number
-		#.w	COLON.CF
-		jsr
+		jsl	COLON.CF
 		#.w	HERE1
 		fetch.l
 		dup
-		#.w	LITERAL.CF					; compile the location of the buffer as a literal
-		jsr
-		#.w	SEMICOLON.CF
-		jsr
+		jsl	LITERAL.CF					; compile the location of the buffer as a literal
+		jsl	SEMICOLON.CF
 		+	
 		#.w	HERE1
 		store.l						; update the position of the SDRAM data pointer
@@ -5675,46 +5426,36 @@ SBUFFER:.LF	dc.l	BUFFER:.NF
 SBUFFER:.NF	dc.b	8 128 +
 		dc.b	58 char R char E char F char F char U char B char S
 SBUFFER:.SF	dc.w	SBUFFER:.Z SBUFFER:.CF del
-SBUFFER:.CF	#.w	COLON.CF
-		jsr
+SBUFFER:.CF	jsl	COLON.CF
 		zero
 		1-							; dummy value to ensure #.l is used
-		#.w	LITERAL.CF					; compile the location of the buffer as a literal
-		jsr	
-		#.w	SEMICOLON.CF
-		jsr	
+		jsl	LITERAL.CF					; compile the location of the buffer as a literal	
+		jsl	SEMICOLON.CF
 		#.w	HERE_						; actual address
 		fetch.l		
 		dup			( n addr addr)
 		#.b	5
 		-			( n addr loc)
 		store.l
-		#.w	ALLOT.CF					; update the position of the data pointer
-		jsr
+		jsl	ALLOT.CF					; update the position of the data pointer
 SBUFFER:.Z	rts
 ;
 DEFER.LF	dc.l	SBUFFER:.NF
 DEFER.NF	dc.b	5 128 +
 		dc.b	char R char E char F char E char D
 DEFER.SF	dc.w	DEFER.Z DEFER.CF del
-DEFER.CF	#.w	COLON.CF					; prepare the word
-		jsr
+DEFER.CF	jsl	COLON.CF					; prepare the word
 		#.w	DEFER.RUN	( XT)				; push default XT for DEFER	on the stack			
 		#.w	HERE_
 		fetch.l		( XT CF)			; push the CF address of this word on the stack		
 		#.b	op#.l					
-		#.w	C,.CF						; compile #.l
-		jsr
+		jsl	C,.CF						; compile #.l
 		#.b	4						
-		#.w	ALLOT.CF					; reserve space for the vector address
-		jsr		
-		#.w	{IS}.CF					; implement the vector
-		jsr			
+		jsl	ALLOT.CF					; reserve space for the vector address		
+		jsl	{IS}.CF					; implement the vector			
 		#.b	opJSR
-		#.w	C,.CF						; compile JMP
-		jsr	
-		#.w	SEMICOLON.CF					; terminate the word
-		jsr
+		jsl	C,.CF						; compile JMP	
+		jsl	SEMICOLON.CF					; terminate the word
 DEFER.Z	rts
 ;
 ; DEFER.RUN is the default behaviour for an uninitialized vector
@@ -5727,10 +5468,8 @@ IS.LF		dc.l	DEFER.NF
 IS.NF		dc.b	2 128 +
 		dc.b	char S char I
 IS.SF		dc.w	IS.Z IS.CF del
-IS.CF		#.w	TICK.CF
-		jsr
-		#.w	{IS}.CF
-		jsr
+IS.CF		jsl	TICK.CF
+		jsl	{IS}.CF
 IS.Z		rts
 ;
 ; {IS} ( XT CF --), implement the vector in a DEFER word, internal word
@@ -5744,8 +5483,7 @@ IS.Z		rts
 		dc.b	char ?
 ?.SF		dc.w	?.Z ?.CF del
 ?.CF		fetch.l
-		#.w	UDOT.CF
-		jsr
+		jsl	UDOT.CF
 ?.Z		rts
 ;
 KEY?.LF	dc.l	?.NF
