@@ -18,6 +18,8 @@ entity Datapath is
 			  TOS : out STD_LOGIC_VECTOR (31 downto 0);				-- Top Of Stack (TOS_n, one cycle ahead of registered value)
 			  TOS_r : out STD_LOGIC_VECTOR (31 downto 0);			-- Top Of Stack (Tthe registered value)			  
 			  NOS : out STD_LOGIC_VECTOR (31 downto 0);				-- Next On Stack (NOS_n)
+			  equalzero : out STD_LOGIC;									-- flag '1' when TOS is zero
+			  chip_RAM : out STD_LOGIC;									-- flag used to identify SRAM vs. PSDRAM memory access
 			  TORS : out STD_LOGIC_VECTOR (31 downto 0);			   -- Top Of Return Stack
 			  PSaddr : out STD_LOGIC_VECTOR (8 downto 0);			-- Paramater stack memory
 			  PSdatain : in STD_LOGIC_VECTOR (31 downto 0);	
@@ -175,6 +177,9 @@ begin
 	TOS_r <= TOS_i;								-- the registered value of TOS
 	NOS <= NOS_n;									-- output NOS to control unit, once cycle ahead of regsitered value
 	TORS <= TORS_n;								-- output TORS to control unit, once cycle ahead of registered value
+	
+	equalzero <= '1' when TOS_n = 0 else '0'; 
+	chip_RAM <= '1' when TOS_n(23 downto 16) = 0 else '0';		-- flag used to identify SRAM vs. PSDRAM memory access
 							
 	PSdatain_i <= PwBuff when PSw_m1 = "1"	-- because of 1 cycle memory latency, need to use the buffered value for a stack memory read
 														--   if the stack memory was written just one cycle before (as memory update will not yet have occured)

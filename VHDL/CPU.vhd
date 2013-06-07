@@ -25,6 +25,7 @@ entity CPU is
 				-- 32 bit wide SRAM databus	
 			   MEMdatain_X : in STD_LOGIC_VECTOR (31 downto 0);			-- data at ADDR	
 				MEMdatain_X_plus : in STD_LOGIC_VECTOR (31 downto 0);		-- data at ADDR+1 (for load literal instructions)
+				MEMdatain_X_quick : in STD_LOGIC_VECTOR (31 downto 0);
 			   MEMdataout_X : out STD_LOGIC_VECTOR (31 downto 0);		
 			   MEM_WRQ_X : out STD_LOGIC;	
 				MEMsize_X : out STD_LOGIC_VECTOR (1 downto 0);	
@@ -60,6 +61,8 @@ architecture Structural of CPU is
 		TOS_r : OUT STD_LOGIC_VECTOR (31 downto 0);				-- registered			
 		NOS : OUT std_logic_vector(31 downto 0);
 		TORS : OUT std_logic_vector(31 downto 0);
+		equalzero: OUT std_logic;
+		chip_RAM: OUT std_logic;
 		PSaddr : OUT std_logic_vector(8 downto 0);
 		PSdatain : IN std_logic_vector(31 downto 0);
 		PSdataout : OUT std_logic_vector(31 downto 0);
@@ -82,6 +85,8 @@ architecture Structural of CPU is
 		TOS_r : in STD_LOGIC_VECTOR (31 downto 0);					
 		NOS : IN std_logic_vector(31 downto 0);
 		TORS : IN std_logic_vector(31 downto 0);
+		equalzero : IN std_logic;
+		chip_RAM : IN std_logic;
 		MicroControl : OUT std_logic_vector(13 downto 0);
 		AuxControl : OUT std_logic_vector(2 downto 0);
 		Accumulator : OUT std_logic_vector(31 downto 0);
@@ -112,6 +117,8 @@ architecture Structural of CPU is
 	signal	TOS, TOS_r :  std_logic_vector(31 downto 0);
 	signal	NOS :  std_logic_vector(31 downto 0);
 	signal	TORS :  std_logic_vector(31 downto 0);
+	signal	equalzero : std_logic;
+	signal	chip_RAM : std_logic;
 --	signal 	MEMdatain_X : std_logic_vector(31 downto 0);
 
 begin
@@ -131,6 +138,8 @@ begin
 		TOS_r => TOS_r,
 		NOS => NOS,
 		TORS => TORS,
+		equalzero => equalzero,
+		chip_RAM => chip_RAM,
 		PSaddr => PSaddr,
 		PSdatain => PSdatain,
 		PSdataout => PSdataout,
@@ -151,12 +160,14 @@ begin
 		TOS_r => TOS_r,
 		NOS => NOS,
 		TORS => TORS,
+		equalzero=> equalzero,
+		chip_RAM => chip_RAM,
 		MicroControl => MicroControl,
 		AuxControl => AuxControl,
 		Accumulator => Accumulator,
 		ReturnAddress => ReturnAddress,
 		MEMaddr => MEMaddr,
-		MEMdatain_X => MEMdatain_X,
+		MEMdatain_X => MEMdatain_X_quick,
 		MEMdataout_X => MEMdataout_X,
 		MEM_WRQ_X => MEM_WRQ_X,
 		MEMsize_X => MEMsize_X,

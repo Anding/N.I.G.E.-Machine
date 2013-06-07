@@ -94,8 +94,6 @@ begin
 	clk_i <= counter_clk(13);
 	irq_mask <= irq_mask_r;
 	
-	dataout <= dataout_i;
-	
 	write_pipeline: process
 	begin
 		wait until rising_edge(clk);
@@ -175,22 +173,16 @@ begin
 
 	end process;
 	
---	read_pipeline: process
---	begin
---		wait until rising_edge(clk);
-		RS232_rx_S0_r <= RS232_rx_S0;
-		RS232_TBE_S0_r <= RS232_TBE_S0;
-		RS232_RDA_S0_r <= RS232_RDA_S0;
-		PS2_data_r <= PS2_data;
-		SW_r <= SW;
---	end process;
--- pipelining the read process was actually marginally less time efficient and 
---   consumed a few more LUT resources
+	read_pipeline: process
+	begin
+		wait until rising_edge(clk);
+		dataout <= dataout_i;
+	end process;
 	
 	read_register: process
 	begin
 		wait until rising_edge(clk);
-		if en = '1' and wrq = "0" then						-- readable registers
+		if en = '1' then											-- readable registers
 			case addr_i is
 				when x"00" =>										-- TEXT_ZERO
 					dataout_i <= blank1 & txt_zero_r;

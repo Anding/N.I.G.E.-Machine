@@ -51,7 +51,7 @@ signal bank, bank_n : bank_t;
 signal counter_clk, counter_ms : std_logic_vector(31 downto 0) := (others =>'0');
 signal timer_ms : std_logic_vector(15 downto 0) := (others =>'0');	
 signal reset : std_logic;
-signal clk_system, clk_vga, clk_mem : std_logic;
+signal clk_system, clk_vga, clk_mem, clk_2xsys : std_logic;
 signal irq, rti, ms_irq : std_logic;
 signal irv : std_logic_vector(3 downto 0);
 signal irq_mask : std_logic_vector(15 downto 1);
@@ -112,19 +112,21 @@ signal SD_control : STD_LOGIC_VECTOR (3 downto 0);
 signal douta_sysram : std_logic_vector(31 downto 0);
 signal doutb_sysram : std_logic_vector(31 downto 0);          
 signal wea_sysram : std_logic_vector(0 to 0);
-signal addra_sysram : std_logic_vector(31 downto 2);
+signal addra_sysram : std_logic_vector(15 downto 2);
 signal dina_sysram : std_logic_vector(31 downto 0);
 signal web_sysram : std_logic_vector(0 to 0);
-signal addrb_sysram : std_logic_vector(31 downto 2);
+signal addrb_sysram : std_logic_vector(15 downto 2);
 signal dinb_sysram : std_logic_vector(31 downto 0);
 signal MEMdata_Sys, MEMdata_Sys_plus : std_logic_vector(31 downto 0);
+signal MEMdata_Sys_quick : std_logic_vector(31 downto 0);
 signal MEMsize_X, MEMsize_Xp : std_logic_vector(1 downto 0);
 signal MEMsize_X_s : std_logic_vector(1 downto 0);
 signal MEMaddr_s :  std_logic_vector(31 downto 0);
 signal MEMdataout_X_s :  std_logic_vector(31 downto 0);
 signal MEM_WRQ_XX_s : std_logic_vector(0 downto 0);
 signal boot_active : std_logic;
-	
+signal ram_en : std_logic;
+
 	COMPONENT DCM6
 	PORT(
 		CLKDV_SELECT_IN : IN std_logic;
@@ -134,6 +136,7 @@ signal boot_active : std_logic;
 		CLKIN_IBUFG_OUT : OUT std_logic;
 		CLKMUX_OUT : OUT std_logic;
 		CLK0_OUT : OUT std_logic;
+		CLK2X_OUT : OUT std_logic;
 		LOCKED_OUT : OUT std_logic
 		);
 	END COMPONENT;
@@ -163,6 +166,7 @@ begin
 		CLKIN_IBUFG_OUT => open,
 		CLKMUX_OUT => CLK_VGA,
 		CLK0_OUT => CLK_SYSTEM,
+		CLK2X_OUT => CLK_2XSYS,
 		LOCKED_OUT => open
 	);
 	
@@ -280,6 +284,7 @@ begin
 		WE => MEM_WRQ_XX_s,
 		DATA_in => MEMdataout_X_s,
 		DATA_out => MEMdata_Sys,
+		DATA_out_quick => MEMdata_Sys_quick,
 		DATA_out_plus => MEMdata_Sys_plus,
 		wea => wea_sysram,
 		addra => addra_sysram,
@@ -309,13 +314,13 @@ begin
 		 clka => clk_system,
 		 ena => sys_en,
 		 wea => wea_sysram,
-		 addra => addra_sysram (13 downto 2),
+		 addra => addra_sysram (15 downto 2),
 		 dina => dina_sysram,
 		 douta => douta_sysram,
 		 clkb => clk_system,
 		 enb => sys_en,
 		 web => web_sysram,
-		 addrb => addrb_sysram (13 downto 2),
+		 addrb => addrb_sysram (15 downto 2),
 		 dinb => dinb_sysram,
 		 doutb => doutb_sysram
 	  );
@@ -383,6 +388,7 @@ begin
 		RSw => RSw,
 		MEMaddr => MEMaddr,
 		MEMdatain_X => MEMdatain_Xi,
+		MEMdatain_X_quick => MEMdata_Sys_quick,
 		MEMdatain_X_plus => MEMdata_Sys_plus,
 		MEMdataout_X => MEMdataout_X,
 		MEMsize_X => MEMsize_X,
