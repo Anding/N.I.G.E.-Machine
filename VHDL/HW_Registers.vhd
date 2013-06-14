@@ -9,6 +9,7 @@ use IEEE.STD_LOGIC_UNSIGNED.ALL;
 
 entity HW_Registers is
     Port ( clk : in  STD_LOGIC;
+			  clk2x : in STD_LOGIC;
            rst : in  STD_LOGIC;
 			  -- connections to other hardware components
 			  SD_datain : in std_logic_vector(7 downto 0);			-- SD card interface
@@ -71,6 +72,8 @@ architecture Behavioral of HW_Registers is
 	signal RS232_TBE_S0_r, RS232_RDA_S0_r : std_logic;	
 	signal SW_r : std_logic_vector(7 downto 0);
 	signal PS2_data_r : std_logic_vector(7 downto 0);
+	signal SD_status_r : std_logic_vector(3 downto 0);
+	signal SD_datain_r : std_logic_vector(7 downto 0);
 	
 	signal dataout_i : STD_LOGIC_VECTOR (31 downto 0);
 	
@@ -94,7 +97,9 @@ begin
 	clk_i <= counter_clk(13);
 	irq_mask <= irq_mask_r;
 	
-	write_pipeline: process
+	-- update writable registers
+	
+	write_pipeline: process											-- pipeline for efficiency
 	begin
 		wait until rising_edge(clk);
 		en_r <= en;
@@ -111,7 +116,7 @@ begin
 			SD_control_r <= (others=>'0');	
 			SD_divide_r <= "11111111";								-- divide by 254	
 			UBRR_r_S0 <= CONV_STD_LOGIC_VECTOR(325,16);		-- 325 = 9600 BAUD at 50 MHz		
-			irq_mask_r <= "000000000000111";
+			irq_mask_r <= "000000000001111";						-- "000000000000111";
 			txt_zero_r <= X"010600";							
 			gfx_zero_r <= X"000000";		
 			background_r <= X"00";
@@ -173,22 +178,35 @@ begin
 
 	end process;
 	
-	read_pipeline: process
+	-- read hardware signals
+	
+	process															-- register all inputs (except system clocks) to reduce routing delays
 	begin
 		wait until rising_edge(clk);
-		dataout <= dataout_i;
+		RS232_rx_S0_r <= RS232_rx_S0;
+		RS232_TBE_S0_r <= RS232_TBE_S0;
+		RS232_RDA_S0_r <= RS232_RDA_S0;
+		SW_r <= SW;
+		PS2_data_r <= PS2_data;
+		SD_status_r <= SD_status;
+		SD_datain_r <= SD_datain;
 	end process;
 	
-	read_register: process
-	begin
-		wait until rising_edge(clk);
-		if en = '1' then											-- readable registers
+		dataout <= dataout_i;
+	
+	process															
+	begin																-- register all outputs to reduce multiplexer delays
+		wait until rising_edge(clk2x);
+		if en = '1'  then						-- address bus now has a valid address.  Update output register before next CLK rising edge  and clk = '1'
 			case addr_i is
 				when x"00" =>										-- TEXT_ZERO
 					dataout_i <= blank1 & txt_zero_r;
 				
 				when x"04" =>										-- GFX_ZERO
 					dataout_i <= blank1 & gfx_zero_r;			
+					
+				when x"08" =>										-- char/text graphics background colour
+					dataout_i <= blank3 & background_r;
 					
 				when x"0c" =>										-- graphics mode
 					dataout_i <= blank3 & "000" & mode_r;
@@ -215,13 +233,13 @@ begin
 					dataout_i	<= blank3 & SW_r;
 
 				when x"38" =>										-- SD data
-					dataout_i	<= blank3 & SD_datain;
+					dataout_i	<= blank3 & SD_datain_r;
 					
 				when x"3C" =>										-- SD control
 					dataout_i  <= blank3 & "0000" & SD_control_r;
 
 				when x"40"	=>										-- SD status
-					dataout_i	<= blank3 & "0000" & SD_status;
+					dataout_i	<= blank3 & "0000" & SD_status_r;
 
 				when others =>
 					dataout_i <= (others=>'0');
@@ -229,6 +247,12 @@ begin
 			end case;
 		end if;
 	end process;	
+	
+--	process										 
+--	begin
+--		wait until rising_edge(clk);
+--		dataout <= dataout_i;
+--	end process;
 		
 end Behavioral;
 

@@ -97,7 +97,7 @@ signal RS232_RDA_S0 : std_logic;
 signal RS232_TBE_S0 : std_logic;
 signal RS232_UBRR_S0 : std_logic_vector(15 downto 0);
 signal Boot_we : STD_LOGIC_VECTOR(0 DOWNTO 0);
-signal Boot_data : STD_LOGIC_VECTOR(7 DOWNTO 0);
+signal Boot_data : STD_LOGIC_VECTOR(31 DOWNTO 0);
 signal Boot_addr : STD_LOGIC_VECTOR(15 DOWNTO 0);
 signal PS2_irq : std_logic;
 signal PS2_data : std_logic_vector(7 downto 0);
@@ -112,19 +112,22 @@ signal SD_control : STD_LOGIC_VECTOR (3 downto 0);
 signal douta_sysram : std_logic_vector(31 downto 0);
 signal doutb_sysram : std_logic_vector(31 downto 0);          
 signal wea_sysram : std_logic_vector(0 to 0);
+signal wea_sysram_s : std_logic_vector(0 to 0);
 signal addra_sysram : std_logic_vector(15 downto 2);
+signal addra_sysram_s : std_logic_vector(15 downto 2);
 signal dina_sysram : std_logic_vector(31 downto 0);
+signal dina_sysram_s : std_logic_vector(31 downto 0);
 signal web_sysram : std_logic_vector(0 to 0);
 signal addrb_sysram : std_logic_vector(15 downto 2);
 signal dinb_sysram : std_logic_vector(31 downto 0);
 signal MEMdata_Sys, MEMdata_Sys_plus : std_logic_vector(31 downto 0);
 signal MEMdata_Sys_quick : std_logic_vector(31 downto 0);
 signal MEMsize_X, MEMsize_Xp : std_logic_vector(1 downto 0);
-signal MEMsize_X_s : std_logic_vector(1 downto 0);
-signal MEMaddr_s :  std_logic_vector(31 downto 0);
-signal MEMdataout_X_s :  std_logic_vector(31 downto 0);
-signal MEM_WRQ_XX_s : std_logic_vector(0 downto 0);
-signal boot_active : std_logic;
+--signal MEMsize_X_s : std_logic_vector(1 downto 0);
+--signal MEMaddr_s :  std_logic_vector(31 downto 0);
+--signal MEMdataout_X_s :  std_logic_vector(31 downto 0);
+--signal MEM_WRQ_XX_s : std_logic_vector(0 downto 0);
+--signal boot_active : std_logic;
 signal ram_en : std_logic;
 
 	COMPONENT DCM6
@@ -191,9 +194,8 @@ begin
 		end if;
 	end process;
 	
-	ms_irq <= '1' when timer_ms = "0000000000000000" else '0';
-	--ms_irq <= '1' when timer_ms(3 downto 0) = "0000" else '0';
-
+	--ms_irq <= '1' when timer_ms = "0000000000000000" else '0';
+		ms_irq <= '1' when timer_ms(5 downto 0) = "100000" else '0';
 	
 	-- board level memory logic  
 	 MEM_WRQ_XX(0) <= MEM_WRQ_X;	
@@ -220,32 +222,17 @@ begin
 	 with bank select														-- one cycle delayed to switch output
 		MEMdatain_Xi <= MEMdata_Pstack when Pstack,
 							MEMdata_Rstack when Rstack,
-							--"000000000000000000000000" & MEMdata_Char when Char,
+							"000000000000000000000000" & MEMdata_Char when Char,
 							MEMdata_Reg when Reg,
 							MEMdata_Sys when others;
 							
-		  
-	  	-- splice IOExpansion data ahead of the SRAM controller
-	  --with Boot_active select
-			 -- "000000000000000000000000" & Boot_data when '1',
-			MEMdataout_X_s <= MEMdataout_X ;--when others;
-				
-
-	  --with Boot_active select
-			 --"01" when '1',
-			 MEMsize_X_s <= MEMsize_X ;--when others;
-
-	  --with Boot_active select
-			 --"0000000000000000" & Boot_addr when '1',
-			MEMaddr_s <= MEMaddr ;--when others;
-				
-				
-	 --with Boot_active select
-			--Boot_we when '1',
-			MEM_WRQ_XX_s <= MEM_WRQ_XX ;--when others;
-				
+	-- splice IOExpansion data ahead of the SRAM
+	 wea_sysram <= wea_sysram_s when reset = '0' else boot_we;
+	 dina_sysram <= dina_sysram_s when reset = '0' else boot_data;
+	 addra_sysram <= addra_sysram_s when reset = '0' else boot_addr(15 downto 2);	 
 	 		
-		inst_Pstack_RAM : entity work.Pstack_RAM
+	 		
+	inst_Pstack_RAM : entity work.Pstack_RAM
 	  PORT MAP (
 		 clka => clk_system,
 		 wea => PSw,
@@ -278,17 +265,17 @@ begin
 	Inst_SRAM_controller: entity work.SRAM_controller PORT MAP(
 		RST => reset,
 		CLK => clk_system,
-		ADDR => MEMaddr_s,
-		size => MEMsize_X_s,
+		ADDR => MEMaddr,
+		size => MEMsize_X,
 		size_plus => MEMsize_Xp,
-		WE => MEM_WRQ_XX_s,
-		DATA_in => MEMdataout_X_s,
+		WE => MEM_WRQ_XX,
+		DATA_in => MEMdataout_X,
 		DATA_out => MEMdata_Sys,
 		DATA_out_quick => MEMdata_Sys_quick,
 		DATA_out_plus => MEMdata_Sys_plus,
-		wea => wea_sysram,
-		addra => addra_sysram,
-		dina => dina_sysram,
+		wea => wea_sysram_s,
+		addra => addra_sysram_s,
+		dina => dina_sysram_s,
 		douta => douta_sysram,
 		web => web_sysram,
 		addrb => addrb_sysram,
@@ -296,34 +283,34 @@ begin
 		doutb => doutb_sysram
 	);
 	
---	Inst_RAM_for_Testbench: entity work.RAM_for_Testbench PORT MAP(
---		rst => reset,
---		clk => clk_system,
---		weA => wea_sysram(0),
---		weB => web_sysram(0),
---		addressA => addra_sysram,
---		data_inA => dina_sysram,
---		data_outA => douta_sysram,
---		addressB => addrb_sysram,
---		data_inB => dinb_sysram,
---		data_outB => doutb_sysram
---	);
+	Inst_RAM_for_Testbench: entity work.RAM_for_Testbench PORT MAP(
+		rst => reset,
+		clk => clk_system,
+		weA => wea_sysram(0),
+		weB => web_sysram(0),
+		addressA => addra_sysram,
+		data_inA => dina_sysram,
+		data_outA => douta_sysram,
+		addressB => addrb_sysram,
+		data_inB => dinb_sysram,
+		data_outB => doutb_sysram
+	);
 	  
-	  inst_SYS_RAM : entity work.Sys_RAM
-	  PORT MAP (
-		 clka => clk_system,
-		 ena => sys_en,
-		 wea => wea_sysram,
-		 addra => addra_sysram (15 downto 2),
-		 dina => dina_sysram,
-		 douta => douta_sysram,
-		 clkb => clk_system,
-		 enb => sys_en,
-		 web => web_sysram,
-		 addrb => addrb_sysram (15 downto 2),
-		 dinb => dinb_sysram,
-		 doutb => doutb_sysram
-	  );
+--	  inst_SYS_RAM : entity work.Sys_RAM
+--	  PORT MAP (
+--		 clka => clk_2xsys,
+--		 ena => sys_en,
+--		 wea => wea_sysram,
+--		 addra => addra_sysram (15 downto 2),
+--		 dina => dina_sysram,
+--		 douta => douta_sysram,
+--		 clkb => clk_2xsys,
+--		 enb => sys_en,
+--		 web => web_sysram,
+--		 addrb => addrb_sysram (15 downto 2),
+--		 dinb => dinb_sysram,
+--		 doutb => doutb_sysram
+--	  );
 
 	  inst_Char_RAM : entity work.Char_RAM
 	  PORT MAP (
@@ -342,6 +329,7 @@ begin
 	  
 	  inst_HW_Registers: entity work.HW_Registers PORT MAP(
 		clk => CLK_SYSTEM,
+		clk2x => clk_2xsys,
 		rst => reset,
 		irq_mask => irq_mask,
 		gfx_zero => gfx_zero,
@@ -517,7 +505,6 @@ begin
 		data => Boot_data,
 		addr => Boot_addr,
 		we => Boot_we
-		--active => Boot_active
 		);
 		
 		Inst_ByteHEXdisplay: entity work.ByteHEXdisplay PORT MAP(

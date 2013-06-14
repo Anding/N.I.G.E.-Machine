@@ -15,7 +15,7 @@ entity IOExpansionSYNC is
       EppDB  : inout std_logic_vector(7 downto 0); -- port data bus
       EppWait: out std_logic;        -- Port wait signal
 -- user extended signals 
-      data  : out std_logic_vector(7 downto 0); 
+      data  : out std_logic_vector(31 downto 0); 
       addr  : out std_logic_vector(15 downto 0);  
       we		: out std_logic_vector(0 downto 0)
          );
@@ -30,13 +30,24 @@ signal regEppAdr, regEppAdr_n: std_logic_vector (7 downto 0); -- Epp address
 signal addr_i: std_logic_vector(15 downto 0);
 signal regVer: std_logic_vector(7 downto 0); --  0x00    I/O returns the complement of written value
 signal reset_m : std_logic;
+signal data_long_r : std_logic_vector(31 downto 0);
  
 begin
 
-	 data <= EppDB;
 	 addr <= addr_i;
-	 we <= "1" when (state = data_write and regEppAdr = X"FF") else "0";
-	 --active <= '1' when (state = data_write or state = data_write_complete) and (regEppAdr = X"FF") else '0';
+	 --data <= EppDB;
+	 data <= data_long_r;
+	 --we <= "1" when (state = data_write and regEppAdr = X"FF") else "0";
+	 we <= "1" when (state = data_write and regEppAdr = X"FF" and addr_i(1 downto 0) = "11") else "0";
+	 
+	 process
+	 begin
+		wait until rising_edge(clk);
+		if state = data_write then
+			data_long_r <= data_long_r(23 downto 0) & EppDB;
+		end if;
+	 end process;
+
 	
 -- output to Epp interface (before Z buffer)
     busEppInternal <= 
@@ -157,7 +168,7 @@ begin
 			end if;
 			EppWait <= '1';
 			regEppAdr_n <= regEppAdr;
-			EppDB <= (others=>'Z');				
+			EppDB <= (others=>'Z');		
 
 		end case;
 	end process;		

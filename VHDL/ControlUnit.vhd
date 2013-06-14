@@ -98,8 +98,8 @@ constant int_vector_IRQ0  : std_logic_vector (7 downto 0) := CONV_STD_LOGIC_VECT
 type state_T is (common, ifdup, smult, umult, sdivmod, udivmod, sdivmod_load, udivmod_load,
 						Sstore_long, Sstore_word, Sstore_byte, SRAM_store, 
 						Sfetch_long, Sfetch_word, Sfetch_byte,
-						Dfetch_long, Dfetch_long2, Dfetch_word, Dfetch_byte,
-						Dstore_long, Dstore_long2, Dstore_word, Dstore_byte, Dstore2,
+						Dfetch_long, Dfetch_long2, Dfetch_long3, Dfetch_word, Dfetch_byte,
+						Dstore_long, Dstore_long2, Dstore_long3, Dstore_word, Dstore_byte, Dstore2,
 						load_byte, load_word, load_long, load_long2,
 						jsl_state,
 						skip1, skip2);
@@ -131,6 +131,7 @@ signal MEMsize_X_n : STD_LOGIC_VECTOR (1 downto 0);
 signal delayed_RTS, delayed_RTS_n : STD_LOGIC;
 signal MEMaddr_i : STD_LOGIC_VECTOR (31 downto 0);	
 signal MEM_WRQ_X_i, MEM_WRQ_Y_i, MEM_WRQ_Z_i  : STD_LOGIC;
+signal opcode_m1 : std_logic_vector (5 downto 0);										-- opcode of prior clock cycle
 
 alias signbit is MEMdatain_X(29);
 
@@ -182,7 +183,7 @@ begin
 	PC_jsl <= MEMdatain_X(19 downto 0);
 	delta  <= signbit & signbit & signbit & signbit & signbit & signbit & signbit & MEMdatain_X(28 downto 16);
 	PC_branch <= PC + delta;											-- sign extended 14 bit branch for BRA or BEQ	
-	PC_skipbranch <= PC + "00000000000000000010";				-- PC + 2 for skipping a BEQ branch
+--	PC_skipbranch <= PC + "00000000000000000010";				-- PC + 2 for skipping a BEQ branch
 	PC_addr <= "000000000000" & PC;
 	PC_plus_three <= PC + "011";
 	ReturnAddressJSL <= "000000000000" & PC_plus_three;
@@ -239,12 +240,14 @@ begin
 			retrap <= retrap_n;
 			MEMsize_X <= MEMsize_X_n;
 			delayed_RTS <= delayed_RTS_n;
+			opcode_m1 <= (others=>'0');
 									
 			if (count >= timer) then 
 				count <= 0;	
 				AuxControl_i <= AuxControl_n;	
 				PC <= PC_n;													-- PC is updated only on the final cycle of multi-cycle opcode states
-				PC_m1 <= PC;													-- PC_m1 is PC of prior cycle, needed for branch and returns due to 1 stage pipeline				
+				PC_m1 <= PC;												-- PC_m1 is PC of prior cycle, needed for branch and returns due to 1 stage pipeline	
+				opcode_m1 <= opcode;
 			end if;	
 		else																	-- synchronous reset
 			count <= 0;
@@ -453,12 +456,12 @@ begin
 				PC_n <= int_vector_TRAP;											-- PC from internal interrupt vector				
 			elsif branch = bps_BRA then
 				PC_n <= PC_branch;				
-			elsif branch = bps_BEQ then
-				if equalzero = '1' then
+			elsif branch = bps_BEQ and equalzero = '1' then
+--				if equalzero = '1' then
 					PC_n <= PC_branch;	
-				else
-					PC_n <= PC_skipbranch;
-				end if;
+--				else
+--					PC_n <= PC_skipbranch;
+--				end if;
 			elsif branch = bps_RTS then
 				PC_n <= TORS(19 downto 0);											-- PC from Top Of Return Stack (also covers RTI and RETRAP, which include RTS by default)
 			elsif opcode = ops_TRAP then
@@ -470,8 +473,7 @@ begin
 			elsif opcode = ops_CFETCH or opcode = ops_WFETCH or opcode = ops_LFETCH or
 				opcode = ops_SDIVMOD or opcode = ops_UDIVMOD or opcode = ops_IFDUP or
 				opcode = ops_CSTORE or opcode = ops_WSTORE or opcode = ops_LSTORE or
-				opcode = ops_SMULT or opcode = ops_UMULT 
-				or opcode = ops_LONG then  										-- #.L takes two cycles because the datapath is not wide enough to show the next instruction after a #.L
+				opcode = ops_SMULT or opcode = ops_UMULT then  										
 				PC_n <= PC;																-- PC update is done on the final cycle of multi-cycle instructions
 			else
 				PC_n <= PC_plus;												
@@ -499,7 +501,7 @@ begin
 				ucode <= ops_NOP;										-- suppress microcode until last cycle of these instructions
 			elsif (opcode = ops_CSTORE or opcode = ops_CFETCH or opcode = ops_WSTORE or   -- chip_RAM = '0' and 
 									   opcode = ops_WFETCH or opcode = ops_LSTORE or opcode = ops_LFETCH) then
-				ucode <= ops_NOP;										-- need to surpress the microcode when accessing RAM					
+				ucode <= ops_NOP;										-- need to surpress the microcode until the data is ready				
 			else
 				ucode <= opcode;
 			end if;
@@ -525,8 +527,10 @@ begin
 			--end if;
 			if int_trig = '1' or retrap(0) = '1' then											
 				ReturnAddress_n <= "000000000000" & PC_m1;
+			elsif opcode = ops_JSL then
+				ReturnAddress_n <= "000000000000" & PC_plus_three;
 			else
-				ReturnAddress_n <= "000000000000" & PC;
+				ReturnAddress_n <= PC_addr;
 			end if;
 			
 			-- Interrupt logic
@@ -757,7 +761,7 @@ begin
 			
 		when Sfetch_byte =>											
 			state_n <= skip1;																	
-			ucode <= opcode;											
+			ucode <= opcode_m1;											
 			timer <= 0;
 			PC_n <= PC;
 			offset <= "00";
@@ -770,8 +774,8 @@ begin
 			MEMdataout_X <= NOS;
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);
-			MEMsize_X_n <= "11";
-			MEMsize_Xp <= "01";										-- byte
+			MEMsize_X_n <= "01";
+			MEMsize_Xp <= "11";										-- byte
 			accumulator_n <= (others=>'0');			
 			AuxControl_n(0 downto 0) <= "0";
 			AuxControl_n(2 downto 1) <= "01";
@@ -783,7 +787,7 @@ begin
 			
 		when Sfetch_word =>											
 			state_n <= skip1;																	
-			ucode <= opcode;											
+			ucode <= opcode_m1;											
 			timer <= 0;
 			PC_n <= PC;
 			offset <= "00";
@@ -796,8 +800,8 @@ begin
 			MEMdataout_X <= NOS;
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);
-			MEMsize_X_n <= "11";
-			MEMsize_Xp <= "10";										-- word
+			MEMsize_X_n <= "10";
+			MEMsize_Xp <= "11";										-- word
 			accumulator_n <= (others=>'0');			
 			AuxControl_n(0 downto 0) <= "0";
 			AuxControl_n(2 downto 1) <= "01";
@@ -809,7 +813,7 @@ begin
 
 		when Sfetch_long =>											
 			state_n <= skip1;																	
-			ucode <= opcode;											
+			ucode <= opcode_m1;									
 			timer <= 0;
 			PC_n <= PC;
 			offset <= "00";
@@ -970,7 +974,7 @@ begin
 			delayed_RTS_n <= delayed_RTS;
 
 		when Dfetch_long2 =>											
-			state_n <= Dfetch_word;									
+			state_n <= Dfetch_long3;									
 			accumulator_n <= accumulator_i;		
 			ucode <= ops_INC;
 			timer <= 0;
@@ -994,7 +998,33 @@ begin
 			rti <= '0';
 			retrap_n <= retrap;
 			delayed_RTS_n <= delayed_RTS;
-			
+	
+		when Dfetch_long3 =>										-- wait for TOS_r to be updated		
+			state_n <= Dfetch_word;									
+			accumulator_n <= accumulator_i;		
+			ucode <= ops_NOP;
+			timer <= 0;
+			PC_n <= PC;				
+			offset <= "00";
+			MEMaddr_i <= TOS_r;				
+			MEM_REQ_Y <= '0';	
+			MEM_REQ_Z <= '0';
+			MEM_WRQ_X_i <= '0';
+			MEM_WRQ_Y_i <= '0';	
+			MEM_WRQ_Z_i <= '0';
+			MEMdataout_X <= NOS;
+			MEMdataout_Y <= NOS(7 downto 0);
+			MEMdataout_Z <= NOS(15 downto 0);
+			MEMsize_X_n <= "11";
+			MEMsize_Xp <= "11";
+			AuxControl_n(0 downto 0) <= "0";
+			AuxControl_n(2 downto 1) <= "00";
+			ReturnAddress_n <= PC_addr;
+			irq_n <= int_trig;
+			rti <= '0';
+			retrap_n <= retrap;
+			delayed_RTS_n <= delayed_RTS;
+	
 		when Dfetch_word =>											
 			if MEM_RDY_Z = '1' then
 				state_n <= skip2;									
@@ -1091,7 +1121,7 @@ begin
 			delayed_RTS_n <= delayed_RTS;
 			
 		when Dstore_long2 =>											
-			state_n <= Dstore_word;									
+			state_n <= Dstore_long3;									
 			ucode <= ops_INC;
 			timer <= 0;
 			PC_n <= PC;
@@ -1115,6 +1145,32 @@ begin
 			rti <= '0';
 			retrap_n <= retrap;
 			delayed_RTS_n <= delayed_RTS;
+			
+		when Dstore_long3 =>									-- allow one cycle for TOS_r to update			
+			state_n <= Dstore_word;									
+			ucode <= ops_NOP;
+			timer <= 0;
+			PC_n <= PC;
+			MEMaddr_i <= TOS_r;							
+			offset <= "00";
+			MEM_REQ_Y <= '0';	
+			MEM_REQ_Z <= '0';
+			MEM_WRQ_X_i <= '0';
+			MEM_WRQ_Y_i <= '0';	
+			MEM_WRQ_Z_i <= '0';
+			MEMdataout_X <= NOS;
+			MEMdataout_Y <= NOS(7 downto 0);
+			MEMdataout_Z <= NOS(15 downto 0);
+			MEMsize_X_n <= "11";
+			MEMsize_Xp <= "11";	
+			accumulator_n <= (others=>'0');				
+			AuxControl_n(0 downto 0) <= "0";
+			AuxControl_n(2 downto 1) <= "00";
+			ReturnAddress_n <= PC_addr;		
+			irq_n <= int_trig;
+			rti <= '0';
+			retrap_n <= retrap;
+			delayed_RTS_n <= delayed_RTS;			
 			
 		when Dstore_word =>										
 			if MEM_RDY_Z = '1' then
@@ -1328,7 +1384,7 @@ begin
 			MEMdataout_Z <= NOS(15 downto 0);	
 			AuxControl_n(0 downto 0) <= "0";
 			AuxControl_n(2 downto 1) <= "00";
-			ReturnAddress_n <= ReturnAddressJSL;
+			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
 			retrap_n <= retrap;

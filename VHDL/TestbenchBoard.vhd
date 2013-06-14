@@ -254,7 +254,7 @@ BEGIN
 		wait for 100 ns;	
 --		send_RS232(tx_line, CONV_STD_LOGIC_VECTOR(54,8));
 --		wait for 150 ns;	
-		send_PS2(PS2C_line, PS2D_line, "01001101");
+--		send_PS2(PS2C_line, PS2D_line, "01001101");
 --		send_RS232(tx_line, CONV_STD_LOGIC_VECTOR(54,8));	
 --		send_RS232(tx_line, CONV_STD_LOGIC_VECTOR(53,8));
 --		send_RS232(tx_line, CONV_STD_LOGIC_VECTOR(32,8));

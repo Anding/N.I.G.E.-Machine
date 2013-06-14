@@ -40,7 +40,7 @@
  variable output-n					\ byte position to co-ordinate longword writes
  
 : rel									\ useful for branch instructions.  e.g bra b1 b0 rel
-	-								\ (was "1+ -" with branch offset from second byte under narrow instruction fetch)
+	1+ -								\ (branch offset from second byte under narrow instruction fetch)
 ;
 
 : del									\ useful for .SF calculations
