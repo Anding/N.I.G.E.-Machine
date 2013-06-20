@@ -1,16 +1,17 @@
-	bra -1		; reset
-	nop		; trap
+irv0	bra start irv0 rel ; reset
+irv1	nop			; trap
+	rti	
+irv2	nop			; RS232_RDA_S0
 	nop
-	nop		; RS232_RDA_S0
+irv3	nop			; RS232_TBE_S0
 	nop
-	nop		; RS232_TBE_S0
+irv4	nop			; PS2_irq
 	nop
-	nop		; PS2_irq
-	nop
-a	bra	ms a rel
-	nop
-	nop
-	nop
-	nop
-ms	#.b	hex ff
+irv5	nop			; ms a rel
 	rti
+irv6	nop
+	nop
+start	jsl	sub1
+	bra	-1
+sub1	#.b	hex ff
+	rts
