@@ -24,7 +24,7 @@
 	dup LIST.BCK swap LIST.FWD 4 + !	\ forward node now references back node
 ;
 
-: LIST.ins ( m n --, insert list node m in front of list node n)
+: LIST.ins ( m n --, insert list node m behind list node n)
 	swap over over 4 + !			\ node m references back to node n
 	over over swap LIST.FWD swap !	\ node m references forward to node n+1
 	over over swap LIST.FWD 4 + !	\ node n+1 references back to node m
