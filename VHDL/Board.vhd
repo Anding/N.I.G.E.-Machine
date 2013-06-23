@@ -173,7 +173,7 @@ begin
 		LOCKED_OUT => open
 	);
 	
-	 reset_trigger <= '1' when (Boot_we = "1" and Boot_addr = "0000000000000000") else '0';
+	 reset_trigger <= '1' when (Boot_we = "1" and Boot_addr(15 downto 2) = "00000000000000") else '0';
 	 
 	-- global counters
 	process														 
@@ -194,8 +194,8 @@ begin
 		end if;
 	end process;
 	
-	--ms_irq <= '1' when timer_ms = "0000000000000000" else '0';
-		ms_irq <= '1' when timer_ms(5 downto 0) = "100000" else '0';
+	ms_irq <= '1' when timer_ms = "0000000000000000" else '0';
+	--ms_irq <= '1' when timer_ms(5 downto 0) = "100000" else '0';
 	
 	-- board level memory logic  
 	 MEM_WRQ_XX(0) <= MEM_WRQ_X;	

@@ -116,7 +116,7 @@ begin
 			SD_control_r <= (others=>'0');	
 			SD_divide_r <= "11111111";								-- divide by 254	
 			UBRR_r_S0 <= CONV_STD_LOGIC_VECTOR(325,16);		-- 325 = 9600 BAUD at 50 MHz		
-			irq_mask_r <= "000000000001111";						-- "000000000000111";
+			irq_mask_r <= "000000000000111";						-- "000000000000111";
 			txt_zero_r <= X"010600";							
 			gfx_zero_r <= X"000000";		
 			background_r <= X"00";
