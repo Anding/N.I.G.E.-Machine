@@ -1,10 +1,7 @@
 sevenseg	equ	hex f830
-irv0	nop 		     	; reset
-	nop
-irv1	nop			; trap
-	nop	
-irv2	nop			; RS232_RDA_S0
-	nop
+irv0	bra start irv0 rel  	; reset
+irv1	bra start irv1 rel	; trap	
+irv2	bra start irv2 rel	; RS232_RDA_S0
 irv3	nop			; RS232_TBE_S0
 	nop
 irv4	nop			; PS2_irq
@@ -12,8 +9,13 @@ irv4	nop			; PS2_irq
 irv5	nop			; ms a rel
 	nop
 irv6	nop
-	nop
-start	#.w	hex abcd
+	bra -1
+start	nop
+;	#.w	hex f80c
+;	zero
+;	store.w
+	#.b 0
+	fetch.w
 	jsl	sub1
 	ds.b	1024
 	ds.b	1024
@@ -23,6 +25,10 @@ start	#.w	hex abcd
 	ds.b	1024
 	ds.b	1024
 	ds.b	1024	
+	ds.b	1024
+	ds.b	1024
+	ds.b	1024
+	ds.b	1024		
 sub1	#.w	sevenseg
 	store.l
 	bra	-1

@@ -172,8 +172,6 @@ begin
 		CLK2X_OUT => CLK_2XSYS,
 		LOCKED_OUT => open
 	);
-	
-	 reset_trigger <= '1' when (Boot_we = "1" and Boot_addr(15 downto 2) = "00000000000000") else '0';
 	 
 	-- global counters
 	process														 
@@ -227,9 +225,9 @@ begin
 							MEMdata_Sys when others;
 							
 	-- splice IOExpansion data ahead of the SRAM
-	 wea_sysram <= wea_sysram_s when reset = '0' else boot_we;
-	 dina_sysram <= dina_sysram_s when reset = '0' else boot_data;
-	 addra_sysram <= addra_sysram_s when reset = '0' else boot_addr(15 downto 2);	 
+	 wea_sysram <= wea_sysram_s when Boot_we = "0" else boot_we;
+	 dina_sysram <= dina_sysram_s when Boot_we = "0" else boot_data;
+	 addra_sysram <= addra_sysram_s when Boot_we = "0" else boot_addr(15 downto 2);	 
 	 		
 	 		
 	inst_Pstack_RAM : entity work.Pstack_RAM
@@ -504,7 +502,8 @@ begin
 		EppWait =>EppWait ,
 		data => Boot_data,
 		addr => Boot_addr,
-		we => Boot_we
+		we => Boot_we,
+		reset_trigger => reset_trigger
 		);
 		
 		Inst_ByteHEXdisplay: entity work.ByteHEXdisplay PORT MAP(

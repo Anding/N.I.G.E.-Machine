@@ -17,14 +17,15 @@ entity IOExpansionSYNC is
 -- user extended signals 
       data  : out std_logic_vector(31 downto 0); 
       addr  : out std_logic_vector(15 downto 0);  
-      we		: out std_logic_vector(0 downto 0)
+      we		: out std_logic_vector(0 downto 0);
+		reset_trigger : out std_logic
          );
 
 end IOExpansionSYNC;
 
 architecture Behavioral of IOExpansionSYNC is
 type state_T is (idle, data_read, data_write, data_write_complete, addr_read, addr_write);
-signal state, state_n : state_T := idle;
+signal state, state_n, state_m : state_T := idle;
 signal busEppInternal: std_logic_vector (7 downto 0);
 signal regEppAdr, regEppAdr_n: std_logic_vector (7 downto 0); -- Epp address 
 signal addr_i: std_logic_vector(15 downto 0);
@@ -35,19 +36,9 @@ signal data_long_r : std_logic_vector(31 downto 0);
 begin
 
 	 addr <= addr_i;
-	 --data <= EppDB;
 	 data <= data_long_r;
-	 --we <= "1" when (state = data_write and regEppAdr = X"FF") else "0";
-	 we <= "1" when (state = data_write and regEppAdr = X"FF" and addr_i(1 downto 0) = "11") else "0";
-	 
-	 process
-	 begin
-		wait until rising_edge(clk);
-		if state = data_write then
-			data_long_r <= data_long_r(23 downto 0) & EppDB;
-		end if;
-	 end process;
-
+	 we <= "1" when (state_m = data_write and regEppAdr = X"FF" and addr_i(1 downto 0) = "11") else "0";
+	 reset_trigger <= '1' when (addr_i = "000000000000000000") else '0';
 	
 -- output to Epp interface (before Z buffer)
     busEppInternal <= 
@@ -63,36 +54,39 @@ begin
 	 reset_m <= reset;
 	 
 	 if reset = '0' and reset_m = '1' then
-			addr_i <= (others=>'0');
+			addr_i <= (others=>'1');
+			data_long_r <= (others=>'0');
 			
 	 elsif state = data_write then 
-	 
 			case regEppAdr is
 				when X"00" => 
 					regVer <= not EppDB;    
 					
-				when X"FD" =>
-					addr_i <= EppDB & "00000000";	
-					
-				when X"FE" =>
-					addr_i <= addr_i(15 downto 8) & EppDB;
+--				when X"FD" =>
+--					addr_i <= EppDB & "00000000";	
+--					
+--				when X"FE" =>
+--					addr_i <= addr_i(15 downto 8) & EppDB;
 					
 				when X"FF" =>
+					data_long_r <= data_long_r(23 downto 0) & EppDB;
 					addr_i <= addr_i + 1;
 					
 				when others =>
 					null;
-			
 			end case;
-			
-	 end if;
+	
+	end if;
+	
+	
     end process;
 
--- state machine logic
+-- Epp state machine logic
 	process
 	begin
 		wait until rising_edge(clk);
 		state <= state_n;
+		state_m <= state;
 		regEppAdr <= regEppAdr_n;
 	end process;
 	
