@@ -1,4 +1,3 @@
--- just registered datain_r
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.STD_LOGIC_UNSIGNED.ALL;
@@ -8,12 +7,12 @@ entity SRAM_controller is
 				CLK : in STD_LOGIC;
 				ADDR : in  STD_LOGIC_VECTOR (31 downto 0);					-- byte address
 				size : in  STD_LOGIC_VECTOR (1 downto 0);						-- length of read or write 01 = byte, 02 = word, 03 = longword
-				size_plus : in  STD_LOGIC_VECTOR (1 downto 0);				-- length of data to read at ADDR+1
+				--size_plus : in  STD_LOGIC_VECTOR (1 downto 0);				-- length of data to read at ADDR+1
 				WE : in  STD_LOGIC_VECTOR (0 downto 0);						-- write enable
 				DATA_in : in  STD_LOGIC_VECTOR (31 downto 0);				-- data to write to memory
 				DATA_out : out  STD_LOGIC_VECTOR (31 downto 0);				-- data read from memory at address ADDR
 				DATA_out_quick : out  STD_LOGIC_VECTOR (31 downto 0);		
-				DATA_out_plus : out  STD_LOGIC_VECTOR (31 downto 0);		-- data read from memory at address ADDR+1
+				--DATA_out_plus : out  STD_LOGIC_VECTOR (31 downto 0);		-- data read from memory at address ADDR+1
 				wea : OUT STD_LOGIC_VECTOR(0 DOWNTO 0);						-- direct connections to SRAM module
 				addra : OUT STD_LOGIC_VECTOR(15 DOWNTO 2);
 				dina : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
@@ -50,7 +49,7 @@ begin
 	data_out_base_plus <= doutb;
 	data_out_quick <= DATA_out_agg;
 	DATA_out <= DATA_out_i;
-	DATA_out_plus <= DATA_out_plus_i;
+	--DATA_out_plus <= DATA_out_plus_i;
 	
 --	process
 --	begin
@@ -100,11 +99,11 @@ begin
 								DATA_out_agg (23 downto 0) & DATA_out_base_plus (15 downto 8) when "10",
 								DATA_out_base_plus when others;
 
-	with size_plus select						-- trim the longword to word or byte length if needed
---		DATA_out_plus <=		DATA_out_agg_plus (31 downto 0) when others;
-		DATA_out_plus_i <=		DATA_out_agg_plus (31 downto 0) when "11",
-								"0000000000000000" & DATA_out_agg_plus (31 downto 16) when "10",
-								"000000000000000000000000" & DATA_out_agg_plus (31 downto 24) when others;
+--	with size_plus select						-- trim the longword to word or byte length if needed
+----		DATA_out_plus <=		DATA_out_agg_plus (31 downto 0) when others;
+--		DATA_out_plus_i <=		DATA_out_agg_plus (31 downto 0) when "11",
+--								"0000000000000000" & DATA_out_agg_plus (31 downto 16) when "10",
+--								"000000000000000000000000" & DATA_out_agg_plus (31 downto 24) when others;
 
 	with size select
 --		DATA_out <=			DATA_out_agg (31 downto 0) when others;

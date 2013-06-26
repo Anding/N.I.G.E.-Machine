@@ -24,12 +24,12 @@ entity CPU is
 				MEMaddr : out STD_LOGIC_VECTOR (31 downto 0);			
 				-- 32 bit wide SRAM databus	
 			   MEMdatain_X : in STD_LOGIC_VECTOR (31 downto 0);			-- data at ADDR	
-				MEMdatain_X_plus : in STD_LOGIC_VECTOR (31 downto 0);		-- data at ADDR+1 (for load literal instructions)
+				--MEMdatain_X_plus : in STD_LOGIC_VECTOR (31 downto 0);		-- data at ADDR+1 (for load literal instructions)
 				MEMdatain_X_quick : in STD_LOGIC_VECTOR (31 downto 0);
 			   MEMdataout_X : out STD_LOGIC_VECTOR (31 downto 0);		
 			   MEM_WRQ_X : out STD_LOGIC;	
 				MEMsize_X : out STD_LOGIC_VECTOR (1 downto 0);	
-				MEMsize_Xp : out STD_LOGIC_VECTOR (1 downto 0);	
+				--MEMsize_Xp : out STD_LOGIC_VECTOR (1 downto 0);	
 				-- 8 bit wide PSDRAM databus
 			   MEMdatain_Y : in STD_LOGIC_VECTOR (7 downto 0);			
 				MEMdataout_Y : out STD_LOGIC_VECTOR (7 downto 0);		
@@ -52,10 +52,10 @@ architecture Structural of CPU is
 		rst : IN std_logic;
 		clk : IN std_logic;
 		MEMdatain_X : in STD_LOGIC_VECTOR (31 downto 0);	
-		MEMdatain_X_plus : in STD_LOGIC_VECTOR (31 downto 0);
+		--MEMdatain_X_plus : in STD_LOGIC_VECTOR (31 downto 0);
 		Accumulator : IN std_logic_vector(31 downto 0);
 		MicroControl : IN std_logic_vector(13 downto 0);
-		AuxControl : IN std_logic_vector(2 downto 0);
+		AuxControl : IN std_logic_vector(1 downto 0);
 		ReturnAddress : IN std_logic_vector(31 downto 0);          
 		TOS : OUT std_logic_vector(31 downto 0);					-- unregistered, one cycle ahead of registered
 		TOS_r : OUT STD_LOGIC_VECTOR (31 downto 0);				-- registered			
@@ -88,14 +88,14 @@ architecture Structural of CPU is
 		equalzero : IN std_logic;
 		chip_RAM : IN std_logic;
 		MicroControl : OUT std_logic_vector(13 downto 0);
-		AuxControl : OUT std_logic_vector(2 downto 0);
+		AuxControl : OUT std_logic_vector(1 downto 0);
 		Accumulator : OUT std_logic_vector(31 downto 0);
 		ReturnAddress : OUT std_logic_vector(31 downto 0);
 		MEMaddr : out STD_LOGIC_VECTOR (31 downto 0);			
 		MEMdatain_X : in STD_LOGIC_VECTOR (31 downto 0);
 		MEMdataout_X : out STD_LOGIC_VECTOR (31 downto 0);
 		MEMsize_X : out STD_LOGIC_VECTOR (1 downto 0);
-		MEMsize_Xp : out STD_LOGIC_VECTOR (1 downto 0);	
+		--MEMsize_Xp : out STD_LOGIC_VECTOR (1 downto 0);	
 		MEM_WRQ_X : out STD_LOGIC;							  		  
 		MEMdatain_Y : in STD_LOGIC_VECTOR (7 downto 0);			
 		MEMdataout_Y : out STD_LOGIC_VECTOR (7 downto 0);				
@@ -112,7 +112,7 @@ architecture Structural of CPU is
 
 	signal	Accumulator : std_logic_vector(31 downto 0);
 	signal	MicroControl :  std_logic_vector(13 downto 0);
-	signal	AuxControl :  std_logic_vector(2 downto 0);
+	signal	AuxControl :  std_logic_vector(1 downto 0);
 	signal	ReturnAddress :  std_logic_vector(31 downto 0);          
 	signal	TOS, TOS_r :  std_logic_vector(31 downto 0);
 	signal	NOS :  std_logic_vector(31 downto 0);
@@ -129,7 +129,7 @@ begin
 		rst => rst,
 		clk => clk,
 		MEMdatain_X => MEMdatain_X,
-		MEMdatain_X_plus => MEMdatain_X_plus,
+		--MEMdatain_X_plus => MEMdatain_X_plus,
 		Accumulator => Accumulator,
 		MicroControl => MicroControl,
 		AuxControl => AuxControl,
@@ -171,7 +171,7 @@ begin
 		MEMdataout_X => MEMdataout_X,
 		MEM_WRQ_X => MEM_WRQ_X,
 		MEMsize_X => MEMsize_X,
-		MEMsize_Xp => MEMsize_Xp,
+		--MEMsize_Xp => MEMsize_Xp,
 		MEMdatain_Y => MEMdatain_Y,
 		MEMdataout_Y => MEMdataout_Y,
 		MEM_WRQ_Y => MEM_WRQ_Y,

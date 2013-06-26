@@ -267,12 +267,12 @@ begin
 		CLK => clk_system,
 		ADDR => MEMaddr,
 		size => MEMsize_X,
-		size_plus => MEMsize_Xp,
+		--size_plus => MEMsize_Xp,
 		WE => MEM_WRQ_XX,
 		DATA_in => MEMdataout_X,
 		DATA_out => MEMdata_Sys,
 		DATA_out_quick => MEMdata_Sys_quick,
-		DATA_out_plus => MEMdata_Sys_plus,
+		--DATA_out_plus => MEMdata_Sys_plus,
 		wea => wea_sysram_s,
 		addra => addra_sysram_s,
 		dina => dina_sysram_s,
@@ -283,34 +283,34 @@ begin
 		doutb => doutb_sysram
 	);
 	
---	Inst_RAM_for_Testbench: entity work.RAM_for_Testbench PORT MAP(
---		rst => reset,
---		clk => clk_system,
---		weA => wea_sysram(0),
---		weB => web_sysram(0),
---		addressA => addra_sysram,
---		data_inA => dina_sysram,
---		data_outA => douta_sysram,
---		addressB => addrb_sysram,
---		data_inB => dinb_sysram,
---		data_outB => doutb_sysram
---	);
+	Inst_RAM_for_Testbench: entity work.RAM_for_Testbench PORT MAP(
+		rst => reset,
+		clk => clk_system,
+		weA => wea_sysram(0),
+		weB => web_sysram(0),
+		addressA => addra_sysram,
+		data_inA => dina_sysram,
+		data_outA => douta_sysram,
+		addressB => addrb_sysram,
+		data_inB => dinb_sysram,
+		data_outB => doutb_sysram
+	);
 	  
-	  inst_SYS_RAM : entity work.Sys_RAM
-	  PORT MAP (
-		 clka => clk_2xsys,
-		 ena => sys_en,
-		 wea => wea_sysram,
-		 addra => addra_sysram (15 downto 2),
-		 dina => dina_sysram,
-		 douta => douta_sysram,
-		 clkb => clk_2xsys,
-		 enb => sys_en,
-		 web => web_sysram,
-		 addrb => addrb_sysram (15 downto 2),
-		 dinb => dinb_sysram,
-		 doutb => doutb_sysram
-	  );
+--	  inst_SYS_RAM : entity work.Sys_RAM
+--	  PORT MAP (
+--		 clka => clk_2xsys,
+--		 ena => sys_en,
+--		 wea => wea_sysram,
+--		 addra => addra_sysram (15 downto 2),
+--		 dina => dina_sysram,
+--		 douta => douta_sysram,
+--		 clkb => clk_2xsys,
+--		 enb => sys_en,
+--		 web => web_sysram,
+--		 addrb => addrb_sysram (15 downto 2),
+--		 dinb => dinb_sysram,
+--		 doutb => doutb_sysram
+--	  );
 
 	  inst_Char_RAM : entity work.Char_RAM
 	  PORT MAP (
@@ -377,10 +377,10 @@ begin
 		MEMaddr => MEMaddr,
 		MEMdatain_X => MEMdatain_Xi,
 		MEMdatain_X_quick => MEMdata_Sys_quick,
-		MEMdatain_X_plus => MEMdata_Sys_plus,
+		--MEMdatain_X_plus => MEMdata_Sys_plus,
 		MEMdataout_X => MEMdataout_X,
 		MEMsize_X => MEMsize_X,
-		MEMsize_Xp => MEMsize_Xp,
+		--MEMsize_Xp => MEMsize_Xp,
 		MEM_WRQ_X => MEM_WRQ_X,
 		MEMdatain_Y => MEMdatain_Y,
 		MEMdataout_Y => MEMdataout_Y,

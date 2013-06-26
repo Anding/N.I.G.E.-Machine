@@ -23,14 +23,14 @@ entity ControlUnit is
 			  equalzero : in STD_LOGIC;										-- flag '1' when TOS is zero
 			  chip_RAM : in STD_LOGIC;											-- flag used to identify SRAM vs. PSDRAM memory access
 			  MicroControl : out STD_LOGIC_VECTOR (13 downto 0);		-- ouput control logic
-			  AuxControl : out STD_LOGIC_VECTOR (2 downto 0);			-- output control logic
+			  AuxControl : out STD_LOGIC_VECTOR (1 downto 0);			-- output control logic
 			  Accumulator : out STD_LOGIC_VECTOR (31 downto 0);		-- literal value captured from memory for writing to TOS
 			  ReturnAddress : out STD_LOGIC_VECTOR (31 downto 0);		-- return address on interrupt, BSR or JSR for writing to TORS
 			  MEMaddr : out STD_LOGIC_VECTOR (31 downto 0);						  	  
 			  MEMdatain_X : in STD_LOGIC_VECTOR (31 downto 0);			-- 32 bit wide SRAM data IN memory bus
 			  MEMdataout_X : out STD_LOGIC_VECTOR (31 downto 0);		-- 32 bit wide SRAM data memory bus
 			  MEMsize_X	: out STD_LOGIC_VECTOR (1 downto 0);			-- 32 bit wide SRAM data memory bus
-			  MEMsize_Xp: out STD_LOGIC_VECTOR (1 downto 0);			-- 32 bit wide SRAM data memory bus
+--			  MEMsize_Xp: out STD_LOGIC_VECTOR (1 downto 0);			-- 32 bit wide SRAM data memory bus
 			  MEM_WRQ_X : out STD_LOGIC;										-- 32 bit wide SRAM data memory bus	
 			  MEMdatain_Y : in STD_LOGIC_VECTOR (7 downto 0);			-- 8 bit wide PSDRAM data memory bus
 			  MEMdataout_Y : out STD_LOGIC_VECTOR (7 downto 0);		-- 8 bit wide PSRAM data memory bus			  
@@ -123,7 +123,7 @@ signal int_trig : std_logic;
 signal irq_m1, irq_n : std_logic;
 signal irv_i : std_logic_vector (7 downto 0);
 signal retrap, retrap_n : std_logic_vector(1 downto 0);
-signal AuxControl_i, AuxControl_n : std_logic_vector(2 downto 0);
+signal AuxControl_i, AuxControl_n : std_logic_vector(1 downto 0);
 signal opcode, next_opcode : std_logic_vector(5 downto 0);					-- opcode of current and next instructions
 signal branch, next_branch : std_logic_vector(1 downto 0);					-- branch codes of current and next instructions
 --signal offset : std_logic_vector(1 downto 0);	
@@ -420,16 +420,18 @@ begin
 --			elsif int_trig = '0' and (opcode = ops_WFETCH or opcode = ops_WSTORE)  then
 --				MEMsize_X_n <= "10";
 --			else
-				MEMsize_X_n <= "11";
+--				MEMsize_X_n <= "11";
 --			end if;
 			
 			if opcode = ops_BYTE then						
-				MEMsize_Xp <= "01";														-- No need to delay MEMsize_Xp since the pipeline provides a one cycle read delay automatically
+				MEMsize_X_n <= "01";														
 			elsif opcode = ops_WORD then
-				MEMsize_Xp <= "10";
+				MEMsize_X_n <= "10";
 			else
-				MEMsize_Xp <= "11";
+				MEMsize_X_n <= "11";
 			end if;
+			
+			--MEMsize_Xp <= "11";
 			
 --			if (int_trig = '0') and (chip_RAM = '0') and (opcode = ops_CFETCH) then
 --				MEM_REQ_Y <= '1';
@@ -515,7 +517,7 @@ begin
 --			if opcode = ops_CFETCH or opcode = ops_WFETCH or opcode = ops_LFETCH then  
 --				AuxControl_n(2 downto 1) <= "01";					-- setting for SRAM fetch											
 --			else																
-				AuxControl_n(2 downto 1) <= "00";					-- setting for load literal instructions										
+				AuxControl_n(1 downto 1) <= "0";					-- setting for SRAM fetch or load literal instructions										
 --			end if;
 
 			-- Return stack control logic 
@@ -580,9 +582,9 @@ begin
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);
 			MEMsize_X_n <= "11";
-			MEMsize_Xp <= "11";
+			--MEMsize_Xp <= "11";
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(2 downto 1) <= "00";
+			AuxControl_n(1 downto 1) <= "0";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -606,13 +608,13 @@ begin
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);
 			MEMsize_X_n <= "11";
-			MEMsize_Xp <= "11";
+			--MEMsize_Xp <= "11";
 			if delayed_RTS= '1' then
 				AuxControl_n(0 downto 0) <= "1";					-- decrement return stack pointer
 			else
 				AuxControl_n(0 downto 0) <= "0";
 			end if;
-			AuxControl_n(2 downto 1) <= "00";
+			AuxControl_n(1 downto 1) <= "0";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -636,13 +638,13 @@ begin
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);
 			MEMsize_X_n <= "11";
-			MEMsize_Xp <= "11";
+			--MEMsize_Xp <= "11";
 			if delayed_RTS= '1' then
 				AuxControl_n(0 downto 0) <= "1";					-- decrement return stack pointer
 			else
 				AuxControl_n(0 downto 0) <= "0";
 			end if;
-			AuxControl_n(2 downto 1) <= "00";
+			AuxControl_n(1 downto 1) <= "0";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -666,9 +668,9 @@ begin
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);
 			MEMsize_X_n <= "11";
-			MEMsize_Xp <= "11";
+			--MEMsize_Xp <= "11";
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(2 downto 1) <= "00";
+			AuxControl_n(1 downto 1) <= "0";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -692,9 +694,9 @@ begin
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);
 			MEMsize_X_n <= "11";
-			MEMsize_Xp <= "11";
+			--MEMsize_Xp <= "11";
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(2 downto 1) <= "00";
+			AuxControl_n(1 downto 1) <= "0";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -718,13 +720,13 @@ begin
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);
 			MEMsize_X_n <= "11";
-			MEMsize_Xp <= "11";
+			--MEMsize_Xp <= "11";
 			if delayed_RTS= '1' then
 				AuxControl_n(0 downto 0) <= "1";					-- decrement return stack pointer
 			else
 				AuxControl_n(0 downto 0) <= "0";
 			end if;
-			AuxControl_n(2 downto 1) <= "00";
+			AuxControl_n(1 downto 1) <= "0";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -748,13 +750,13 @@ begin
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);
 			MEMsize_X_n <= "11";
-			MEMsize_Xp <= "11";
+			--MEMsize_Xp <= "11";
 			if delayed_RTS= '1' then
 				AuxControl_n(0 downto 0) <= "1";					-- decrement return stack pointer
 			else
 				AuxControl_n(0 downto 0) <= "0";
 			end if;
-			AuxControl_n(2 downto 1) <= "00";
+			AuxControl_n(1 downto 1) <= "0";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -777,10 +779,10 @@ begin
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);
 			MEMsize_X_n <= "01";
-			MEMsize_Xp <= "11";										-- byte
+			--MEMsize_Xp <= "11";										-- byte
 			accumulator_n <= (others=>'0');			
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(2 downto 1) <= "01";
+			AuxControl_n(1 downto 1) <= "0";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -803,10 +805,10 @@ begin
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);
 			MEMsize_X_n <= "10";
-			MEMsize_Xp <= "11";										-- word
+			--MEMsize_Xp <= "11";										-- word
 			accumulator_n <= (others=>'0');			
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(2 downto 1) <= "01";
+			AuxControl_n(1 downto 1) <= "0";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -829,10 +831,10 @@ begin
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);
 			MEMsize_X_n <= "11";
-			MEMsize_Xp <= "11";										-- long
+			--MEMsize_Xp <= "11";										-- long
 			accumulator_n <= (others=>'0');			
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(2 downto 1) <= "01";
+			AuxControl_n(1 downto 1) <= "0";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -855,10 +857,10 @@ begin
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);
 			MEMsize_X_n <= "11";										-- long
-			MEMsize_Xp <= "11";								
+			--MEMsize_Xp <= "11";								
 			accumulator_n <= (others=>'0');			
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(2 downto 1) <= "00";
+			AuxControl_n(1 downto 1) <= "0";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -881,10 +883,10 @@ begin
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);
 			MEMsize_X_n <= "10";										-- word
-			MEMsize_Xp <= "11";								
+			--MEMsize_Xp <= "11";								
 			accumulator_n <= (others=>'0');			
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(2 downto 1) <= "00";
+			AuxControl_n(1 downto 1) <= "0";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -907,10 +909,10 @@ begin
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);
 			MEMsize_X_n <= "01";										-- byte
-			MEMsize_Xp <= "11";								
+			--MEMsize_Xp <= "11";								
 			accumulator_n <= (others=>'0');			
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(2 downto 1) <= "00";
+			AuxControl_n(1 downto 1) <= "0";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -933,10 +935,10 @@ begin
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);
 			MEMsize_X_n <= "11";
-			MEMsize_Xp <= "11";
+			--MEMsize_Xp <= "11";
 			accumulator_n <= (others=>'0');			
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(2 downto 1) <= "00";
+			AuxControl_n(1 downto 1) <= "0";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -966,9 +968,9 @@ begin
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);		
 			MEMsize_X_n <= "11";
-			MEMsize_Xp <= "11";
+			--MEMsize_Xp <= "11";
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(2 downto 1) <= "00";
+			AuxControl_n(1 downto 1) <= "1";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -992,9 +994,9 @@ begin
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);
 			MEMsize_X_n <= "11";
-			MEMsize_Xp <= "11";
+			--MEMsize_Xp <= "11";
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(2 downto 1) <= "00";
+			AuxControl_n(1 downto 1) <= "1";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -1018,9 +1020,9 @@ begin
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);
 			MEMsize_X_n <= "11";
-			MEMsize_Xp <= "11";
+			--MEMsize_Xp <= "11";
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(2 downto 1) <= "00";
+			AuxControl_n(1 downto 1) <= "1";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -1050,9 +1052,9 @@ begin
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);
 			MEMsize_X_n <= "11";
-			MEMsize_Xp <= "11";
+			--MEMsize_Xp <= "11";
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(2 downto 1) <= "11";
+			AuxControl_n(1 downto 1) <= "1";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -1082,9 +1084,9 @@ begin
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);	
 			MEMsize_X_n <= "11";
-			MEMsize_Xp <= "11";			
+			--MEMsize_Xp <= "11";			
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(2 downto 1) <= "11";
+			AuxControl_n(1 downto 1) <= "1";
 			ReturnAddress_n <= PC_addr;	
 			irq_n <= int_trig;
 			rti <= '0';
@@ -1112,10 +1114,10 @@ begin
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(31 downto 16);	
 			MEMsize_X_n <= "11";
-			MEMsize_Xp <= "11";	
+			--MEMsize_Xp <= "11";	
 			accumulator_n <= (others=>'0');			
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(2 downto 1) <= "00";
+			AuxControl_n(1 downto 1) <= "0";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -1138,10 +1140,10 @@ begin
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);
 			MEMsize_X_n <= "11";
-			MEMsize_Xp <= "11";	
+			--MEMsize_Xp <= "11";	
 			accumulator_n <= (others=>'0');				
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(2 downto 1) <= "00";
+			AuxControl_n(1 downto 1) <= "0";
 			ReturnAddress_n <= PC_addr;		
 			irq_n <= int_trig;
 			rti <= '0';
@@ -1164,10 +1166,10 @@ begin
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);
 			MEMsize_X_n <= "11";
-			MEMsize_Xp <= "11";	
+			--MEMsize_Xp <= "11";	
 			accumulator_n <= (others=>'0');				
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(2 downto 1) <= "00";
+			AuxControl_n(1 downto 1) <= "0";
 			ReturnAddress_n <= PC_addr;		
 			irq_n <= int_trig;
 			rti <= '0';
@@ -1195,10 +1197,10 @@ begin
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);
 			MEMsize_X_n <= "11";
-			MEMsize_Xp <= "11";	
+			--MEMsize_Xp <= "11";	
 			accumulator_n <= (others=>'0');			
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(2 downto 1) <= "00";
+			AuxControl_n(1 downto 1) <= "0";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -1226,10 +1228,10 @@ begin
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);
 			MEMsize_X_n <= "11";
-			MEMsize_Xp <= "11";	
+			--MEMsize_Xp <= "11";	
 			accumulator_n <= (others=>'0');			
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(2 downto 1) <= "00";
+			AuxControl_n(2 downto 1) <= "1";
 			ReturnAddress_n <= PC_addr;	
 			irq_n <= int_trig;
 			rti <= '0';
@@ -1252,10 +1254,10 @@ begin
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);
 			MEMsize_X_n <= "11";
-			MEMsize_Xp <= "11";	
+			--MEMsize_Xp <= "11";	
 			accumulator_n <= (others=>'0');
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(2 downto 1) <= "00";
+			AuxControl_n(1 downto 1) <= "0";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -1276,12 +1278,12 @@ begin
 			MEM_WRQ_Y_i <= '0';	
 			MEM_WRQ_Z_i <= '0';
 			MEMsize_X_n <= "11";
-			MEMsize_Xp <= "11";
+			--MEMsize_Xp <= "11";
 			MEMdataout_X <= NOS;
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);	
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(2 downto 1) <= "00";
+			AuxControl_n(1 downto 1) <= "0";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -1302,12 +1304,12 @@ begin
 			MEM_WRQ_Y_i <= '0';	
 			MEM_WRQ_Z_i <= '0';
 			MEMsize_X_n <= "11";
-			MEMsize_Xp <= "11";
+			--MEMsize_Xp <= "11";
 			MEMdataout_X <= NOS;
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);	
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(2 downto 1) <= "00";
+			AuxControl_n(1 downto 1) <= "0";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -1328,12 +1330,12 @@ begin
 			MEM_WRQ_Y_i <= '0';	
 			MEM_WRQ_Z_i <= '0';
 			MEMsize_X_n <= "11";
-			MEMsize_Xp <= "11";
+			--MEMsize_Xp <= "11";
 			MEMdataout_X <= NOS;
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);	
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(2 downto 1) <= "00";
+			AuxControl_n(1 downto 1) <= "0";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -1354,12 +1356,12 @@ begin
 			MEM_WRQ_Y_i <= '0';	
 			MEM_WRQ_Z_i <= '0';
 			MEMsize_X_n <= "11";
-			MEMsize_Xp <= "11";
+			--MEMsize_Xp <= "11";
 			MEMdataout_X <= NOS;
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);	
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(2 downto 1) <= "00";
+			AuxControl_n(1 downto 1) <= "0";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -1380,12 +1382,12 @@ begin
 			MEM_WRQ_Y_i <= '0';	
 			MEM_WRQ_Z_i <= '0';
 			MEMsize_X_n <= "11";
-			MEMsize_Xp <= "11";
+			--MEMsize_Xp <= "11";
 			MEMdataout_X <= NOS;
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);	
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(2 downto 1) <= "00";
+			AuxControl_n(1 downto 1) <= "0";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -1406,7 +1408,7 @@ begin
 			MEM_WRQ_Y_i <= '0';	
 			MEM_WRQ_Z_i <= '0';
 			MEMsize_X_n <= "11";
-			MEMsize_Xp <= "11";
+			--MEMsize_Xp <= "11";
 			MEMdataout_X <= NOS;
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);	
@@ -1415,7 +1417,7 @@ begin
 			else
 				AuxControl_n(0 downto 0) <= "0";
 			end if;
-			AuxControl_n(2 downto 1) <= "00";
+			AuxControl_n(1 downto 1) <= "0";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -1436,7 +1438,7 @@ begin
 			MEM_WRQ_Y_i <= '0';	
 			MEM_WRQ_Z_i <= '0';
 			MEMsize_X_n <= "11";
-			MEMsize_Xp <= "11";
+			--MEMsize_Xp <= "11";
 			MEMdataout_X <= NOS;
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);	
@@ -1445,7 +1447,7 @@ begin
 			else
 				AuxControl_n(0 downto 0) <= "0";
 			end if;
-			AuxControl_n(2 downto 1) <= "00";
+			AuxControl_n(1 downto 1) <= "0";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';

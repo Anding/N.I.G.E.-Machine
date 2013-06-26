@@ -10,10 +10,10 @@ entity Datapath is
     Port ( rst : in  STD_LOGIC;	 										-- reset
            clk : in  STD_LOGIC;	 										-- clock
 			  MEMdatain_X : in STD_LOGIC_VECTOR (31 downto 0);	
-			  MEMdatain_X_plus : in STD_LOGIC_VECTOR (31 downto 0);
+--			  MEMdatain_X_plus : in STD_LOGIC_VECTOR (31 downto 0);
 			  Accumulator : in STD_LOGIC_VECTOR (31 downto 0);		-- Immediate value read from memory by control unit for writing to TOS
 			  MicroControl : in  STD_LOGIC_VECTOR (13 downto 0);	-- control lines
-			  AuxControl : in STD_LOGIC_VECTOR (2 downto 0);		-- control lines 
+			  AuxControl : in STD_LOGIC_VECTOR (1 downto 0);		-- control lines 
 			  ReturnAddress : in STD_LOGIC_VECTOR (31 downto 0);	-- Return Address for JSR, BSR instructions
 			  TOS : out STD_LOGIC_VECTOR (31 downto 0);				-- Top Of Stack (TOS_n, one cycle ahead of registered value)
 			  TOS_r : out STD_LOGIC_VECTOR (31 downto 0);			-- Top Of Stack (Tthe registered value)			  
@@ -126,7 +126,7 @@ signal PSP, RSP, PSP_n, RSP_n, RSP_n1, PSP_m1, PSP_p1, RSP_m1, RSP_p1 : std_logi
 signal RSdataout_i, PSdataout_i, PSdatain_i, RSdatain_i : std_logic_vector (31 downto 0);
 signal PSw_i, RSw_i, PSw_m1, RSw_m1 : std_logic_vector (0 downto 0);
 signal data : std_logic_vector (31 downto 0);
-signal MEMdatain_X_plus_m1 : std_logic_vector (31 downto 0);
+--signal MEMdatain_X_plus_m1 : std_logic_vector (31 downto 0);
 
 begin
 
@@ -143,7 +143,7 @@ begin
 			RwBuff <= RSdataOUT_i;				-- buffer for last written return stack value
 			PSw_m1 <= PSw_i;
 			RSw_m1 <= RSw_i;
-			MEMdatain_X_plus_m1 <= MEMdatain_X_plus;
+			--MEMdatain_X_plus_m1 <= MEMdatain_X_plus;
 		else
 			TOS_i <= (others=>'0');
 			NOS_i <= (others=>'0');
@@ -198,10 +198,10 @@ begin
 		TORS_n <= RSdatain_i when "1",
 					 TORS_n1 when others;
 					 
-	with AuxControl (2 downto 1) select					-- immediate value for loading into TOS (one cycle delay to coincide with microcode)
-		DATA <= 	MEMdatain_X_plus_m1 when "00",			-- load literal
-					MEMdatain_X when "01",						-- SRAM fetch
-					accumulator when others;					-- control unit mediated fetch
+	with AuxControl (1 downto 1) select					-- immediate value for loading into TOS (one cycle delay to coincide with microcode)
+		DATA <= 	--MEMdatain_X_plus_m1 when "00",			-- load literal
+					MEMdatain_X when "0",						-- SRAM fetch or load literal
+					accumulator when others;					-- PSDRAM control unit mediated fetch via accumulator
 		
 	with MicroControl(13 downto 13) select				-- multiplexer for selecting value to write to TORS
 		TORS_j <= ReturnAddress when "1",
