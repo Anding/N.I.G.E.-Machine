@@ -44,7 +44,7 @@ SPI.divide	equ	hex f844
 ;
 ; **** MEMORY MAP ****
 ;
-SRAMSIZE	equ	16384
+SRAMSIZE	equ	16384			; Amount of SRAM
 RSrxBUF	equ	hex 010000		; RS232 buffer (256 bytes)	
 PSBUF		equ	hex 010100		; PS/2 keyboard buffer (256 bytes)
 _input_buff	equ	hex 010200		; default input buffer location (used by ACCEPT)
@@ -89,7 +89,7 @@ opBRA		equ	192 256 *
 ; Interrupt vectors
 ; -----------------------------------------------------------------------------------------------
 ;
-V.RST		BRA	START.CF V.RST rel 			; RESET
+V.RST		BRA	DIAG.CF V.RST rel 			; RESET
 V.TRAP		RTI
 		NOP						; TRAP
 V.RDA		BRA	RDA V.RDA rel				; RS232 RDA
@@ -233,6 +233,73 @@ START.0	dc.b	EOL
 		dc.b	32
 START.1	dc.s	bytes free
 		dc.b	EOL EOL
+;
+; -----------------------------------------------------------------------------------------------
+; Diagnostic code (within branch distance from 0)
+; -----------------------------------------------------------------------------------------------
+;
+DIAG.CF	#.w	hex AAAA
+		#.w	sevenseg
+		store.l
+		#.l	hex abcd
+		#.l	hex 0010000
+		#.l	hex 07f8000 
+		#.w	hex ff42
+		nop
+		nop
+		nop
+		nop
+		jsl	diag.2
+		nop
+		nop
+;		rot	( n w addr)
+;		rot	( w addr n)
+;		?dup
+;		IF	( w addr n)
+;			ZERO 		( w addr n 0)
+;			DO  		( addr b)
+;				over		( w addr w )
+;				over		( w addr w addr)
+;				store.w	( w addr)
+;				1+		( w addr+1)
+;				1+		( w addr+2)
+;			LOOP
+;		THEN
+;		jsl	FILL.W.CF	
+;diag.1		#.w	hex ff42	
+;		#.l	hex 1000000
+;		#.l	hex 0010000	( end start)
+;		DO
+;			dup
+;			R@
+;			store.w
+;			#.b	2
+;		+LOOP
+;		drop
+;		#.w	hex CCCC
+diag.1		#.w	sevenseg
+		store.l
+		bra -1
+		#.w	hex ff46		
+		#.l	hex 1000000
+		#.l	hex 0010000	( end start)	
+		DO
+			R@
+			fetch.w
+			over
+			<>
+			IF
+				R@
+				#.w	sevenseg
+				store.l	
+				bra -1
+			THEN
+			#.b	2
+		+LOOP
+		#.w	hex FFFF
+		#.w	sevenseg
+		store.l
+		bra	-1
 ;
 ; ----------------------------------------------------------------------------------------------
 ; Low level hardware control
@@ -3362,9 +3429,10 @@ ERROR.LF	dc.l 	INTERPRET.NF
 ERROR.NF	dc.b	5 128 +
 		dc.b	char R char O char R char R char E
 ERROR.SF	dc.w	ERROR.Z ERROR.CF del
-ERROR.CF	R@			; indicate calling address on the display
-		#.w	sevenseg
-		store.w
+ERROR.CF	nop
+;		R@			; indicate calling address on the display
+;		#.w	sevenseg
+;		store.w
 		#.w 	PALETTE 2 +
 		fetch.b
 		#.w	INK
@@ -5520,6 +5588,12 @@ EMIT_VECTOR		dc.l	VEMIT.CF	; VEMIT.CF
 KEY_VECTOR		dc.l	KKEY.CF	; KKEY.CF
 KEY?_VECTOR		dc.l	KKEY?.CF	; KKEY?.CF
 ;
+diag.2		drop
+		drop
+		drop
+		#.w	sevenseg
+		store.l
+		bra -1
 ; marker for initializing HERE
 END			dc.l	0
 ;
