@@ -217,7 +217,7 @@ begin
 	 Rstack_EN <= '1' when bank_n = Rstack else '0';
 	 Char_EN <= '1' when bank_n = Char else '0';
 	 Reg_EN <= '1' when bank_n = Reg else '0';
-	 Sys_EN <= '1' when (bank_n = Sys and clk_system ='1') else '0';
+	 Sys_EN <= '1' when ((bank_n = Sys or Boot_we = "1") and clk_system ='1') else '0';
 	 
 	 with bank select														-- one cycle delayed to switch output
 		MEMdatain_Xi <= MEMdata_Pstack when Pstack,
