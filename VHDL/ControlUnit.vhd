@@ -1231,7 +1231,7 @@ begin
 			--MEMsize_Xp <= "11";	
 			accumulator_n <= (others=>'0');			
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(2 downto 1) <= "1";
+			AuxControl_n(1 downto 1) <= "1";
 			ReturnAddress_n <= PC_addr;	
 			irq_n <= int_trig;
 			rti <= '0';
