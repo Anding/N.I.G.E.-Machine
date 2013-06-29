@@ -1,7 +1,7 @@
 ; SRAM-MEMTEST
 sevenseg	equ	hex F830
 memlo		equ	hex 0400
-memhi		equ	hex 0405		; B000
+memhi		equ	hex B000		; B000
 pattern1	equ	hex AAAAAAAA
 pattern2	equ	hex 55555555
 ;
@@ -19,6 +19,8 @@ start		#.w	hex AAAA
 		#.w	hex BBBB
 		jsl	display
 		#.b	pattern1
+		#.b	hex ff
+		and
 		#.w	memhi
 		#.w	memlo
 		jsl	ram-read.b		

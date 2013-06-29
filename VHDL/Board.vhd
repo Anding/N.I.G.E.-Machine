@@ -217,7 +217,8 @@ begin
 	 Rstack_EN <= '1' when bank_n = Rstack else '0';
 	 Char_EN <= '1' when bank_n = Char else '0';
 	 Reg_EN <= '1' when bank_n = Reg else '0';
-	 Sys_EN <= '1' when ((bank_n = Sys or Boot_we = "1") and clk_system ='1') else '0';
+	 --Sys_EN <= '1' when ((bank_n = Sys and clk_system ='1') or Boot_we = "1") else '0';
+	 Sys_EN <= '1' when bank_n = Sys else '0';
 	 
 	 with bank select														-- one cycle delayed to switch output
 		MEMdatain_Xi <= MEMdata_Pstack when Pstack,
@@ -298,26 +299,26 @@ begin
 
 	  inst_SYS_RAM : entity work.Sys_RAM
 	  PORT MAP (
-		 clka => clk_2xsys,
+		 clka => clk_system,--clk_2xsys,
 		 ena => sys_en,
 		 wea => wea_sysram,
-		 addra => addra_sysram (15 downto 2),
+		 addra => addra_sysram (10 downto 2),					-- write depth 12032, 15downto2
 		 dina => dina_sysram,
 		 douta => douta_sysram,
-		 clkb => clk_2xsys,
+		 clkb => clk_system,--clk_2xsys,
 		 enb => sys_en,
 		 web => web_sysram,
-		 addrb => addrb_sysram (15 downto 2),
+		 addrb => addrb_sysram (10 downto 2),
 		 dinb => dinb_sysram,
 		 doutb => doutb_sysram
 	  );
 	  
-	  process												-- register SRAM outputs externally to expose for timing constraint
-	  begin
-			wait until rising_edge(clk_2xsys);
+	  --process												-- register SRAM outputs externally to expose for timing constraint
+	  --begin
+			--wait until rising_edge(clk_2xsys);
 			douta_sysram_r <= douta_sysram;
 			doutb_sysram_r <= doutb_sysram;
-	  end process;
+	  --end process;
 
 	  inst_Char_RAM : entity work.Char_RAM
 	  PORT MAP (
@@ -336,7 +337,7 @@ begin
 	  
 	  inst_HW_Registers: entity work.HW_Registers PORT MAP(
 		clk => CLK_SYSTEM,
-		clk2x => clk_2xsys,
+		clk2x => CLK_SYSTEM,--clk_2xsys,
 		rst => reset,
 		irq_mask => irq_mask,
 		gfx_zero => gfx_zero,
