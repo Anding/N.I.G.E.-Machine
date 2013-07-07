@@ -2,7 +2,7 @@
 sevenseg	equ	hex F830
 memlo		equ	hex 0400
 memhi		equ	hex B000		; B000
-pattern1	equ	hex AAAAAAAA
+pattern1	equ	hex DDDDDDDD
 pattern2	equ	hex 55555555
 ;
 ;
@@ -10,20 +10,21 @@ pattern2	equ	hex 55555555
 		nop
 		nop
 		nop
-start		#.w	hex AAAA
+		nop
+start		#.w	hex 8888
 		jsl	display
-		#.b	pattern1
+		#.w	pattern1
 		#.w	memhi
 		#.w	memlo
-		jsl	ram-write.b
+		jsl	ram-write
 		#.w	hex BBBB
 		jsl	display
-		#.b	pattern1
-		#.b	hex ff
-		and
+		#.w	pattern1
+;		#.b	hex ff
+;		and
 		#.w	memhi
 		#.w	memlo
-		jsl	ram-read.b		
+		jsl	ram-read		
 		#.w	hex CCCC
 		jsl	display
 		bra	-1
@@ -35,23 +36,26 @@ display	#.w	sevenseg
 error		jsl	display
 		bra	-1
 ;
-ram-write.b	DO		( pattern end start)
+ram-write	DO		( pattern end start)
 			dup
 			R@
-			store.b
+			store.w
 			1+
-		LOOP
+			#.b	2
+		+LOOP
 		drop,rts
 ;
-ram-read.b	DO		( pattern end start)
+ram-read	DO		( pattern end start)
 			dup
 			R@
-			fetch.b
+			fetch.w
 			<>
 			IF
 				R@
+				fetch.w
 				JSL error
 			THEN
 			1+
-		LOOP
+			#.b	2
+		+LOOP
 		drop,rts

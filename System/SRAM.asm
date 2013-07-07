@@ -89,7 +89,7 @@ opBRA		equ	192 256 *
 ; Interrupt vectors
 ; -----------------------------------------------------------------------------------------------
 ;
-V.RST		BRA	DIAG.CF V.RST rel 			; RESET
+V.RST		BRA	start.CF V.RST rel 			; RESET
 V.TRAP		RTI
 		NOP						; TRAP
 V.RDA		BRA	RDA V.RDA rel				; RS232 RDA

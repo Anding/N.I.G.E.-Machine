@@ -5,6 +5,13 @@ sevenseg	equ	hex F830
 	nop
 	nop
 	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
 	#.w hex 1111
 	#.w hex 2222
 	#.w hex 3333

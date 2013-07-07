@@ -133,6 +133,8 @@ signal MEMsize_X, MEMsize_Xp : std_logic_vector(1 downto 0);
 --signal MEM_WRQ_XX_s : std_logic_vector(0 downto 0);
 --signal boot_active : std_logic;
 signal ram_en : std_logic;
+type ram_en_control_T is (reset_state, enable, disable);
+signal ram_en_control, ram_en_control_n : ram_en_control_T;
 
 	COMPONENT DCM6
 	PORT(
@@ -219,21 +221,32 @@ begin
 	 Rstack_EN <= '1' when bank_n = Rstack else '0';
 	 Char_EN <= '1' when bank_n = Char else '0';
 	 Reg_EN <= '1' when bank_n = Reg else '0';
+	 Sys_EN <= '1' when bank_n = Sys else '0'; 
 	 
 	process
 	begin
 		wait until rising_edge (clk_2xsys);
 		if reset = '1' then
-			ram_en <= '1';
-		elsif ram_en = '0' then
-			ram_en <= '1';
+			ram_en_control <= reset_state;
 		else
-			ram_en <= '0';
+			ram_en_control <= ram_en_control_n;
 		end if;
 	end process;
 	
-	 Sys_EN <= '1' when ((bank_n = Sys and ram_en ='1') or Boot_we = "1") else '0';
-	 --Sys_EN <= '1' when bank_n = Sys else '0';
+	process (ram_en_control)
+	begin
+		case ram_en_control is
+			when enable =>
+				ram_en_control_n <= disable;
+			when others =>
+				ram_en_control_n <= enable;
+		end case;
+	end process;
+	
+	ram_en <= '0' when ram_en_control = disable else '1';
+	
+	
+	 --Sys_EN <= '1' when ((bank_n = Sys and ram_en ='1') or Boot_we = "1") else '0';
 	 
 	 with bank select														-- one cycle delayed to switch output
 		MEMdatain_Xi <= MEMdata_Pstack when Pstack,
@@ -281,6 +294,7 @@ begin
 	Inst_SRAM_controller: entity work.SRAM_controller PORT MAP(
 		RST => reset,
 		CLK => clk_system,
+		en => SYS_EN,
 		ADDR => MEMaddr,
 		size => MEMsize_X,
 		--size_plus => MEMsize_Xp,
@@ -315,15 +329,15 @@ begin
 	  inst_SYS_RAM : entity work.Sys_RAM
 	  PORT MAP (
 		 clka => clk_2xsys,
-		 ena => sys_en,
+		 ena => ram_en,
 		 wea => wea_sysram,
-		 addra => addra_sysram (10 downto 2),					-- write depth 12032, 15downto2
+		 addra => addra_sysram (15 downto 2),					-- write depth 12032, 15downto2
 		 dina => dina_sysram,
 		 douta => douta_sysram,
 		 clkb => clk_2xsys,
-		 enb => sys_en,
+		 enb => ram_en,
 		 web => web_sysram,
-		 addrb => addrb_sysram (10 downto 2),
+		 addrb => addrb_sysram (15 downto 2),
 		 dinb => dinb_sysram,
 		 doutb => doutb_sysram
 	  );

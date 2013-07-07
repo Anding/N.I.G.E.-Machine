@@ -5,6 +5,7 @@ use IEEE.STD_LOGIC_UNSIGNED.ALL;
 entity SRAM_controller is
     Port ( 	RST : in STD_LOGIC;
 				CLK : in STD_LOGIC;
+				en : in STD_LOGIC;
 				ADDR : in  STD_LOGIC_VECTOR (31 downto 0);					-- byte address
 				size : in  STD_LOGIC_VECTOR (1 downto 0);						-- length of read or write 01 = byte, 02 = word, 03 = longword
 				--size_plus : in  STD_LOGIC_VECTOR (1 downto 0);				-- length of data to read at ADDR+1
@@ -65,7 +66,7 @@ begin
 	process
 	begin
 		wait until rising_edge(clk);
-		WE_m <= WE_i;-- 	write is a 2 cyle operation, first to read existing contents and then to overlay and write the new values to ports a and b
+		WE_m(0) <= WE_i(0) and en;-- 	write is a 2 cyle operation, first to read existing contents and then to overlay and write the new values to ports a and b
 		offset_m <= offset;  -- when reading need to use the one-cycle-old value of offset to take account of the one cycle delay in a memory read	
 		data_in_r <= data_in;
 		size_m <= size;
