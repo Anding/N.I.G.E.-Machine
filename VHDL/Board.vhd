@@ -243,7 +243,7 @@ begin
 		end case;
 	end process;
 	
-	ram_en <= '0' when ram_en_control = disable else '1';
+	ram_en <= '1' when (ram_en_control = enable) or (Boot_we = "1") else '0';
 	
 	
 	 --Sys_EN <= '1' when ((bank_n = Sys and ram_en ='1') or Boot_we = "1") else '0';
