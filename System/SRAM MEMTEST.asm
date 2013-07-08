@@ -1,7 +1,7 @@
 ; SRAM-MEMTEST
 sevenseg	equ	hex F830
 memlo		equ	hex 0400
-memhi		equ	hex 0405		; B000
+memhi		equ	hex B000		; B000
 pattern1	equ	hex DDDDDDDD
 pattern2	equ	hex 55555555
 ;
@@ -40,7 +40,7 @@ ram-write	DO		( pattern end start)
 			dup
 			R@
 			store.w
-			1+
+;			1+
 			#.b	2
 		+LOOP
 		drop,rts
@@ -52,10 +52,10 @@ ram-read	DO		( pattern end start)
 			<>
 			IF
 				R@
-				fetch.w
+				fetch.b
 				JSL error
 			THEN
-			1+
+;			1+
 			#.b	2
 		+LOOP
 		drop,rts
