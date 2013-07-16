@@ -40,7 +40,7 @@ ram-write	DO		( pattern end start)
 			dup
 			R@
 			store.w
-;			1+
+			1+
 			#.b	2
 		+LOOP
 		drop,rts
@@ -52,10 +52,10 @@ ram-read	DO		( pattern end start)
 			<>
 			IF
 				R@
-				fetch.b
+;				fetch.w
 				JSL error
 			THEN
-;			1+
+			1+
 			#.b	2
 		+LOOP
 		drop,rts
