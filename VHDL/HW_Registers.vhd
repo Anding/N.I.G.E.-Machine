@@ -9,7 +9,7 @@ use IEEE.STD_LOGIC_UNSIGNED.ALL;
 
 entity HW_Registers is
     Port ( clk : in  STD_LOGIC;
-			  clk2x : in STD_LOGIC;
+			  --clk2x : in STD_LOGIC;
            rst : in  STD_LOGIC;
 			  -- connections to other hardware components
 			  SD_datain : in std_logic_vector(7 downto 0);			-- SD card interface
@@ -194,9 +194,11 @@ begin
 	
 		dataout <= dataout_i;
 	
-	process															
-	begin																-- register all outputs to reduce multiplexer delays
-		wait until rising_edge(clk2x);
+	process (en, addr, txt_zero_r, gfx_zero_r, background_r, mode_r, RS232_rx_S0_r, RS232_TBE_S0_r, RS232_RDA_S0_r, PS2_data_r, counter_clk,
+				counter_ms, IRQ_mask_r, SW_r, SD_datain_r, SD_control_r, SD_status_r)
+				
+	begin																
+		--wait until rising_edge(clk2x);						-- register all outputs to reduce multiplexer delays
 		if en = '1'  then						-- address bus now has a valid address.  Update output register before next CLK rising edge  and clk = '1'
 			case addr_i is
 				when x"00" =>										-- TEXT_ZERO
@@ -247,12 +249,6 @@ begin
 			end case;
 		end if;
 	end process;	
-	
---	process										 
---	begin
---		wait until rising_edge(clk);
---		dataout <= dataout_i;
---	end process;
 		
 end Behavioral;
 

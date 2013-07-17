@@ -133,8 +133,8 @@ signal MEMsize_X, MEMsize_Xp : std_logic_vector(1 downto 0);
 --signal MEM_WRQ_XX_s : std_logic_vector(0 downto 0);
 --signal boot_active : std_logic;
 signal ram_en : std_logic;
-type ram_en_control_T is (reset_state, enable, disable);
-signal ram_en_control, ram_en_control_n : ram_en_control_T;
+--type ram_en_control_T is (reset_state, enable, disable);
+--signal ram_en_control, ram_en_control_n : ram_en_control_T;
 
 	COMPONENT DCM6
 	PORT(
@@ -223,30 +223,28 @@ begin
 	 Reg_EN <= '1' when bank_n = Reg else '0';
 	 Sys_EN <= '1' when bank_n = Sys else '0'; 
 	 
-	process
-	begin
-		wait until rising_edge (clk_2xsys);
-		if reset = '1' then
-			ram_en_control <= reset_state;
-		else
-			ram_en_control <= ram_en_control_n;
-		end if;
-	end process;
+--	process
+--	begin
+--		wait until rising_edge (clk_2xsys);
+--		if reset = '1' then
+--			ram_en_control <= reset_state;
+--		else
+--			ram_en_control <= ram_en_control_n;
+--		end if;
+--	end process;
+--	
+--	process (ram_en_control)
+--	begin
+--		case ram_en_control is
+--			when enable =>
+--				ram_en_control_n <= disable;
+--			when others =>
+--				ram_en_control_n <= enable;
+--		end case;
+--	end process;
 	
-	process (ram_en_control)
-	begin
-		case ram_en_control is
-			when enable =>
-				ram_en_control_n <= disable;
-			when others =>
-				ram_en_control_n <= enable;
-		end case;
-	end process;
-	
-	ram_en <= '1' when (ram_en_control = enable) or (Boot_we = "1") else '0';
-	
-	
-	 --Sys_EN <= '1' when ((bank_n = Sys and ram_en ='1') or Boot_we = "1") else '0';
+	ram_en <= '1';-- when (ram_en_control = enable) or (Boot_we = "1") else '0';
+
 	 
 	 with bank select														-- one cycle delayed to switch output
 		MEMdatain_Xi <= MEMdata_Pstack when Pstack,
@@ -328,13 +326,13 @@ begin
 
 	  inst_SYS_RAM : entity work.Sys_RAM
 	  PORT MAP (
-		 clka => clk_2xsys,
+		 clka => clk_system,--clk_2xsys,
 		 ena => ram_en,
 		 wea => wea_sysram,
 		 addra => addra_sysram (15 downto 2),					-- write depth 12032, 15downto2
 		 dina => dina_sysram,
 		 douta => douta_sysram,
-		 clkb => clk_2xsys,
+		 clkb => clk_system,--clk_2xsys,
 		 enb => ram_en,
 		 web => web_sysram,
 		 addrb => addrb_sysram (15 downto 2),
@@ -342,14 +340,14 @@ begin
 		 doutb => doutb_sysram
 	  );
 	  
-	  process												-- register SRAM outputs externally to expose for timing constraint
+	  process 												-- register SRAM outputs externally to expose for timing constraint
 	  begin
 			wait until rising_edge(clk_2xsys);
 			douta_sysram_r <= douta_sysram;
 			doutb_sysram_r <= doutb_sysram;
 	  end process;
-	  douta_sysram_i <= douta_sysram_r;
-	  doutb_sysram_i <= doutb_sysram_r;
+	  douta_sysram_i <= douta_sysram;--_r;
+	  doutb_sysram_i <= doutb_sysram;--_r;
 
 	  inst_Char_RAM : entity work.Char_RAM
 	  PORT MAP (
@@ -368,7 +366,7 @@ begin
 	  
 	  inst_HW_Registers: entity work.HW_Registers PORT MAP(
 		clk => CLK_SYSTEM,
-		clk2x => CLK_SYSTEM,--clk_2xsys,
+		--clk2x => CLK_SYSTEM,--clk_2xsys,
 		rst => reset,
 		irq_mask => irq_mask,
 		gfx_zero => gfx_zero,
