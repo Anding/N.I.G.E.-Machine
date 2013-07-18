@@ -234,73 +234,6 @@ START.0	dc.b	EOL
 START.1	dc.s	bytes free
 		dc.b	EOL EOL
 ;
-; -----------------------------------------------------------------------------------------------
-; Diagnostic code (within branch distance from 0)
-; -----------------------------------------------------------------------------------------------
-;
-DIAG.CF	#.w	hex AAAA
-		#.w	sevenseg
-		store.l
-		#.l	hex abcd
-		#.l	hex 0010000
-		#.l	hex 07f8000 
-		#.w	hex ff42
-		nop
-		nop
-		nop
-		nop
-		jsl	diag.2
-		nop
-		nop
-;		rot	( n w addr)
-;		rot	( w addr n)
-;		?dup
-;		IF	( w addr n)
-;			ZERO 		( w addr n 0)
-;			DO  		( addr b)
-;				over		( w addr w )
-;				over		( w addr w addr)
-;				store.w	( w addr)
-;				1+		( w addr+1)
-;				1+		( w addr+2)
-;			LOOP
-;		THEN
-;		jsl	FILL.W.CF	
-;diag.1		#.w	hex ff42	
-;		#.l	hex 1000000
-;		#.l	hex 0010000	( end start)
-;		DO
-;			dup
-;			R@
-;			store.w
-;			#.b	2
-;		+LOOP
-;		drop
-;		#.w	hex CCCC
-diag.1		#.w	sevenseg
-		store.l
-		bra -1
-		#.w	hex ff46		
-		#.l	hex 1000000
-		#.l	hex 0010000	( end start)	
-		DO
-			R@
-			fetch.w
-			over
-			<>
-			IF
-				R@
-				#.w	sevenseg
-				store.l	
-				bra -1
-			THEN
-			#.b	2
-		+LOOP
-		#.w	hex FFFF
-		#.w	sevenseg
-		store.l
-		bra	-1
-;
 ; ----------------------------------------------------------------------------------------------
 ; Low level hardware control
 ; ----------------------------------------------------------------------------------------------
@@ -5588,12 +5521,6 @@ EMIT_VECTOR		dc.l	VEMIT.CF	; VEMIT.CF
 KEY_VECTOR		dc.l	KKEY.CF	; KKEY.CF
 KEY?_VECTOR		dc.l	KKEY?.CF	; KKEY?.CF
 ;
-diag.2		drop
-		drop
-		drop
-		#.w	sevenseg
-		store.l
-		bra -1
 ; marker for initializing HERE
 END			dc.l	0
 ;
