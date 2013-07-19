@@ -3362,10 +3362,9 @@ ERROR.LF	dc.l 	INTERPRET.NF
 ERROR.NF	dc.b	5 128 +
 		dc.b	char R char O char R char R char E
 ERROR.SF	dc.w	ERROR.Z ERROR.CF del
-ERROR.CF	nop
-;		R@			; indicate calling address on the display
-;		#.w	sevenseg
-;		store.w
+ERROR.CF	R@			; indicate calling address on the display
+		#.w	sevenseg
+		store.w
 		#.w 	PALETTE 2 +
 		fetch.b
 		#.w	INK
