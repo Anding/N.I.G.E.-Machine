@@ -180,9 +180,9 @@ begin
 	
 	-- read hardware signals
 	
-	process															-- register all inputs (except system clocks) to reduce routing delays
-	begin
-		wait until rising_edge(clk);
+	--process
+	--begin
+		--wait until rising_edge(clk);
 		RS232_rx_S0_r <= RS232_rx_S0;
 		RS232_TBE_S0_r <= RS232_TBE_S0;
 		RS232_RDA_S0_r <= RS232_RDA_S0;
@@ -190,7 +190,7 @@ begin
 		PS2_data_r <= PS2_data;
 		SD_status_r <= SD_status;
 		SD_datain_r <= SD_datain;
-	end process;
+	--end process;
 	
 		dataout <= dataout_i;
 	
@@ -198,7 +198,7 @@ begin
 				counter_ms, IRQ_mask_r, SW_r, SD_datain_r, SD_control_r, SD_status_r)
 				
 	begin																
-		--wait until rising_edge(clk2x);						-- register all outputs to reduce multiplexer delays
+		wait until rising_edge(clk);		-- register all outputs to reduce multiplexer delays
 		if en = '1'  then						-- address bus now has a valid address.  Update output register before next CLK rising edge  and clk = '1'
 			case addr_i is
 				when x"00" =>										-- TEXT_ZERO
