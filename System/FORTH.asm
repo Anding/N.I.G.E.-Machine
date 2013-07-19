@@ -44,7 +44,7 @@ SPI.divide	equ	hex f844
 ;
 ; **** MEMORY MAP ****
 ;
-SRAMSIZE	equ	16384			; Amount of SRAM
+SRAMSIZE	equ	48128			; Amount of SRAM
 RSrxBUF	equ	hex 010000		; RS232 buffer (256 bytes)	
 PSBUF		equ	hex 010100		; PS/2 keyboard buffer (256 bytes)
 _input_buff	equ	hex 010200		; default input buffer location (used by ACCEPT)
@@ -215,7 +215,7 @@ MS.TIMEOUT	dc.l	hex 00
 ; Boot code (within branch distance from 0)
 ; -----------------------------------------------------------------------------------------------
 ;
-START.CF	nop	;jsl	CLS.CF
+START.CF	jsl	CLS.CF
 		#.w	START.0	; First part of power-on message
 		#.b	52
 		jsl	TYPE.CF
@@ -4744,7 +4744,7 @@ fwd-offset.CF	#.w	HERE_	( org &HERE)
 		fetch.l	( org dest)
 		swap		( dest org)
 		-		( diff)
-;		1-		( offset)
+		1-		( offset)			; not needed in v1.1
 		#.w	16383	( offset mask)
 		and,rts	( offset')
 ;
@@ -4752,7 +4752,7 @@ fwd-offset.CF	#.w	HERE_	( org &HERE)
 rev-offset.CF	#.w	HERE_	( dest &HERE)
 		fetch.l	( dest org)
 		-		( diff)
-;		1-		( offset)
+		1-		( offset)			; not needed in v1.1
 		#.w	16383	( offset mask)
 		and,rts	( offset')
 ;
@@ -5106,7 +5106,7 @@ SLITERAL.NF	dc.b	8 128 + IMMED +
 		dc.b 	char L char A char R char E char T char I char L char S
 SLITERAL.SF	dc.w	SLITERAL.Z SLITERAL.CF del
 SLITERAL.CF	dup		( addr u u)
-		#.b	2
+		#.b	1					; 2 in v1.1
 		+		( addr u offset)
 		#.w	opBRA
 		or		( addr u op)
@@ -5129,7 +5129,7 @@ CLITERAL.NF	dc.b	8 128 + IMMED +
 		dc.b 	char L char A char R char E char T char I char L char C
 CLITERAL.SF	dc.w	CLITERAL.Z CLITERAL.CF del
 CLITERAL.CF	dup		( addr u u)
-		#.b	3
+		#.b	2					; 3 in v1.1
 		+		( addr u offset)
 		#.w	opBRA					
 		or		( addr u op)
