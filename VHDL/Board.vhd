@@ -313,7 +313,7 @@ begin
 	
 --	Inst_RAM_for_Testbench: entity work.RAM_for_Testbench PORT MAP(
 --		rst => reset,
---		clk => clk_2xsys,
+--		clk => clk_system,
 --		weA => wea_sysram(0),
 --		weB => web_sysram(0),
 --		addressA => addra_sysram,
