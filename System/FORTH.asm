@@ -123,8 +123,7 @@ V.MS		BRA	MS V.MS rel				; MS
 ; Interrupt handlers
 ; -----------------------------------------------------------------------------------------------
 ;
-RDA		store.w
-		#.w 	RSrxWPOS	; buffer write position
+RDA		#.w 	RSrxWPOS	; buffer write position
 		fetch.b
 		1+
 		#.b	hex ff		; constrain to 256 byte length
@@ -3263,7 +3262,7 @@ WORD.NF	dc.b	4 128 +
 WORD.SF	dc.w	WORD.Z WORD.SF del
 WORD.CF	BEGIN
 			dup		( char char)
-			jsl	PARSE.CF	( char c-addr n)		
+			jsl	PARSE.CF	( char c-addr n)
 			dup		( char c-addr n flag)
 			0=		( char c-addr n flag')
 WORD.0			beq	WORD.2 WORD.0 rel				; parse returned at least one character
@@ -3276,11 +3275,22 @@ WORD.1			beq	WORD.2 WORD.1 rel
 			drop		( char c-addr)
 			drop		( char)
 		AGAIN	
-WORD.2		swap		( char n c-addr)
+WORD.2		nop
+		swap		( char n c-addr)
 		1-		( char n addr)
 		swap		( char addr n)
 		over		( char addr n addr)
+; debug
+		dup
+		#.b	8
+		jsl dump.cf
+;		
 		store.b	( char addr)
+; debug
+		dup
+		#.b	8
+		jsl dump.cf
+;				
 WORD.Z		nip,rts	( addr)	
 ;	
 ; INTERPRET, interpert a line from the input buffer
