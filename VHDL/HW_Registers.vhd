@@ -194,9 +194,9 @@ begin
 	
 		dataout <= dataout_i;
 	
-	process (en, addr, txt_zero_r, gfx_zero_r, background_r, mode_r, RS232_rx_S0_r, RS232_TBE_S0_r, RS232_RDA_S0_r, PS2_data_r, counter_clk,
-				counter_ms, IRQ_mask_r, SW_r, SD_datain_r, SD_control_r, SD_status_r)
-				
+	--process (en, addr, txt_zero_r, gfx_zero_r, background_r, mode_r, RS232_rx_S0_r, RS232_TBE_S0_r, RS232_RDA_S0_r, PS2_data_r, counter_clk,
+	--			counter_ms, IRQ_mask_r, SW_r, SD_datain_r, SD_control_r, SD_status_r)
+	process			
 	begin																
 		wait until rising_edge(clk);		-- register all outputs to reduce multiplexer delays
 		if en = '1'  then						-- address bus now has a valid address.  Update output register before next CLK rising edge  and clk = '1'
