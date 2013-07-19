@@ -708,7 +708,7 @@ begin
 			timer <= 0;  
 			PC_n <= PC_plus;
 --			offset <= "00";
-			ucode <= opcode; --ops_SDIVMOD;								-- load TOS and NOS with results
+			ucode <= ops_SDIVMOD; 								-- load TOS and NOS with results
 			accumulator_n <= (others=>'0');
 			MEMaddr_i <= PC_addr;	
 			MEM_REQ_Y <= '0';	
@@ -738,7 +738,7 @@ begin
 			timer <= 0;
 			PC_n <= PC_plus;
 --			offset <= "00";
-			ucode <= opcode;								-- load TOS and NOS with results
+			ucode <= ops_UDIVMOD;								-- load TOS and NOS with results
 			accumulator_n <= (others=>'0');
 			MEMaddr_i <= PC_addr;	
 			MEM_REQ_Y <= '0';	
