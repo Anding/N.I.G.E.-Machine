@@ -68,8 +68,8 @@ begin
 		wait until rising_edge(clk);
 		WE_m(0) <= WE_i(0) and en;-- 	write is a 2 cyle operation, first to read existing contents and then to overlay and write the new values to ports a and b
 		offset_m <= offset;  -- when reading need to use the one-cycle-old value of offset to take account of the one cycle delay in a memory read	
-		data_in_r <= data_in;
-		size_m <= size;
+		data_in_r <= data_in;  -- register data_in to improving timing
+--		size_m <= size;
 	end process;			
 	
 --	process
@@ -129,7 +129,7 @@ begin
 								DATA_out_base (31 downto 16) & DATA_in_r (7 downto 0) & DATA_out_base (7 downto 0) when "1001",
 								DATA_out_base (31 downto 8) & DATA_in_r (7 downto 0) when others; -- "1101"
 							  
-	with offset_m & size_m select  -- overlay in preparation for a write for port b
+	with offset_m & size select  -- overlay in preparation for a write for port b
 --	DATA_in_base_plus <=DATA_out_base_plus when others;
 	DATA_in_base_plus <=	DATA_in_r (7 downto 0) & DATA_out_base_plus (23 downto 0) when "0111",
 								DATA_in_r (15 downto 0) & DATA_out_base_plus (15 downto 0) when "1011",
