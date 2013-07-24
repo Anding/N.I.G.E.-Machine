@@ -1,0 +1,31 @@
+Complete testing and debugging of N.I.G.E. v2.0
+Run benchmarks
+Upgrade FORTH system software
+- review screen handling words and conceive new model
+	- client application is responsible for all cursor activities
+	- type and emit remain vectored and process non-printing characters
+	- typeraw and emitraw are non-vectored, do not process non-printing characters and write to the screen only (but will scroll, etc.)
+	- COLOR keyword sets the INK variable with a color from the palette
+	- SCREENMODE replaces VGA (0, VGA, 1 SVGA)
+	- COLORMODE to set 16/16 or 256/0 colormode (palette only needs to work in 256/0 colormode)
+- implement FORTH words corresponsing to register addresseses  (R_TEXTZERO, etc.)
+Devlopment tools
+- Editor: complete implementation and testing
+- Revised disassembler
+Tweaks
+- VSYNC word to wait until vertical blank (need a register for this)
+- BRA to work with destination and PC only (no from label or rel)
+- Version word reads hardware version from register and software version from address
+Documentation
+- Reference manual includes FORTH word definitions
+- Instruction set
+- Memory map
+- Register usage
+ATLYS board
+- Implement DVI and DRAM interfaces
+- Port to ATLYS
+New features
+- Floating point
+- Local variables
+- FORTH scientific library
+- 100MHz clock at the expense of one cycle more memory latency?
