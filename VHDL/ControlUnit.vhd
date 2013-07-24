@@ -1359,8 +1359,12 @@ begin
 			--MEMsize_Xp <= "11";
 			MEMdataout_X <= NOS;
 			MEMdataout_Y <= NOS(7 downto 0);
-			MEMdataout_Z <= NOS(15 downto 0);	
-			AuxControl_n(0 downto 0) <= "0";
+			MEMdataout_Z <= NOS(15 downto 0);
+			if delayed_RTS= '1' then
+				AuxControl_n(0 downto 0) <= "1";					-- decrement return stack pointer
+			else
+				AuxControl_n(0 downto 0) <= "0";
+			end if;			
 			AuxControl_n(1 downto 1) <= "0";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
