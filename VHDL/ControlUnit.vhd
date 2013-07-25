@@ -562,11 +562,11 @@ begin
 			end if;
 	
 		when ifdup =>											-- ifdup when TOS was zero
-			if delayed_RTS = '0' then
+--			if delayed_RTS = '0' then
 				state_n <= common;
-			else
-				state_n <= skip1;
-			end if;
+--			else
+--				state_n <= skip1;
+--			end if;
 			timer <= 0;
 			PC_n <= PC_plus;
 --			offset <= "00";	
