@@ -100,13 +100,13 @@ type state_T is (common, ifdup, smult, umult, sdivmod, udivmod, sdivmod_load, ud
 						Sfetch_long, Sfetch_word, Sfetch_byte,
 						Dfetch_long, Dfetch_long2, Dfetch_long3, Dfetch_word, Dfetch_byte,
 						Dstore_long, Dstore_long2, Dstore_long3, Dstore_word, Dstore_byte, Dstore2,
-						load_byte, load_word, load_long, load_long2,
-						jsl_state,
-						skip1, skip2);
+						load_word, load_long, load_long2, skip1) ;
+						-- skip2, jsl_state, load_byte,
 --type offset_T is (none, one, two, four);						
 						
 signal state, state_n  : state_T;										-- state machine
-signal PC, PC_n, PC_plus, PC_plus_three, PC_jsl, PC_branch, PC_m1, PC_skipbranch : std_logic_vector (19 downto 0);		-- program counter logic
+signal PC, PC_n, PC_plus, PC_jsl, PC_branch, PC_m1, PC_skipbranch : std_logic_vector (19 downto 0);		-- program counter logic
+signal PC_plus_two, PC_plus_three, PC_plus_four : std_logic_vector (19 downto 0);	
 signal delta :std_logic_vector (19 downto 0);
 signal plus : std_logic_vector (2 downto 0);
 signal accumulator_i, accumulator_n : std_logic_vector (31 downto 0); -- shift register for compiling LONGS and WORDS with BYTE reads
@@ -179,13 +179,16 @@ begin
 	int_vector_ext <= "000000000000" & int_vector_ext_i;		-- extend to width of address bus
 
 	--PC_plus <= PC + plus;												-- states set plus to "000", "001", etc. to increment PC as appropriate
-	PC_plus <= PC + "001";
+
 	PC_jsl <= MEMdatain_X(19 downto 0);
 	delta  <= signbit & signbit & signbit & signbit & signbit & signbit & signbit & MEMdatain_X(28 downto 16);
 	PC_branch <= PC + delta;											-- sign extended 14 bit branch for BRA or BEQ	
 --	PC_skipbranch <= PC + "00000000000000000010";				-- PC + 2 for skipping a BEQ branch
 	PC_addr <= "000000000000" & PC;
+	PC_plus <= PC + "001";
+	PC_plus_two <= PC + "010";
 	PC_plus_three <= PC + "011";
+	PC_plus_four <= PC + "100";
 	ReturnAddressJSL <= "000000000000" & PC_plus_three;
 	
 	MEMaddr <= MEMaddr_i;
@@ -280,7 +283,7 @@ begin
 			elsif branch = bps_BEQ then				
 				state_n <= skip1; 	-- skip2
 			elsif opcode = ops_JSL then
-				state_n <= JSL_state;												-- return address is three bytes ahead of PC, need separate state to adjust
+				state_n <= skip1;	--JSL_state;												-- return address is three bytes ahead of PC, need separate state to adjust
 			elsif opcode = ops_JSR or opcode = ops_JMP or opcode = ops_TRAP or opcode = ops_RETRAP then
 				state_n <= skip1;		-- skip2
 			elsif opcode = ops_lfetch then
@@ -336,7 +339,7 @@ begin
 --			elsif chip_RAM = '0' and opcode = ops_cstore then
 --				state_n <= Dstore_byte;
 			elsif opcode = ops_byte then
-				state_n <= load_byte;
+				state_n <= skip1;	--load_byte;
 			elsif opcode = ops_word then
 				state_n <= load_word;
 			elsif opcode = ops_long then
@@ -1265,12 +1268,12 @@ begin
 			delayed_RTS_n <= delayed_RTS;
 
 		when load_long =>										-- load a literal longword
-			state_n <= load_long2;
+			state_n <= skip1;
 			timer <= 0;
 			if delayed_RTS= '1' then
 				PC_n <= PC;
 			else
-				PC_n <= PC_plus;
+				PC_n <= PC_plus_three;
 			end if;
 			ucode <= ops_NOP;																			
 			accumulator_n <= (others=>'0');
@@ -1325,7 +1328,7 @@ begin
 			delayed_RTS_n <= delayed_RTS;
 
 		when load_word =>										
-			state_n <= load_byte;
+			state_n <= skip1;
 			timer <= 0;
 			if delayed_RTS= '1' then
 				PC_n <= PC;
@@ -1354,61 +1357,61 @@ begin
 			retrap_n <= retrap;
 			delayed_RTS_n <= delayed_RTS;
 
-		when load_byte =>										
-			state_n <= common;
-			timer <= 0;
-			PC_n <= PC_plus;
-			ucode <= ops_NOP;																			
-			accumulator_n <= (others=>'0');
---			offset <= "00";
-			MEMaddr_i <= PC_addr;				
-			MEM_REQ_Y <= '0';	
-			MEM_REQ_Z <= '0';
-			MEM_WRQ_X_i <= '0';
-			MEM_WRQ_Y_i <= '0';	
-			MEM_WRQ_Z_i <= '0';
-			MEMsize_X_n <= "11";
-			--MEMsize_Xp <= "11";
-			MEMdataout_X <= NOS;
-			MEMdataout_Y <= NOS(7 downto 0);
-			MEMdataout_Z <= NOS(15 downto 0);
---			if delayed_RTS= '1' then
---				AuxControl_n(0 downto 0) <= "1";					-- decrement return stack pointer
---			else
-				AuxControl_n(0 downto 0) <= "0";
---			end if;			
-			AuxControl_n(1 downto 1) <= "0";
-			ReturnAddress_n <= PC_addr;
-			irq_n <= int_trig;
-			rti <= '0';
-			retrap_n <= retrap;
-			delayed_RTS_n <= delayed_RTS;
+--		when load_byte =>										
+--			state_n <= common;
+--			timer <= 0;
+--			PC_n <= PC_plus;
+--			ucode <= ops_NOP;																			
+--			accumulator_n <= (others=>'0');
+----			offset <= "00";
+--			MEMaddr_i <= PC_addr;				
+--			MEM_REQ_Y <= '0';	
+--			MEM_REQ_Z <= '0';
+--			MEM_WRQ_X_i <= '0';
+--			MEM_WRQ_Y_i <= '0';	
+--			MEM_WRQ_Z_i <= '0';
+--			MEMsize_X_n <= "11";
+--			--MEMsize_Xp <= "11";
+--			MEMdataout_X <= NOS;
+--			MEMdataout_Y <= NOS(7 downto 0);
+--			MEMdataout_Z <= NOS(15 downto 0);
+----			if delayed_RTS= '1' then
+----				AuxControl_n(0 downto 0) <= "1";					-- decrement return stack pointer
+----			else
+--				AuxControl_n(0 downto 0) <= "0";
+----			end if;			
+--			AuxControl_n(1 downto 1) <= "0";
+--			ReturnAddress_n <= PC_addr;
+--			irq_n <= int_trig;
+--			rti <= '0';
+--			retrap_n <= retrap;
+--			delayed_RTS_n <= delayed_RTS;
 			
-		when jsl_state =>										
-			state_n <= common;
-			timer <= 0;
-			PC_n <= PC_plus;
-			ucode <= ops_NOP;																			
-			accumulator_n <= (others=>'0');
---			offset <= "00";
-			MEMaddr_i <= PC_addr;				
-			MEM_REQ_Y <= '0';	
-			MEM_REQ_Z <= '0';
-			MEM_WRQ_X_i <= '0';
-			MEM_WRQ_Y_i <= '0';	
-			MEM_WRQ_Z_i <= '0';
-			MEMsize_X_n <= "11";
-			--MEMsize_Xp <= "11";
-			MEMdataout_X <= NOS;
-			MEMdataout_Y <= NOS(7 downto 0);
-			MEMdataout_Z <= NOS(15 downto 0);	
-			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
-			ReturnAddress_n <= PC_addr;
-			irq_n <= int_trig;
-			rti <= '0';
-			retrap_n <= retrap;
-			delayed_RTS_n <= delayed_RTS;
+--		when jsl_state =>										
+--			state_n <= common;
+--			timer <= 0;
+--			PC_n <= PC_plus;
+--			ucode <= ops_NOP;																			
+--			accumulator_n <= (others=>'0');
+----			offset <= "00";
+--			MEMaddr_i <= PC_addr;				
+--			MEM_REQ_Y <= '0';	
+--			MEM_REQ_Z <= '0';
+--			MEM_WRQ_X_i <= '0';
+--			MEM_WRQ_Y_i <= '0';	
+--			MEM_WRQ_Z_i <= '0';
+--			MEMsize_X_n <= "11";
+--			--MEMsize_Xp <= "11";
+--			MEMdataout_X <= NOS;
+--			MEMdataout_Y <= NOS(7 downto 0);
+--			MEMdataout_Z <= NOS(15 downto 0);	
+--			AuxControl_n(0 downto 0) <= "0";
+--			AuxControl_n(1 downto 1) <= "0";
+--			ReturnAddress_n <= PC_addr;
+--			irq_n <= int_trig;
+--			rti <= '0';
+--			retrap_n <= retrap;
+--			delayed_RTS_n <= delayed_RTS;
 			
 		when skip1 =>										-- after changing PC, this wait state allows a memory read before execution of next instruction
 			state_n <= common;
@@ -1440,35 +1443,35 @@ begin
 			retrap_n <= retrap;
 			delayed_RTS_n <= delayed_RTS;
 	
-		when skip2 =>										
-			state_n <= common;
-			timer <= 1;
-			PC_n <= PC_plus;
-			ucode <= ops_NOP;							
-			accumulator_n <= (others=>'0');
---			offset <= "00";
-			MEMaddr_i <= PC_addr;				
-			MEM_REQ_Y <= '0';	
-			MEM_REQ_Z <= '0';
-			MEM_WRQ_X_i <= '0';
-			MEM_WRQ_Y_i <= '0';	
-			MEM_WRQ_Z_i <= '0';
-			MEMsize_X_n <= "11";
-			--MEMsize_Xp <= "11";
-			MEMdataout_X <= NOS;
-			MEMdataout_Y <= NOS(7 downto 0);
-			MEMdataout_Z <= NOS(15 downto 0);	
---			if delayed_RTS= '1' then
---				AuxControl_n(0 downto 0) <= "1";					-- decrement return stack pointer
---			else
-				AuxControl_n(0 downto 0) <= "0";
---			end if;
-			AuxControl_n(1 downto 1) <= "0";
-			ReturnAddress_n <= PC_addr;
-			irq_n <= int_trig;
-			rti <= '0';
-			retrap_n <= retrap;
-			delayed_RTS_n <= delayed_RTS;
+--		when skip2 =>										
+--			state_n <= common;
+--			timer <= 1;
+--			PC_n <= PC_plus;
+--			ucode <= ops_NOP;							
+--			accumulator_n <= (others=>'0');
+----			offset <= "00";
+--			MEMaddr_i <= PC_addr;				
+--			MEM_REQ_Y <= '0';	
+--			MEM_REQ_Z <= '0';
+--			MEM_WRQ_X_i <= '0';
+--			MEM_WRQ_Y_i <= '0';	
+--			MEM_WRQ_Z_i <= '0';
+--			MEMsize_X_n <= "11";
+--			--MEMsize_Xp <= "11";
+--			MEMdataout_X <= NOS;
+--			MEMdataout_Y <= NOS(7 downto 0);
+--			MEMdataout_Z <= NOS(15 downto 0);	
+----			if delayed_RTS= '1' then
+----				AuxControl_n(0 downto 0) <= "1";					-- decrement return stack pointer
+----			else
+--				AuxControl_n(0 downto 0) <= "0";
+----			end if;
+--			AuxControl_n(1 downto 1) <= "0";
+--			ReturnAddress_n <= PC_addr;
+--			irq_n <= int_trig;
+--			rti <= '0';
+--			retrap_n <= retrap;
+--			delayed_RTS_n <= delayed_RTS;
 
 		end case;
 	end process;
