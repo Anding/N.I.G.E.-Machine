@@ -521,14 +521,14 @@ begin
 --			end if;
 
 			-- Return stack control logic 
---			if (opcode = ops_RETRAP) and (int_trig = '0') then	-- override on interrupt
---				AuxControl_n(0 downto 0) <= "1";						-- decrement return stack pointer
---			elsif (branch = bps_RTS) and  (int_trig = '0') then
---				AuxControl_n(0 downto 0) <= "0";
---			else
-			AuxControl_n(0 downto 0) <= "0";
+			if (opcode = ops_RETRAP) and (int_trig = '0') then	-- override on interrupt
+				AuxControl_n(0 downto 0) <= "1";						-- decrement return stack pointer
+			elsif (branch = bps_RTS) and  (int_trig = '0') then
+				AuxControl_n(0 downto 0) <= "1";
+			else
+				AuxControl_n(0 downto 0) <= "0";
+			end if;
 			
-			--end if;
 			if int_trig = '1' or retrap(0) = '1' then											
 				ReturnAddress_n <= "000000000000" & PC_m1;
 			elsif opcode = ops_JSL then
@@ -609,11 +609,11 @@ begin
 			MEMdataout_Z <= NOS(15 downto 0);
 			MEMsize_X_n <= "11";
 			--MEMsize_Xp <= "11";
-			if delayed_RTS= '1' then
-				AuxControl_n(0 downto 0) <= "1";					-- decrement return stack pointer
-			else
+--			if delayed_RTS= '1' then
+--				AuxControl_n(0 downto 0) <= "1";					-- decrement return stack pointer
+--			else
 				AuxControl_n(0 downto 0) <= "0";
-			end if;
+--			end if;
 			AuxControl_n(1 downto 1) <= "0";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
@@ -639,11 +639,11 @@ begin
 			MEMdataout_Z <= NOS(15 downto 0);
 			MEMsize_X_n <= "11";
 			--MEMsize_Xp <= "11";
-			if delayed_RTS= '1' then
-				AuxControl_n(0 downto 0) <= "1";					-- decrement return stack pointer
-			else
+--			if delayed_RTS= '1' then
+--				AuxControl_n(0 downto 0) <= "1";					-- decrement return stack pointer
+--			else
 				AuxControl_n(0 downto 0) <= "0";
-			end if;
+--			end if;
 			AuxControl_n(1 downto 1) <= "0";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
@@ -721,11 +721,11 @@ begin
 			MEMdataout_Z <= NOS(15 downto 0);
 			MEMsize_X_n <= "11";
 			--MEMsize_Xp <= "11";
-			if delayed_RTS= '1' then
-				AuxControl_n(0 downto 0) <= "1";					-- decrement return stack pointer
-			else
+--			if delayed_RTS= '1' then
+--				AuxControl_n(0 downto 0) <= "1";					-- decrement return stack pointer
+--			else
 				AuxControl_n(0 downto 0) <= "0";
-			end if;
+--			end if;
 			AuxControl_n(1 downto 1) <= "0";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
@@ -751,11 +751,11 @@ begin
 			MEMdataout_Z <= NOS(15 downto 0);
 			MEMsize_X_n <= "11";
 			--MEMsize_Xp <= "11";
-			if delayed_RTS= '1' then
-				AuxControl_n(0 downto 0) <= "1";					-- decrement return stack pointer
-			else
+--			if delayed_RTS= '1' then
+--				AuxControl_n(0 downto 0) <= "1";					-- decrement return stack pointer
+--			else
 				AuxControl_n(0 downto 0) <= "0";
-			end if;
+--			end if;
 			AuxControl_n(1 downto 1) <= "0";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
@@ -1267,7 +1267,11 @@ begin
 		when load_long =>										-- load a literal longword
 			state_n <= load_long2;
 			timer <= 0;
-			PC_n <= PC_plus;
+			if delayed_RTS= '1' then
+				PC_n <= PC;
+			else
+				PC_n <= PC_plus;
+			end if;
 			ucode <= ops_NOP;																			
 			accumulator_n <= (others=>'0');
 --			offset <= "00";
@@ -1293,7 +1297,11 @@ begin
 		when load_long2 =>										
 			state_n <= load_word;
 			timer <= 0;
-			PC_n <= PC_plus;
+			if delayed_RTS= '1' then
+				PC_n <= PC;
+			else
+				PC_n <= PC_plus;
+			end if;
 			ucode <= ops_NOP;																			
 			accumulator_n <= (others=>'0');
 --			offset <= "00";
@@ -1319,7 +1327,11 @@ begin
 		when load_word =>										
 			state_n <= load_byte;
 			timer <= 0;
-			PC_n <= PC_plus;
+			if delayed_RTS= '1' then
+				PC_n <= PC;
+			else
+				PC_n <= PC_plus;
+			end if;
 			ucode <= ops_NOP;																			
 			accumulator_n <= (others=>'0');
 --			offset <= "00";
@@ -1360,11 +1372,11 @@ begin
 			MEMdataout_X <= NOS;
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);
-			if delayed_RTS= '1' then
-				AuxControl_n(0 downto 0) <= "1";					-- decrement return stack pointer
-			else
+--			if delayed_RTS= '1' then
+--				AuxControl_n(0 downto 0) <= "1";					-- decrement return stack pointer
+--			else
 				AuxControl_n(0 downto 0) <= "0";
-			end if;			
+--			end if;			
 			AuxControl_n(1 downto 1) <= "0";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
@@ -1416,11 +1428,11 @@ begin
 			MEMdataout_X <= NOS;
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);	
-			if delayed_RTS= '1' then
-				AuxControl_n(0 downto 0) <= "1";					-- decrement return stack pointer
-			else
+--			if delayed_RTS= '1' then
+--				AuxControl_n(0 downto 0) <= "1";					-- decrement return stack pointer
+--			else
 				AuxControl_n(0 downto 0) <= "0";
-			end if;
+--			end if;
 			AuxControl_n(1 downto 1) <= "0";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
@@ -1446,11 +1458,11 @@ begin
 			MEMdataout_X <= NOS;
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);	
-			if delayed_RTS= '1' then
-				AuxControl_n(0 downto 0) <= "1";					-- decrement return stack pointer
-			else
+--			if delayed_RTS= '1' then
+--				AuxControl_n(0 downto 0) <= "1";					-- decrement return stack pointer
+--			else
 				AuxControl_n(0 downto 0) <= "0";
-			end if;
+--			end if;
 			AuxControl_n(1 downto 1) <= "0";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
