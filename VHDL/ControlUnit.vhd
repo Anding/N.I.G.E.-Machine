@@ -274,17 +274,15 @@ begin
 
 		when common =>																	-- common state executes most instructions in 1 clock cycle
 		
-		-- Next state logic		
-			if int_trig = '1' or retrap(0) = '1' then							-- interrupts and timed trap take first priority
-				state_n <= skip1;		-- skip2	
-			elsif branch = bps_BRA then											-- check branches next as they use the opcode bits for offsets
-				state_n <= skip1;		-- skip1				
-			elsif branch = bps_BEQ then				
-				state_n <= skip1; 	-- skip2
-			elsif opcode = ops_JSL then
-				state_n <= skip1;	--JSL_state;												-- return address is three bytes ahead of PC, need separate state to adjust
-			elsif opcode = ops_JSR or opcode = ops_JMP or opcode = ops_TRAP or opcode = ops_RETRAP then
-				state_n <= skip1;		-- skip2
+		-- Next state logic		-- interrupts and timed trap take first priority
+										-- check branches next as they use the opcode bits for offsets
+	
+			if int_trig = '1' or retrap(0) = '1' or 
+				branch = bps_BRA or branch = bps_BEQ or 
+				opcode = ops_JSL  or opcode = ops_JSR or opcode = ops_JMP or opcode = ops_TRAP or opcode = ops_RETRAP or
+				opcode = ops_byte or opcode = ops_word or opcode = ops_long or 
+				(opcode = ops_ifdup and equalzero = '0') then
+				state_n <= skip1;														
 			elsif opcode = ops_lfetch then
 				if chip_RAM = '1' then
 					state_n <= Sfetch_long;	
@@ -303,14 +301,6 @@ begin
 				else
 					state_n <= Dfetch_byte;
 				end if;	
---			elsif chip_RAM = '1' and (opcode = ops_CFETCH or opcode = ops_WFETCH or opcode = ops_LFETCH) then
---				state_n <= skip2;
---			elsif chip_RAM = '0' and opcode = ops_lfetch then
---				state_n <= Dfetch_long;	
---			elsif chip_RAM = '0' and opcode = ops_wfetch then
---				state_n <= Dfetch_word;
---			elsif chip_RAM = '0' and opcode = ops_cfetch then
---				state_n <= Dfetch_byte;	
 			elsif opcode = ops_LSTORE then
 				if chip_RAM = '1' then
 					state_n <= Sstore_long;
@@ -328,33 +318,9 @@ begin
 					state_n <= Sstore_byte;
 				else
 					state_n <= Dstore_byte;
-				end if;				
---			elsif chip_RAM = '1' and (opcode = ops_CSTORE or  opcode = ops_WSTORE or opcode = ops_LSTORE) then
---				state_n <= SRAM_store0;					
---			elsif chip_RAM = '0' and opcode = ops_lstore then
---				state_n <= Dstore_long;
---			elsif chip_RAM = '0' and opcode = ops_wstore then
---				state_n <= Dstore_word;					
---			elsif chip_RAM = '0' and opcode = ops_cstore then
---				state_n <= Dstore_byte;
-			elsif opcode = ops_byte then
-				state_n <= skip1;	--load_byte;
-			elsif opcode = ops_word then
-				state_n <= skip1;--load_word;
-			elsif opcode = ops_long then
-				state_n <= skip1;--load_long;				
---			elsif opcode = ops_long and branch /= bps_RTS then
---				state_n <= skip1;														-- extra cycle required since fetch is not wide enough to see beyond long literal
---			elsif opcode = ops_long and branch = bps_RTS then
---				state_n <= skip2;
-			elsif opcode = ops_ifdup and equalzero = '1' then
+				end if;							
+			elsif opcode = ops_ifdup then			-- and equalzero = '1' 
 				state_n <= ifdup;
-			elsif opcode = ops_ifdup and equalzero = '0' then 	
-				state_n <= skip1;
---			elsif opcode = ops_ifdup and equalzero = '0' and branch /= bps_RTS then 	
---				state_n <= skip1;
---			elsif opcode = ops_ifdup and equalzero = '0' and branch = bps_RTS then
---				state_n <= skip1;					-- skip2
 			elsif opcode = ops_SDIVMOD then
 				state_n <= sdivmod;		
 			elsif opcode = ops_UDIVMOD then
@@ -364,7 +330,7 @@ begin
 			elsif opcode = ops_UMULT then
 				state_n <= umult;
 			elsif branch = bps_RTS then											-- other RTS instructions									
-				state_n <= skip1;					-- skip2	
+				state_n <= skip1;	
 			else
 				state_n <= common;
 			end if;
@@ -373,58 +339,12 @@ begin
 			-- Memory write logic
 			MEMdataout_X <= NOS;											-- 32bit SRAM						
 			MEMdataout_Y <= NOS(7 downto 0);							-- 8bit PSDRAM access
---			if opcode = ops_LSTORE then								-- 16bit PSDRAM access
-				MEMdataout_Z <= NOS(31 downto 16);
---			else
---				MEMdataout_Z <= NOS(15 downto 0);
---			end if;
---			
---			if int_trig = '0' and opcode = ops_CSTORE then 		-- write request trigger
---				if chip_RAM = '1' then
---					MEM_WRQ_X_i <= '1';
---					MEM_WRQ_Y_i <= '0';
---					MEM_WRQ_Z_i <= '0';	
---				else
---					MEM_WRQ_X_i <= '0';
---					MEM_WRQ_Y_i <= '1';
---					MEM_WRQ_Z_i <= '0';						
---				end if;		
---			elsif int_trig = '0' and opcode = ops_WSTORE then
---				if chip_RAM = '1' then
---					MEM_WRQ_X_i <= '1';
---					MEM_WRQ_Y_i <= '0';
---					MEM_WRQ_Z_i <= '0';	
---				else
---					MEM_WRQ_X_i <= '0';
---					MEM_WRQ_Y_i <= '0';
---					MEM_WRQ_Z_i <= '1';						
---				end if;				
---			elsif int_trig = '0' and opcode = ops_LSTORE then	
---				if chip_RAM = '1' then
---					MEM_WRQ_X_i <= '1';
---					MEM_WRQ_Y_i <= '0';
---					MEM_WRQ_Z_i <= '0';	
---				else
---					MEM_WRQ_X_i <= '0';
---					MEM_WRQ_Y_i <= '0';
---					MEM_WRQ_Z_i <= '1';						
---				end if;	
---			else
-				MEMdataout_Z <= NOS(15 downto 0);
-				MEM_WRQ_X_i <= '0';
-				MEM_WRQ_Y_i <= '0';
-				MEM_WRQ_Z_i <= '0';
---			end if;
-			
-			-- Memory read logic
---			if int_trig = '0' and (opcode = ops_CFETCH or opcode = ops_CSTORE) then
---				MEMsize_X_n <= "01";														-- MEMsize_X is delayed one cycle to coincide with the one cycle delay in memory read or write
---			elsif int_trig = '0' and (opcode = ops_WFETCH or opcode = ops_WSTORE)  then
---				MEMsize_X_n <= "10";
---			else
---				MEMsize_X_n <= "11";
---			end if;
-			
+			MEMdataout_Z <= NOS(31 downto 16);
+			MEMdataout_Z <= NOS(15 downto 0);
+			MEM_WRQ_X_i <= '0';
+			MEM_WRQ_Y_i <= '0';
+			MEM_WRQ_Z_i <= '0';
+
 			if opcode = ops_BYTE then						
 				MEMsize_X_n <= "01";														
 			elsif opcode = ops_WORD then
@@ -433,27 +353,11 @@ begin
 				MEMsize_X_n <= "11";
 			end if;
 			
-			--MEMsize_Xp <= "11";
-			
---			if (int_trig = '0') and (chip_RAM = '0') and (opcode = ops_CFETCH) then
---				MEM_REQ_Y <= '1';
---			else
 			MEM_REQ_Y <= '0';
---			end if;
-			
---			if (int_trig = '0') and (chip_RAM = '0') and (opcode = ops_WFETCH or opcode = ops_LFETCH) then
---				MEM_REQ_Z <= '1';
---			else
 			MEM_REQ_Z <= '0';
---			end if;
-			
-			-- Memory address logic
---			if int_trig = '0' and (opcode = ops_CFETCH or opcode = ops_WFETCH or opcode = ops_LFETCH or
---				opcode = ops_CSTORE or opcode = ops_WSTORE or opcode = ops_LSTORE) then  
---				MEMaddr_i <= TOS;											
---			else																
+															
 			MEMaddr_i <= PC_addr;											
---			end if;	
+	
 
 			-- Program counter logic
 --			if int_trig = '1' then
@@ -557,18 +461,6 @@ begin
 						ucode <= ops_DROP;									-- drop the flag
 					when others =>
 						case opcode is
---							when ps_CSTORE =>
---								ucode <= ops_NOP;								-- need to surpress the microcode until the data is ready
---							when ops_WSTORE =>
---								ucode <= ops_NOP;
---							when ops_LSTORE =>	
---								ucode <= ops_NOP;
---							when ops_CFETCH =>
---								ucode <= ops_NOP;								
---							when ops_WFETCH =>
---								ucode <= ops_NOP;
---							when ops_LFETCH =>	
---								ucode <= ops_NOP;
 							when ops_SDIVMOD =>					-- suppress microcode until last cycle of these instructions
 								ucode <= ops_NOP;
 							when ops_UDIVMOD =>	
@@ -582,6 +474,7 @@ begin
 						end case;
 				end case;
 			end if;
+			
 --			if int_trig = '1' or opcode = ops_TRAP or retrap(0) = '1' then
 --				ucode <= ops_JSI;										-- interrupt microcode 
 --			elsif branch = bps_BRA then						
@@ -602,12 +495,8 @@ begin
 			-- Accumulator logic
 			accumulator_n <= (others=>'0');
 			
-			-- Data multiplexer logic
---			if opcode = ops_CFETCH or opcode = ops_WFETCH or opcode = ops_LFETCH then  
---				AuxControl_n(2 downto 1) <= "01";					-- setting for SRAM fetch											
---			else																
+			-- Data multiplexer logic														
 				AuxControl_n(1 downto 1) <= "0";					-- setting for SRAM fetch or load literal instructions										
---			end if;
 
 			-- Return stack control logic 
 			if (int_trig = '0') and (opcode = ops_RETRAP or branch = bps_RTS) then -- override on interrupt
