@@ -56,35 +56,34 @@ COMPONENT Microcode_ROM															-- storage of microcode in BLOCK RAM
 END COMPONENT;
 
 -- opcodes (bits 5 downto 0) of the instructions
-constant ops_NOP : std_logic_vector(5 downto 0):= (others=>'0');
-constant ops_DROP : std_logic_vector(5 downto 0) := CONV_STD_LOGIC_VECTOR(1,6);
-constant ops_IFDUP : std_logic_vector(5 downto 0) := CONV_STD_LOGIC_VECTOR(3,6);
-constant ops_INC : std_logic_vector(5 downto 0) := CONV_STD_LOGIC_VECTOR(18,6);
-constant ops_SMULT : std_logic_vector(5 downto 0) := CONV_STD_LOGIC_VECTOR(22,6);
-constant ops_UMULT : std_logic_vector(5 downto 0) := CONV_STD_LOGIC_VECTOR(23,6);
-constant ops_SDIVMOD : std_logic_vector(5 downto 0) := CONV_STD_LOGIC_VECTOR(26,6);
-constant ops_UDIVMOD : std_logic_vector(5 downto 0) := CONV_STD_LOGIC_VECTOR(27,6);
-constant ops_LFETCH : std_logic_vector(5 downto 0) := CONV_STD_LOGIC_VECTOR(47,6);
-constant ops_LSTORE : std_logic_vector(5 downto 0) := CONV_STD_LOGIC_VECTOR(48,6);
-constant ops_WFETCH : std_logic_vector(5 downto 0) := CONV_STD_LOGIC_VECTOR(49,6);
-constant ops_WSTORE : std_logic_vector(5 downto 0) := CONV_STD_LOGIC_VECTOR(50,6);
-constant ops_CFETCH : std_logic_vector(5 downto 0) := CONV_STD_LOGIC_VECTOR(51,6);
-constant ops_CSTORE : std_logic_vector(5 downto 0) := CONV_STD_LOGIC_VECTOR(52,6);
-constant ops_BYTE : std_logic_vector(5 downto 0) := CONV_STD_LOGIC_VECTOR(53,6);
-constant ops_WORD : std_logic_vector(5 downto 0) := CONV_STD_LOGIC_VECTOR(54,6);
-constant ops_LONG : std_logic_vector(5 downto 0) := CONV_STD_LOGIC_VECTOR(55,6);
-constant ops_JMP : std_logic_vector(5 downto 0) := CONV_STD_LOGIC_VECTOR(56,6);
-constant ops_JSL : std_logic_vector(5 downto 0) := CONV_STD_LOGIC_VECTOR(57,6);
-constant ops_JSR : std_logic_vector(5 downto 0) := CONV_STD_LOGIC_VECTOR(58,6);
-constant ops_TRAP : std_logic_vector(5 downto 0) := CONV_STD_LOGIC_VECTOR(59,6);
-constant ops_RETRAP : std_logic_vector(5 downto 0) := CONV_STD_LOGIC_VECTOR(60,6);
-constant ops_RTI : std_logic_vector(5 downto 0) := CONV_STD_LOGIC_VECTOR(61,6);
-constant ops_TEST : std_logic_vector(5 downto 0) := CONV_STD_LOGIC_VECTOR(63,6);
+constant ops_NOP : std_logic_vector(5 downto 0):= "000000";
+constant ops_DROP : std_logic_vector(5 downto 0) := "000001";
+constant ops_IFDUP : std_logic_vector(5 downto 0) := "000011";
+constant ops_INC : std_logic_vector(5 downto 0) := "010010";
+constant ops_SMULT : std_logic_vector(5 downto 0) := "010110";
+constant ops_UMULT : std_logic_vector(5 downto 0) := "010111";
+constant ops_SDIVMOD : std_logic_vector(5 downto 0) := "011010";
+constant ops_UDIVMOD : std_logic_vector(5 downto 0) := "011011";
+constant ops_LFETCH : std_logic_vector(5 downto 0) := "101111";
+constant ops_LSTORE : std_logic_vector(5 downto 0) := "110000";
+constant ops_WFETCH : std_logic_vector(5 downto 0) := "110001";
+constant ops_WSTORE : std_logic_vector(5 downto 0) := "110010";
+constant ops_CFETCH : std_logic_vector(5 downto 0) := "110011";
+constant ops_CSTORE : std_logic_vector(5 downto 0) := "110100";
+constant ops_BYTE : std_logic_vector(5 downto 0) := "110101";
+constant ops_WORD : std_logic_vector(5 downto 0) := "110110";
+constant ops_LONG : std_logic_vector(5 downto 0) := "110111";
+constant ops_JMP : std_logic_vector(5 downto 0) := "111000";
+constant ops_JSL : std_logic_vector(5 downto 0) := "111001";
+constant ops_JSR : std_logic_vector(5 downto 0) := "111010";
+constant ops_TRAP : std_logic_vector(5 downto 0) := "111011";
+constant ops_RETRAP : std_logic_vector(5 downto 0) := "111100";
+constant ops_RTI : std_logic_vector(5 downto 0) := "111101";
 
 -- internal opcodes used for microcode
-constant ops_PUSH : std_logic_vector(5 downto 0) :=  CONV_STD_LOGIC_VECTOR(59,6);
-constant ops_REPLACE  : std_logic_vector(5 downto 0) := CONV_STD_LOGIC_VECTOR(60,6);
-constant ops_JSI : std_logic_vector(5 downto 0) := CONV_STD_LOGIC_VECTOR(63,6);
+constant ops_PUSH : std_logic_vector(5 downto 0) :=  "111011";
+constant ops_REPLACE  : std_logic_vector(5 downto 0) := "111100";
+constant ops_JSI : std_logic_vector(5 downto 0) := "111111";
 
 -- branch codes (bits 7 downto 6) of the instructions
 constant bps_RTS : std_logic_vector(1 downto 0) := "01";
@@ -455,69 +454,150 @@ begin
 --			else																
 			MEMaddr_i <= PC_addr;											
 --			end if;	
+
+			-- Program counter logic
+--			if int_trig = '1' then
+--				PC_n <= int_vector_ext;												-- PC from external interrupt vector
+--			elsif retrap(0) = '1' then
+--				PC_n <= int_vector_TRAP;											-- PC from internal interrupt vector				
+--			elsif branch = bps_BRA then
+--				PC_n <= PC_branch;				
+--			elsif branch = bps_BEQ and equalzero = '1' then
+--				PC_n <= PC_branch;	
+--			elsif branch = bps_BEQ and equalzero = '0' then
+--				PC_n <= PC_plus;														-- write this as a special case to avoid misconstrued opcode
+--			elsif branch = bps_RTS then
+--				PC_n <= TORS(19 downto 0);											-- PC from Top Of Return Stack (also covers RTI and RETRAP, which include RTS by default)
+--			elsif opcode = ops_TRAP then
+--				PC_n <= int_vector_TRAP;											-- PC from internal interrupt vector					
+--			elsif opcode = ops_JSL then
+--				PC_n <= PC_jsl;									
+--			elsif opcode = ops_JSR or opcode = ops_JMP then
+--				PC_n <= TOS(19 downto 0);											-- PC from TOS	
+--			elsif opcode = ops_CFETCH or opcode = ops_WFETCH or opcode = ops_LFETCH or
+--				opcode = ops_SDIVMOD or opcode = ops_UDIVMOD or opcode = ops_IFDUP or
+--				opcode = ops_CSTORE or opcode = ops_WSTORE or opcode = ops_LSTORE or
+--				opcode = ops_SMULT or opcode = ops_UMULT then  										
+--				PC_n <= PC;																-- PC update is done on the final cycle of multi-cycle instructions
+--			elsif opcode = ops_word then
+--				PC_n <= PC_plus_two;
+--			elsif opcode = ops_long then
+--				PC_n <= PC_plus_four;
+--			else
+--				PC_n <= PC_plus;												
+--			end if;
 					
 			-- Program counter logic
 			if int_trig = '1' then
 				PC_n <= int_vector_ext;												-- PC from external interrupt vector
 			elsif retrap(0) = '1' then
-				PC_n <= int_vector_TRAP;											-- PC from internal interrupt vector				
-			elsif branch = bps_BRA then
-				PC_n <= PC_branch;				
-			elsif branch = bps_BEQ and equalzero = '1' then
---				if equalzero = '1' then
-				PC_n <= PC_branch;	
-			elsif branch = bps_BEQ and equalzero = '0' then
-				PC_n <= PC_plus;														-- write this as a special case to avoid misconstrued opcode
---				else
---					PC_n <= PC_skipbranch;
---				end if;
-			elsif branch = bps_RTS then
-				PC_n <= TORS(19 downto 0);											-- PC from Top Of Return Stack (also covers RTI and RETRAP, which include RTS by default)
-			elsif opcode = ops_TRAP then
-				PC_n <= int_vector_TRAP;											-- PC from internal interrupt vector					
-			elsif opcode = ops_JSL then
-				PC_n <= PC_jsl;									
-			elsif opcode = ops_JSR or opcode = ops_JMP then
-				PC_n <= TOS(19 downto 0);											-- PC from TOS	
-			elsif opcode = ops_CFETCH or opcode = ops_WFETCH or opcode = ops_LFETCH or
-				opcode = ops_SDIVMOD or opcode = ops_UDIVMOD or opcode = ops_IFDUP or
-				opcode = ops_CSTORE or opcode = ops_WSTORE or opcode = ops_LSTORE or
-				opcode = ops_SMULT or opcode = ops_UMULT then  										
-				PC_n <= PC;																-- PC update is done on the final cycle of multi-cycle instructions
-			elsif opcode = ops_word then
-				PC_n <= PC_plus_two;
-			elsif opcode = ops_long then
-				PC_n <= PC_plus_four;
+				PC_n <= int_vector_TRAP;											-- PC from internal interrupt vector			
 			else
-				PC_n <= PC_plus;												
-			end if;		
-			
-			-- Program counter next instruction offset logic
---			if opcode = ops_WORD then
---				offset <= "11";											
---			elsif opcode = ops_BYTE then
---				offset <= "10";											
---			else															-- all other multi-byte instructions are either multicycle (#.L) or change the PC directly (BRA, BEQ, JSL)	
---				offset <= "01";										-- next instruction found one byte after a single byte instructions 				
---			end if;	
-			
-			-- Microcode logic
-			if int_trig = '1' or opcode = ops_TRAP or retrap(0) = '1' then
-				ucode <= ops_JSI;										-- interrupt microcode 
-			elsif branch = bps_BRA then						
-				ucode <= ops_NOP;										-- avoid executing the high 6 bits of the branch offset as an opcode!
-			elsif branch = bps_BEQ then
-				ucode <= ops_DROP;									-- drop the flag
-			elsif opcode = ops_RTI or opcode = ops_TRAP or opcode = ops_RETRAP or retrap(0) = '1' then
-				ucode <= ops_NOP;										-- these instructions have no microcode but overlap with internal microcode
-			elsif opcode = ops_SDIVMOD or opcode = ops_UDIVMOD then
-				ucode <= ops_NOP;										-- suppress microcode until last cycle of these instructions
-			elsif (opcode = ops_CSTORE or opcode = ops_CFETCH or opcode = ops_WSTORE or   -- chip_RAM = '0' and 
-									   opcode = ops_WFETCH or opcode = ops_LSTORE or opcode = ops_LFETCH) then
-				ucode <= ops_NOP;										-- need to surpress the microcode until the data is ready				
-			else
-				ucode <= opcode;
+			   case branch is 
+					when bps_BEQ =>
+						if equalzero = '1' then
+							PC_n <= PC_branch;
+						else
+							PC_n <= PC_plus;		
+						end if;	
+					when bps_BRA =>
+						PC_n <= PC_branch;	
+					when bps_RTS =>
+						PC_n <= TORS(19 downto 0);									-- PC from Top Of Return Stack (also covers RTI and RETRAP, which include RTS by default)	
+					when others =>
+						case opcode is
+							when ops_TRAP =>
+								PC_n <= int_vector_TRAP;							-- PC from internal interrupt vector
+							when ops_JSL =>
+								PC_n <= PC_jsl;	
+							when ops_JSR =>
+								PC_n <= TOS(19 downto 0);		
+							when ops_JMP =>
+								PC_n <= TOS(19 downto 0);	
+							when ops_word =>
+								PC_n <= PC_plus_two;
+							when ops_long =>
+								PC_n <= PC_plus_four;
+							when ops_CFETCH =>
+								PC_n <= PC;											-- PC update is done on the final cycle of multi-cycle instructions
+							when ops_WFETCH =>
+								PC_n <= PC;
+							when ops_LFETCH =>
+								PC_n <= PC;
+							when ops_CSTORE =>
+								PC_n <= PC;
+							when ops_WSTORE =>
+								PC_n <= PC;
+							when ops_LSTORE =>
+								PC_n <= PC;
+							when ops_SDIVMOD =>
+								PC_n <= PC;
+							when ops_UDIVMOD =>
+								PC_n <= PC;	
+							when ops_SMULT =>
+								PC_n <= PC;
+							when ops_UMULT =>
+								PC_n <= PC;		
+							when ops_IFDUP =>
+								PC_n <= PC;										
+							when others =>
+								PC_n <= PC_plus;
+							end case;
+				end case;
 			end if;
+				
+			-- Microcode logic
+			if int_trig = '1' or retrap(0) = '1' then
+				ucode <= ops_JSI;												-- interrupt microcode 
+			else
+				case branch is
+					when bps_BRA =>
+						ucode <= ops_NOP;										-- avoid executing the high 6 bits of the branch offset as an opcode!
+					when bps_BEQ =>
+						ucode <= ops_DROP;									-- drop the flag
+					when others =>
+						case opcode is
+--							when ps_CSTORE =>
+--								ucode <= ops_NOP;								-- need to surpress the microcode until the data is ready
+--							when ops_WSTORE =>
+--								ucode <= ops_NOP;
+--							when ops_LSTORE =>	
+--								ucode <= ops_NOP;
+--							when ops_CFETCH =>
+--								ucode <= ops_NOP;								
+--							when ops_WFETCH =>
+--								ucode <= ops_NOP;
+--							when ops_LFETCH =>	
+--								ucode <= ops_NOP;
+							when ops_SDIVMOD =>					-- suppress microcode until last cycle of these instructions
+								ucode <= ops_NOP;
+							when ops_UDIVMOD =>	
+								ucode <= ops_NOP;	
+							when ops_RTI =>						-- these instructions have no microcode but overlap with internal microcode
+								ucode <= ops_NOP;
+							when ops_TRAP =>	
+								ucode <= ops_NOP;									
+						   when others =>
+								ucode <= opcode;
+						end case;
+				end case;
+			end if;
+--			if int_trig = '1' or opcode = ops_TRAP or retrap(0) = '1' then
+--				ucode <= ops_JSI;										-- interrupt microcode 
+--			elsif branch = bps_BRA then						
+--				ucode <= ops_NOP;										-- avoid executing the high 6 bits of the branch offset as an opcode!
+--			elsif branch = bps_BEQ then
+--				ucode <= ops_DROP;									-- drop the flag
+--			elsif opcode = ops_RTI or opcode = ops_TRAP or opcode = ops_RETRAP or retrap(0) = '1' then
+--				ucode <= ops_NOP;										-- these instructions have no microcode but overlap with internal microcode
+--			elsif opcode = ops_SDIVMOD or opcode = ops_UDIVMOD then
+--				ucode <= ops_NOP;										-- suppress microcode until last cycle of these instructions
+--			elsif (opcode = ops_CSTORE or opcode = ops_CFETCH or opcode = ops_WSTORE or   -- chip_RAM = '0' and 
+--									   opcode = ops_WFETCH or opcode = ops_LSTORE or opcode = ops_LFETCH) then
+--				ucode <= ops_NOP;										-- need to surpress the microcode until the data is ready				
+--			else
+--				ucode <= opcode;
+--			end if;
 
 			-- Accumulator logic
 			accumulator_n <= (others=>'0');
@@ -530,10 +610,12 @@ begin
 --			end if;
 
 			-- Return stack control logic 
-			if (opcode = ops_RETRAP) and (int_trig = '0') then	-- override on interrupt
+			if (int_trig = '0') and (opcode = ops_RETRAP or branch = bps_RTS) then -- override on interrupt
 				AuxControl_n(0 downto 0) <= "1";						-- decrement return stack pointer
-			elsif (branch = bps_RTS) and  (int_trig = '0') then
-				AuxControl_n(0 downto 0) <= "1";
+--			if (opcode = ops_RETRAP) and (int_trig = '0') then	-- override on interrupt
+--				AuxControl_n(0 downto 0) <= "1";						-- decrement return stack pointer
+--			elsif (branch = bps_RTS) and (int_trig = '0') then
+--				AuxControl_n(0 downto 0) <= "1";
 			else
 				AuxControl_n(0 downto 0) <= "0";
 			end if;
@@ -571,14 +653,9 @@ begin
 			end if;
 	
 		when ifdup =>											-- ifdup when TOS was zero
---			if delayed_RTS = '0' then
-				state_n <= common;
---			else
---				state_n <= skip1;
---			end if;
+			state_n <= common;
 			timer <= 0;
 			PC_n <= PC_plus;
---			offset <= "00";	
 			ucode <= ops_DROP;									-- DROP previously DUP'd value
 			accumulator_n <= (others=>'0');
 			MEMaddr_i <= PC_addr;	
@@ -591,7 +668,6 @@ begin
 			MEMdataout_Y <= NOS(7 downto 0);
 			MEMdataout_Z <= NOS(15 downto 0);
 			MEMsize_X_n <= "11";
-			--MEMsize_Xp <= "11";
 			AuxControl_n(0 downto 0) <= "0";
 			AuxControl_n(1 downto 1) <= "0";
 			ReturnAddress_n <= PC_addr;
