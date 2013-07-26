@@ -341,9 +341,9 @@ begin
 			elsif opcode = ops_byte then
 				state_n <= skip1;	--load_byte;
 			elsif opcode = ops_word then
-				state_n <= load_word;
+				state_n <= skip1;--load_word;
 			elsif opcode = ops_long then
-				state_n <= load_long;				
+				state_n <= skip1;--load_long;				
 --			elsif opcode = ops_long and branch /= bps_RTS then
 --				state_n <= skip1;														-- extra cycle required since fetch is not wide enough to see beyond long literal
 --			elsif opcode = ops_long and branch = bps_RTS then
@@ -465,7 +465,9 @@ begin
 				PC_n <= PC_branch;				
 			elsif branch = bps_BEQ and equalzero = '1' then
 --				if equalzero = '1' then
-					PC_n <= PC_branch;	
+				PC_n <= PC_branch;	
+			elsif branch = bps_BEQ and equalzero = '0' then
+				PC_n <= PC_plus;														-- write this as a special case to avoid misconstrued opcode
 --				else
 --					PC_n <= PC_skipbranch;
 --				end if;
@@ -482,6 +484,10 @@ begin
 				opcode = ops_CSTORE or opcode = ops_WSTORE or opcode = ops_LSTORE or
 				opcode = ops_SMULT or opcode = ops_UMULT then  										
 				PC_n <= PC;																-- PC update is done on the final cycle of multi-cycle instructions
+			elsif opcode = ops_word then
+				PC_n <= PC_plus_two;
+			elsif opcode = ops_long then
+				PC_n <= PC_plus_four;
 			else
 				PC_n <= PC_plus;												
 			end if;		
@@ -1327,7 +1333,12 @@ begin
 			retrap_n <= retrap;
 			delayed_RTS_n <= delayed_RTS;
 
-		when load_word =>										
+		when load_word =>	
+			if delayed_RTS= '1' then
+				state_n <= skip1;
+			else
+				state_n <= common;
+			end if;	
 			state_n <= skip1;
 			timer <= 0;
 			if delayed_RTS= '1' then
