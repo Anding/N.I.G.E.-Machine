@@ -130,7 +130,7 @@ signal MEMsize_X_n : STD_LOGIC_VECTOR (1 downto 0);
 signal delayed_RTS, delayed_RTS_n : STD_LOGIC;
 signal MEMaddr_i : STD_LOGIC_VECTOR (31 downto 0);	
 signal MEM_WRQ_X_i, MEM_WRQ_Y_i, MEM_WRQ_Z_i  : STD_LOGIC;
-signal opcode_m1 : std_logic_vector (5 downto 0);										-- opcode of prior clock cycle
+--signal opcode_m1 : std_logic_vector (5 downto 0);										-- opcode of prior clock cycle
 
 alias signbit is MEMdatain_X(29);
 
@@ -242,14 +242,14 @@ begin
 			retrap <= retrap_n;
 			MEMsize_X <= MEMsize_X_n;
 			delayed_RTS <= delayed_RTS_n;
-			opcode_m1 <= (others=>'0');
-									
+--			opcode_m1 <= (others=>'0');
+			AuxControl_i <= AuxControl_n;
+				
 			if (count >= timer) then 
 				count <= 0;	
-				AuxControl_i <= AuxControl_n;	
 				PC <= PC_n;													-- PC is updated only on the final cycle of multi-cycle opcode states
 				PC_m1 <= PC;												-- PC_m1 is PC of prior cycle, needed for branch and returns due to 1 stage pipeline	
-				opcode_m1 <= opcode;
+--				opcode_m1 <= opcode;
 			end if;	
 		else																	-- synchronous reset
 			count <= 0;
