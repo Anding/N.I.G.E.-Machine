@@ -739,7 +739,7 @@ begin
 			
 		when Sfetch_byte =>											
 			state_n <= skip1;																	
-			ucode <= opcode_m1;											
+			ucode <= ops_REPLACE;											
 			timer <= 0;
 			PC_n <= PC;
 --			offset <= "00";
@@ -765,7 +765,7 @@ begin
 			
 		when Sfetch_word =>											
 			state_n <= skip1;																	
-			ucode <= opcode_m1;											
+			ucode <= ops_REPLACE;											
 			timer <= 0;
 			PC_n <= PC;
 --			offset <= "00";
@@ -791,7 +791,7 @@ begin
 
 		when Sfetch_long =>											
 			state_n <= skip1;																	
-			ucode <= opcode_m1;									
+			ucode <= ops_REPLACE;									
 			timer <= 0;
 			PC_n <= PC;
 --			offset <= "00";
