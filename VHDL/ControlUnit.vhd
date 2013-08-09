@@ -526,9 +526,9 @@ begin
 			end if;
 			
 			-- Trap logic
-			if opcode = ops_RETRAP then
+			if opcode = ops_RETRAP and branch = "00" then
 				retrap_n <= "10";
-			elsif opcode = ops_TRAP then
+			elsif opcode = ops_TRAP and branch = "00" then
 				retrap_n <= "00";
 			else
 				retrap_n <= "0" & retrap(1);
