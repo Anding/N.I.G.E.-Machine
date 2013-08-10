@@ -2684,13 +2684,15 @@ D+.CF		#.w	intmask		; disable interrupts to protect ADDX flag
 		swap 
 		store.b
 ; D+ code
-		>R
-		SWAP
-		>R
-		+
-		R>
-		R>
-		ADDX
+		SWAP		( h2 l2 l1 h1)
+		>R		( h2 l2 l1 R: h1)
+		rot		( l2 l1 h2 R: h1)
+		>R		( l2 l1 R: h1 h2)
+		+		( l3 R: h1 h2)
+		R>		( l3 h2 R: h1)
+		R>		( l3 h2 h1)
+		ADDX		( l3 h3)
+		swap		( h3 l3)
 		R>
 		#.w	intmask
 		store.b
