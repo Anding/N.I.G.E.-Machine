@@ -3283,18 +3283,8 @@ WORD.2		nop
 		swap		( char n c-addr)
 		1-		( char n addr)
 		swap		( char addr n)
-		over		( char addr n addr)
-; debug
-		dup
-		#.b	8
-		jsl dump.cf
-;		
-		store.b	( char addr)
-; debug
-		dup
-		#.b	8
-		jsl dump.cf
-;				
+		over		( char addr n addr)		
+		store.b	( char addr)				
 WORD.Z		nip,rts	( addr)	
 ;	
 ; INTERPRET, interpert a line from the input buffer
