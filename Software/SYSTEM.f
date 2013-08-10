@@ -110,7 +110,7 @@ variable MEM.pointer		\ roving pointer to list of free memory blocks - Knuth's e
 : ALLOCATE ( u -- addr ior, allocate u bytes of memory, where u>0 )
 	32 max								\ minimum block allocation to reduce fragmentation
 	32 + >R 							\ need 32 extra bytes for tags in two blocks
-	MEM.pointer @ dup BEGIN			( rov ref R: u)	
+	MEM.pointer @ dup BEGIN			( rov ref R: u')	
 		dup LIST.VAL @ 			( rov ref sizeOfBlock R: u')
 		R@ U< not IF							\ suitable block is available
 			dup LIST.FWD MEM.pointer !					\ move roving pointer on on		
@@ -123,8 +123,8 @@ variable MEM.pointer		\ roving pointer to list of free memory blocks - Knuth's e
 		THEN
 		LIST.FWD				( rov addr' R: u')
 		over over = IF
-			R> drop
-			EXIT							\ complete cycle of the avail list
+			R>				( u' u')
+			EXIT							\ FAIL! complete cycle of the avail list
 		THEN
 	AGAIN
 ;
