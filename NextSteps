@@ -9,7 +9,8 @@ Upgrade FORTH system software
 	- SCREENMODE replaces VGA (0, VGA, 1 SVGA)
 	- COLORMODE to set 16/16 or 256/0 colormode (palette only needs to work in 256/0 colormode)
 - implement FORTH words corresponsing to register addresseses  (R_TEXTZERO, etc.)
-Devlopment tools
+;
+Development tools
 - Editor: complete implementation and testing
 - Revised disassembler
 Tweaks

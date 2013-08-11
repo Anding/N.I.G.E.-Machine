@@ -24,7 +24,7 @@
 ; **** HARDWARE REGISTERS ****
 ;
 TEXT_ZERO	equ	hex f800
-background	equ	hex f808
+BACKGROUND	equ	hex f808
 mode		equ	hex f80c
 RS232rx	equ	hex f810
 RS232tx	equ	hex f814
@@ -857,15 +857,20 @@ CSR-ON.NF	dc.b	6 128 +
 		dc.b	char N char O char - char R char S char C
 CSR-ON.SF	dc.w	CSR-ON.Z CSR-ON.CF del
 CSR-ON.CF	#.b	char _			( c)
+		#.w	PALETTE 4 +
+		fetch.b
+		#.w	256
+		multu
+		drop
+		or
 		jsl	CSR-ADDR.CF		
-		1+				( c addr)	; address of character
 		dup				( c addr addr)
-		fetch.b			( c addr char)
+		fetch.w			( c addr char)
 		#.w	CSR			( c addr char csr)
-		store.b			( c addr)
-CSR-ON.Z	store.b,rts		
-; saved byte underneath cursor
-CSR		dc.b	32
+		store.w			( c addr)
+CSR-ON.Z	store.w,rts		
+; saved color+character underneath cursor
+CSR		dc.w	0
 ;
 CSR-OFF.LF	dc.l	CSR-ON.NF
 CSR-OFF.NF	dc.b	7 128 +
@@ -874,8 +879,7 @@ CSR-OFF.SF	dc.w	CSR-OFF.Z CSR-ON.Z del
 CSR-OFF.CF	#.w	CSR
 		fetch.b			( char)
 		jsl	CSR-ADDR.CF		
-		1+				( char addr)
-CSR-OFF.Z	store.b,rts
+CSR-OFF.Z	store.w,rts
 ;
 ;SCROLL	(n -- flag, scroll the screen fwd or back n lines.  returns true if out of range)
 SCROLL.LF	dc.l	CSR-OFF.NF
@@ -932,11 +936,7 @@ CLS.SF		dc.w	CLS.Z CLS.CF	del
 CLS.CF		#.l	_TEXT_ZERO		( start start)		; clear screen memory	
 		dup
 		#.w	15000			( start start 15000)			; number of words in 2 screens
-		#.w	PALETTE 4 +
-		fetch.b
-		#.w 	256
-		multu				
-		drop				( start start 15000 color)		; fill word
+		zero				( start start 15000 color)		; fill word				
 		jsl	FILL.W.CF		( start)			
 		#.w	TEXT_ZERO					; reset pointer to TEXT_ZERO
 		store.l
@@ -1096,17 +1096,21 @@ CSR-TAB.CF	#.w	CSR-X
 		THEN
 CSR-TAB.Z	rts
 ;
-; VEMITRAW ( n --, emit a character to the VDU excluding non-printing recognition and cursor update)
-VEMITRAW.LF	dc.l	CSR-TAB.NF
-VEMITRAW.NF	dc.b	8 128 +
-		dc.s	VEMITRAW
-VEMITRAW.SF	dc.w	VEMITRAW.Z VEMITRAW.CF del
-VEMITRAW.CF	jsl	CSR-PLOT.CF		; plot
+; EMITRAW ( n --, emit a character to the VDU excluding non-printing recognition and cursor update)
+EMITRAW.LF	dc.l	CSR-TAB.NF
+EMITRAW.NF	dc.b	7 128 +
+		dc.s	EMITRAW
+EMITRAW.SF	dc.w	EMITRAW.Z EMITRAW.CF del
+EMITRAW.CF	jsl	CSR-PLOT.CF		; plot
 		jsl	CSR-FWD.CF		; advance cursor	
-VEMITRAW.Z	rts
+EMITRAW.Z	rts
 ;
-; {VEMIT} (n --, emit a character to the VDU including non-priniting recognition but excluding cursor update, internal word)
-{VEMIT}.CF 	#.b	EOL
+; VEMIT (n --, emit a character to the VDU including non-priniting recognition but excluding cursor update, internal word)
+VEMIT.LF	dc.l	EMITRAW.NF
+VEMIT.NF	dc.b	5 128 +
+		dc.b	char T char I char M char E char V
+		dc.w	VEMIT.Z VEMIT.CF del
+VEMIT.CF 	#.b	EOL
 		over
 		=
 		IF								; newline
@@ -1142,31 +1146,30 @@ VEMITRAW.Z	rts
 							drop
 							jsl	CLS.CF
 						ELSE				; other literal
-							jsl	VEMITRAW.CF		 ; emit the literal	
+							jsl	EMITRAW.CF		 ; emit the literal	
 						THEN
 					THEN
 				THEN
 			THEN
 		THEN
-		rts
-;
-; VEMIT ( n --, emit a character to the VDU, including non-printing recognition and cursor update)
-VEMIT.LF	dc.l	VEMITRAW.NF
-VEMIT.NF	dc.b	5 128 +
-		dc.b	char T char I char M char E char V
-		dc.w	VEMIT.Z VEMIT.CF del
-VEMIT.CF	jsl	CSR-OFF.CF					; undraw cursor
-		jsl	{VEMIT}.CF
-		jsl	CSR-ON.CF					; draw cursor
 VEMIT.Z	rts
 ;
-; VTYPERAW ( addr len, type to VDU, excluding non-printing recognition including cursor update)
-VTYPERAW.LF	dc.l	VEMIT.NF
-VTYPERAW.NF	dc.b	8 128 +
-		dc.b	char W char A char R char E char P char Y char T char V
-VTYPERAW.SF	dc.w	VTYPERAW.Z VTYPERAW.CF del
-VTYPERAW.CF	jsl	CSR-OFF.CF					; undraw cursor
-		?dup
+; VEMIT ( n --, emit a character to the VDU, including non-printing recognition and cursor update)
+;VEMIT.LF	dc.l	EMITRAW.NF
+;VEMIT.NF	dc.b	5 128 +
+;		dc.b	char T char I char M char E char V
+;		dc.w	VEMIT.Z VEMIT.CF del
+;VEMIT.CF	jsl	CSR-OFF.CF					; undraw cursor
+;		jsl	{VEMIT}.CF
+;		jsl	CSR-ON.CF					; draw cursor
+;VEMIT.Z	rts
+;
+; TYPERAW ( addr len, type to VDU, excluding non-printing recognition including cursor update)
+TYPERAW.LF	dc.l	VEMIT.NF
+TYPERAW.NF	dc.b	7 128 +
+		dc.b	char W char A char R char E char P char Y char T
+TYPERAW.SF	dc.w	TYPERAW.Z TYPERAW.CF del
+TYPERAW.CF	?dup
 		IF
 			over			( addr len addr)
 			+			( start end)
@@ -1174,19 +1177,17 @@ VTYPERAW.CF	jsl	CSR-OFF.CF					; undraw cursor
 			DO
 				R@
 				fetch.b
-				jsl	VEMITRAW.CF
+				jsl	EMITRAW.CF
 			LOOP
 		THEN
-		jsl	CSR-ON.CF					; draw cursor
-VTYPERAW.Z	rts
+TYPERAW.Z	rts
 ;
-; VTYPE ( addr len, type to VDU, including non-printing recognition and cursor update)
-VTYPE.LF	dc.l	VTYPERAW.NF
+; VTYPE ( addr len, type to VDU, including non-printing recognition)
+VTYPE.LF	dc.l	TYPERAW.NF
 VTYPE.NF	dc.b	5 128 +
 		dc.b	char E char P char Y char T char V
 VTYPE.SF	dc.w	VTYPE.Z VTYPE.CF del
-VTYPE.CF	jsl	CSR-OFF.CF					; undraw cursor
-		?dup
+VTYPE.CF	?dup
 		IF
 			over			( addr len addr)
 			+			( start end)
@@ -1194,10 +1195,9 @@ VTYPE.CF	jsl	CSR-OFF.CF					; undraw cursor
 			DO
 				R@
 				fetch.b
-				jsl	{VEMIT}.CF
+				jsl	VEMIT.CF
 			LOOP
 		THEN
-		jsl	CSR-ON.CF					; draw cursor
 VTYPE.Z	rts
 ;				
 ;COLOR-TABLE.LF dc.l	include.NF
@@ -1227,17 +1227,29 @@ VTYPE.Z	rts
 ; BACKGROUND ( n --, set the background color)
 BACKGROUND.LF	dc.l	VTYPE.NF
 BACKGROUND.NF	dc.b	10 128 +
-		dc.b	char D char N char U char O char R char G char K char C char A char B
+		dc.s	BACKGROUND
 BACKGROUND.SF	dc.w	BACKGROUND.Z BACKGROUND.CF del
-BACKGROUND.CF	#.w	background
+BACKGROUND.CF	#.w	BACKGROUND
 BACKGROUND.Z	store.b,rts
 ;
-; INTERLACE ( flag --, set interlace mode on or off)
-INTERLACE.LF	dc.l	BACKGROUND.NF
-INTERLACE.NF	dc.b	9 128 +
-		dc.b	char E char C char A char L char R char E char T char N char I
-INTERLACE.SF	dc.w	INTERLACE.Z INTERLACE.CF del
-INTERLACE.CF	#.w	mode
+;
+; COLOR ( n --, set the ink from the palette)
+COLOR.LF	dc.l	BACKGROUND.NF
+COLOR.NF	dc.b	5 128 +
+		dc.s	COLOR
+COLOR.SF	dc.w	COLOR.Z COLOR.CF del
+COLOR.CF	#.w	palette
+		+
+		fetch.b
+		#.w	INK
+COLOR.Z	store.b,rts
+;
+; SCREENMODE ( flag --, set interlace mode on or off)
+SCREENMODE.LF	dc.l	COLOR.NF
+SCREENMODE.NF	dc.b	10 128 +
+		dc.s	SCREENMODE
+SCREENMODE.SF	dc.w	SCREENMODE.Z SCREENMODE.CF del
+SCREENMODE.CF	#.w	mode
 		fetch.b
 		swap
 		IF
@@ -1250,14 +1262,14 @@ INTERLACE.CF	#.w	mode
 		#.w	mode
 		store.b	
 		jsl	SCRSET.CF
-INTERLACE.Z	rts
+SCREENMODE.Z	rts
 ;
-; VGA ( flag --. set SVGA mode on or off)
-VGA.LF	dc.l	INTERLACE.NF
-VGA.NF	dc.b	3 128 +
-		dc.b	char A char G char V 
-VGA.SF	dc.w	VGA.Z VGA.CF del
-VGA.CF		jsl	CLS.CF
+; SCREENSIZE ( flag --. set SVGA mode on or off)
+SCREENSIZE.LF	dc.l	SCREENMODE.NF
+SCREENSIZE.NF	dc.b	10 128 +
+		dc.s	SCREENSIZE
+SCREENSIZE.SF	dc.w	SCREENSIZE.Z SCREENSIZE.CF del
+SCREENSIZE.CF	jsl	CLS.CF
 		#.w	mode
 		fetch.b
 		swap
@@ -1271,10 +1283,29 @@ VGA.CF		jsl	CLS.CF
 		#.w	mode
 		store.b	
 		jsl	SCRSET.CF
-VGA.Z		rts
+SCREENSIZE.Z	rts
+;
+; COLORMODE ( flag --. set 16/16 or 256/0 color mode)
+COLORMODE.LF	dc.l	SCREENSIZE.NF
+COLORMODE.NF	dc.b	9 128 +
+		dc.s	COLORMODE
+COLORMODE.SF	dc.w	COLORMODE.Z COLORMODE.CF del
+COLORMODE.CF	#.w	mode
+		fetch.b
+		swap
+		IF
+			#.b	2
+			or
+		ELSE
+			#.b	253
+			and
+		THEN
+		#.w	mode
+		store.b	
+COLORMODE.Z	rts
 ;
 ;
-PALETTE.LF	dc.l	VGA.NF
+PALETTE.LF	dc.l	COLORMODE.NF
 PALETTE.NF	dc.b	7 128 +
 		dc.b	char E char T char T char E char L char A char P
 PALETTE.SF	dc.w	4
@@ -1336,16 +1367,7 @@ COLS.CF	#.w	COLS
 		rts
 COLS		dc.b	100
 ;
-TYPERAW.LF	dc.l	COLS.NF
-TYPERAW.NF	dc.b	7 128 +
-		dc.b	char W char A char R char E char P char Y char T
-TYPERAW.SF	dc.w	TYPERAW.Z TYPERAW.CF del
-TYPERAW.CF	#.w	TYPERAW_VECTOR
-		fetch.l
-		jsr
-TYPERAW.Z	rts
-;
->REMOTE.LF	dc.l	TYPERAW.NF
+>REMOTE.LF	dc.l	COLS.NF
 >REMOTE.NF	dc.b	7 128 +
 		dc.b	char E char T char O char M char E char R char >
 >REMOTE.SF	dc.w	>REMOTE.Z >REMOTE.CF del
@@ -1354,10 +1376,7 @@ TYPERAW.Z	rts
 		store.l
 		#.w	STYPE.CF
 		#.w	TYPE_VECTOR
-		store.l
-		#.w	STYPE.CF
-		#.w	TYPERAW_VECTOR
->REMOTE.Z	store.l,rts		
+>REMOTE.Z	store.l,rts	
 ;
 >LOCAL.LF	dc.l	>REMOTE.NF
 >LOCAL.NF	dc.b	6 128 +
@@ -1368,9 +1387,6 @@ TYPERAW.Z	rts
 		store.l
 		#.w	VTYPE.CF
 		#.w	TYPE_VECTOR
-		store.l
-		#.w	VTYPERAW.CF
-		#.w	TYPERAW_VECTOR
 >LOCAL.Z	store.l,rts	
 ;	
 <LOCAL.LF	dc.l	>LOCAL.NF
@@ -2465,7 +2481,9 @@ ACCEPT.0	over			( addr n u n)
 ACCEPT.1	beq 	ACCEPT.10 ACCEPT.1 rel	; reached maximum input length
 ;	receive next character
 		rot			( n u addr)
-		jsl 	KEY.CF		( n u addr char)			
+		jsl	CSR-ON.CF
+		jsl 	KEY.CF		( n u addr char)	
+		jsl	CSR-OFF.CF
 ;	test for LF
 		dup			( n u addr char char)
 		#.b 	EOL		; LF terminator
@@ -5519,7 +5537,6 @@ input_size		dc.l	_input_size	; length of input buffer (returned by SOURCE)
 input_size_a		dc.l	0		; used by SAVE-INPUT and RESTORE-INPUT
 COMPILEstackP		dc.l	_PAD		; pointer for the compiler stack
 TYPE_VECTOR		dc.l	VTYPE.CF	; VTYPE.CF
-TYPERAW_VECTOR 	dc.l	VTYPERAW.CF	; VTYPERAW.CF
 EMIT_VECTOR		dc.l	VEMIT.CF	; VEMIT.CF
 KEY_VECTOR		dc.l	KKEY.CF	; KKEY.CF
 KEY?_VECTOR		dc.l	KKEY?.CF	; KKEY?.CF
