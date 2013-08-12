@@ -1,9 +1,15 @@
 ;	N.I.G.E. Machine test suite
-;	20us test time
+;	30us test time
 ;
 sevenseg	equ	hex F830
-		ds.l	2
-		jsl	loadliteral
+		ds.l	2		; BLOCK RAM simulator bug
+		zero			; test branching
+		1+
+l0		beq	l1 l0 rel
+		zero
+l2		beq	l3 l2 rel
+l4		bra	l1 l4 rel		
+l3		jsl	loadliteral	; run test suite
 		jsl	llrts
 		jsl	fas
 		jsl	fasd
@@ -11,6 +17,12 @@ sevenseg	equ	hex F830
 		jsl	ifdup
 		jsl	multiply
 		jsl	divide
+		jsl	bincompare
+		jsl	uncompare
+		jsl	bitwise
+		jsl	stacks
+		jsl	arith
+		jsl	others
 		#.b	255
 		jsl	announce
 l1		bra	l1 l1	rel
@@ -185,6 +197,282 @@ divide		#.b	8
 		jmp
 divsub1	divu,rts
 divsub2	divs,rts	
+;
+; binary compare
+bincompare	#.b	9
+		jsl	announce
+		zero
+		#.w	bcmplist
+		#.w	bcmplist
+		DO
+			#.l	hex fffffffe
+			#.l	hex fffffffd
+			R@
+			jsr
+			1+
+			lsl
+			#.l	hex fffffffd
+			#.l	hex fffffffe
+			R@
+			jsr
+			1+
+			+
+			lsl
+			#.l	hex fffffffe
+			#.l	hex fffffffe
+			R@
+			jsr
+			1+
+			+
+			R@
+			#.w	bcmplist 
+			-
+			#.w	bresultlist
+			+
+			fetch.b
+			-
+			+
+		LOOP
+		#.w	assert
+		jmp
+bcmplist	=,rts
+		<>,rts
+		<,rts
+		>,rts
+		U<,rts
+bcmplistE	U>,rts
+bresultlist	dc.b	binary 110
+		dc.b	binary	001
+		dc.b	binary	011
+		dc.b	binary	101
+		dc.b	binary	101
+		dc.b	binary	011
+;
+; Unary compare
+uncompare	#.b	10
+		jsl 	announce
+		zero
+		#.w	ucmplist
+		#.w	ucmplist
+		DO
+			#.l	hex 1
+			R@
+			jsr
+			1+
+			lsl
+			#.l	hex 0
+			R@
+			jsr
+			1+
+			+
+			lsl
+			#.l	hex ffffffff
+			R@
+			jsr
+			1+
+			+
+			R@
+			#.w	ucmplist 
+			-
+			#.w	uresultlist
+			+
+			fetch.b
+			-
+			+
+		LOOP
+		#.w	assert
+		jmp
+ucmplist	0=,rts
+		0<>,rts
+		0<,rts
+ucmplistE	0>,rts
+uresultlist	dc.b	binary 101
+		dc.b	binary	010
+		dc.b	binary	110
+		dc.b	binary	011
+;
+; bitwise test
+bitwise	#.b	11
+		jsl	announce
+		#.l	hex ffffffff
+		invert
+		zero
+		#.l	hex ffffffff
+		and
+		+
+		#.l	hex 0000ffff
+		#.l	hex ffff0000
+		or
+		1+
+		+
+		#.l	hex ffffffff
+		#.l	hex ffffffff
+		xor
+		+
+		#.b	-1
+		xbyte
+		1+
+		+
+		#.w	-1
+		xword
+		1+
+		+
+		#.b	2
+		lsr
+		1-
+		+
+		#.b	1
+		lsl
+		1-
+		1-
+		+
+		#.w	assert
+		jmp
+;
+; Stacks
+stacks		#.b	12
+		jsl 	announce	
+		PSP@		; 1
+		PSP@
+		-
+		1+
+		#.b	1
+		#.b	2
+		zero
+		zero
+		PSP@
+		1-
+		PSP!
+		drop
+		drop
+		1-		; 2
+		+
+		RSP@
+		#.b	1
+		>R
+		RSP@
+		-
+		1+		; 3
+		+
+		#.b	2
+		>R
+		R@
+		1-
+		1-		; 4
+		+
+		zero
+		>R
+		zero
+		>R
+		RSP@
+		1-
+		RSP!
+		R>
+		drop
+		R>
+		drop
+		R>
+		1-	
+		+
+		#.w	assert
+		jmp
+;
+; arithmatic test
+arith    	#.b	13
+		jsl 	announce
+		#.l	hex	12345678
+		#.l	hex	aaaa0000
+		#.l	hex	00001111
+		#.l	hex	88888888	
+		jsl	D+sub
+		#.l	hex	33328888
+		-
+		swap
+		#.l	hex 	1234678A
+		-
+		+
+		#.l	hex	90005555
+		#.l	hex	44443333		
+		#.l	hex	00012222
+		#.l	hex	67890000	
+		jsl	D+sub
+		#.l	hex	abcd3333
+		-
+		swap
+		#.l	hex 	90017777
+		-
+		+
+		+
+		#.l	hex	12345678
+		#.l	hex	aaaa0000	
+		#.l	hex	00001111
+		#.l	hex	88888888	
+		jsl	D-sub
+		#.l	hex	22217778
+		-
+		swap
+		#.l	hex 	12344567
+		-
+		+
+		+
+		#.l	hex	90005555
+		#.l	hex	44443333		
+		#.l	hex	00012222
+		#.l	hex	67890000	
+		jsl	D-sub
+		#.l	hex	dcbb3333
+		-
+		swap
+		#.l	hex 	8fff3333
+		-
+		+
+		+
+		
+		#.w	assert
+		jmp
+; D+ code
+D+sub		SWAP		( h2 l2 l1 h1)
+		>R		( h2 l2 l1 R: h1)
+		rot		( l2 l1 h2 R: h1)
+		>R		( l2 l1 R: h1 h2)
+		+		( l3 R: h1 h2)
+		R>		( l3 h2 R: h1)
+		R>		( l3 h2 h1)
+		ADDX		( l3 h3)
+		swap,rts	( h3 l3)
+;
+; D- 	(ud1 ud2 -- ud3)  double precision arithmetic
+D-sub		>R		( h2 l2 h1 R: l1)
+		SWAP		( h2 h1 l2 R: l1)
+		>R		( h2 h1 R: l1 l2)
+		-		( h3 R: l1 l2)
+		R>		( h3 l2 R: l1)
+		R>		( h3 l2 l1)
+		SUBX,rts	( h3 l3)
+;
+; others	
+others		#.b	14
+		jsl 	announce
+		#.w	-1	
+		xword
+		negate
+		zero
+		#.b	-1
+		xbyte
+		nip
+		+
+		#.b	1
+		2*
+		1-
+		1-
+		+
+		#.b	2
+		2/
+		1-
+		+
+		#.w	assert
+		jmp
+;
 ; Announce a test
 announce	#.w	sevenseg
 		store.l
