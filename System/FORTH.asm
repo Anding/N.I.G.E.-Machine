@@ -1304,7 +1304,6 @@ COLORMODE.CF	#.w	mode
 		store.b	
 COLORMODE.Z	rts
 ;
-;
 PALETTE.LF	dc.l	COLORMODE.NF
 PALETTE.NF	dc.b	7 128 +
 		dc.b	char E char T char T char E char L char A char P
@@ -1318,7 +1317,23 @@ PALETTE	dc.b	55			; input (yellow)
 		dc.b	255			; cursor (white)
 		ds.b	11			; 11 more user colours in the palette
 ; 
-INK.LF		dc.l	PALETTE.NF
+; SCREENBASE ( -- addr) CONSTANT address of the pre-allocated screen buffer
+SCREENBASE.LF	dc.l	PALETTE.NF
+SCREENBASE.NF	dc.b	10 128 +
+		dc.s	SCREENBASE
+SCREENBASE.SF	dc.w	6
+SCREENBASE.CF	#.l	 _TEXT_ZERO
+		rts				; cannot use #.l,rts with inline compiler
+;
+; SCREENPLACE ( -- addr) VARIABLE address of the current screen buffer
+SCREENPLACE.LF	dc.l	SCREENBASE.NF
+SCREENPLACE.NF	dc.b	11 128 +
+			dc.s	SCREENPLACE
+SCREENPLACE.SF	dc.w	4
+SCREENPLACE.CF	#.w TEXT_ZERO
+			rts			; cannot use #.l,rts with inline compiler
+;
+INK.LF		dc.l	SCREENPLACE.NF
 INK.NF		dc.b	3 128 +
 		dc.b	char K char N char I
 INK.SF		dc.w	4
@@ -2757,7 +2772,7 @@ NUMBER?.CF	over			( c-addr1 u1 c-addr)
 		IF
 			negate		( n)
 		THEN
-NUMBER?.Z	#.b,rts	1		( n 1)
+NUMBER?.Z	#.b,rts	1		( n 1)		; #.b,rts safe as NOINLINE is set
 ;		
 ; HOLD		( char --, output a character)
 HOLD.LF	dc.l	NUMBER?.NF
