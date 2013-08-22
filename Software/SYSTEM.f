@@ -388,15 +388,21 @@ FILE.LIST LIST.INIT
 
 : RESIZE-FILE ( uD fileid - ior)
 	>R drop 	 			( n R:fileid)		\ convert double to single
-	FAT.size2space R@ 36 + @ over	( space addr1 space R:fileid)
-	resize					( space addr2 ior R:fileid)
-	0= IF
-		R@ 36 + !						\ new buffer address
-		R> 32 + !						\ new size allocation
-		0				( ior)
-	ELSE
-		R> drop drop drop -1		( ior)
-	THEN
+	dup R@ 32 + @ 			( n n allocated R:fileid)
+	> IF								\ check if need more space
+		dup FAT.size2space R@ 36 + @ over	( n space addr1 space R:fileid)
+		resize					( n space addr2 ior R:fileid)
+		0= IF
+			R@ 36 + !						\ new buffer address
+			R@ 32 + !						\ new space allocation
+		ELSE						
+			R> drop drop drop drop -1	( ior)			\ resize memory failed
+			EXIT				
+		THEN
+	THEN					( n R:fileid)
+	R@ 12 + !							\ new file size
+	R> 8 + @ 4 or R@ 8 + !					\ write modified flag
+	0					( ior)
 ;
 
 : READ-FILE ( addr u1 fileid -- u2 ior, read u1 characters and store at addr, return u2 the number of characters sucessfully read)
@@ -439,12 +445,12 @@ FILE.LIST LIST.INIT
 ;
 	  
 : WRITE-FILE ( addr u fileid -- ior)
-	>R R@ 28 + @ over over +  		( addr u oldPos newPos R:fileid)	
-	dup R@ 32 + @ > IF			( addr u oldPos newPos R:fileid) 	\ check allocated space overrun
+	>R R@ 28 + @ over over +  		( addr u oldPos newPos R:fileid)
+	dup R@ 12 + @ > IF			( addr u oldPos newPos R:fileid) 	\ check for need to resize file
 		dup 0 R@ RESIZE-FILE							\ RESIZE-FILE takes uD size argument
 	THEN
 	dup R@ 28 + !				( addr u oldpos newPos R:fileid)	\ update FILE-POSITION
-	R@ 12 + @ max R@ 12 + !		( addr u oldpos R:fileid)		\ update FILE-SIZE
+\	R@ 12 + @ max R@ 12 + !		( addr u oldpos R:fileid)		\ update FILE-SIZE - now handled by RESIZE-FILE
 	R@ 8 + @ 4 or R@ 8 + !		( addr u oldpos R:fileid)		\ write modified flag
 	R> 36 + @ + 				( addrS u addrD)
 	swap move				
