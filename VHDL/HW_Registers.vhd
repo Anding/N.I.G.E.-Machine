@@ -37,6 +37,7 @@ entity HW_Registers is
 			  counter_clk : in std_logic_vector(31 downto 0);		-- 32 bit clock timer
 			  ssData	: out std_logic_vector(15 downto 0);			-- data for seven segment display
 			  SW	: in std_logic_vector(7 downto 0);					-- switches onboard Nexys2
+			  VBLANK : in std_logic;										-- VGA vertical blank
 			  -- CPU system memory channel
 			  en : in STD_LOGIC;													-- Enable is set by board level logic depending on higher bit of 
 																											-- the address to enable this piece of memory when it is addressed	  
@@ -74,6 +75,7 @@ architecture Behavioral of HW_Registers is
 	signal PS2_data_r : std_logic_vector(7 downto 0);
 	signal SD_status_r : std_logic_vector(3 downto 0);
 	signal SD_datain_r : std_logic_vector(7 downto 0);
+	signal VBLANK_r : std_logic;
 	
 	signal dataout_i : STD_LOGIC_VECTOR (31 downto 0);
 	
@@ -190,6 +192,7 @@ begin
 		PS2_data_r <= PS2_data;
 		SD_status_r <= SD_status;
 		SD_datain_r <= SD_datain;
+		VBLANK_r <= VBLANK;
 	--end process;
 	
 		dataout <= dataout_i;
@@ -242,6 +245,9 @@ begin
 
 				when x"40"	=>										-- SD status
 					dataout_i	<= blank3 & "0000" & SD_status_r;
+					
+				when x"48"	=>										-- VGA vertical blank
+					dataout_i	<= blank3 & "0000000" & VBLANK_r;
 
 				when others =>
 					dataout_i <= (others=>'0');

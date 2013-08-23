@@ -23,6 +23,7 @@ entity VGA is
            VSync : out  STD_LOGIC;
 			  start_VGA : out  STD_LOGIC;								-- triggers for DMA to access first line of memory
 			  start_TXT : out  STD_LOGIC;	
+			  VBLANK	: out STD_LOGIC;									-- vertical blank
 			  RGB : out  STD_LOGIC_VECTOR (7 downto 0)
 			  );
 end VGA;
@@ -52,6 +53,7 @@ begin
 	addr_Char <= addressChar;
 	start_VGA <= vblk1m_i and (not RESET) and (mode(2));
 	start_TXT <= vblk1m_i and (not RESET) and (mode(0));
+	VBLANK <= vblk1m_i;
 	
 	with mode(3) select 															-- select the interlace mode
 		height <= "1001" when '1',

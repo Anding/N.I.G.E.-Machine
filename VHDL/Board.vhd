@@ -127,14 +127,8 @@ signal dinb_sysram : std_logic_vector(31 downto 0);
 signal MEMdata_Sys, MEMdata_Sys_plus : std_logic_vector(31 downto 0);
 signal MEMdata_Sys_quick : std_logic_vector(31 downto 0);
 signal MEMsize_X, MEMsize_Xp : std_logic_vector(1 downto 0);
---signal MEMsize_X_s : std_logic_vector(1 downto 0);
---signal MEMaddr_s :  std_logic_vector(31 downto 0);
---signal MEMdataout_X_s :  std_logic_vector(31 downto 0);
---signal MEM_WRQ_XX_s : std_logic_vector(0 downto 0);
---signal boot_active : std_logic;
 signal ram_en : std_logic;
---type ram_en_control_T is (reset_state, enable, disable);
---signal ram_en_control, ram_en_control_n : ram_en_control_T;
+signal VBLANK : std_logic;
 
 	COMPONENT DCM6
 	PORT(
@@ -199,7 +193,7 @@ begin
 	end process;
 	
 	ms_irq <= '1' when timer_ms = "0000000000000000" else '0';
-	--ms_irq <= '1' when timer_ms(5 downto 0) = "100000" else '0';
+	--ms_irq <= '1' when timer_ms(5 downto 0) = "100000" else '0';  -- for debugging interupt handling
 	
 	-- board level memory logic  
 	 MEM_WRQ_XX(0) <= MEM_WRQ_X;	
@@ -222,29 +216,7 @@ begin
 	 Char_EN <= '1' when bank_n = Char else '0';
 	 Reg_EN <= '1' when bank_n = Reg else '0';
 	 Sys_EN <= '1' when bank_n = Sys else '0'; 
-	 
---	process
---	begin
---		wait until rising_edge (clk_2xsys);
---		if reset = '1' then
---			ram_en_control <= reset_state;
---		else
---			ram_en_control <= ram_en_control_n;
---		end if;
---	end process;
---	
---	process (ram_en_control)
---	begin
---		case ram_en_control is
---			when enable =>
---				ram_en_control_n <= disable;
---			when others =>
---				ram_en_control_n <= enable;
---		end case;
---	end process;
-	
-	ram_en <= '1';-- when (ram_en_control = enable) or (Boot_we = "1") else '0';
-
+	 ram_EN <= '1';
 	 
 	 with bank select														-- one cycle delayed to switch output
 		MEMdatain_Xi <= MEMdata_Pstack when Pstack,
@@ -257,7 +229,6 @@ begin
 	 wea_sysram <= wea_sysram_s when Boot_we = "0" else boot_we;
 	 dina_sysram <= dina_sysram_s when Boot_we = "0" else boot_data;
 	 addra_sysram <= addra_sysram_s when Boot_we = "0" else boot_addr(15 downto 2);	 
-	 		
 	 		
 	inst_Pstack_RAM : entity work.Pstack_RAM
 	  PORT MAP (
@@ -295,12 +266,10 @@ begin
 		en => SYS_EN,
 		ADDR => MEMaddr,
 		size => MEMsize_X,
-		--size_plus => MEMsize_Xp,
 		WE => MEM_WRQ_XX,
 		DATA_in => MEMdataout_X,
 		DATA_out => MEMdata_Sys,
 		DATA_out_quick => MEMdata_Sys_quick,
-		--DATA_out_plus => MEMdata_Sys_plus,
 		wea => wea_sysram_s,
 		addra => addra_sysram_s,
 		dina => dina_sysram_s,
@@ -326,13 +295,13 @@ begin
 
 	  inst_SYS_RAM : entity work.Sys_RAM
 	  PORT MAP (
-		 clka => clk_system,--clk_2xsys,
+		 clka => clk_system,
 		 ena => ram_en,
 		 wea => wea_sysram,
 		 addra => addra_sysram (15 downto 2),					-- write depth 12032, 15downto2
 		 dina => dina_sysram,
 		 douta => douta_sysram,
-		 clkb => clk_system,--clk_2xsys,
+		 clkb => clk_system,
 		 enb => ram_en,
 		 web => web_sysram,
 		 addrb => addrb_sysram (15 downto 2),
@@ -366,7 +335,6 @@ begin
 	  
 	  inst_HW_Registers: entity work.HW_Registers PORT MAP(
 		clk => CLK_SYSTEM,
-		--clk2x => CLK_SYSTEM,--clk_2xsys,
 		rst => reset,
 		irq_mask => irq_mask,
 		gfx_zero => gfx_zero,
@@ -394,7 +362,8 @@ begin
 		SD_status => SD_status,
 		SD_control => SD_control,
 		SD_wr => SD_wr,
-		SD_divide => SD_divide
+		SD_divide => SD_divide,
+		VBLANK => VBLANK
 	);
 	
 		inst_CPU: entity work.CPU PORT MAP(
@@ -414,10 +383,8 @@ begin
 		MEMaddr => MEMaddr,
 		MEMdatain_X => MEMdatain_Xi,
 		MEMdatain_X_quick => MEMdata_Sys_quick,
-		--MEMdatain_X_plus => MEMdata_Sys_plus,
 		MEMdataout_X => MEMdataout_X,
 		MEMsize_X => MEMsize_X,
-		--MEMsize_Xp => MEMsize_Xp,
 		MEM_WRQ_X => MEM_WRQ_X,
 		MEMdatain_Y => MEMdatain_Y,
 		MEMdataout_Y => MEMdataout_Y,
@@ -494,6 +461,7 @@ begin
 		VSync => VSync,
 		start_VGA => start_VGA,
 		start_TXT => start_TXT,
+		VBLANK => VBLANK,
 		RGB => RGB
 	);	
 	
