@@ -40,7 +40,8 @@ sevenseg	equ	hex f830
 SPI.data	equ	hex f838  
 SPI.control	equ	hex f83C  
 SPI.status	equ	hex f840  
-SPI.divide	equ	hex f844  
+SPI.divide	equ	hex f844 
+VBLANK		equ	hex f8f8 
 ;
 ; **** MEMORY MAP ****
 ;
@@ -947,8 +948,25 @@ CLS.CF		#.l	_TEXT_ZERO		( start start)		; clear screen memory
 		#.w	CSR-Y
 CLS.Z		store.l,rts
 ;
+; VBLANK ( --, wait for a VGA vertical blank)
+VBLANK.LF	dc.l	CLS.NF
+VBLANK.NF	dc.b	6 128 +
+		dc.S	VBLANK
+VBLANK.SF	dc.w	VBLANK.Z VBLANKCF del
+VBLANK.CF	#.w	VBLANK
+		BEGIN							; wait for 0 to ensure we get a full interval
+			dup
+			fetch.b
+			0=
+		UNTIL
+		BEGIN							; wait for 1 
+			dup
+			fetch.b
+		UNTIL
+VBLANK.Z	drop,rts
+;
 ; SCRSET ( --, set the ROWS and COLS according to the video mode)
-SCRSET.LF	dc.l	CLS.NF
+SCRSET.LF	dc.l	VBLANK.NF
 SCRSET.NF	dc.b	6 128 +
 		dc.b	char T char E char S char R char C char S
 SCRSET.SF	dc.w	SCRSET.Z SCRSET.CF del
