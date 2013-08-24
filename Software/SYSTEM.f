@@ -387,12 +387,13 @@ FILE.LIST LIST.INIT
 ;
 
 : RESIZE-FILE ( uD fileid - ior)
-	>R drop 	 			( n R:fileid)		\ convert double to single
+	>R drop 	 			( n R:fileid)			\ convert double to single
 	dup R@ 32 + @ 			( n n allocated R:fileid)
-	> IF								\ check if need more space
-		dup FAT.size2space R@ 36 + @ over	( n space addr1 space R:fileid)
-		resize					( n space addr2 ior R:fileid)
-		0= IF
+	> IF					( n R:fileid)			\ check if need more space
+		dup FAT.size2space 		( n space)
+		R@ 36 + @ over		( n space addr1 space R:fileid)
+		resize				( n space addr2 ior R:fileid)
+		0= IF				( n space addr2 R:fileid)
 			R@ 36 + !						\ new buffer address
 			R@ 32 + !						\ new space allocation
 		ELSE						
@@ -400,8 +401,8 @@ FILE.LIST LIST.INIT
 			EXIT				
 		THEN
 	THEN					( n R:fileid)
-	R@ 12 + !							\ new file size
-	R> 8 + @ 4 or R@ 8 + !					\ write modified flag
+	R@ 8 + @ 4 or R@ 8 + !					\ write modified flag	
+	R> 12 + !							\ new file size
 	0					( ior)
 ;
 
@@ -447,9 +448,9 @@ FILE.LIST LIST.INIT
 : WRITE-FILE ( addr u fileid -- ior)
 	>R R@ 28 + @ over over +  		( addr u oldPos newPos R:fileid)
 	dup R@ 12 + @ > IF			( addr u oldPos newPos R:fileid) 	\ check for need to resize file
-		dup 0 R@ RESIZE-FILE							\ RESIZE-FILE takes uD size argument
+		dup 0 R@ RESIZE-FILE	drop						\ RESIZE-FILE takes uD size argument
 	THEN
-	dup R@ 28 + !				( addr u oldpos newPos R:fileid)	\ update FILE-POSITION
+	R@ 28 + !				( addr u oldpos R:fileid)		\ update FILE-POSITION
 \	R@ 12 + @ max R@ 12 + !		( addr u oldpos R:fileid)		\ update FILE-SIZE - now handled by RESIZE-FILE
 	R@ 8 + @ 4 or R@ 8 + !		( addr u oldpos R:fileid)		\ write modified flag
 	R> 36 + @ + 				( addrS u addrD)
