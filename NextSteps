@@ -1,14 +1,14 @@
 EUROFORTH
 - PPT presentation
-Tweaks
-- Editor: handle tab correctly
-- assembler BRA to work with destination and PC only (no from label or rel)
-- revise instruction set ordering
 Documentation
 - Reference manual includes FORTH word definitions
 - Instruction set
 - Memory map
 - Register usage
+Tweaks
+- Editor: handle tab correctly
+- assembler BRA to work with destination and PC only (no from label or rel)
+- revise instruction set ordering
 ATLYS board
 - Implement DVI and DRAM interfaces
 - Port to ATLYS
