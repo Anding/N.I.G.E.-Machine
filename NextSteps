@@ -1,14 +1,7 @@
-Complete testing and debugging of N.I.G.E. v2.0
-- Build test routine package
-	- check test routine in hardware
-;
-Development tools (TOOLS.F)
-- Editor: complete implementation and testing
-- Revised disassembler
 EUROFORTH
 - PPT presentation
 Tweaks
-- test VSYNC word
+- Editor: handle tab correctly
 - assembler BRA to work with destination and PC only (no from label or rel)
 - revise instruction set ordering
 Documentation
