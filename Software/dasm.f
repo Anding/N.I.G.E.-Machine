@@ -132,7 +132,7 @@ STRINGTABLE DASM.lookup-ops
 			THEN
 			xword
 			dup 9 emit .
-			over + 9 emit 40 emit u. 41 emit
+			over + 9 emit 9 emit u.
 		ELSE				\ not a branch
 			dup 64 =			( end addr n rtsFLAG)
 			IF
@@ -151,7 +151,7 @@ STRINGTABLE DASM.lookup-ops
 						54 OF 1+ dup w@ 9 emit u. 1+ ENDOF				\ load.w 
 						55 OF 1+ dup  @ 9 emit u. 3 + ENDOF			\ load.l
 						57 OF dup @ 16777215 and dup 9 emit u.			\ jsl
-							.' IF 9 emit 40 emit type 41 emit THEN						
+							.' IF 9 emit type THEN						
 							3 + ENDOF		
 						\ 58 OF t1 @ .' IF 9 emit 9 emit 40 emit type 41 emit THEN ENDOF	\ #.w followed by JSR
 					ENDCASE	( end addr')
@@ -175,7 +175,7 @@ STRINGTABLE DASM.lookup-ops
 : SEE
 	' dup SIZEOF dup		( xt size size)
 	rot swap DASM			( size)
-	. " bytes of code" cr	\ tell the length of code for this WORD
+	. ." code bytes" cr	\ tell the length of code for this WORD
 ;
 
 		
