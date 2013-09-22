@@ -420,28 +420,29 @@ FILE.LIST LIST.INIT
 
 \ update CR and LF characters below for different line ending specifications
 : READ-LINE ( addr u1 fileid -- u2 flag ior)
-	>R over swap						( addrS addr u1 R:fileid)
-	R@ 12 + @						( addrS addr u1 filesize  R:fileid)
-	R@ 28 + @						( addrS addr u1 filesize fileposition R:fileid)
+	>R >R 0 over R>					( addrS count addr u1 R:fileid)
+	R@ 12 + @						( addrS count addr u1 filesize  R:fileid)
+	R@ 28 + @						( addrS count addr u1 filesize fileposition R:fileid)
 	- ?dup IF												\ unread characters available	
-		min						( addrS addr u2 R:fileid)
-		R@ 36 + @ R@ 28 + @ + swap over + swap DO	( addrS addr R:LOOP fileid)
-			i c@ dup 10 = IF			( addrS addr c R:LOOP fileid)		\ LF - end
-				drop i UNLOOP			( addrS addr lastRead R:fileid)
-				R@ 36 + @ - 1+ R> 28 + !	( addrS addr newPos R: LOOP fileid)	\ update FILE-POSITION					
+		min						( addrS count addr u2 R:fileid)
+		R@ 36 + @ R@ 28 + @ + swap over + swap DO	( addrS count addr R:LOOP fileid)
+			swap 1+ swap				( addrS count addr R:LOOP fileid)	\ update count of characters read
+			i c@ dup 10 = IF			( addrS count addr c R:LOOP fileid)	\ LF - end
+				drop UNLOOP			( addrS count addr R:fileid)
+				swap R> 28 + +!		( addrS addr ) 				\ update FILE-POSITION					
 				swap - -1 0 EXIT		( u2 true ior)
 			THEN
 			dup 13 = IF
-				drop								\ CR - ignore
+				drop										\ CR - ignore
 			ELSE
-				over c! 1+							\ ordinary character - copy then increment addr
+				over c! 1+									\ ordinary character - copy then increment addr
 			THEN
-		LOOP										\ end of file
-		R@ 12 + @ R> 28 + !								\ FILE-POSITION = FILE-SIZE
+		LOOP						( addrS count addr R:fileid)	\ end of file or end of buffer
+		swap R> 28 + +!				( addrS addr) 			\ update FILE-POSITION
 		swap - -1 0					( u2 true ior)	
 
 	ELSE							\ if FILE-POSITION = FILE-SIZE before executing READ-LINE, ior=0 and flag=false
-		R> drop drop drop drop 0 0 0 		( 0 false ior)	
+		R> drop drop drop drop drop 0 0 0 		( 0 false ior)	
 	THEN
 ;
 	  
