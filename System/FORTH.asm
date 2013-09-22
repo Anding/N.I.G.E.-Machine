@@ -1032,11 +1032,12 @@ NEWLINE.CF	#.w	CSR-Y
 				swap
 				-					( s-addr bytes)
 				2/					( s-addr words)					
-				#.w	PALETTE 4 +				; set input color (to high byte of fill word)				
-				fetch.b					
-				#.w	256
-				multu
-				drop
+;				#.w	PALETTE 4 +				; set input color (to high byte of fill word)				
+;				fetch.b					
+;				#.w	256
+;				multu
+;				drop
+				zero						; blank color
 				jsl	FILL.W.CF				; clear remaining screen memory
 				#.l	_TEXT_ZERO			; Step 3 is to reset pointer to TEXT_ZERO	
 				#.w	TEXT_ZERO			
@@ -4895,7 +4896,7 @@ DO.LF		dc.l	REPEAT.NF
 DO.NF		dc.b	2 128 + IMMED +
 		dc.b 	char O char D
 DO.SF		dc.w	DO.Z DO.CF del 1 +
-DO.CF		#.w	DO0.RUN		; code to set flag for an uncoditional loop
+DO.CF		#.w	DO0.RUN			; code to set flag for an uncoditional loop
 DO.Z		bra	{DO}.CF DO.Z rel		
 ;
 ?DO.LF		dc.l	DO.NF
@@ -4908,27 +4909,31 @@ DO.Z		bra	{DO}.CF DO.Z rel
 ; {DO} common to DO and ?DO  - internal word
 {DO}.CF	jsl	COMPILE,.CF			; code to set flag for IF
 		#.w	DO1.RUN			; code to initialize return stack
-		jsl	COMPILE,.CF					
-		jsl	pushHERE.CF			; place origin of forward branch on compile stack
+		jsl	COMPILE,.CF	
+		zero
+		jsl	pushCONTROL.CF		; place control structure spacer on compile stack		
+		#.w	HERE_	
+		fetch.l
+		jsl	pushCONTROL.CF		; place origin of forward branch on compile stack
 		#.w	opBEQ				; compile BEQ for forward branch
 		jsl	W,.CF						
 		#.w	HERE_				; save destination for backward branch from LOOP/+LOOP
 {DO}.Z		fetch.l,rts
 ;
-DO0.SF		dc.w	DO0.Z DO0.RUN del
-DO0.RUN	zero		( limit index 0)
+DO0.SF		dc.w	DO0.Z DO0.RUN del		; must be compiled inline
+DO0.RUN	zero		( limit index 0)	; initialization code for do
 		0=		( limit index -1)
 		rot		( index -1 limit)
 DO0.Z		rot,rts	( -1 limit index)
 ;
 DO1.SF		dc.w	DO1.Z DO1.RUN del		; must be compiled inline
-DO1.RUN	swap		( flag index limit)
+DO1.RUN	swap		( flag index limit)	; common code for do and ?do
 		>R		( flag index R:limit)
 		>R		( flag R:limit index)
 DO1.Z		rts
 ;
-DO2.SF		dc.w	DO2.Z DO2.RUN del
-DO2.RUN	over		( limit index limit)
+DO2.SF		dc.w	DO2.Z DO2.RUN del		; must be compiled inline	
+DO2.RUN	over		( limit index limit)	; initialization code for ?do
 		over		( limit index limit index)
 		<>		( limit index flag)
 		rot		( indes flag limit)
@@ -4952,21 +4957,24 @@ LOOP.Z		bra	{LOOP}.CF LOOP.Z rel
 {LOOP}.CF	jsl	COMPILE,.CF				; code to add/increment and test loop paramaters
 		jsl	UNTIL.CF				; conditional backwards branch to DO
 		#.w	COMPILESTACKP				; compile forward branch to LEAVE's (including implicit conditional LEAVE before DO)
-		dup			( &P &P)
-		fetch.l		( &P limit)
-		#.l	_PAD		( &P limit index)
-		rot			( limit index &P)
-		over			( limit index &P index)
-		swap			( limit index index &P)
-		store.l		( limit index)	; reset pointer to start of the compile stack
-		DO
-			R@		( pstack)
-			fetch.l	( dest)
-			jsl	THEN.CF		
-			#.b	4	( 4)
-		+LOOP
+		>R			( R:&P)
+		R@			( &P R:&P)
+		fetch.l		( P R:&P)
+		BEGIN		
+			dup		( P P R:&P)
+			fetch.l	( P dest R:&P)
+			swap		( dest P R:&P)
+			#.b	4	( dest P 4 R:&P)	
+			-		( dest P` R:&P)	; working from top of stack to bottom (LIFO)
+			swap		( p dest R:&P)
+			?dup		( P dest dest | P 0 R:&P)
+		WHILE			( P dest R:&P)	; check for control structure separator zero
+			jsl THEN.CF	( P R:&P)
+		REPEAT			( P R:&P)
+		R>			( P &P)
+		store.l
 		#.w	UNLOOP.CF				; code to remove loop parameters
-		jsl	COMPILE,.CF
+		jsl	COMPILE,.CF		
 {LOOP}.Z	rts
 ;
 ; LOOP1 ( R: limit index), increment and test loop paramaters	
@@ -5011,24 +5019,39 @@ LEAVE.LF	dc.l	UNLOOP.NF
 LEAVE.NF	dc.b	5 128 + IMMED +
 		dc.b	char E char V char A char E char L
 LEAVE.SF	dc.w	LEAVE.Z LEAVE.CF del
-LEAVE.CF	jsl	pushHERE.CF
+LEAVE.CF	#.w	HERE_	
+		fetch.l
+		jsl	pushCONTROL.CF			; push HERE to the controlSTACK
 		#.w	opBRA					; compile BRA for forward branch
 		jsl	W,.CF			
 LEAVE.Z	rts
 ;
+; pushCONTROL ( n --), push a number onto the COMPILEstack - internal word
+pushCONTROL.CF #.w	COMPILEstackP	( n &P)
+		>R			( n R:&P)
+		R@			( n &P R:&P)
+		fetch.l		( n P R:&P)		
+		#.b	4		( n P 4 R:&P)
+		+			( n P` R:&P)		
+		swap			( P n R:&P)
+		over			( P n P R:&P)
+		store.l		( P R:&P)
+		R>			( P' &P)
+		store.l,rts
+;		
 ;pushHERE, place HERE on COMPILEstack  - internal word
-pushHERE.CF	#.w	COMPILEstackP	( &P)			; save HERE to COMPILE stack
-		dup	( &P &P)
-		>R	( &P R:&P)
-		fetch.l	( P R:&P)
-		#.w	HERE_	( P &HERE R:&P)	
-		fetch.l	( P HERE R:&P)		
-		over		( P HERE P R:&P)
-		store.l	( P R:&P)
-		#.b	4
-		+		( P' R:&P)
-		R>		( P' &P)			; increment COMPILEstack pointer
-		store.l,rts	
+;pushHERE.CF	#.w	COMPILEstackP	( &P)			; save HERE to COMPILE stack
+;		dup	( &P &P)
+;		>R	( &P R:&P)
+;		fetch.l	( P R:&P)
+;		#.w	HERE_	( P &HERE R:&P)	
+;		fetch.l	( P HERE R:&P)		
+;		over		( P HERE P R:&P)
+;		store.l	( P R:&P)
+;		#.b	4
+;		+		( P' R:&P)
+;		R>		( P' &P)			; increment COMPILEstack pointer
+;		store.l,rts	
 ;		
 ; CASE, mark the start of a CASE...OF..ENDOF...ENDCASE structure
 CASE.LF	dc.l	LEAVE.NF
