@@ -1,0 +1,18 @@
+Documentation
+- Reference manual includes FORTH word definitions
+- Instruction set
+- Memory map
+- Register usage
+Tweaks
+- assembler BRA to work with destination and PC only (no from label or rel)
+- revise instruction set ordering
+ATLYS board
+- Implement DVI and DRAM interfaces
+- Port to ATLYS
+New features
+- Floating point
+- Local variables
+- Multitasking
+- Test and set operation ( addr -- flag)
+- FORTH scientific library
+- 100MHz clock at the expense of one cycle more memory latency?
