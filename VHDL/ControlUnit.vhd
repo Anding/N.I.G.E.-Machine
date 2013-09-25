@@ -220,12 +220,11 @@ begin
 		-- Next state logic		-- interrupts and timed trap take first priority
 										-- check branches next as they use the opcode bits for offsets
 	
-			if int_trig = '1' or retrap(0) = '1' or 
-				branch = bps_BRA or branch = bps_BEQ or 
-				opcode = ops_JSL  or opcode = ops_JSR or opcode = ops_JMP or opcode = ops_TRAP or opcode = ops_RETRAP or
-				opcode = ops_byte or opcode = ops_word or opcode = ops_long or 
-				(opcode = ops_ifdup and equalzero = '0') then
-				state_n <= skip1;														
+			if int_trig = '1' or retrap(0) = '1' or branch = bps_BRA or branch = bps_BEQ 
+--				or opcode = ops_JSL  or opcode = ops_JSR or opcode = ops_JMP or opcode = ops_TRAP or opcode = ops_RETRAP or
+--				opcode = ops_byte or opcode = ops_word or opcode = ops_long or 
+--				(opcode = ops_ifdup and equalzero = '0') 
+				then state_n <= skip1;														
 			elsif opcode = ops_lfetch then
 				if chip_RAM = '1' then
 					state_n <= Sfetch_long;	
@@ -262,7 +261,7 @@ begin
 				else
 					state_n <= Dstore_byte;
 				end if;							
-			elsif opcode = ops_ifdup then			-- and equalzero = '1' 
+			elsif opcode = ops_ifdup and equalzero = '1' then  
 				state_n <= ifdup;
 			elsif opcode = ops_SDIVMOD then
 				state_n <= sdivmod;		
@@ -273,6 +272,8 @@ begin
 			elsif opcode = ops_UMULT then
 				state_n <= umult;
 			elsif branch = bps_RTS then											-- other RTS instructions									
+				state_n <= skip1;	
+			elsif opcode >= 52 then 
 				state_n <= skip1;	
 			else
 				state_n <= common;
