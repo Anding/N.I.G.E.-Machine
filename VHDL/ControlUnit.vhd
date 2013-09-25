@@ -54,32 +54,32 @@ END COMPONENT;
 -- opcodes (bits 5 downto 0) of the instructions
 constant ops_NOP : std_logic_vector(5 downto 0):= "000000";
 constant ops_DROP : std_logic_vector(5 downto 0) := "000001";
-constant ops_IFDUP : std_logic_vector(5 downto 0) := "000011";
-constant ops_INC : std_logic_vector(5 downto 0) := "010010";
-constant ops_SMULT : std_logic_vector(5 downto 0) := "010110";
-constant ops_UMULT : std_logic_vector(5 downto 0) := "010111";
-constant ops_SDIVMOD : std_logic_vector(5 downto 0) := "011010";
-constant ops_UDIVMOD : std_logic_vector(5 downto 0) := "011011";
-constant ops_LFETCH : std_logic_vector(5 downto 0) := "101111";
-constant ops_LSTORE : std_logic_vector(5 downto 0) := "110000";
-constant ops_WFETCH : std_logic_vector(5 downto 0) := "110001";
-constant ops_WSTORE : std_logic_vector(5 downto 0) := "110010";
-constant ops_CFETCH : std_logic_vector(5 downto 0) := "110011";
-constant ops_CSTORE : std_logic_vector(5 downto 0) := "110100";
-constant ops_BYTE : std_logic_vector(5 downto 0) := "110101";
-constant ops_WORD : std_logic_vector(5 downto 0) := "110110";
-constant ops_LONG : std_logic_vector(5 downto 0) := "110111";
-constant ops_JMP : std_logic_vector(5 downto 0) := "111000";
-constant ops_JSL : std_logic_vector(5 downto 0) := "111001";
-constant ops_JSR : std_logic_vector(5 downto 0) := "111010";
-constant ops_TRAP : std_logic_vector(5 downto 0) := "111011";
-constant ops_RETRAP : std_logic_vector(5 downto 0) := "111100";
-constant ops_RTI : std_logic_vector(5 downto 0) := "111101";
+constant ops_IFDUP : std_logic_vector(5 downto 0) := "110011";
+constant ops_INC : std_logic_vector(5 downto 0) := "010001";
+constant ops_SMULT : std_logic_vector(5 downto 0) := "101001";
+constant ops_UMULT : std_logic_vector(5 downto 0) := "101010";
+constant ops_SDIVMOD : std_logic_vector(5 downto 0) := "101011";
+constant ops_UDIVMOD : std_logic_vector(5 downto 0) := "101100";
+constant ops_LFETCH : std_logic_vector(5 downto 0) := "101101";
+constant ops_LSTORE : std_logic_vector(5 downto 0) := "101110";
+constant ops_WFETCH : std_logic_vector(5 downto 0) := "101111";
+constant ops_WSTORE : std_logic_vector(5 downto 0) := "110000";
+constant ops_CFETCH : std_logic_vector(5 downto 0) := "110001";
+constant ops_CSTORE : std_logic_vector(5 downto 0) := "110010";
+constant ops_BYTE : std_logic_vector(5 downto 0) := "110100";
+constant ops_WORD : std_logic_vector(5 downto 0) := "110101";
+constant ops_LONG : std_logic_vector(5 downto 0) := "110110";
+constant ops_JMP : std_logic_vector(5 downto 0) := "110111";
+constant ops_JSL : std_logic_vector(5 downto 0) := "111000";
+constant ops_JSR : std_logic_vector(5 downto 0) := "111001";
+constant ops_TRAP : std_logic_vector(5 downto 0) := "111010";
+constant ops_RETRAP : std_logic_vector(5 downto 0) := "111011";
+constant ops_RTI : std_logic_vector(5 downto 0) := "111100";
 
 -- internal opcodes used for microcode
-constant ops_PUSH : std_logic_vector(5 downto 0) :=  "111011";
-constant ops_REPLACE  : std_logic_vector(5 downto 0) := "111100";
-constant ops_JSI : std_logic_vector(5 downto 0) := "111111";      -- replace with ops_JSL
+constant ops_PUSH : std_logic_vector(5 downto 0) :=  "111101";
+constant ops_REPLACE  : std_logic_vector(5 downto 0) := "111110";
+constant ops_JSI : std_logic_vector(5 downto 0) := "111000";      -- replace with ops_JSL
 
 -- branch codes (bits 7 downto 6) of the instructions
 constant bps_RTS : std_logic_vector(1 downto 0) := "01";

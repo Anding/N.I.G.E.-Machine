@@ -163,66 +163,70 @@
 1 0 INSTRUCTION _NOP
 1 1 INSTRUCTION _DROP
 1 2 INSTRUCTION _DUP
-1 3 INSTRUCTION _?DUP
-1 4 INSTRUCTION _SWAP
-1 5 INSTRUCTION _OVER
-1 6 INSTRUCTION _NIP
-1 7 INSTRUCTION _ROT
-1 8 INSTRUCTION _>R
-1 9 INSTRUCTION _R@
-1 9 INSTRUCTION _I		\ loop counter
-1 10 INSTRUCTION _R>
-1 11 INSTRUCTION _PSP@
-1 12 INSTRUCTION _RSP@
-1 13 INSTRUCTION _PSP!
-1 14 INSTRUCTION _RSP!
-1 15 INSTRUCTION _+
-1 16 INSTRUCTION _-
-1 17 INSTRUCTION _NEGATE
-1 18 INSTRUCTION _1+
-1 19 INSTRUCTION _1-
-1 20 INSTRUCTION _2*
-1 21 INSTRUCTION _2/
-1 22 INSTRUCTION _MULTS
-1 23 INSTRUCTION _MULTU
-1 24 INSTRUCTION _ADDX
-1 25 INSTRUCTION _SUBX
-1 26 INSTRUCTION _DIVS
-1 27 INSTRUCTION _DIVU
-1 28 INSTRUCTION _=
-1 29 INSTRUCTION _<>
-1 30 INSTRUCTION _<
-1 31 INSTRUCTION _>
-1 32 INSTRUCTION _U<
-1 33 INSTRUCTION _U>
-1 34 INSTRUCTION _0=
-1 34 INSTRUCTION _NOT	\ boolean logical NOT
-1 35 INSTRUCTION _0<>
-1 36 INSTRUCTION _0<
-1 37 INSTRUCTION _0>
-1 38 INSTRUCTION _FALSE
-1 38 INSTRUCTION _ZERO	\ ZERO is equivalent to FALSE
-1 39 INSTRUCTION _AND
-1 40 INSTRUCTION _OR
-1 41 INSTRUCTION _INVERT
-1 42 INSTRUCTION _XOR
-1 43 INSTRUCTION _LSL
-1 44 INSTRUCTION _LSR
-1 45 INSTRUCTION _XBYTE
-1 46 INSTRUCTION _XWORD
-1 47 INSTRUCTION _FETCH.L
-1 48 INSTRUCTION _STORE.L
-1 49 INSTRUCTION _FETCH.W
-1 50 INSTRUCTION _STORE.W
-1 51 INSTRUCTION _FETCH.B
-1 52 INSTRUCTION _STORE.B
-1 56 INSTRUCTION _JMP
-1 58 INSTRUCTION _JSR
-1 59 INSTRUCTION _TRAP
-1 124 INSTRUCTION _RETRAP	\ RETRAP always includes RTS
-1 125 INSTRUCTION _RTI	\ RTI always includes RTS
-1 63 INSTRUCTION _TEST
+1 3 INSTRUCTION _SWAP
+1 4 INSTRUCTION _OVER
+1 5 INSTRUCTION _NIP
+1 6 INSTRUCTION _ROT
+1 7 INSTRUCTION _>R
+1 8 INSTRUCTION _R@
+1 8 INSTRUCTION _I		\ I is equivalent to R@
+1 9 INSTRUCTION _R>
+1 10 INSTRUCTION _PSP@
+1 11 INSTRUCTION _RSP@
+1 12 INSTRUCTION _PSP!
+1 13 INSTRUCTION _RSP!
+
+1 14 INSTRUCTION _+
+1 15 INSTRUCTION _-
+1 16 INSTRUCTION _NEGATE
+1 17 INSTRUCTION _1+
+1 18 INSTRUCTION _1-
+1 19 INSTRUCTION _2/
+1 20 INSTRUCTION _ADDX
+1 21 INSTRUCTION _SUBX
+
+1 22 INSTRUCTION _=
+1 23 INSTRUCTION _<>
+1 24 INSTRUCTION _<
+1 25 INSTRUCTION _>
+1 26 INSTRUCTION _U<
+1 27 INSTRUCTION _U>
+1 28 INSTRUCTION _0=
+1 28 INSTRUCTION _NOT	\ NOT is equivalent to 0=
+1 29 INSTRUCTION _0<>
+1 30 INSTRUCTION _0<
+1 31 INSTRUCTION _0>
+1 32 INSTRUCTION _ZERO	
+1 32 INSTRUCTION _FALSE	\ FALSE is equivalent to ZERO
+
+1 33 INSTRUCTION _AND
+1 34 INSTRUCTION _OR
+1 35 INSTRUCTION _INVERT
+1 36 INSTRUCTION _XOR
+1 37 INSTRUCTION _LSL
+1 37 INSTRUCTION _2*		\ 2* is equivalent to LSL
+1 38 INSTRUCTION _LSR
+1 39 INSTRUCTION _XBYTE
+1 40 INSTRUCTION _XWORD
+
+1 41 INSTRUCTION _MULTS
+1 42 INSTRUCTION _MULTU
+1 43 INSTRUCTION _DIVS
+1 44 INSTRUCTION _DIVU
+1 45 INSTRUCTION _FETCH.L
+1 46 INSTRUCTION _STORE.L
+1 47 INSTRUCTION _FETCH.W
+1 48 INSTRUCTION _STORE.W
+1 49 INSTRUCTION _FETCH.B
+1 50 INSTRUCTION _STORE.B
+1 51 INSTRUCTION _?DUP
+
+1 55 INSTRUCTION _JMP
+1 57 INSTRUCTION _JSR
+1 58 INSTRUCTION _TRAP
 1 64 INSTRUCTION _RTS
+1 123 INSTRUCTION _RETRAP	\ RETRAP always includes RTS
+1 124 INSTRUCTION _RTI	\ RTI always includes RTS
 
 \ Helper routines that break values into byte by byte on the stack
 
@@ -258,12 +262,12 @@
 	if                              					\ pass 2
 		eval-expr
 		push-triple							\ place on stack as 3 bytes
-		57					( d c b a 55)		\ opcode
-		4					( d c b a 55 4)	\ size                      
+		56					( d c b a 56)		\ JSL
+		4					( d c b a 56 4)	\ size                      
 	else                            					\ pass 1
 		4  		                   				\ size = 4
 		\ update instruction count
-		instruction-count 57 4 * + 1 swap +!
+		instruction-count 56 4 * + 1 swap +!
 	then
 ;
 
@@ -271,12 +275,12 @@
 	if                              					\ pass 2
 		eval-expr
 		push-long							\ place on stack as 4 bytes
-		55					( d c b a 55)		\ opcode
-		5					( d c b a 55 5)	\ size                      
+		54					( d c b a 54)		\ #.L
+		5					( d c b a 54 5)	\ size                      
 	else                            					\ pass 1
 		5  		                   				\ size = 5
 		\ update instruction count
-		instruction-count 55 4 * + 1 swap +!
+		instruction-count 54 4 * + 1 swap +!
 	then
 ;
 
@@ -288,11 +292,11 @@
 	if									\ pass 2
 		eval-expr
 		push-word							\ place on stack as 2 bytes
-		54
+		53								\ #.W
 		3                       	
 	else									\ pass 1
 		\ update instruction count
-		instruction-count 54 4 * + 1 swap +!
+		instruction-count 53 4 * + 1 swap +!
 		3 
 	then
 ;
@@ -305,11 +309,11 @@
 	if									\ pass 2
 		eval-expr	
 		push-byte							\ place on stack as a byte 
-		53
+		52								\ #.B
 		2                      	
 	else									\ pass 1
 		\ update instruction count
-		instruction-count 53 4 * + 1 swap +!
+		instruction-count 52 4 * + 1 swap +!
 		2 
 	then
 ;
@@ -515,7 +519,7 @@
 	flow-pointer++				( pass pointer)
 	swap
 	if									\ pass 2
-		8 8 4 					( >R >R swap)
+		7 7 3 					\ >R >R swap
 		3					( code.. size)
 	else									\ pass 1
 		dup					( pointer pointer)
@@ -539,10 +543,10 @@
 \ R> R> drop drop ( -- R: --)
 	if									\ pass 2
 		>R
-	       1 1 10 10
+	       1 1 9 9				\ DROP DROP R> R>
 		R>					( code.. pointer)
 		make-BEQ	
-		8 4 34 30 9 2 18 10		
+		7 3 28 24 8 2 17 9			\ >R SWAP 0= < R@ DUP 1+ R>
 		14					( code.. size)
 	else									\ pass 1
 		\ update instruction count
@@ -567,10 +571,10 @@
 \ R> R> drop drop ( -- R: --)
 	if									\ pass 2
 		>R
-		1 1 10 10	
+		1 1 9 9				\ DUP DUP R> R>
 		R>					( code.. pointer)
 		make-BEQ	
-		8 4 34 30 9 2 15 10
+		7 3 28 24 8 2 14 9			\ >R SWAP 0= < R@ DUP + R>
 		14					( code.. size)
 	else									\ pass 1
 		\ update instruction count
@@ -583,7 +587,8 @@
 
 : _UNLOOP
 	if									\ pass 2
-		1 1 10 10 4				( code .. size)
+		1 1 9 9 				\ DUP DUP R> R>
+		4					( code .. size)
 	else
 		4					( size)
 	then
@@ -591,7 +596,8 @@
 
 : _J
 	if
-		8 8 7 7 9 10 10 7			( code .. size)
+		7 7 6 6 8 9 9 			\ >R >R ROT ROT R@ R> >R
+		7					( code .. size)
 	else
 		7					( size)
 	then
