@@ -376,10 +376,10 @@ begin
 								ucode <= ops_NOP;
 							when ops_UDIVMOD =>	
 								ucode <= ops_NOP;	
-							when ops_RTI =>						-- these instructions have no microcode but overlap with internal microcode
-								ucode <= ops_NOP;
-							when ops_TRAP =>	
-								ucode <= ops_NOP;									
+--							when ops_RTI =>						-- these instructions have no microcode but overlap with internal microcode
+--								ucode <= ops_NOP;
+--							when ops_TRAP =>	
+--								ucode <= ops_NOP;									
 						   when others =>
 								ucode <= opcode;
 						end case;
