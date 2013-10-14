@@ -273,7 +273,7 @@ begin
 				state_n <= umult;
 			elsif branch = bps_RTS then											-- other RTS instructions									
 				state_n <= skip1;	
-			elsif opcode >= 52 then 
+			elsif opcode >= 51 then 
 				state_n <= skip1;	
 			else
 				state_n <= common;
