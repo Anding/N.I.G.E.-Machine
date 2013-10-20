@@ -40,7 +40,6 @@ STRINGTABLE DASM.lookup-ops
 ," NOP"
 ," DROP"
 ," DUP"
-," ?DUP"
 ," SWAP"
 ," OVER"
 ," NIP"
@@ -57,14 +56,9 @@ STRINGTABLE DASM.lookup-ops
 ," NEGATE"
 ," 1+"
 ," 1-"
-," 2*"
 ," 2/"
-," MULTS"
-," MULTU"
 ," ADDX"
 ," SUBX"
-," DIVS"
-," DIVU"
 ," ="
 ," <>"
 ," <"
@@ -75,7 +69,7 @@ STRINGTABLE DASM.lookup-ops
 ," 0<>"
 ," 0<"
 ," 0>"
-," FALSE"
+," ZERO"
 ," AND"
 ," OR"
 ," INVERT"
@@ -84,15 +78,20 @@ STRINGTABLE DASM.lookup-ops
 ," LSR"
 ," XBYTE"
 ," XWORD"
+," MULTS"
+," MULTU"
+," DIVS"
+," DIVU"
 ," FETCH.L"
 ," STORE.L"
 ," FETCH.W"
 ," STORE.W"
 ," FETCH.B"
 ," STORE.B"
-," #.B "
-," #.W "
-," #.L "
+," ?DUP"
+," #.B"
+," #.W"
+," #.L"
 ," JMP"
 ," JSL"
 ," JSR"
@@ -101,8 +100,7 @@ STRINGTABLE DASM.lookup-ops
 ," RTI"
 ," --"
 ," --"
-
-\ VARIABLE t1	\ store latest load literal here
+," --"
 
 \ DASM ( addr n --) disassemble n bytes starting at addr
 : DASM
@@ -147,13 +145,12 @@ STRINGTABLE DASM.lookup-ops
 					drop
 				ELSE			
 					CASE		( end addr n)
-						53 OF 1+ dup c@ 9 emit u. ENDOF				\ load.b  \ dup t1 !
-						54 OF 1+ dup w@ 9 emit u. 1+ ENDOF				\ load.w 
-						55 OF 1+ dup  @ 9 emit u. 3 + ENDOF			\ load.l
-						57 OF dup @ 16777215 and dup 9 emit u.			\ jsl
+						52 OF 1+ dup c@ 9 emit u. ENDOF				\ load.b  \ dup t1 !
+						53 OF 1+ dup w@ 9 emit u. 1+ ENDOF				\ load.w 
+						54 OF 1+ dup  @ 9 emit u. 3 + ENDOF			\ load.l
+						56 OF dup @ 16777215 and dup 9 emit u.			\ jsl
 							.' IF 9 emit type THEN						
 							3 + ENDOF		
-						\ 58 OF t1 @ .' IF 9 emit 9 emit 40 emit type 41 emit THEN ENDOF	\ #.w followed by JSR
 					ENDCASE	( end addr')
 				THEN		
 			THEN

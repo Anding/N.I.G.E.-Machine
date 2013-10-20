@@ -221,9 +221,9 @@ begin
 										-- check branches next as they use the opcode bits for offsets
 	
 			if int_trig = '1' or retrap(0) = '1' or branch = bps_BRA or branch = bps_BEQ 
---				or opcode = ops_JSL  or opcode = ops_JSR or opcode = ops_JMP or opcode = ops_TRAP or opcode = ops_RETRAP or
---				opcode = ops_byte or opcode = ops_word or opcode = ops_long or 
---				(opcode = ops_ifdup and equalzero = '0') 
+				or opcode = ops_JSL  or opcode = ops_JSR or opcode = ops_JMP or opcode = ops_TRAP or opcode = ops_RETRAP or
+				opcode = ops_byte or opcode = ops_word or opcode = ops_long or 
+				(opcode = ops_ifdup and equalzero = '0') 
 				then state_n <= skip1;														
 			elsif opcode = ops_lfetch then
 				if chip_RAM = '1' then
@@ -273,8 +273,8 @@ begin
 				state_n <= umult;
 			elsif branch = bps_RTS then											-- other RTS instructions									
 				state_n <= skip1;	
-			elsif opcode >= 51 then 
-				state_n <= skip1;	
+--			elsif opcode >= 51 then 												-- comparator format found to be slightly slower and LUT costly than OR format
+--				state_n <= skip1;	
 			else
 				state_n <= common;
 			end if;

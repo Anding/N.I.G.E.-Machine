@@ -181,7 +181,7 @@ variable MEM.pointer		\ roving pointer to list of free memory blocks - Knuth's e
 \ redefine BUFFER:
 : BUFFER: ( n "NAME" --) \ NAME ( -- addr)
 	: 					\ create the word
-	55 c, 					\ compile 55, the opcode for #.l, into the definition
+	54 c, 					\ compile 54, the opcode for #.l, into the definition
 	allocate drop ,			\ store the address in the definition
 	postpone ;				\ finish the word
 ;
