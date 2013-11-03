@@ -101,7 +101,6 @@ signal state, state_n  : state_T;										-- state machine
 signal PC, PC_n, PC_plus, PC_jsl, PC_branch, PC_m1, PC_skipbranch : std_logic_vector (19 downto 0);		-- program counter logic
 signal PC_plus_two, PC_plus_three, PC_plus_four : std_logic_vector (19 downto 0);	
 signal delta :std_logic_vector (19 downto 0);
-signal plus : std_logic_vector (2 downto 0);
 signal accumulator_i, accumulator_n : std_logic_vector (31 downto 0); -- shift register for compiling LONGS and WORDS with BYTE reads
 signal accumulator_Y, accumulator_Z : std_logic_vector (31 downto 0); 
 signal ReturnAddress_n, ReturnAddressJSL, PC_addr : std_logic_vector (31 downto 0);
@@ -208,7 +207,7 @@ begin
 		end if;
 	end process;
 
-	process (state, state_n, PC, PC_n, PC_plus, PC_jsl, PC_branch, PC_skipbranch, PC_m1, PC_addr, delta, plus, 
+	process (state, state_n, PC, PC_n, PC_plus, PC_jsl, PC_branch, PC_skipbranch, PC_m1, PC_addr, delta, PC_plus_two, PC_plus_three, PC_plus_four,
 				accumulator_i, accumulator_n, accumulator_Y, accumulator_Z,
 				ucode, equalzero,branch, opcode, chip_RAM, MEMdatain_X, retrap,
 				TOS, TOS_r, NOS, TORS, int_trig, MEM_RDY_Y, MEM_RDY_Z, int_vector_ext, int_vector_ext_i, branch, opcode, delayed_RTS)
@@ -1184,7 +1183,7 @@ end RTL;
 --Copyright and license
 --=====================
 --
---The N.I.G.E machine, its design and its source code are Copyright (C) 2012 by Andrew Richard Read and dual licensed.
+--The N.I.G.E machine, its design and its source code are Copyright (C) 2013 by Andrew Richard Read and dual licensed.
 --    
 --(1) For commercial or proprietary use you must obtain a commercial license agreement with Andrew Richard Read (anding_eunding@yahoo.com)
 --    
