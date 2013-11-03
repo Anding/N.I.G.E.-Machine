@@ -5,10 +5,6 @@ Documentation
 - Register usage
 Tweaks
 - assembler BRA to work with destination and PC only (no from label or rel)
-- revise instruction set ordering
-ATLYS board
-- Implement DVI and DRAM interfaces
-- Port to ATLYS
 New features
 - Floating point
 - Local variables
