@@ -3,12 +3,17 @@ Documentation
 - Instruction set
 - Memory map
 - Register usage
-Tweaks
-- assembler BRA to work with destination and PC only (no from label or rel)
+Migrate to Nexys4
+- Basic migration
+- Increase SRAM
+- Increase clock frequency
+	- SDRAM memory controller
+	- XGA 1024x768@60 Hz (pixel clock 65.0 MHz)
+	- 100MHz softcore clock (at the expense of one cycle more memory latency?)
+EuroFORTH 2014
+- wide return stack
 New features
 - Floating point
 - Local variables
+- GPS
 - Multitasking
-- Test and set operation ( addr -- flag)
-- FORTH scientific library
-- 100MHz clock at the expense of one cycle more memory latency?
