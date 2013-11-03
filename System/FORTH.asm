@@ -90,13 +90,13 @@ opBRA		equ	192 256 *
 ; Interrupt vectors
 ; -----------------------------------------------------------------------------------------------
 ;
-V.RST		BRA	start.CF V.RST rel 			; RESET
+V.RST		BRA	start.CF	 			; RESET
 V.TRAP		RTI
 		NOP						; TRAP
-V.RDA		BRA	RDA V.RDA rel				; RS232 RDA
-V.TBE		BRA	TBE V.TBE rel				; RS232 TBE
-V.PS2		BRA	PS2 V.PS2 rel				; PS2
-V.MS		BRA	MS V.MS rel				; MS
+V.RDA		BRA	RDA					; RS232 RDA
+V.TBE		BRA	TBE					; RS232 TBE
+V.PS2		BRA	PS2					; PS2
+V.MS		BRA	MS					; MS
 		RTI
 		NOP
 		RTI
@@ -2512,7 +2512,7 @@ ACCEPT.CF	zero			( addr n u) u = current char count
 ACCEPT.0	over			( addr n u n)
 		over			( addr n u n u)
 		<>
-ACCEPT.1	beq 	ACCEPT.10 ACCEPT.1 rel	; reached maximum input length
+ACCEPT.1	beq 	ACCEPT.10			; reached maximum input length
 ;	receive next character
 		rot			( n u addr)
 		jsl	CSR-ON.CF
@@ -2522,12 +2522,12 @@ ACCEPT.1	beq 	ACCEPT.10 ACCEPT.1 rel	; reached maximum input length
 		dup			( n u addr char char)
 		#.b 	EOL		; LF terminator
 		<>			( n u addr char flag)
-ACCEPT.2	beq	ACCEPT.6 ACCEPT.2 rel	; terminator received
+ACCEPT.2	beq	ACCEPT.6			; terminator received
 ;	test for CR
 		dup
 		#.b 	13		; CR
 		<>
-ACCEPT.11	beq	ACCEPT.12 ACCEPT.11 rel	; CR received
+ACCEPT.11	beq	ACCEPT.12			; CR received
 ;	emit character (backspace is echoed, CR is not)
 		dup			( n u addr char char)
 		jsl	EMIT.CF	( n u addr char)			
@@ -2535,12 +2535,12 @@ ACCEPT.11	beq	ACCEPT.12 ACCEPT.11 rel	; CR received
 		dup			( n u addr char char)
 		#.b 	8		; Backspace
 		<>			( n u addr char flag)
-ACCEPT.3	beq	ACCEPT.7 ACCEPT.3 rel	; backspace received
+ACCEPT.3	beq	ACCEPT.7			; backspace received
 ;	test for tab
 		dup
 		#.b	9
 		=
-ACCEPT.14	beq	ACCEPT.15 ACCEPT.14 rel	; not TAB
+ACCEPT.14	beq	ACCEPT.15 	; not TAB
 		drop			( n u addr )		; drop TAB
 		#.b	32		( n u addr space)	; replace with space
 ;	save char
@@ -2554,10 +2554,10 @@ ACCEPT.15	over			( n u addr char addr)
 ;	repeat
 ACCEPT.4	rot			( u+1 addr+1 n)	; rshuffle stack
 		rot			( addr+1 n u+1)		
-ACCEPT.5	bra 	ACCEPT.0 ACCEPT.5 rel	; repeat next char	
+ACCEPT.5	bra 	ACCEPT.0			; repeat next char	
 ;	ignore CR
 ACCEPT.12	drop			( n u addr)
-ACCEPT.13	bra	ACCEPT.4 ACCEPT.13 rel
+ACCEPT.13	bra	ACCEPT.4
 ;	process terminator and put the LF into the buffer and increment
 ACCEPT.6	swap			( n u char addr)
 		store.b		( n u)
@@ -2569,12 +2569,12 @@ ACCEPT.6	swap			( n u char addr)
 ACCEPT.7	drop			( n u addr)
 		over			( n u addr u)
 		0<>			( n u addr flag) 
-ACCEPT.8	beq	ACCEPT.4 ACCEPT.8 rel	; ignore backspace when u=0
+ACCEPT.8	beq	ACCEPT.4 			; ignore backspace when u=0
 		1-			( n u addr-1)
 		swap			( n addr-1 u)
 		1-			( n addr-1 u-1)
 		swap			( n u-1 addr-1)
-ACCEPT.9	bra 	ACCEPT.4 ACCEPT.9 rel	; backed-up
+ACCEPT.9	bra 	ACCEPT.4			; backed-up
 ;	clean-up stack for return
 ACCEPT.10	nip			( addr u)
 ACCEPT.Z	nip,rts		( u)
@@ -3247,7 +3247,7 @@ PARSE.CF	>R			( R: char)
 			dup			( p_buff i_buff i_buff R: char ibl)
 			R@			( p_buff i-buff i_buff ibl R: char ibl)
 			<			( p_buff i_buff flag R: char ibl)
-PARSE.0		beq	PARSE.1 PARSE.0 rel
+PARSE.0		beq	PARSE.1
 ; fetch next character from input buffer
 			dup			( p_buff i_buff i_buff R: char ibl)
 			fetch.b		( p_buff i_buff charN R: char ibl)
@@ -3321,13 +3321,13 @@ WORD.CF	BEGIN
 			jsl	PARSE.CF	( char c-addr n)
 			dup		( char c-addr n flag)
 			0=		( char c-addr n flag')
-WORD.0			beq	WORD.2 WORD.0 rel				; parse returned at least one character
+WORD.0			beq	WORD.2						; parse returned at least one character
 			#.l IN_LEN
 			fetch.l	( char c-addr n IN_LEN)
 			#.l >IN_
 			fetch.l	( char c-addr n IN_LEN IN)
 			>		( char c-addr n flag)
-WORD.1			beq	WORD.2 WORD.1 rel
+WORD.1			beq	WORD.2
 			drop		( char c-addr)
 			drop		( char)
 		AGAIN	
@@ -4897,14 +4897,14 @@ DO.NF		dc.b	2 128 + IMMED +
 		dc.b 	char O char D
 DO.SF		dc.w	DO.Z DO.CF del 1 +
 DO.CF		#.w	DO0.RUN			; code to set flag for an uncoditional loop
-DO.Z		bra	{DO}.CF DO.Z rel		
+DO.Z		bra	{DO}.CF		
 ;
 ?DO.LF		dc.l	DO.NF
 ?DO.NF		dc.b	3 128 + IMMED +
 		dc.b 	char O char D char ?
 ?DO.SF		dc.w	?DO.Z ?DO.CF del 1 +
 ?DO.CF		#.w	DO2.RUN			; code to set flag for a conditional loop
-?DO.Z		bra	{DO}.CF ?DO.Z rel	
+?DO.Z		bra	{DO}.CF	
 ;
 ; {DO} common to DO and ?DO  - internal word
 {DO}.CF	jsl	COMPILE,.CF			; code to set flag for IF
@@ -4944,14 +4944,14 @@ LOOP.NF	dc.b	4 128 + IMMED +
 		dc.b 	char P char O char O char L
 LOOP.SF	dc.w	LOOP.Z LOOP.CF del
 LOOP.CF	#.w 	LOOP1.RUN			; code to increment and test loop paramaters
-LOOP.Z		bra	{LOOP}.CF LOOP.Z rel
+LOOP.Z		bra	{LOOP}.CF
 ;
 +LOOP.LF	dc.l	LOOP.NF			; code to add n and test loop paramaters
 +LOOP.NF	dc.b	5 128 + IMMED +
 		dc.b	char P char O char O char L char +
 +LOOP.SF	dc.w	+LOOP.Z +LOOP.CF del
 +LOOP.CF	#.w 	LOOP2.RUN
-+LOOP.Z	bra	{LOOP}.CF +LOOP.Z rel
++LOOP.Z	bra	{LOOP}.CF
 ;
 ;{LOOP} common to LOOP and +LOOP, internal word
 {LOOP}.CF	jsl	COMPILE,.CF				; code to add/increment and test loop paramaters

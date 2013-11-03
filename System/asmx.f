@@ -324,7 +324,7 @@
 
 : _BEQ							( pass-- [opcode] size)
 	if									\ pass 2
-		eval-expr				( nnnn)
+		eval-expr PC @ - 1-				( nnnn)
 		push-13bits
 		128 or					( a b+128)	 	\ 128 = BEQ
 		2					( a b+128 2) 		\ size = 2	
@@ -337,7 +337,7 @@
 
 : _BRA							( pass-- [opcode] size)
 	if									\ pass 2
-		eval-expr	
+		eval-expr PC @ - 1-						\ calculate from current PC
 		push-13bits
 		192 or								\ 192 = BRA
 		2	
