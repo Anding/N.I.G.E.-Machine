@@ -711,7 +711,7 @@
 	0=
 	if								\ pass 1
 		space
-		lineno dup @ 1+ dup . swap !			\ update and print line number	
+		lineno dup @ 1+ swap !			\ update line number	
 		drop
 	else								\ pass 2
 		cr
@@ -855,26 +855,6 @@
 ;
 
 : scan-src                          		( c-addr u)
-	\ open source file
-	r/o	open-file				( fileid ior)
-	abort" Error opening source file" 		( fileid)
-	fileid !
-	
-	\ open output files
-	C" E:\N.I.G.E.-Machine\System\SRAM.bin" count w/o create-file
-	abort" Error opening output file .bin"	( fileid-w)
-	fileid-w3 !					( fileid-w)
-	
-	C" E:\N.I.G.E.-Machine\System\SRAM.txt" count w/o create-file
-	abort" Error opening output file .txt"	( fileid-w)
-	fileid-w2 !					( fileid-w)
-	
-	C" E:\N.I.G.E.-Machine\System\SRAM.coe" count w/o create-file
-	abort" Error opening output file .coe"	( fileid-w)
-	fileid-w1 !					( fileid-w)	
-	S" memory_initialization_radix=16;" fileid-w1 @ write-line drop ( fileid-w)
-	S" memory_initialization_vector=" fileid-w1 @ write-line drop 	 ( )
-	
 	\ clear instruction count memory
 	instruction-count 272 erase
 	
@@ -906,9 +886,8 @@
 		0 fileid @ reposition-file drop
 	loop 
 	0 0 0 0 4 pass2						\ dummy instruction to complete final longword
-	\ final output, close files and remove locks
+	\ final output
 	S" 00000000;" fileid-w1 @ write-line drop ( )		\ semicolon required to finish the file
-	close-all
 	cr
 ;
 
@@ -918,7 +897,27 @@
 ;									\ dummy until MARKER is defined
 
 : asmx
-	scan-src
+	\ open source file
+	r/o	open-file				( fileid ior)
+	abort" Error opening source file" 		( fileid)
+	fileid !
+	
+	\ open output files
+	C" E:\N.I.G.E.-Machine\System\SRAM.bin" count w/o create-file
+	abort" Error opening output file .bin"	( fileid-w)
+	fileid-w3 !					( fileid-w)
+	
+	C" E:\N.I.G.E.-Machine\System\SRAM.txt" count w/o create-file
+	abort" Error opening output file .txt"	( fileid-w)
+	fileid-w2 !					( fileid-w)
+	
+	C" E:\N.I.G.E.-Machine\System\SRAM.coe" count w/o create-file
+	abort" Error opening output file .coe"	( fileid-w)
+	fileid-w1 !					( fileid-w)	
+	S" memory_initialization_radix=16;" fileid-w1 @ write-line drop ( fileid-w)
+	S" memory_initialization_vector=" fileid-w1 @ write-line drop 	 ( )
+	
+	['] scan-src catch close-all ?dup IF cr ." !ERROR IN LINE " lineno @ . throw THEN 
 	decimal
 ;
 
