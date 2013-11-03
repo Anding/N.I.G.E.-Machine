@@ -75,14 +75,14 @@ NOINLINE	equ	hex 4000		; Prohibit inline compilation
 ; **** N.I.G.E. MACHINE OPCODES ****
 ;
 opDROP		equ	1
-op#.B		equ	53
-op#.W		equ	54
-op#.L		equ	55
-opJMP		equ	56
-opJSL		equ	57
-opJSR		equ	58
+op#.B		equ	52
+op#.W		equ	53
+op#.L		equ	54
+opJMP		equ	55
+opJSL		equ	56
+opJSR		equ	57
 opRTS		equ	64
-opOVER=	equ	5 256 * 28 +
+opOVER=	equ	4 256 * 22 +
 opBEQ		equ	128 256 *
 opBRA		equ	192 256 *
 ;
