@@ -24,12 +24,11 @@ entity VGA is
 			  start_VGA : out  STD_LOGIC;								-- triggers for DMA to access first line of memory
 			  start_TXT : out  STD_LOGIC;	
 			  VBLANK	: out STD_LOGIC;									-- vertical blank
-			  RGB : out  STD_LOGIC_VECTOR (7 downto 0)
+			  RGB : out  STD_LOGIC_VECTOR (11 downto 0)
 			  );
 end VGA;
 
 architecture Behavioral of VGA is
-signal clk_pixel : std_logic;																					-- local pixel clock
 signal Vcount : std_logic_vector(10 downto 0); -- := CONV_STD_LOGIC_VECTOR(526,11); 		-- Vertical pixel count
 signal tVcount, height : std_logic_vector(3 downto 0); 												-- text Vertical count
 signal Hcount : std_logic_vector(10 downto 0); -- := (others=>'0');								-- Horizontal pixel count
@@ -58,9 +57,6 @@ begin
 	with mode(3) select 															-- select the interlace mode
 		height <= "1001" when '1',
 					 "0111" when others;
-
-	clk_pixel <= clk_VGA;
-
 	PROCESS (mode)
 	begin
 		if mode(4) = '0' then									-- VGA
@@ -89,9 +85,9 @@ begin
 	end process;
 							
 	PROCESS
-	variable text_f, text_b : std_logic_vector(7 downto 0);			-- text background and forground colors	
+	variable text_f, text_b : std_logic_vector(11 downto 0);			-- text background and forground colors	
 	begin
-		wait until rising_edge(clk_pixel);	
+		wait until rising_edge(clk_VGA);	
 	
 		-- Horizontal pixel clock		
 		if Hcount = Ha then 					-- last horizontal pixel: VGA 799, SVGA 1039
@@ -198,18 +194,26 @@ begin
 		
 		-- Define character color scheme
 		if not(tVcount < 8) then					-- interlace lines
-			text_f := background;
-			text_b := background;
+			text_f := background(7) & background(6) & background(5) & background(5) &
+						 background(4) & background(3) & background(2) & background(2) &
+						 background(1) & background(1) & background(0) & background(0);
+			text_b := background(7) & background(6) & background(5) & background(5) &
+						 background(4) & background(3) & background(2) & background(2) &
+						 background(1) & background(1) & background(0) & background(0);
 		elsif mode(1 downto 0) = "11" then 
-			text_f := char_color;
-			text_b := background;
+			text_b := background(7) & background(6) & background(5) & background(5) &
+						 background(4) & background(3) & background(2) & background(2) &
+						 background(1) & background(1) & background(0) & background(0);		
+			text_f := char_color(7) & char_color(6) & char_color(5) & char_color(5) &
+						 char_color(4) & char_color(3) & char_color(2) & char_color(2) &
+						 char_color(1) & char_color(1) & char_color(0) & char_color(0);
 		elsif mode(1 downto 0) = "01" then
-			text_f := (char_color(3) & char_color(3) &								-- BLUE
-						char_color(2) & char_color(2) & char_color(1) & 			-- GREEN
-						char_color(1) & char_color(0) & char_color(0));				-- RED
-			text_b := (char_color(7) & char_color(7) & 								-- BLUE
-						char_color(6) & char_color(6) & char_color(5) & 			-- GREEN
-						char_color(5) & char_color(4) & char_color(4)); 			-- RED
+			text_b := char_color(7) & char_color(7) & char_color(7) & char_color(6) & 
+						char_color(6) & char_color(6) & char_color(5) & char_color(5) & 
+						char_color(5) & char_color(4) & char_color(4) & char_color(4);		
+			text_f := char_color(3) & char_color(3) & char_color(3) & char_color(2) & 
+						char_color(2) & char_color(2) & char_color(1) & char_color(1) & 
+						char_color(1) & char_color(0) & char_color(0) & char_color(0);				
 		else
 			text_f := (others=>'0');
 			text_b := (others=>'0');
@@ -218,9 +222,9 @@ begin
 		-- Drive pixel to output
 		if Hblk4 = '0' and Vblk0 = '0' then			-- Hblk4 for synchronization
 			if char_pixels(7) = '1' then		
-				RGB <= text_f XOR pixelGFX2;			-- RGB combine text and graphics pixels in display area
+				RGB <= text_f; --XOR pixelGFX2;			-- RGB combine text and graphics pixels in display area
 			else
-				RGB <= text_b XOR pixelGFX2;
+				RGB <= text_b; --XOR pixelGFX2;
 			end if;
 		else											
 			RGB <= (others=>'0');						-- RGB low in horizantal and vertical blank interval

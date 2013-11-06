@@ -56,7 +56,7 @@ component equalComparitor
 component equalZeroComparitor
 	port (
 	a: IN std_logic_VECTOR(31 downto 0);
-	a_eq_b: OUT std_logic);
+	a_eqzero: OUT std_logic);
 	end component;
 
 signal c : std_logic_vector (15 downto 0);
@@ -91,7 +91,7 @@ c(5) <= not (c(0) or c(4));
 inst_equalZeroComparitor : equalZeroComparitor
 		port map (
 			a => PortB,
-			a_eq_b => c(6));
+			a_eqzero => c(6));
 
 c(7) <= not c(6);
 

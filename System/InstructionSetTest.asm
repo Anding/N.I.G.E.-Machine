@@ -5,10 +5,10 @@ sevenseg	equ	hex F830
 		ds.l	2		; BLOCK RAM simulator bug
 		zero			; test branching
 		1+
-l0		beq	l1 l0 rel
+l0		beq	l1
 		zero
-l2		beq	l3 l2 rel
-l4		bra	l1 l4 rel		
+l2		beq	l3
+l4		bra	l1		
 l3		jsl	loadliteral	; run test suite
 		jsl	llrts
 		jsl	fas
@@ -25,7 +25,7 @@ l3		jsl	loadliteral	; run test suite
 		jsl	others
 		#.b	255
 		jsl	announce
-l1		bra	l1 l1	rel
+l1		bra	l1
 ;	
 ;load literals	
 loadliteral	#.b	1
@@ -483,5 +483,5 @@ assert		0=
 		IF
 			rts
 		THEN
-l0		bra	l0 l0 rel
+l0		bra	l0
 ;

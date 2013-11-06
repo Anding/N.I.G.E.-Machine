@@ -10,9 +10,9 @@ ARCHITECTURE behavior OF TestbenchBoard IS
  
     -- Component Declaration for the Unit Under Test (UUT)
  
-    COMPONENT Board_Nexys2_1200
+    COMPONENT Board_Nexys4
     Port ( CLK_IN : in  STD_LOGIC;
-			  RGB : out  STD_LOGIC_VECTOR (7 downto 0);
+			  RGB : out  STD_LOGIC_VECTOR (11 downto 0);
            HSync : out  STD_LOGIC;
            VSync : out  STD_LOGIC;
 			  ADDR_SDRAM : out  STD_LOGIC_VECTOR (23 downto 1);		
@@ -38,11 +38,11 @@ ARCHITECTURE behavior OF TestbenchBoard IS
 			  SD_CD : in STD_LOGIC;
 			  SD_WP : In STD_LOGIC;
 			  -- Expansion
-			  EppAstb: in std_logic;        
-			  EppDstb: in std_logic;        
-			  EppWr  : in std_logic;        
-			  EppDB  : inout std_logic_vector(7 downto 0); 
-			  EppWait: out std_logic;
+--			  EppAstb: in std_logic;        
+--			  EppDstb: in std_logic;        
+--			  EppWr  : in std_logic;        
+--			  EppDB  : inout std_logic_vector(7 downto 0); 
+--			  EppWait: out std_logic;
 			  -- Board
 			  SW : in STD_LOGIC_VECTOR (7 downto 0);
 			  sevenseg : out STD_LOGIC_VECTOR (6 downto 0);
@@ -86,7 +86,7 @@ ARCHITECTURE behavior OF TestbenchBoard IS
    signal DATA_SDRAM : std_logic_vector(15 downto 0);
 
  	--Outputs
-   signal RGB : std_logic_vector(7 downto 0);
+   signal RGB : std_logic_vector(11 downto 0);
    signal HSync : std_logic;
    signal VSync : std_logic;
    signal ADDR_SDRAM : std_logic_vector(23 downto 1);
@@ -107,7 +107,7 @@ ARCHITECTURE behavior OF TestbenchBoard IS
 	signal SD_CS :  STD_LOGIC;
 
    -- Clock period definitions
-   constant CLK_IN_period : time := 20 ns;
+   constant CLK_IN_period : time := 10 ns;
 
 	signal tx_line : std_logic := '1';
 	signal PS2C_line : std_logic := '1';
@@ -116,7 +116,7 @@ ARCHITECTURE behavior OF TestbenchBoard IS
 BEGIN
 
 	-- Instantiate the Unit Under Test (UUT)
-   prj: Board_Nexys2_1200 PORT MAP (
+   prj: Board_Nexys4 PORT MAP (
           CLK_IN => CLK_IN,
           RGB => RGB,
           HSync => HSync,
@@ -142,11 +142,11 @@ BEGIN
 			 SD_CS => SD_CS,
 			 SD_CD => SD_CD,
 			 SD_WP => SD_WP,
-			 EppAstb => EppAstb,  
-			 EppDstb => EppDstb,
-			 EppWr =>  EppWr,     
-			 EppDB => EppDB,
-			 EppWait => EppWait,
+--			 EppAstb => EppAstb,  
+--			 EppDstb => EppDstb,
+--			 EppWr =>  EppWr,     
+--			 EppDB => EppDB,
+--			 EppWait => EppWait,
 			 SW => SW,
 			 sevenseg => open,
 			 anode => open

@@ -5,9 +5,9 @@ use IEEE.STD_LOGIC_UNSIGNED.ALL;
 Library UNISIM;
 use UNISIM.vcomponents.all;
 
-entity Board_Nexys2_1200 is
+entity Board_Nexys4 is
     Port ( CLK_IN : in  STD_LOGIC;
-			  RGB : out  STD_LOGIC_VECTOR (7 downto 0);
+			  RGB : out  STD_LOGIC_VECTOR (11 downto 0);
            HSync : out  STD_LOGIC;
            VSync : out  STD_LOGIC;
 			  ADDR_SDRAM : out  STD_LOGIC_VECTOR (23 downto 1);		
@@ -35,17 +35,18 @@ entity Board_Nexys2_1200 is
 			  MISO : in STD_LOGIC;
 			  SD_CS : out STD_LOGIC;
 			  SD_CD : in STD_LOGIC;
-			  SD_WP : In STD_LOGIC;
+			  SD_WP : In STD_LOGIC
 			  -- Expansion
-			  EppAstb: in std_logic;        
-			  EppDstb: in std_logic;        
-			  EppWr  : in std_logic;        
-			  EppDB  : inout std_logic_vector(7 downto 0); 
-			  EppWait: out std_logic
+--			  EppAstb: in std_logic;        
+--			  EppDstb: in std_logic;        
+--			  EppWr  : in std_logic;        
+--			  EppDB  : inout std_logic_vector(7 downto 0); 
+--			  EppWait: out std_logic
 			  );
-end Board_Nexys2_1200;
+end Board_Nexys4;
 
-architecture RTL of Board_Nexys2_1200 is
+architecture RTL of Board_Nexys4 is
+
 type bank_t is (Sys, Char, Pstack, Rstack, Reg);
 signal bank, bank_n : bank_t;	
 signal counter_clk, counter_ms : std_logic_vector(31 downto 0) := (others =>'0');
@@ -130,19 +131,15 @@ signal MEMsize_X, MEMsize_Xp : std_logic_vector(1 downto 0);
 signal ram_en : std_logic;
 signal VBLANK : std_logic;
 
-	COMPONENT DCM6
-	PORT(
-		CLKDV_SELECT_IN : IN std_logic;
-		CLKIN_IN : IN std_logic;
-		RST_IN : IN std_logic;          
-		CLKDV_OUT : OUT std_logic;
-		CLKIN_IBUFG_OUT : OUT std_logic;
-		CLKMUX_OUT : OUT std_logic;
-		CLK0_OUT : OUT std_logic;
-		CLK2X_OUT : OUT std_logic;
-		LOCKED_OUT : OUT std_logic
-		);
-	END COMPONENT;
+	component CLOCKMANAGER
+	port
+	 (-- Clock in ports
+	  CLK_IN1           : in     std_logic;
+	  -- Clock out ports
+	  CLK_OUT1          : out    std_logic;
+	  CLK_OUT2          : out    std_logic
+	 );
+	end component;
 	
 	COMPONENT RS232v2
 	PORT(
@@ -161,17 +158,13 @@ signal VBLANK : std_logic;
 		
 begin
 	
-	Inst_DCM6: DCM6 PORT MAP(
-		CLKDV_SELECT_IN => mode(4),
-		CLKIN_IN => CLK_IN,
-		RST_IN => '0',
-		CLKDV_OUT => open,
-		CLKIN_IBUFG_OUT => open,
-		CLKMUX_OUT => CLK_VGA,
-		CLK0_OUT => CLK_SYSTEM,
-		CLK2X_OUT => CLK_2XSYS,
-		LOCKED_OUT => open
-	);
+	inst_CLOCKMANAGER : CLOCKMANAGER
+  port map
+   (-- Clock in ports
+    CLK_IN1 => CLK_IN,
+    -- Clock out ports
+    CLK_OUT1 => CLK_SYSTEM,
+    CLK_OUT2 => CLK_VGA);
 	 
 	-- global counters
 	process														 
@@ -499,19 +492,24 @@ begin
 		data => PS2_data
 	);
 				
-		Inst_IOExpansion: entity work.IOExpansionSYNC PORT MAP(
-		reset => reset,
-		clk => CLK_SYSTEM,
-		EppAstb => EppAstb,
-		EppDstb => EppDstb,
-		EppWr => EppWr,
-		EppDB => EppDB,
-		EppWait =>EppWait ,
-		data => Boot_data,
-		addr => Boot_addr,
-		we => Boot_we,
-		reset_trigger => reset_trigger
-		);
+--		Inst_IOExpansion: entity work.IOExpansionSYNC PORT MAP(
+--		reset => reset,
+--		clk => CLK_SYSTEM,
+--		EppAstb => EppAstb,
+--		EppDstb => EppDstb,
+--		EppWr => EppWr,
+--		EppDB => EppDB,
+--		EppWait =>EppWait ,
+--		data => Boot_data,
+--		addr => Boot_addr,
+--		we => Boot_we,
+--		reset_trigger => reset_trigger
+--		);
+
+		reset_trigger <= '0';
+		Boot_we <= (others=>'0');
+		Boot_data <= (others=>'0');
+		Boot_addr <= (others=>'0');
 		
 		Inst_ByteHEXdisplay: entity work.ByteHEXdisplay PORT MAP(
 		ssData => ssData,
