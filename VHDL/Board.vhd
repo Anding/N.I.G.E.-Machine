@@ -52,7 +52,7 @@ signal bank, bank_n : bank_t;
 signal counter_clk, counter_ms : std_logic_vector(31 downto 0) := (others =>'0');
 signal timer_ms : std_logic_vector(15 downto 0) := (others =>'0');	
 signal reset : std_logic;
-signal clk_system, clk_vga, clk_mem, clk_2xsys : std_logic;
+signal clk25, clk50, clk75, clk100 : std_logic;
 signal irq, rti, ms_irq : std_logic;
 signal irv : std_logic_vector(3 downto 0);
 signal irq_mask : std_logic_vector(15 downto 1);
@@ -131,13 +131,19 @@ signal MEMsize_X, MEMsize_Xp : std_logic_vector(1 downto 0);
 signal ram_en : std_logic;
 signal VBLANK : std_logic;
 
+alias clk_system is clk50;
+alias clk_VGA is clk50;
+alias clk_MEM is clk50;
+
 	component CLOCKMANAGER
 	port
 	 (-- Clock in ports
 	  CLK_IN1           : in     std_logic;
 	  -- Clock out ports
 	  CLK_OUT1          : out    std_logic;
-	  CLK_OUT2          : out    std_logic
+	  CLK_OUT2          : out    std_logic;
+	  CLK_OUT3          : out    std_logic;
+	  CLK_OUT4          : out    std_logic
 	 );
 	end component;
 	
@@ -163,8 +169,10 @@ begin
    (-- Clock in ports
     CLK_IN1 => CLK_IN,
     -- Clock out ports
-    CLK_OUT1 => CLK_SYSTEM,
-    CLK_OUT2 => CLK_VGA);
+	 CLK_OUT1 => CLK25,
+    CLK_OUT2 => CLK50,
+    CLK_OUT3 => CLK75,
+	 CLK_OUT4 => CLK100);
 	 
 	-- global counters
 	process														 
@@ -302,14 +310,8 @@ begin
 		 doutb => doutb_sysram
 	  );
 	  
-	  process 												-- register SRAM outputs externally to expose for timing constraint
-	  begin
-			wait until rising_edge(clk_2xsys);
-			douta_sysram_r <= douta_sysram;
-			doutb_sysram_r <= doutb_sysram;
-	  end process;
-	  douta_sysram_i <= douta_sysram;--_r;
-	  doutb_sysram_i <= doutb_sysram;--_r;
+	  douta_sysram_i <= douta_sysram;
+	  doutb_sysram_i <= doutb_sysram;
 
 	  inst_Char_RAM : entity work.Char_RAM
 	  PORT MAP (
@@ -393,7 +395,7 @@ begin
 		
 		Inst_DMAController: entity work.DMAController PORT MAP(
 		RESET => reset,
-		CLK_MEM => CLK_SYSTEM,
+		CLK_MEM => CLK_MEM,
 		CLK_VGA => CLK_VGA,
 		ADDR_SDRAM => ADDR_SDRAM,
 		DATA_SDRAM => DATA_SDRAM,
