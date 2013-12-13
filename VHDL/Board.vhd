@@ -281,34 +281,34 @@ begin
 		doutb => doutb_sysram_i
 	);
 	
---	Inst_RAM_for_Testbench: entity work.RAM_for_Testbench PORT MAP(
---		rst => reset,
---		clk => clk_system,
---		weA => wea_sysram(0),
---		weB => web_sysram(0),
---		addressA => addra_sysram,
---		data_inA => dina_sysram,
---		data_outA => douta_sysram,
---		addressB => addrb_sysram,
---		data_inB => dinb_sysram,
---		data_outB => doutb_sysram
---	);
+	Inst_RAM_for_Testbench: entity work.RAM_for_Testbench PORT MAP(
+		rst => reset,
+		clk => clk_system,
+		weA => wea_sysram(0),
+		weB => web_sysram(0),
+		addressA => addra_sysram,
+		data_inA => dina_sysram,
+		data_outA => douta_sysram,
+		addressB => addrb_sysram,
+		data_inB => dinb_sysram,
+		data_outB => doutb_sysram
+	);
 
-	  inst_SYS_RAM : entity work.Sys_RAM
-	  PORT MAP (
-		 clka => clk_system,
-		 ena => ram_en,
-		 wea => wea_sysram,
-		 addra => addra_sysram (15 downto 2),					-- write depth 12032, 15downto2
-		 dina => dina_sysram,
-		 douta => douta_sysram,
-		 clkb => clk_system,
-		 enb => ram_en,
-		 web => web_sysram,
-		 addrb => addrb_sysram (15 downto 2),
-		 dinb => dinb_sysram,
-		 doutb => doutb_sysram
-	  );
+--	  inst_SYS_RAM : entity work.Sys_RAM
+--	  PORT MAP (
+--		 clka => clk_system,
+--		 ena => ram_en,
+--		 wea => wea_sysram,
+--		 addra => addra_sysram (15 downto 2),					-- write depth 12032, 15downto2
+--		 dina => dina_sysram,
+--		 douta => douta_sysram,
+--		 clkb => clk_system,
+--		 enb => ram_en,
+--		 web => web_sysram,
+--		 addrb => addrb_sysram (15 downto 2),
+--		 dinb => dinb_sysram,
+--		 doutb => doutb_sysram
+--	  );
 	  
 	  douta_sysram_i <= douta_sysram;
 	  doutb_sysram_i <= doutb_sysram;
