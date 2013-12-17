@@ -2,9 +2,9 @@
 	nop
 	nop
 	nop	
-	#.w	hex ABCD
+	#.l	hex 89ABCDEF
 	#.l	65536
-	store.w
+	store.l
 	#.l	65536
-	fetch.w
+	fetch.l
 l0	bra	l0

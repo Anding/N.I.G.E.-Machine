@@ -10,7 +10,6 @@ entity Datapath is
     Port ( rst : in  STD_LOGIC;	 										-- reset
            clk : in  STD_LOGIC;	 										-- clock
 			  MEMdatain_X : in STD_LOGIC_VECTOR (31 downto 0);	
---			  MEMdatain_X_plus : in STD_LOGIC_VECTOR (31 downto 0);
 			  Accumulator : in STD_LOGIC_VECTOR (31 downto 0);		-- Immediate value read from memory by control unit for writing to TOS
 			  MicroControl : in  STD_LOGIC_VECTOR (13 downto 0);	-- control lines
 			  AuxControl : in STD_LOGIC_VECTOR (1 downto 0);		-- control lines 
@@ -126,7 +125,6 @@ signal PSP, RSP, PSP_n, RSP_n, RSP_n1, PSP_m1, PSP_p1, RSP_m1, RSP_p1 : std_logi
 signal RSdataout_i, PSdataout_i, PSdatain_i, RSdatain_i : std_logic_vector (31 downto 0);
 signal PSw_i, RSw_i, PSw_m1, RSw_m1 : std_logic_vector (0 downto 0);
 signal data : std_logic_vector (31 downto 0);
---signal MEMdatain_X_plus_m1 : std_logic_vector (31 downto 0);
 
 begin
 

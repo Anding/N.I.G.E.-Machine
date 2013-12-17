@@ -84,9 +84,9 @@ signal MEM_REQ_Z : std_logic;
 signal Sys_EN, Pstack_EN, Rstack_EN, Char_EN, Reg_EN : std_logic;
 signal txt_zero : std_logic_vector(23 downto 0);
 signal gfx_zero : std_logic_vector(15 downto 0);
-signal DATA_OUT_VGA : std_logic_vector(7 downto 0);
+signal DATA_OUT_VGA : std_logic_vector(7 downto 0) := (others=>'0');
 signal ADDR_VGA : std_logic_vector(8 downto 0);
-signal DATA_TXT : std_logic_vector(15 downto 0);
+signal DATA_TXT : std_logic_vector(15 downto 0) := (others=>'0');
 signal ADDR_TXT : std_logic_vector(6 downto 0);
 signal DATA_Char : std_logic_vector(7 downto 0);
 signal ADDR_Char : std_logic_vector(10 downto 0);
@@ -130,6 +130,37 @@ signal MEMdata_Sys_quick : std_logic_vector(31 downto 0);
 signal MEMsize_X, MEMsize_Xp : std_logic_vector(1 downto 0);
 signal ram_en : std_logic;
 signal VBLANK : std_logic;
+
+signal s_axi_awaddr : std_logic_vector(31 downto 0);
+signal s_axi_awvalid : std_logic;
+signal s_axi_wdata : std_logic_vector(31 downto 0);
+signal s_axi_wstrb : std_logic_vector(3 downto 0);
+signal s_axi_wvalid : std_logic;
+signal s_axi_bready : std_logic;
+signal s_axi_araddr : std_logic_vector(31 downto 0);
+signal s_axi_arvalid : std_logic;
+signal s_axi_rready : std_logic;
+signal t_axi_araddr : std_logic_vector(31 downto 0);
+signal t_axi_arlen : std_logic_vector(7 downto 0);
+signal t_axi_arsize : std_logic_vector(2 downto 0);
+signal t_axi_arburst : std_logic_vector(1 downto 0);
+signal t_axi_arvalid : std_logic;
+signal t_axi_rready : std_logic;    
+signal s_axi_awready : std_logic;
+signal s_axi_wready : std_logic;
+signal s_axi_bresp : std_logic_vector(1 downto 0);
+signal s_axi_bvalid : std_logic;
+signal s_axi_arready : std_logic;
+signal s_axi_rdata : std_logic_vector(31 downto 0);
+signal s_axi_rresp : std_logic_vector(1 downto 0);
+signal s_axi_rvalid : std_logic;
+signal t_axi_arready : std_logic;
+signal t_axi_rdata : std_logic_vector(31 downto 0);
+signal t_axi_rresp : std_logic_vector(1 downto 0);
+signal t_axi_rlast : std_logic;
+signal t_axi_rvalid : std_logic;
+signal s_aresetn : std_logic;
+
 
 alias clk_system is clk50;
 alias clk_VGA is clk50;
@@ -381,58 +412,79 @@ begin
 		MEMdataout_X => MEMdataout_X,
 		MEMsize_X => MEMsize_X,
 		MEM_WRQ_X => MEM_WRQ_X,
-		MEMdatain_Y => MEMdatain_Y,
-		MEMdataout_Y => MEMdataout_Y,
-		MEM_WRQ_Y => MEM_WRQ_Y,
-		MEM_REQ_Y => MEM_REQ_Y,
-		MEM_RDY_Y => MEM_RDY_Y,
-		MEMdatain_Z => MEMdatain_Z,
-		MEMdataout_Z => MEMdataout_Z,
-		MEM_WRQ_Z => MEM_WRQ_Z,
-		MEM_REQ_Z => MEM_REQ_Z,
-		MEM_RDY_Z => MEM_RDY_Z
+		s_axi_awaddr => s_axi_awaddr,
+		s_axi_awvalid => s_axi_awvalid,
+		s_axi_awready => s_axi_awready,
+		s_axi_wdata => s_axi_wdata,
+		s_axi_wstrb => s_axi_wstrb,
+		s_axi_wvalid => s_axi_wvalid,
+		s_axi_wready => s_axi_wready,
+		s_axi_bresp => s_axi_bresp,
+		s_axi_bvalid => s_axi_bvalid,
+		s_axi_bready => s_axi_bready,
+		s_axi_araddr => s_axi_araddr,
+		s_axi_arvalid => s_axi_arvalid,
+		s_axi_arready => s_axi_arready,
+		s_axi_rdata => s_axi_rdata,
+		s_axi_rresp => s_axi_rresp,
+		s_axi_rvalid => s_axi_rvalid,
+		s_axi_rready => s_axi_rready
+--		MEMdatain_Y => MEMdatain_Y,
+--		MEMdataout_Y => MEMdataout_Y,
+--		MEM_WRQ_Y => MEM_WRQ_Y,
+--		MEM_REQ_Y => MEM_REQ_Y,
+--		MEM_RDY_Y => MEM_RDY_Y,
+--		MEMdatain_Z => MEMdatain_Z,
+--		MEMdataout_Z => MEMdataout_Z,
+--		MEM_WRQ_Z => MEM_WRQ_Z,
+--		MEM_REQ_Z => MEM_REQ_Z,
+--		MEM_RDY_Z => MEM_RDY_Z
 	);
+	
+	s_aresetn <= not RESET;
 		
-		Inst_DMAController: entity work.DMAController PORT MAP(
-		RESET => reset,
-		CLK_MEM => CLK_MEM,
-		CLK_VGA => CLK_VGA,
+	Inst_DMAcontroller: entity work.DMAcontroller PORT MAP(
+		CLK => CLK_SYSTEM,
+		s_aresetn => s_aresetn,
+		s_axi_awaddr => s_axi_awaddr,
+		s_axi_awvalid => s_axi_awvalid,
+		s_axi_awready => s_axi_awready,
+		s_axi_wdata => s_axi_wdata,
+		s_axi_wstrb => s_axi_wstrb,
+		s_axi_wvalid => s_axi_wvalid,
+		s_axi_wready => s_axi_wready,
+		s_axi_bresp => s_axi_bresp,
+		s_axi_bvalid => s_axi_bvalid,
+		s_axi_bready => s_axi_bready,
+		s_axi_araddr => s_axi_araddr,
+		s_axi_arvalid => s_axi_arvalid,
+		s_axi_arready => s_axi_arready,
+		s_axi_rdata => s_axi_rdata,
+		s_axi_rresp => s_axi_rresp,
+		s_axi_rvalid => s_axi_rvalid,
+		s_axi_rready => s_axi_rready,
+		t_axi_araddr => t_axi_araddr,
+		t_axi_arlen => t_axi_arlen,
+		t_axi_arsize => t_axi_arsize,
+		t_axi_arburst => t_axi_arburst,
+		t_axi_arvalid => t_axi_arvalid,
+		t_axi_arready => t_axi_arready,
+		t_axi_rdata => t_axi_rdata,
+		t_axi_rresp => t_axi_rresp,
+		t_axi_rlast => t_axi_rlast,
+		t_axi_rvalid => t_axi_rvalid,
+		t_axi_rready => t_axi_rready,
 		ADDR_SDRAM => ADDR_SDRAM,
 		DATA_SDRAM => DATA_SDRAM,
-		OE_SDRAM => OE_SDRAM,
+		OE_SDRAM => OE_SDRAM ,
 		WE_SDRAM => WE_SDRAM,
-		ADV_SDRAM => ADV_SDRAM,
+		ADV_SDRAM => ADV_SDRAM ,
 		CLK_SDRAM => CLK_SDRAM,
 		UB_SDRAM => UB_SDRAM,
 		LB_SDRAM => LB_SDRAM,
 		CE_SDRAM => CE_SDRAM,
 		CRE_SDRAM => CRE_SDRAM,
-		WAIT_SDRAM => WAIT_SDRAM,
-		DATA_OUT_VGA => DATA_OUT_VGA,
-		ADDR_VGA => ADDR_VGA,
-		start_TXT => start_TXT,
-		start_VGA => start_VGA,
-		ADDR_ZERO => gfx_zero,
-		mode => mode,
-		DATA_IN_A => MEMdataout_Z,
-		DATA_OUT_A => MEMdatain_Z,
-		ADDR_A => MEMaddr(23 downto 1),
-		REQ_A => MEM_REQ_Z,
-		WRQ_A => MEM_WRQ_Z,
-		RDY_A => MEM_RDY_Z,
-		DATA_IN_B => (others=>'0'),
-		ADDR_B => (others=>'0'),
-		WRQ_B => '0',
-		RDY_B => open,
-		DATA_IN_C => MEMdataout_Y,
-		DATA_OUT_C => MEMdatain_Y,
-		ADDR_C => MEMaddr(23 downto 0),
-		REQ_C => MEM_REQ_Y,
-		WRQ_C => MEM_WRQ_Y,
-		RDY_C => MEM_RDY_Y,
-		DATA_OUT_TXT => DATA_TXT,	
-		ADDR_TXT => ADDR_TXT,
-		ADDR_ZERO_TXT => txt_zero
+		WAIT_SDRAM => WAIT_SDRAM
 	);
 	
 		Inst_Controller: entity work.Controller PORT MAP(
