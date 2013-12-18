@@ -811,7 +811,7 @@ begin
 				state_n <= Dfetch_long;	
 			end if;
 			ucode <= ops_NOP;
-			accumulator <= s_axi_rdata;
+			accumulator <= s_axi_rdata(7 downto 0) & s_axi_rdata(15 downto 8) &	s_axi_rdata(23 downto 16) & s_axi_rdata(31 downto 24);  -- big endian <-> AXI conversion	
 			timer <= 0;
 			PC_n <= PC;					
 			MEMaddr_i <= TOS_r;			-- MODIFIED! - was TOS (unregistred)	
@@ -840,7 +840,7 @@ begin
 				state_n <= Dfetch_long2;	
 				ucode <= ops_REPLACE;
 			end if;										
-			accumulator <= s_axi_rdata;		
+			accumulator <= s_axi_rdata(7 downto 0) & s_axi_rdata(15 downto 8) &	s_axi_rdata(23 downto 16) & s_axi_rdata(31 downto 24);  -- big endian <-> AXI conversion	
 			timer <= 0;
 			PC_n <= PC;				
 			MEMaddr_i <= TOS_r;				
@@ -863,7 +863,7 @@ begin
 	
 		when Dfetch_long3 =>										-- wait for TOS_r to be updated		
 			state_n <= Dfetch_word;									
-			accumulator <= s_axi_rdata;		
+			accumulator <= s_axi_rdata(7 downto 0) & s_axi_rdata(15 downto 8) &	s_axi_rdata(23 downto 16) & s_axi_rdata(31 downto 24);  -- big endian <-> AXI conversion	
 			ucode <= ops_NOP;
 			timer <= 0;
 			PC_n <= PC;				
@@ -948,7 +948,7 @@ begin
 		when Dstore_long =>										
 			if s_axi_awready = '1' and s_axi_wready = '1' then			-- CAUTION this will break if s_axi_awready and s_axi_wready do not signal concurrently!
 				state_n <= Dstore2;		
-				ucode <= ops_DROP;									-- drop the address from top of stack
+				ucode <= ops_DROP;									
 			else
 				state_n <= Dstore_long;
 				ucode <= ops_NOP;	
@@ -968,7 +968,7 @@ begin
 			retrap_n <= retrap;
 			delayed_RTS_n <= delayed_RTS;
 			s_axi_awvalid <= '1';
-			s_axi_wdata <= NOS;
+			s_axi_wdata <= NOS(7 downto 0) & NOS(15 downto 8) & NOS(23 downto 16) & NOS(31 downto 24);  -- big endian <-> AXI conversion
 			s_axi_wstrb <= "1111";
 			s_axi_wvalid <= '1';
 			s_axi_arvalid <= '0';
@@ -1023,19 +1023,24 @@ begin
 --			delayed_RTS_n <= delayed_RTS;			
 			
 		when Dstore_word =>										
-			if s_axi_rvalid = '1' then
-				state_n <= Dstore2;
-				ucode <= ops_DROP;									-- drop value				
+			if s_axi_awready = '1' and s_axi_wready = '1' then			-- CAUTION this will break if s_axi_awready and s_axi_wready do not signal concurrently!
+				state_n <= Dstore2;		
+				ucode <= ops_DROP;									
 			else
 				state_n <= Dstore_word;
 				ucode <= ops_NOP;	
 			end if;
+			if TOS(1) = '0' then
+				s_axi_wstrb <= "0011";
+			else
+				s_axi_wstrb <= "1100";
+			end if;
 			timer <= 0;
-			PC_n <= PC;					
-			MEMaddr_i <= TOS_r;				
+			PC_n <= PC;	
+			MEMaddr_i <= TOS_r;			
 			MEM_WRQ_X_i <= '0';
 			MEMdataout_X <= NOS;
-			MEMsize_X_n <= "11";
+			MEMsize_X_n <= "11";	
 			accumulator <= (others=>'0');			
 			AuxControl_n(0 downto 0) <= "0";
 			AuxControl_n(1 downto 1) <= "0";
@@ -1044,39 +1049,46 @@ begin
 			rti <= '0';
 			retrap_n <= retrap;
 			delayed_RTS_n <= delayed_RTS;
-			s_axi_awvalid <= '0';
-			s_axi_wdata <= NOS;
-			s_axi_wstrb <= "1111";
-			s_axi_wvalid <= '0';
+			s_axi_wdata <= NOS(7 downto 0) & NOS(15 downto 8) & NOS(7 downto 0) & NOS(15 downto 8);
+			s_axi_awvalid <= '1';
+			s_axi_wvalid <= '1';
 			s_axi_arvalid <= '0';
 			s_axi_rready <= '0';	
 
 		when Dstore_byte =>										
-			if s_axi_rvalid = '1' then
-				state_n <= Dstore2;
-				ucode <= ops_DROP;									-- drop value				
+			if s_axi_awready = '1' and s_axi_wready = '1' then			-- CAUTION this will break if s_axi_awready and s_axi_wready do not signal concurrently!
+				state_n <= Dstore2;		
+				ucode <= ops_DROP;									
 			else
 				state_n <= Dstore_byte;
 				ucode <= ops_NOP;	
 			end if;
+			if TOS(1 downto 0) = "00" then
+				s_axi_wstrb <= "0001";
+			elsif TOS(1 downto 0) = "01" then
+				s_axi_wstrb <= "0010";
+			elsif TOS(1 downto 0) = "10" then
+				s_axi_wstrb <= "0100";	
+			else
+				s_axi_wstrb <= "1000";				
+			end if;
 			timer <= 0;
-			PC_n <= PC;				
-			MEMaddr_i <= TOS_r;				
+			PC_n <= PC;	
+			MEMaddr_i <= TOS_r;			
 			MEM_WRQ_X_i <= '0';
 			MEMdataout_X <= NOS;
 			MEMsize_X_n <= "11";	
 			accumulator <= (others=>'0');			
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "1";
-			ReturnAddress_n <= PC_addr;	
+			AuxControl_n(1 downto 1) <= "0";
+			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
 			retrap_n <= retrap;
 			delayed_RTS_n <= delayed_RTS;
-			s_axi_awvalid <= '0';
-			s_axi_wdata <= NOS;
-			s_axi_wstrb <= "1111";
-			s_axi_wvalid <= '0';
+			s_axi_wdata <= NOS(7 downto 0) & NOS(7 downto 0) & NOS(7 downto 0) & NOS(7 downto 0);
+			s_axi_awvalid <= '1';
+			s_axi_wvalid <= '1';
 			s_axi_arvalid <= '0';
 			s_axi_rready <= '0';	
 

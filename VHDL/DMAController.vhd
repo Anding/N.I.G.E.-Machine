@@ -92,20 +92,14 @@ begin
             --<output> <= '0';
          else
 				count <= count + 1;
-				if s_axi_awvalid = '1' then	
+				if state = idle then							-- set registers only on entering a cycle
 					s_axi_awaddr_r <= s_axi_awaddr;
-				end if;
-				if s_axi_wvalid = '1' then	
-					s_axi_wdata_r <= s_axi_wdata;
-				s_axi_wstrb_r <= s_axi_wstrb;					
-				end if;
-				if s_axi_arvalid = '1' then	
+					s_axi_wstrb_r <= s_axi_wstrb;
+					s_axi_wdata_r <= s_axi_wdata;				
 					s_axi_araddr_r <= s_axi_araddr;
-				end if;
-				s_axi_rdata_r <= s_axi_rdata_n;	
-				if t_axi_arvalid = '1' then
 					t_axi_araddr_r <= t_axi_araddr;
 				end if;
+				s_axi_rdata_r <= s_axi_rdata_n;	
 				t_axi_rdata_r <= t_axi_rdata_n;
 				WAIT_SDRAM_m1 <= WAIT_SDRAM;
 				WAIT_SDRAM_m2 <= WAIT_SDRAM_m1;
@@ -131,8 +125,8 @@ begin
 		s_axi_rvalid <=	'1' when read_AXI_handshake,						
 								'0' when others;
 	with state select
-		s_axi_rdata_n <= 	s_axi_rdata_r(31 downto 16) & DATA_IN_SDRAM when read_pagemode_lo,
-								DATA_IN_SDRAM & s_axi_rdata_r(15 downto 0) when read_pagemode_hi,
+		s_axi_rdata_n <= 	DATA_IN_SDRAM & s_axi_rdata_r(15 downto 0) when read_pagemode_hi,
+								s_axi_rdata_r(31 downto 16) & DATA_IN_SDRAM when read_pagemode_lo,
 								s_axi_rdata_r when others;								
 	
 	s_axi_rdata <= s_axi_rdata_r;
