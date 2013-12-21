@@ -28,7 +28,7 @@ entity Board_Nexys4 is
 			  -- Board
 			  SW : in STD_LOGIC_VECTOR (7 downto 0);
 			  sevenseg : out STD_LOGIC_VECTOR (6 downto 0);
-			  anode : out STD_LOGIC_VECTOR (3 downto 0);	
+			  anode : out STD_LOGIC_VECTOR (7 downto 0);	
 			  -- SPI
 			  SCK : out STD_LOGIC;
 			  MOSI : out STD_LOGIC;
@@ -105,7 +105,7 @@ signal PS2_data : std_logic_vector(7 downto 0);
 signal reset_trigger : std_logic;
 signal mode : STD_LOGIC_VECTOR (4 downto 0);		
 signal background : STD_LOGIC_VECTOR (7 downto 0);
-signal ssData	: STD_LOGIC_VECTOR (15 downto 0);
+signal ssData	: STD_LOGIC_VECTOR (31 downto 0);
 signal CLKSPI, SD_wr : STD_LOGIC;
 signal SD_dataout, SD_datain, SD_divide : STD_LOGIC_VECTOR (7 downto 0);
 signal SD_status : STD_LOGIC_VECTOR (3 downto 0);
@@ -162,9 +162,9 @@ signal t_axi_rvalid : std_logic;
 signal s_aresetn : std_logic;
 
 
-alias clk_system is clk50;
+alias clk_system is clk100;
 alias clk_VGA is clk50;
-alias clk_MEM is clk50;
+alias clk_MEM is clk100;
 
 	component CLOCKMANAGER
 	port
@@ -568,7 +568,7 @@ begin
 		Inst_ByteHEXdisplay: entity work.ByteHEXdisplay PORT MAP(
 		ssData => ssData,
 		clk50MHz => CLK_SYSTEM,
-		count => counter_clk(15 downto 14),
+		count => counter_clk(15 downto 13),
 		sevenseg => sevenseg,
 		anode => anode
 	);

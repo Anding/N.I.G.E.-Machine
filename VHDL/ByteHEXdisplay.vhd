@@ -5,11 +5,11 @@ use IEEE.STD_LOGIC_UNSIGNED.ALL;
 
 
 entity ByteHEXdisplay is
-    Port ( ssData		: in  STD_LOGIC_VECTOR (15 downto 0);
+    Port ( ssData		: in  STD_LOGIC_VECTOR (31 downto 0);
 			  clk50MHz 	: in  STD_LOGIC;
-			  count		: in  STD_LOGIC_VECTOR (15 downto 14);
+			  count		: in  STD_LOGIC_VECTOR (15 downto 13);
            sevenseg 	: out  STD_LOGIC_VECTOR (6 downto 0);
-           anode 		: out  STD_LOGIC_VECTOR (3 downto 0)
+           anode 		: out  STD_LOGIC_VECTOR (7 downto 0)
            );
 end ByteHEXdisplay;
 
@@ -22,18 +22,30 @@ begin
 	begin
 		wait until rising_edge(clk50MHz);
 		
-			if count(15 downto 14) = "00" then				-- toggle on MSBits of count
-				anode <= "1110";
+			if count(15 downto 13) = "001" then				-- toggle on MSBits of count
+				anode <= "11111110";
 				nibble <= ssData(3 downto 0);				
-			elsif count(15 downto 14) = "01" then
-				anode <= "1101";
+			elsif count(15 downto 13) = "010" then
+				anode <= "11111101";
 				nibble <= ssData(7 downto 4);
-			elsif count(15 downto 14) = "10" then
-				anode <= "1011";
+			elsif count(15 downto 13) = "011" then
+				anode <= "11111011";
 				nibble <= ssData(11 downto 8);	
+			elsif count(15 downto 13) = "100" then
+				anode <= "11110111";
+				nibble <= ssData(15 downto 12);
+			elsif count(15 downto 13) = "101" then
+				anode <= "11101111";
+				nibble <= ssData(19 downto 16);	
+			elsif count(15 downto 13) = "110" then
+				anode <= "11011111";
+				nibble <= ssData(23 downto 20);
+			elsif count(15 downto 13) = "111" then
+				anode <= "10111111";
+				nibble <= ssData(27 downto 24);	
 			else
-				anode <= "0111";
-				nibble <= ssData(15 downto 12);				
+				anode <= "01111111";
+				nibble <= ssData(31 downto 28);				
 			end if;
 		
 	case nibble is

@@ -182,7 +182,7 @@ begin
 								s_axi_araddr_r(23 downto 2) & '1' when read_pagemode_hi,
 								s_axi_awaddr_r(23 downto 2) & '1' when write_async_hi,
 								"000"	& "00" & "0000000000" & "1" & "00" & "1" & "0" & "000" when set_RCR,
-								"000" & "10" & "00" & "0" & "0" & "011" & "1" & "0" & "1" & "00" & "00" & "1" & "111" when set_BCR,
+								"000" & "10" & "00" & "0" & "0" & "011" & "1" & "0" & "1" & "00" & "01" & "1" & "111" when set_BCR,
 						    --"000     10     00     0     0     011     1     0     1     00     01     1     111"  v2.0
 								t_axi_araddr_r(23 downto 1) when init_burst1,
 								t_axi_araddr_r(23 downto 1) when init_burst2,
@@ -301,7 +301,7 @@ begin
 				next_state <= read_pagemode_hi;
 				
 			when read_pagemode_hi =>
-				timer <= CONV_STD_LOGIC_VECTOR(2,8);								-- 20ns page read access but simulator suggests needs 30ns
+				timer <= CONV_STD_LOGIC_VECTOR(6,8);								-- 20ns page read access but hardware tests suggests needs 70ns
 				next_state <= read_AXI_handshake;
 				
 			when read_AXI_handshake =>

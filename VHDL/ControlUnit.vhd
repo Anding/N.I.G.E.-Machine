@@ -117,7 +117,7 @@ type state_T is (common, ifdup, smult, umult, sdivmod, udivmod, sdivmod_load, ud
 						Sfetch_long, Sfetch_word, Sfetch_byte,
 						Dfetch_long, Dfetch_long2, Dfetch_word, Dfetch_byte, Dfetch_word2, Dfetch_byte2,
 						Dstore_long, Dstore_word, Dstore_byte, Dstore2,
-						load_word, load_long, load_long2, skip1) ;					
+						skip1) ;					
 						
 signal state, state_n  : state_T;										-- state machine
 signal PC, PC_n, PC_plus, PC_jsl, PC_branch, PC_m1, PC_skipbranch : std_logic_vector (19 downto 0);		-- program counter logic
@@ -1185,94 +1185,94 @@ begin
 			s_axi_arvalid <= '0';
 			s_axi_rready <= '0';	
 
-		when load_long =>										-- load a literal longword
-			state_n <= skip1;
-			timer <= 0;
-			if delayed_RTS= '1' then
-				PC_n <= PC;
-			else
-				PC_n <= PC_plus_three;
-			end if;
-			ucode <= ops_NOP;																			
-			accumulator <= (others=>'0');
-			MEMaddr_i <= PC_addr;				
-			MEM_WRQ_X_i <= '0';
-			MEMsize_X_n <= "11";
-			MEMdataout_X <= NOS;	
-			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
-			ReturnAddress_n <= PC_addr;
-			irq_n <= int_trig;
-			rti <= '0';
-			retrap_n <= retrap;
-			delayed_RTS_n <= delayed_RTS;
-			s_axi_awvalid <= '0';
-			s_axi_wdata <= NOS;
-			s_axi_wstrb <= "1111";
-			s_axi_wvalid <= '0';
-			s_axi_arvalid <= '0';
-			s_axi_rready <= '0';	
-
-		when load_long2 =>										
-			state_n <= load_word;
-			timer <= 0;
-			if delayed_RTS= '1' then
-				PC_n <= PC;
-			else
-				PC_n <= PC_plus;
-			end if;
-			ucode <= ops_NOP;																			
-			accumulator <= (others=>'0');
-			MEMaddr_i <= PC_addr;				
-			MEM_WRQ_X_i <= '0';
-			MEMsize_X_n <= "11";
-			MEMdataout_X <= NOS;	
-			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
-			ReturnAddress_n <= PC_addr;
-			irq_n <= int_trig;
-			rti <= '0';
-			retrap_n <= retrap;
-			delayed_RTS_n <= delayed_RTS;
-			s_axi_awvalid <= '0';
-			s_axi_wdata <= NOS;
-			s_axi_wstrb <= "1111";
-			s_axi_wvalid <= '0';
-			s_axi_arvalid <= '0';
-			s_axi_rready <= '0';	
-
-		when load_word =>	
-			if delayed_RTS= '1' then
-				state_n <= skip1;
-			else
-				state_n <= common;
-			end if;	
-			state_n <= skip1;
-			timer <= 0;
-			if delayed_RTS= '1' then
-				PC_n <= PC;
-			else
-				PC_n <= PC_plus;
-			end if;
-			ucode <= ops_NOP;																			
-			accumulator <= (others=>'0');
-			MEMaddr_i <= PC_addr;				
-			MEM_WRQ_X_i <= '0';
-			MEMsize_X_n <= "11";
-			MEMdataout_X <= NOS;	
-			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
-			ReturnAddress_n <= PC_addr;
-			irq_n <= int_trig;
-			rti <= '0';
-			retrap_n <= retrap;
-			delayed_RTS_n <= delayed_RTS;
-			s_axi_awvalid <= '0';
-			s_axi_wdata <= NOS;
-			s_axi_wstrb <= "1111";
-			s_axi_wvalid <= '0';
-			s_axi_arvalid <= '0';
-			s_axi_rready <= '0';	
+--		when load_long =>										-- load a literal longword
+--			state_n <= skip1;
+--			timer <= 0;
+--			if delayed_RTS= '1' then
+--				PC_n <= PC;
+--			else
+--				PC_n <= PC_plus_three;
+--			end if;
+--			ucode <= ops_NOP;																			
+--			accumulator <= (others=>'0');
+--			MEMaddr_i <= PC_addr;				
+--			MEM_WRQ_X_i <= '0';
+--			MEMsize_X_n <= "11";
+--			MEMdataout_X <= NOS;	
+--			AuxControl_n(0 downto 0) <= "0";
+--			AuxControl_n(1 downto 1) <= "0";
+--			ReturnAddress_n <= PC_addr;
+--			irq_n <= int_trig;
+--			rti <= '0';
+--			retrap_n <= retrap;
+--			delayed_RTS_n <= delayed_RTS;
+--			s_axi_awvalid <= '0';
+--			s_axi_wdata <= NOS;
+--			s_axi_wstrb <= "1111";
+--			s_axi_wvalid <= '0';
+--			s_axi_arvalid <= '0';
+--			s_axi_rready <= '0';	
+--
+--		when load_long2 =>										
+--			state_n <= load_word;
+--			timer <= 0;
+--			if delayed_RTS= '1' then
+--				PC_n <= PC;
+--			else
+--				PC_n <= PC_plus;
+--			end if;
+--			ucode <= ops_NOP;																			
+--			accumulator <= (others=>'0');
+--			MEMaddr_i <= PC_addr;				
+--			MEM_WRQ_X_i <= '0';
+--			MEMsize_X_n <= "11";
+--			MEMdataout_X <= NOS;	
+--			AuxControl_n(0 downto 0) <= "0";
+--			AuxControl_n(1 downto 1) <= "0";
+--			ReturnAddress_n <= PC_addr;
+--			irq_n <= int_trig;
+--			rti <= '0';
+--			retrap_n <= retrap;
+--			delayed_RTS_n <= delayed_RTS;
+--			s_axi_awvalid <= '0';
+--			s_axi_wdata <= NOS;
+--			s_axi_wstrb <= "1111";
+--			s_axi_wvalid <= '0';
+--			s_axi_arvalid <= '0';
+--			s_axi_rready <= '0';	
+--
+--		when load_word =>	
+--			if delayed_RTS= '1' then
+--				state_n <= skip1;
+--			else
+--				state_n <= common;
+--			end if;	
+--			state_n <= skip1;
+--			timer <= 0;
+--			if delayed_RTS= '1' then
+--				PC_n <= PC;
+--			else
+--				PC_n <= PC_plus;
+--			end if;
+--			ucode <= ops_NOP;																			
+--			accumulator <= (others=>'0');
+--			MEMaddr_i <= PC_addr;				
+--			MEM_WRQ_X_i <= '0';
+--			MEMsize_X_n <= "11";
+--			MEMdataout_X <= NOS;	
+--			AuxControl_n(0 downto 0) <= "0";
+--			AuxControl_n(1 downto 1) <= "0";
+--			ReturnAddress_n <= PC_addr;
+--			irq_n <= int_trig;
+--			rti <= '0';
+--			retrap_n <= retrap;
+--			delayed_RTS_n <= delayed_RTS;
+--			s_axi_awvalid <= '0';
+--			s_axi_wdata <= NOS;
+--			s_axi_wstrb <= "1111";
+--			s_axi_wvalid <= '0';
+--			s_axi_arvalid <= '0';
+--			s_axi_rready <= '0';	
 		
 		when others =>										-- skip1, but use default case for speed optimization
 			state_n <= common;							-- after changing PC, this wait state allows a memory read before execution of next instruction

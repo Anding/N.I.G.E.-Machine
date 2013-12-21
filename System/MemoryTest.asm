@@ -19,6 +19,10 @@ writeLreadL	#.b	01
 		store.l
 		#.l	65536
 		fetch.l
+;
+;		jsl announce
+;stop		bra stop
+;
 		#.l	hex 89ABCDEF
 		-
 		#.w	assert

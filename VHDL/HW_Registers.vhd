@@ -35,7 +35,7 @@ entity HW_Registers is
 			  PS2_data : in std_logic_vector(7 downto 0);			-- PS/2 port
 			  counter_ms : in std_logic_vector(31 downto 0);		-- 32 bit millisecond timer
 			  counter_clk : in std_logic_vector(31 downto 0);		-- 32 bit clock timer
-			  ssData	: out std_logic_vector(15 downto 0);			-- data for seven segment display
+			  ssData	: out std_logic_vector(31 downto 0);			-- data for seven segment display
 			  SW	: in std_logic_vector(7 downto 0);					-- switches onboard Nexys2
 			  VBLANK : in std_logic;										-- VGA vertical blank
 			  -- CPU system memory channel
@@ -60,7 +60,7 @@ architecture Behavioral of HW_Registers is
 	signal UBRR_r_S0	: std_logic_vector(15 downto 0);
 	signal background_r : std_logic_vector(7 downto 0);
 	signal mode_r : std_logic_vector(4 downto 0);
-	signal ssData_r : std_logic_vector(15 downto 0);
+	signal ssData_r : std_logic_vector(31 downto 0);
 	signal addr_i : std_logic_vector(7 downto 0);					-- local address bus
 	signal clk_i : std_logic;												-- local slow clock for debounce
 	-- pipeline registers for hardware write
@@ -150,7 +150,7 @@ begin
 						IRQ_mask_r <= datain_r(15 downto 1);
 					
 					when x"30" =>										-- SEVENSEG
-						ssData_r <= datain_r(15 downto 0);
+						ssData_r <= datain_r(31 downto 0);
 						
 					when x"38" =>										-- SD data
 						SD_dataout_r <= datain_r(7 downto 0);
