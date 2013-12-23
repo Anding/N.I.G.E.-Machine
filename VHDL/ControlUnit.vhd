@@ -165,8 +165,8 @@ begin
 --	accumulator_Z <= accumulator_i(15 downto 0) & MEMdatain_Z;	
 	
 	-- AXI interface constant settings
-	s_axi_awaddr <= TOS;
-	s_axi_araddr <= TOS;	
+	s_axi_awaddr <= TOS(31 downto 2) & "00";
+	s_axi_araddr <= TOS(31 downto 2) & "00";	
 	s_axi_bready <= '1';	
 
 	int_trig <= irq or irq_m1;

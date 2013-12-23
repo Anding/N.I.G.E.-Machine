@@ -32,7 +32,7 @@ entity DMAcontroller is
 				s_axi_rresp : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
 				s_axi_rvalid : OUT STD_LOGIC;
 				s_axi_rready : IN STD_LOGIC;
-				-- AIX4 connections to VGA buffer
+				-- AIX4 connections to Text buffer
 				t_axi_araddr : IN  std_logic_vector(31 downto 0);
 				t_axi_arlen : IN  std_logic_vector(7 downto 0);				-- Burst length = value + 1
 				t_axi_arsize : IN  std_logic_vector(2 downto 0);			-- Size in bytes: "01" = 2 bytes, "10" = 4 bytes
@@ -64,7 +64,7 @@ architecture Behavioral of DMAcontroller is
 type state_type is (	startup, idle,
 							read_pagemode_lo, read_pagemode_hi, read_AXI_handshake,
 							write_async_lo, write_async_gap, write_async_hi, write_AXI_handshake,
-							set_RCR, set_gap1, set_BCR, set_gap2, read_after_set,
+							set_RCR, set_gap1, set_BCR, set_gap2, read_after_set1, read_after_set2,
 							init_burst1, init_burst2, init_burst3, burst, end_burst1, end_burst2); 
 							
 signal state, next_state : state_type; 
@@ -135,10 +135,12 @@ begin
 	-- write address, write, and write response channels
 	with state select
 		s_axi_awready <=	'1' when write_async_lo,														-- acknowledge only after entering write cycle
+								'1' when write_async_hi,	
 								'0' when others;
 	
 	with state select
 		s_axi_wready <=	'1' when write_async_lo,														-- acknowledge only after entering write cycle
+								'1' when write_async_hi,	
 								'0' when others;	
 
 	with state select
@@ -196,11 +198,10 @@ begin
 								'0' when write_async_hi,
 								'0' when set_RCR,
 								'0' when set_BCR,
-								'0' when read_after_set,
-								--'0' when init_burst1,
+								'0' when read_after_set1,
+								'0' when read_after_set2,
 								'0' when init_burst2,
 								'0' when init_burst3,
-								--'0' when burst,
 								'1' when others;							
 								
 	with state select
@@ -210,8 +211,8 @@ begin
 								'0' when write_async_hi,
 								'0' when set_RCR,
 								'0' when set_BCR,
-								'0' when read_after_set,
-								--'0' when init_burst1,
+								'0' when read_after_set1,
+								'0' when read_after_set2,								
 								'0' when init_burst2,
 								'0' when init_burst3,
 								'0' when burst,
@@ -253,7 +254,6 @@ begin
 	with state select
 		CLK_SDRAM_i <=		'1' when init_burst2,
 								'1' when burst,
-								--'1' when end_burst1,
 								'0' when others;
 		
 	with state select	
@@ -292,7 +292,7 @@ begin
 	end generate;
  
    NEXT_STATE_DECODE: process (state, s_axi_rready, s_axi_bready, s_axi_arvalid, s_axi_awvalid, s_axi_wvalid, ADDR_r, TOP_r,
-											t_axi_arvalid, t_axi_arsize, t_axi_arburst)
+											t_axi_arvalid, t_axi_arsize, t_axi_arburst, s_axi_wstrb)
    begin
       case (state) is
 		
@@ -314,7 +314,11 @@ begin
 				
 			when write_async_lo =>
 				timer <= CONV_STD_LOGIC_VECTOR(6,8);								-- 70ns async write cycle
-				next_state <= write_async_gap;			
+				if s_axi_wstrb_r(3 downto 2) = "00" then
+					next_state <= write_AXI_handshake;
+				else
+					next_state <= write_async_gap;			
+				end if;
 				
 			when write_async_gap =>														-- 10ns interval between write cycles
 				timer <= (others=>'0');
@@ -346,15 +350,19 @@ begin
 
 			when set_gap1 =>
 				timer <= (others=>'0');
-				next_state <= set_RCR;				
+				next_state <= read_after_set1;
 
 			when set_gap2 =>
 				timer <= (others=>'0');
-				next_state <= read_after_set;	
+				next_state <= read_after_set2;	
 
-			when read_after_set =>
+			when read_after_set1 =>
 				timer <= CONV_STD_LOGIC_VECTOR(8,8);
-				next_state <= idle;		
+				next_state <= set_RCR;	
+
+			when read_after_set2 =>
+				timer <= CONV_STD_LOGIC_VECTOR(8,8);
+				next_state <= idle;				
 				
 			when init_burst1 =>
 				timer <= (others=>'0');
@@ -389,7 +397,11 @@ begin
             if s_axi_arvalid = '1' then	
                next_state <= read_pagemode_lo;
 				elsif (s_axi_awvalid = '1' and s_axi_wvalid = '1') then
-					next_state <= write_async_lo;
+					if s_axi_wstrb(1 downto 0) = "00" then
+						next_state <= write_async_hi;
+					else
+						next_state <= write_async_lo;
+					end if;
 				elsif t_axi_arvalid = '1' and t_axi_arsize = "001" and t_axi_arburst = "01" then
 					next_state <= init_burst1;
 				else
