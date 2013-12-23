@@ -21,7 +21,7 @@ entity HW_Registers is
 			  --
 			  gfx_zero : out std_logic_vector(23 downto 8);			-- base address of bitmapped graphics memory
 			  txt_zero : out std_logic_vector(23 downto 0);			-- base address of character graphics memory
-			  mode	 	: out STD_LOGIC_VECTOR (4 downto 0);			-- graphics adapter mode
+			  mode	 	: out STD_LOGIC_VECTOR (4 downto 0);		-- graphics adapter mode
 			  background : out STD_LOGIC_VECTOR (7 downto 0);		-- background color for graphics adapter text mode
 			  irq_mask : out STD_LOGIC_VECTOR(15 downto 1);			-- mask for interrupt controller
 			  RS232_rx_S0 : in std_logic_vector(7 downto 0);		-- RS232 port 0 datain

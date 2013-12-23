@@ -19,28 +19,31 @@ entity VGA is
 			  addr_Text : out STD_LOGIC_VECTOR (6 downto 0);	-- refers to the column 0 - 79
 			  data_Char : in STD_LOGIC_VECTOR (7 downto 0);		-- character memory
 			  addr_Char : out STD_LOGIC_VECTOR (10 downto 0);
-           HSync : out  STD_LOGIC;									-- VGA adpater connections
+           HSync : out  STD_LOGIC;									-- VGA adapter connections
            VSync : out  STD_LOGIC;
-			  start_VGA : out  STD_LOGIC;								-- triggers for DMA to access first line of memory
-			  start_TXT : out  STD_LOGIC;	
+--			  start_VGA : out  STD_LOGIC;								-- triggers for DMA to access first line of memory
+--			  start_TXT : out  STD_LOGIC;	
 			  VBLANK	: out STD_LOGIC;									-- vertical blank
-			  RGB : out  STD_LOGIC_VECTOR (11 downto 0)
+			  RGB : out  STD_LOGIC_VECTOR (11 downto 0);
+			  VGA_columns : out std_logic_vector(6 downto 0);
+			  VGA_active : out std_logic := '0';
+			  VGA_newline : out std_logic := '0'
 			  );
 end VGA;
 
 architecture Behavioral of VGA is
-signal Vcount : std_logic_vector(10 downto 0); -- := CONV_STD_LOGIC_VECTOR(526,11); 		-- Vertical pixel count
-signal tVcount, height : std_logic_vector(3 downto 0); 												-- text Vertical count
-signal Hcount : std_logic_vector(10 downto 0); -- := (others=>'0');								-- Horizontal pixel count
-signal addressPixel : std_logic_vector(8 downto 0); 			-- On screen address of current pixel
-signal addressText : std_logic_vector(6 downto 0);		  		-- On screen address of current character
-signal addressChar : std_logic_vector(10 downto 0);		  	-- Char RAM lookup of current character
+signal Vcount : std_logic_vector(10 downto 0) := CONV_STD_LOGIC_VECTOR(665,11); 					-- := CONV_STD_LOGIC_VECTOR(526,11); 		-- Vertical pixel count
+signal tVcount, height : std_logic_vector(3 downto 0) := (others=>'0'); 		-- text Vertical count
+signal Hcount : std_logic_vector(10 downto 0) := (others=>'0'); 					-- Horizontal pixel count
+signal addressPixel : std_logic_vector(8 downto 0):= (others=>'0');  			-- On screen address of current pixel
+signal addressText : std_logic_vector(6 downto 0):= (others=>'0');		  		-- On screen address of current character
+signal addressChar : std_logic_vector(10 downto 0):= (others=>'0');		  		-- Char RAM lookup of current character
 
-signal Hblk0, Hblk1, Hblk2, Hblk3, Hblk4: std_logic;			-- Signals video blank period
-signal Vblk0,vblk1m_i: std_logic := '1';							-- Signals video blank period
-signal pixelGFX0, pixelGFX1, pixelGFX2 : std_logic_vector(7 downto 0);	-- Graphics pixel pipeline
-signal char_pixels : STD_LOGIC_VECTOR(7 downto 0);				-- Character shift register.  8 or 16 bit depending on character width
-signal char_color : STD_LOGIC_VECTOR(7 downto 0);				-- Colour data for current character
+signal Hblk0, Hblk1, Hblk2, Hblk3, Hblk4: std_logic;									-- Signals video blank period
+signal Vblk0,vblk1m_i: std_logic := '1';													-- Signals video blank period
+signal pixelGFX0, pixelGFX1, pixelGFX2 : std_logic_vector(7 downto 0);			-- Graphics pixel pipeline
+signal char_pixels : STD_LOGIC_VECTOR(7 downto 0);										-- Character shift register.  8 or 16 bit depending on character width
+signal char_color : STD_LOGIC_VECTOR(7 downto 0);										-- Colour data for current character
 signal Ha, Hb, Hc, Hd, He : std_logic_vector(10 downto 0);
 signal Va, Vb, Vc, Vd, Ve : std_logic_vector(10 downto 0);
 signal COLUMNS : std_logic_vector(6 downto 0);
@@ -50,9 +53,10 @@ begin
 	addr_VGA <= addressPixel;
 	addr_Text <= addressText;
 	addr_Char <= addressChar;
-	start_VGA <= vblk1m_i and (not RESET) and (mode(2));
-	start_TXT <= vblk1m_i and (not RESET) and (mode(0));
+--	start_VGA <= vblk1m_i and (not RESET) and (mode(2));
+--	VGA_active <= (not vblk1m_i) and (not RESET) and (mode(0));
 	VBLANK <= vblk1m_i;
+	VGA_COLUMNS <= COLUMNS + 1;
 	
 	with mode(3) select 															-- select the interlace mode
 		height <= "1001" when '1',
@@ -148,6 +152,20 @@ begin
 		Hblk2 <= Hblk1;												
 		Hblk3 <= Hblk2;
 		Hblk4 <= Hblk3;							-- Hblk4 synchronized with sync signals for pixel out	
+		
+		-- TEXTbuffer new line
+		if Hcount = Hb and tVcount < 8 then
+			VGA_newline <= '1';
+		elsif Hcount = Ha then
+			VGA_newline <= '0';
+		end if;
+		
+		-- TEXTbuffer VGA active
+		if Vcount = Va then					-- also check for mode(0) 
+			VGA_active <= '1';
+		elsif Vcount = Vd then
+			VGA_active <= '0';
+		end if;
 		
 		-- Graphics RAM address generator
 		if RESET = '0' and mode(2) = '1' and vblk0 = '0' then									

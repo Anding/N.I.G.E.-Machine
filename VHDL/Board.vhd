@@ -86,8 +86,8 @@ signal txt_zero : std_logic_vector(23 downto 0);
 signal gfx_zero : std_logic_vector(15 downto 0);
 signal DATA_OUT_VGA : std_logic_vector(7 downto 0) := (others=>'0');
 signal ADDR_VGA : std_logic_vector(8 downto 0);
-signal DATA_TXT : std_logic_vector(15 downto 0) := (others=>'0');
-signal ADDR_TXT : std_logic_vector(6 downto 0);
+signal DATA_TEXT : std_logic_vector(15 downto 0) := (others=>'0');
+signal ADDR_TEXT : std_logic_vector(6 downto 0);
 signal DATA_Char : std_logic_vector(7 downto 0);
 signal ADDR_Char : std_logic_vector(10 downto 0);
 signal start_VGA, start_TXT : std_logic;
@@ -160,7 +160,9 @@ signal t_axi_rresp : std_logic_vector(1 downto 0);
 signal t_axi_rlast : std_logic;
 signal t_axi_rvalid : std_logic;
 signal s_aresetn : std_logic;
-
+signal VGA_columns : std_logic_vector(6 downto 0);
+signal VGA_active : std_logic;
+signal VGA_newline : std_logic;
 
 alias clk_system is clk100;
 alias clk_VGA is clk50;
@@ -312,34 +314,34 @@ begin
 		doutb => doutb_sysram_i
 	);
 	
---	Inst_RAM_for_Testbench: entity work.RAM_for_Testbench PORT MAP(
---		rst => reset,
---		clk => clk_system,
---		weA => wea_sysram(0),
---		weB => web_sysram(0),
---		addressA => addra_sysram,
---		data_inA => dina_sysram,
---		data_outA => douta_sysram,
---		addressB => addrb_sysram,
---		data_inB => dinb_sysram,
---		data_outB => doutb_sysram
---	);
+	Inst_RAM_for_Testbench: entity work.RAM_for_Testbench PORT MAP(
+		rst => reset,
+		clk => clk_system,
+		weA => wea_sysram(0),
+		weB => web_sysram(0),
+		addressA => addra_sysram,
+		data_inA => dina_sysram,
+		data_outA => douta_sysram,
+		addressB => addrb_sysram,
+		data_inB => dinb_sysram,
+		data_outB => doutb_sysram
+	);
 
-	  inst_SYS_RAM : entity work.Sys_RAM
-	  PORT MAP (
-		 clka => clk_system,
-		 ena => ram_en,
-		 wea => wea_sysram,
-		 addra => addra_sysram (15 downto 2),					-- write depth 12032, 15downto2
-		 dina => dina_sysram,
-		 douta => douta_sysram,
-		 clkb => clk_system,
-		 enb => ram_en,
-		 web => web_sysram,
-		 addrb => addrb_sysram (15 downto 2),
-		 dinb => dinb_sysram,
-		 doutb => doutb_sysram
-	  );
+--	  inst_SYS_RAM : entity work.Sys_RAM
+--	  PORT MAP (
+--		 clka => clk_system,
+--		 ena => ram_en,
+--		 wea => wea_sysram,
+--		 addra => addra_sysram (15 downto 2),					-- write depth 12032, 15downto2
+--		 dina => dina_sysram,
+--		 douta => douta_sysram,
+--		 clkb => clk_system,
+--		 enb => ram_en,
+--		 web => web_sysram,
+--		 addrb => addrb_sysram (15 downto 2),
+--		 dinb => dinb_sysram,
+--		 doutb => doutb_sysram
+--	  );
 	  
 	  douta_sysram_i <= douta_sysram;
 	  doutb_sysram_i <= doutb_sysram;
@@ -500,17 +502,42 @@ begin
 		background => background,
 		data_VGA => DATA_OUT_VGA,
 		addr_VGA => ADDR_VGA,
-		data_Text => DATA_TXT,
-		addr_Text => ADDR_TXT,
+		data_Text => DATA_TEXT,
+		addr_Text => ADDR_TEXT,
 		data_Char => data_Char,
 		addr_Char => addr_Char,
 		HSync => HSync,
 		VSync => VSync,
-		start_VGA => start_VGA,
-		start_TXT => start_TXT,
+--		start_VGA => start_VGA,
+--		start_TXT => start_TXT,
 		VBLANK => VBLANK,
-		RGB => RGB
+		RGB => RGB,
+		VGA_columns => VGA_columns,
+		VGA_active => VGA_active,
+		VGA_newline => VGA_newline
 	);	
+	
+		Inst_TEXTbuffer: entity work.TEXTbuffer PORT MAP(
+		clk_MEM => clk_MEM,
+		clk_VGA => clk_VGA,
+		VGA_columns => VGA_columns,
+		VGA_active => VGA_active,
+		VGA_newline => VGA_newline,
+		txt_zero => txt_zero,
+		ADDR_TEXT => ADDR_TEXT,
+		DATA_TEXT => DATA_TEXT,
+		t_axi_araddr => t_axi_araddr,
+		t_axi_arlen => t_axi_arlen,
+		t_axi_arsize => t_axi_arsize,
+		t_axi_arburst => t_axi_arburst,
+		t_axi_arvalid => t_axi_arvalid,
+		t_axi_arready => t_axi_arready,
+		t_axi_rdata => t_axi_rdata,
+		t_axi_rresp => t_axi_rresp,
+		t_axi_rlast => t_axi_rlast,
+		t_axi_rvalid => t_axi_rvalid,
+		t_axi_rready => t_axi_rready
+	);
 	
 		Inst_Interrupt: entity work.Interrupt PORT MAP(
 		clk => CLK_SYSTEM,
