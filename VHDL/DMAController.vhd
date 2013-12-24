@@ -65,7 +65,8 @@ type state_type is (	startup, idle,
 							read_pagemode_lo, read_pagemode_hi, read_AXI_handshake,
 							write_async_lo, write_async_gap, write_async_hi, write_AXI_handshake,
 							set_RCR, set_gap1, set_BCR, set_gap2, read_after_set1, read_after_set2,
-							init_burst1, init_burst2, init_burst3, burst, end_burst1, end_burst2); 
+							init_burst1, init_burst2, init_burst3, init_burst4, burst, burst_pause, end_burst1, end_burst2,
+							resume_burst1, resume_burst2, resume_burst3 ); 
 							
 signal state, next_state : state_type; 
 signal count, timer : std_logic_vector(7 downto 0);
@@ -158,13 +159,16 @@ begin
 								'0' when others;
 				
 	t_axi_rvalid <= '1' when (state = burst and WAIT_SDRAM_m2 = '0') or
+									 (state = burst_pause and WAIT_SDRAM_m2 = '0') or
 									(state = end_burst1 and WAIT_SDRAM_m2 = '0') or
 									(state = end_burst2 and WAIT_SDRAM_m2 = '0') else '0';
 	t_axi_rdata <= t_axi_rdata_r;
 	t_axi_rresp	<= "00";
 	
+	-- HERE
 	ADDR_n <= 	t_axi_araddr_r(23 downto 1) when (state = init_burst2) else
-					ADDR_r + "00000000000000000000001" when (state = burst and WAIT_SDRAM = '0') else
+					ADDR_r + "00000000000000000000001" when (state = burst) else
+					--ADDR_r + "00000000000000000000001" when (state = burst_pause) else  							-- increment past page boundary
 					ADDR_r;
 					
 	with state select
@@ -189,6 +193,9 @@ begin
 								t_axi_araddr_r(23 downto 1) when init_burst1,
 								t_axi_araddr_r(23 downto 1) when init_burst2,
 								t_axi_araddr_r(23 downto 1) when init_burst3,
+								ADDR_r when resume_burst1,
+								ADDR_r when resume_burst2,
+								ADDR_r when resume_burst3,
 								(others=>'0') when others;
 								
 	with state select
@@ -202,6 +209,8 @@ begin
 								'0' when read_after_set2,
 								'0' when init_burst2,
 								'0' when init_burst3,
+								'0' when resume_burst2,
+								'0' when resume_burst3,
 								'1' when others;							
 								
 	with state select
@@ -215,6 +224,9 @@ begin
 								'0' when read_after_set2,								
 								'0' when init_burst2,
 								'0' when init_burst3,
+								'0' when init_burst4,
+								'0' when resume_burst2,
+								'0' when resume_burst3,						
 								'0' when burst,
 								'0' when end_burst1,
 								'0' when end_burst2,
@@ -253,6 +265,8 @@ begin
 		
 	with state select
 		CLK_SDRAM_i <=		'1' when init_burst2,
+								'1' when init_burst4,
+								'1' when resume_burst2,						
 								'1' when burst,
 								'0' when others;
 		
@@ -292,7 +306,7 @@ begin
 	end generate;
  
    NEXT_STATE_DECODE: process (state, s_axi_rready, s_axi_bready, s_axi_arvalid, s_axi_awvalid, s_axi_wvalid, ADDR_r, TOP_r,
-											t_axi_arvalid, t_axi_arsize, t_axi_arburst, s_axi_wstrb)
+											t_axi_arvalid, t_axi_arsize, t_axi_arburst, s_axi_wstrb, wait_SDRAM)
    begin
       case (state) is
 		
@@ -374,15 +388,41 @@ begin
 
 			when init_burst3 =>
 				timer <= (others=>'0');
-				next_state <= burst;
-
+				next_state <= init_burst4;
+				
+			when init_burst4 =>
+				timer <= (others=>'0');
+				if WAIT_SDRAM = '0' then
+					next_state <= burst;	
+				else
+					next_state <= state;
+				end if;
+					
 			when burst =>
 				timer <= (others=>'0');
 				if (ADDR_r = TOP_r) then
 					next_state <= end_burst1;
+				elsif WAIT_SDRAM = '1' then
+					next_state <= burst_pause;
 				else
 					next_state <= state;
 				end if;
+				
+			when burst_pause =>
+				timer <= CONV_STD_LOGIC_VECTOR(8,8);
+					next_state <= resume_burst1;	
+					
+			when resume_burst1 =>
+				timer <= (others=>'0');
+				next_state <= resume_burst2;
+				
+			when resume_burst2 =>
+				timer <= (others=>'0');
+				next_state <= resume_burst3;
+
+			when resume_burst3 =>
+				timer <= (others=>'0');
+				next_state <= init_burst4;
 				
 			when end_burst1 =>
 				timer <= (others=>'0');
