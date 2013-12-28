@@ -187,9 +187,10 @@ begin
 								s_axi_awaddr_r(23 downto 2) & '0' when write_async_lo,
 								s_axi_araddr_r(23 downto 2) & '1' when read_pagemode_hi,
 								s_axi_awaddr_r(23 downto 2) & '1' when write_async_hi,
-								"000"	& "00" & "0000000000" & "1" & "00" & "1" & "0" & "000" when set_RCR,
-								"000" & "10" & "00" & "0" & "0" & "011" & "1" & "0" & "1" & "00" & "01" & "1" & "111" when set_BCR,
-						    --"000     10     00     0     0     011     1     0     1     00     01     1     111"  v2.0
+								"000"	& "0" & "00000000000" & "1" & "00" & "1" & "0" & "000" when set_RCR,
+							 --"000"	& "0" & "00000000000" & "1" & "00" & "1" & "0" & "000" when set_RCR,									--1
+								"000" & "1" & "000" & "0" & "0" & "011" & "1" & "0" & "0" & "0" & "1" & "0" & "0" & "1" & "111" when set_BCR,
+						    --"000     1		000     0     0     011     1     0     1     0		 0     0		 1     1     111"  v2.0
 								t_axi_araddr_r(23 downto 1) when init_burst1,
 								t_axi_araddr_r(23 downto 1) when init_burst2,
 								t_axi_araddr_r(23 downto 1) when init_burst3,
@@ -352,15 +353,15 @@ begin
 
 			when startup =>
 				timer <= (others=>'0');
-				next_state <= set_BCR;
+				next_state <= set_RCR;
 				
 			when set_RCR =>
 				timer <= CONV_STD_LOGIC_VECTOR(6,8);
-				next_state <= set_gap2;		
+				next_state <= set_gap1;		
 				
 			when set_BCR =>
 				timer <= CONV_STD_LOGIC_VECTOR(6,8);
-				next_state <= set_gap1;	
+				next_state <= set_gap2;	
 
 			when set_gap1 =>
 				timer <= (others=>'0');
@@ -372,7 +373,7 @@ begin
 
 			when read_after_set1 =>
 				timer <= CONV_STD_LOGIC_VECTOR(8,8);
-				next_state <= set_RCR;	
+				next_state <= set_BCR;	
 
 			when read_after_set2 =>
 				timer <= CONV_STD_LOGIC_VECTOR(8,8);

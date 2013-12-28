@@ -31,7 +31,7 @@ end TEXTbuffer;
 
 architecture Behavioral of TEXTbuffer is
 
-type state_T is (vblank, idle, new_line, new_row, run, post_run);
+type state_T is (vblank, idle, new_line, run, post_run);
 signal state, next_state : state_T;
 signal newline, newline_m : std_logic_vector(2 downto 0);
 signal newline_flag : std_logic;
@@ -46,7 +46,7 @@ signal line_count, line_count_n : std_logic_vector(2 downto 0);
 
 begin
 		t_axi_araddr <= "00000000" & axi_addr;
-		t_axi_arlen  <= "0" & VGA_columns;				-- actually one packet too long, but no harm done
+		t_axi_arlen  <= "0" & VGA_columns;
 		t_axi_arsize <= "001";
 		t_axi_arburst <= "01";
 		t_axi_rready <= '1';
@@ -81,16 +81,13 @@ begin
 				case (state) is
 					when vblank =>
 						next_state <= run;
-						
+				
 					when new_line =>
 						if line_count = "111" then
-							next_state <= new_row;
+							next_state <= run;
 						else
 							next_state <= idle;
 						end if;
-						
-					when new_row =>
-						next_state <= run;
 						
 					when run =>
 						if t_axi_rlast = '1' then
@@ -116,13 +113,13 @@ begin
 		end process;
 		
 		with state select
-			line_count_n <= 	(others=>'0') when vblank,
+			line_count_n <= 	"000" when vblank,					
 									line_count + 1 when new_line,
 									line_count when others;	
 									
 		with state select
 			axi_addr_n <= 	txt_zero when vblank,
-								axi_addr + (VGA_columns & "0") when post_run,
+								axi_addr + (VGA_columns & "0") + "10" when post_run,
 								axi_addr when others;
 								
 		with state select

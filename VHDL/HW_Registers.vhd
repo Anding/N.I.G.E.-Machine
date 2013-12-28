@@ -19,10 +19,9 @@ entity HW_Registers is
 			  SD_wr : out std_logic;
 			  SD_divide : out std_logic_vector(7 downto 0);
 			  --
-			  gfx_zero : out std_logic_vector(23 downto 8);			-- base address of bitmapped graphics memory
 			  txt_zero : out std_logic_vector(23 downto 0);			-- base address of character graphics memory
 			  mode	 	: out STD_LOGIC_VECTOR (4 downto 0);		-- graphics adapter mode
-			  background : out STD_LOGIC_VECTOR (7 downto 0);		-- background color for graphics adapter text mode
+			  background : out STD_LOGIC_VECTOR (15 downto 0);		-- background color for graphics adapter text mode
 			  irq_mask : out STD_LOGIC_VECTOR(15 downto 1);			-- mask for interrupt controller
 			  RS232_rx_S0 : in std_logic_vector(7 downto 0);		-- RS232 port 0 datain
 			  RS232_tx_S0 : out std_logic_vector(7 downto 0);		-- RS232 port 0 dataout
@@ -52,13 +51,12 @@ architecture Behavioral of HW_Registers is
 	-- registers for writeable signals
 	signal SD_dataout_r : std_logic_vector(7 downto 0);
 	signal SD_control_r : std_logic_vector(3 downto 0);
-	signal SD_divide_r : std_logic_vector(7 downto 0);
-	signal gfx_zero_r : std_logic_vector(23 downto 0);				
+	signal SD_divide_r : std_logic_vector(7 downto 0);			
 	signal txt_zero_r : std_logic_vector(23 downto 0);		
 	signal irq_mask_r : std_logic_vector(15 downto 1);
 	signal RS232_tx_r_S0 : std_logic_vector(7 downto 0);	
 	signal UBRR_r_S0	: std_logic_vector(15 downto 0);
-	signal background_r : std_logic_vector(7 downto 0);
+	signal background_r : std_logic_vector(15 downto 0);
 	signal mode_r : std_logic_vector(4 downto 0);
 	signal ssData_r : std_logic_vector(31 downto 0);
 	signal addr_i : std_logic_vector(7 downto 0);					-- local address bus
@@ -88,7 +86,6 @@ begin
 	SD_dataout <= SD_dataout_r;
 	SD_control <= SD_control_r;
 	SD_divide <= SD_divide_r;
-	gfx_zero <= gfx_zero_r(23 downto 8);
 	txt_zero <= txt_zero_r;
 	RS232_tx_S0 <= RS232_tx_r_S0;
 	background <= background_r;
@@ -119,10 +116,9 @@ begin
 			SD_divide_r <= "11111111";								-- divide by 254	
 			UBRR_r_S0 <= CONV_STD_LOGIC_VECTOR(325,16);		-- 325 = 9600 BAUD at 50 MHz		
 			irq_mask_r <= "000000000000111";						-- "000000000000111";
-			txt_zero_r <= X"010600";							
-			gfx_zero_r <= X"000000";		
-			background_r <= X"00";
-			mode_r <= "11011";
+			txt_zero_r <= X"010600";									
+			background_r <= X"0000";
+			mode_r <= "11010";
 			RS232_tx_r_S0 <= (others=>'0');	
 			ssData_r <= (others=>'0');
 			
@@ -130,12 +126,9 @@ begin
 				case addr_r is			
 					when x"00" =>										-- TEXT_ZERO 
 						txt_zero_r <= datain_r(23 downto 0);
-					
-					when x"04" =>										-- GFX_ZERO
-						gfx_zero_r <= datain_r(23 downto 0);	
 
 					when x"08" =>										-- char/text graphics background colour
-						background_r <= datain_r(7 downto 0);		
+						background_r <= datain_r(15 downto 0);		
 						
 					when x"0C" =>										-- graphics mode
 						mode_r <= datain_r(4 downto 0);					
@@ -207,11 +200,8 @@ begin
 				when x"00" =>										-- TEXT_ZERO
 					dataout_i <= blank1 & txt_zero_r;
 				
-				when x"04" =>										-- GFX_ZERO
-					dataout_i <= blank1 & gfx_zero_r;			
-					
 				when x"08" =>										-- char/text graphics background colour
-					dataout_i <= blank3 & background_r;
+					dataout_i <= blank2 & background_r;
 					
 				when x"0c" =>										-- graphics mode
 					dataout_i <= blank3 & "000" & mode_r;

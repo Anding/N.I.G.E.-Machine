@@ -47,7 +47,7 @@ end Board_Nexys4;
 
 architecture RTL of Board_Nexys4 is
 
-type bank_t is (Sys, Char, Pstack, Rstack, Reg);
+type bank_t is (Sys, Char, Color, Pstack, Rstack, Reg);
 signal bank, bank_n : bank_t;	
 signal counter_clk, counter_ms : std_logic_vector(31 downto 0) := (others =>'0');
 signal timer_ms : std_logic_vector(15 downto 0) := (others =>'0');	
@@ -60,6 +60,7 @@ signal PSdatain :  std_logic_vector(31 downto 0);
 signal RSdatain :  std_logic_vector(31 downto 0);
 signal MEMdatain_Xi :  std_logic_vector(31 downto 0);
 signal MEMdata_Char :  std_logic_vector(7 downto 0);
+signal MEMdata_Color :  std_logic_vector(15 downto 0);
 signal MEMdata_Pstack, MEMdata_Rstack, MEMdata_Reg : std_logic_vector(31 downto 0);
 signal MEMdatain_Y : std_logic_vector(7 downto 0);
 signal MEM_RDY_Y :  std_logic;
@@ -81,15 +82,16 @@ signal MEM_REQ_Y :  std_logic;
 signal MEMdataout_Z :  std_logic_vector(15 downto 0);
 signal MEM_WRQ_Z :  std_logic;
 signal MEM_REQ_Z : std_logic;
-signal Sys_EN, Pstack_EN, Rstack_EN, Char_EN, Reg_EN : std_logic;
+signal Sys_EN, Pstack_EN, Rstack_EN, Char_EN, Reg_EN, Color_EN : std_logic;
 signal txt_zero : std_logic_vector(23 downto 0);
-signal gfx_zero : std_logic_vector(15 downto 0);
 signal DATA_OUT_VGA : std_logic_vector(7 downto 0) := (others=>'0');
 signal ADDR_VGA : std_logic_vector(8 downto 0);
 signal DATA_TEXT : std_logic_vector(15 downto 0) := (others=>'0');
 signal ADDR_TEXT : std_logic_vector(6 downto 0);
 signal DATA_Char : std_logic_vector(7 downto 0);
 signal ADDR_Char : std_logic_vector(10 downto 0);
+signal DATA_Color : std_logic_vector(15 downto 0);
+signal ADDR_Color : std_logic_vector(7 downto 0);
 signal start_VGA, start_TXT : std_logic;
 signal RS232_TX_S0 : std_logic_vector(7 downto 0);
 signal RS232_WR_S0 : std_logic;       
@@ -104,7 +106,7 @@ signal PS2_irq : std_logic;
 signal PS2_data : std_logic_vector(7 downto 0);
 signal reset_trigger : std_logic;
 signal mode : STD_LOGIC_VECTOR (4 downto 0);		
-signal background : STD_LOGIC_VECTOR (7 downto 0);
+signal background : STD_LOGIC_VECTOR (15 downto 0);
 signal ssData	: STD_LOGIC_VECTOR (31 downto 0);
 signal CLKSPI, SD_wr : STD_LOGIC;
 signal SD_dataout, SD_datain, SD_divide : STD_LOGIC_VECTOR (7 downto 0);
@@ -217,7 +219,7 @@ begin
 	-- ms interrupt
 	process														
 	begin
-		wait until rising_edge(clk_system);						-- 50MHz clock
+		wait until rising_edge(clk50);						-- 50MHz clock
 		if timer_ms = CONV_STD_LOGIC_VECTOR(50000,16) then
 			timer_ms <=(others =>'0');
 			counter_ms <= counter_ms + 1;
@@ -239,12 +241,14 @@ begin
 	end process;
 	 
 	with MEMaddr(15 downto 11) select
-		bank_n <= Pstack when "11100",
+		bank_n <= Color when "11011",
+					 Pstack when "11100",
 					 Rstack when "11101",
 					 Char when "11110",
 					 Reg when "11111",
 					 Sys when others;
 	 
+	 Color_EN <= '1' when bank_n = Color else '0';
 	 Pstack_EN <= '1' when bank_n = Pstack else '0';
 	 Rstack_EN <= '1' when bank_n = Rstack else '0';
 	 Char_EN <= '1' when bank_n = Char else '0';
@@ -256,6 +260,7 @@ begin
 		MEMdatain_Xi <= MEMdata_Pstack when Pstack,
 							MEMdata_Rstack when Rstack,
 							"000000000000000000000000" & MEMdata_Char when Char,
+							"0000000000000000" & MEMdata_Color when Color,
 							MEMdata_Reg when Reg,
 							MEMdata_Sys when others;
 							
@@ -314,34 +319,34 @@ begin
 		doutb => doutb_sysram_i
 	);
 	
-	Inst_RAM_for_Testbench: entity work.RAM_for_Testbench PORT MAP(
-		rst => reset,
-		clk => clk_system,
-		weA => wea_sysram(0),
-		weB => web_sysram(0),
-		addressA => addra_sysram,
-		data_inA => dina_sysram,
-		data_outA => douta_sysram,
-		addressB => addrb_sysram,
-		data_inB => dinb_sysram,
-		data_outB => doutb_sysram
-	);
+--	Inst_RAM_for_Testbench: entity work.RAM_for_Testbench PORT MAP(
+--		rst => reset,
+--		clk => clk_system,
+--		weA => wea_sysram(0),
+--		weB => web_sysram(0),
+--		addressA => addra_sysram,
+--		data_inA => dina_sysram,
+--		data_outA => douta_sysram,
+--		addressB => addrb_sysram,
+--		data_inB => dinb_sysram,
+--		data_outB => doutb_sysram
+--	);
 
---	  inst_SYS_RAM : entity work.Sys_RAM
---	  PORT MAP (
---		 clka => clk_system,
---		 ena => ram_en,
---		 wea => wea_sysram,
---		 addra => addra_sysram (15 downto 2),					-- write depth 12032, 15downto2
---		 dina => dina_sysram,
---		 douta => douta_sysram,
---		 clkb => clk_system,
---		 enb => ram_en,
---		 web => web_sysram,
---		 addrb => addrb_sysram (15 downto 2),
---		 dinb => dinb_sysram,
---		 doutb => doutb_sysram
---	  );
+	  inst_SYS_RAM : entity work.Sys_RAM
+	  PORT MAP (
+		 clka => clk_system,
+		 ena => ram_en,
+		 wea => wea_sysram,
+		 addra => addra_sysram (15 downto 2),					-- write depth 12032, 15downto2
+		 dina => dina_sysram,
+		 douta => douta_sysram,
+		 clkb => clk_system,
+		 enb => ram_en,
+		 web => web_sysram,
+		 addrb => addrb_sysram (15 downto 2),
+		 dinb => dinb_sysram,
+		 doutb => doutb_sysram
+	  );
 	  
 	  douta_sysram_i <= douta_sysram;
 	  doutb_sysram_i <= doutb_sysram;
@@ -361,11 +366,26 @@ begin
 		 doutb => MEMdata_Char
 	  );		
 	  
+	  inst_Color_RAM : entity work.Color_RAM
+	  PORT MAP (
+		 clka => clk_VGA,
+		 ena => '1',
+		 wea => "0",
+		 addra => addr_Color,
+		 dina => (others=>'0'),
+		 douta => data_Color,
+		 clkb => clk_system,
+		 enb => Color_EN,
+		 web => MEM_WRQ_XX,
+		 addrb => MEMaddr(8 downto 1),
+		 dinb => MEMdataout_X(15 downto 0),
+		 doutb => MEMdata_Color
+	  );
+	  
 	  inst_HW_Registers: entity work.HW_Registers PORT MAP(
 		clk => CLK_SYSTEM,
 		rst => reset,
 		irq_mask => irq_mask,
-		gfx_zero => gfx_zero,
 		txt_zero => txt_zero,
 		mode => mode,
 		background => background,
@@ -431,16 +451,6 @@ begin
 		s_axi_rresp => s_axi_rresp,
 		s_axi_rvalid => s_axi_rvalid,
 		s_axi_rready => s_axi_rready
---		MEMdatain_Y => MEMdatain_Y,
---		MEMdataout_Y => MEMdataout_Y,
---		MEM_WRQ_Y => MEM_WRQ_Y,
---		MEM_REQ_Y => MEM_REQ_Y,
---		MEM_RDY_Y => MEM_RDY_Y,
---		MEMdatain_Z => MEMdatain_Z,
---		MEMdataout_Z => MEMdataout_Z,
---		MEM_WRQ_Z => MEM_WRQ_Z,
---		MEM_REQ_Z => MEM_REQ_Z,
---		MEM_RDY_Z => MEM_RDY_Z
 	);
 	
 	s_aresetn <= not RESET;
@@ -497,7 +507,6 @@ begin
 		
 		Inst_VGAController: entity work.VGA PORT MAP(
 		CLK_VGA => CLK_VGA,
-		RESET => reset,
 		mode	=> mode,
 		background => background,
 		data_VGA => DATA_OUT_VGA,
@@ -506,10 +515,10 @@ begin
 		addr_Text => ADDR_TEXT,
 		data_Char => data_Char,
 		addr_Char => addr_Char,
+		data_Color => data_Color,
+		addr_Color => addr_Color,		
 		HSync => HSync,
 		VSync => VSync,
---		start_VGA => start_VGA,
---		start_TXT => start_TXT,
 		VBLANK => VBLANK,
 		RGB => RGB,
 		VGA_columns => VGA_columns,
@@ -572,20 +581,6 @@ begin
 		irq => PS2_irq,
 		data => PS2_data
 	);
-				
---		Inst_IOExpansion: entity work.IOExpansionSYNC PORT MAP(
---		reset => reset,
---		clk => CLK_SYSTEM,
---		EppAstb => EppAstb,
---		EppDstb => EppDstb,
---		EppWr => EppWr,
---		EppDB => EppDB,
---		EppWait =>EppWait ,
---		data => Boot_data,
---		addr => Boot_addr,
---		we => Boot_we,
---		reset_trigger => reset_trigger
---		);
 
 		reset_trigger <= '0';
 		Boot_we <= (others=>'0');
