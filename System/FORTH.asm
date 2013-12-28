@@ -216,6 +216,7 @@ MS.TIMEOUT	dc.l	hex 00
 ; -----------------------------------------------------------------------------------------------
 ;
 START.CF	jsl	CLS.CF
+		jsl	SCRSET.CF
 		#.w	START.0	; First part of power-on message
 		#.b	52
 		jsl	TYPE.CF
@@ -972,10 +973,17 @@ SCRSET.NF	dc.b	6 128 +
 SCRSET.SF	dc.w	SCRSET.Z SCRSET.CF del
 SCRSET.CF	#.w	mode			; check screen mode
 		fetch.b
-		#.b	binary 00011000
+		dup				( mode mode)
+		#.b	binary 00000111
+		and				( mode vga-mode)
+		1-				( mode 0/1/2)
+		lsl
+		lsl				( mode v) ; v is 0, 4, 8
+		swap
+		#.b	binary	00010000
 		and
-		lsr
-		lsr				( v) ; v is 0, 2, 4, 6
+		lsl				( v w); w is 0, 2
+		+				( offset)
 		#.w	SCRSET
 		+
 		dup
@@ -990,6 +998,8 @@ SCRSET		dc.b	60 80			; VGA, interlace off, ROWS, COLUMNS
 		dc.b	48 80			; VGA, interlace on
 		dc.b	75 100			; SVGA, interlace off
 		dc.b	60 100			; SVGA, interlace on
+		dc.b	96 128			; XGA, interlace off
+		dc.b	77 128			; XGA, interlace on
 ;
 ; NEWLINE ( --, implement a newline)
 NEWLINE.LF	dc.l	SCRSET.NF
@@ -1252,44 +1262,23 @@ BACKGROUND.CF	#.w	BACKGROUND
 BACKGROUND.Z	store.b,rts
 ;
 ;
-; COLOR ( n --, set the ink from the palette)
-COLOR.LF	dc.l	BACKGROUND.NF
-COLOR.NF	dc.b	5 128 +
-		dc.s	COLOR
-COLOR.SF	dc.w	COLOR.Z COLOR.CF del
-COLOR.CF	#.w	palette
-		+
-		fetch.b
-		#.w	INK
-COLOR.Z	store.b,rts
+;COLOR ( n --, set the ink from the palette)
+;COLOR.LF	dc.l	BACKGROUND.NF
+;COLOR.NF	dc.b	3 128 +
+;		dc.s	PEN
+;COLOR.SF	dc.w	PEN.Z COLOR.CF del
+;COLOR.CF	#.w	palette
+;		+
+;		fetch.b
+;		#.w	INK
+;COLOR.Z	store.b,rts
 ;
 ; SCREENMODE ( flag --, set interlace mode on or off)
-SCREENMODE.LF	dc.l	COLOR.NF
-SCREENMODE.NF	dc.b	10 128 +
-		dc.s	SCREENMODE
-SCREENMODE.SF	dc.w	SCREENMODE.Z SCREENMODE.CF del
-SCREENMODE.CF	#.w	mode
-		fetch.b
-		swap
-		IF
-			#.b	8
-			or
-		ELSE
-			#.b	247
-			and
-		THEN
-		#.w	mode
-		store.b	
-		jsl	SCRSET.CF
-SCREENMODE.Z	rts
-;
-; SCREENSIZE ( flag --. set SVGA mode on or off)
-SCREENSIZE.LF	dc.l	SCREENMODE.NF
-SCREENSIZE.NF	dc.b	10 128 +
-		dc.s	SCREENSIZE
-SCREENSIZE.SF	dc.w	SCREENSIZE.Z SCREENSIZE.CF del
-SCREENSIZE.CF	jsl	CLS.CF
-		#.w	mode
+INTERLACE.LF	dc.l	BACKROUND.NF
+INTERLACE.NF	dc.b	9 128 +
+		dc.s	INTERLACE
+INTERLACE.SF	dc.w	INTERLACE.Z INTERLACE.CF del
+INTERLACE.CF	#.w	mode
 		fetch.b
 		swap
 		IF
@@ -1302,10 +1291,26 @@ SCREENSIZE.CF	jsl	CLS.CF
 		#.w	mode
 		store.b	
 		jsl	SCRSET.CF
-SCREENSIZE.Z	rts
+INTERLACE.Z	rts
+;
+; SCREENSIZE ( mode --, set VGA mode.  0 = off, 1=VGA, 2=SVGA, 3=XGA)
+VGA.LF	dc.l	INTERLACE.NF
+VGA.NF	dc.b	3 128 +
+		dc.s	VGA
+VGA.SF	dc.w	VGA.Z VGACF del
+VGA.CF	jsl	CLS.CF					( VGA)
+		#.w	mode
+		fetch.b				( VGA mode)
+		#.b	binary	11111000		
+		and					( VGA mode`)
+		or					( mode``)
+		#.w	mode
+		store.b	
+		jsl	SCRSET.CF
+VGA.Z	rts
 ;
 ; COLORMODE ( flag --. set 16/16 or 256/0 color mode)
-COLORMODE.LF	dc.l	SCREENSIZE.NF
+COLORMODE.LF	dc.l	VGA.NF
 COLORMODE.NF	dc.b	9 128 +
 		dc.s	COLORMODE
 COLORMODE.SF	dc.w	COLORMODE.Z COLORMODE.CF del
@@ -1313,31 +1318,30 @@ COLORMODE.CF	#.w	mode
 		fetch.b
 		swap
 		IF
-			#.b	2
+			#.b	8
 			or
 		ELSE
-			#.b	253
+			#.b	247
 			and
 		THEN
 		#.w	mode
 		store.b	
 COLORMODE.Z	rts
 ;
-PALETTE.LF	dc.l	COLORMODE.NF
-PALETTE.NF	dc.b	7 128 +
-		dc.b	char E char T char T char E char L char A char P
-PALETTE.SF	dc.w	4
-PALETTE.CF	#.w	PALETTE
-		rts
-PALETTE	dc.b	55			; input (yellow)
-		dc.b	58			; output (green)
-		dc.b	7			; error (red)
-		dc.b	240			; dos (blue)
-		dc.b	255			; cursor (white)
-		ds.b	11			; 11 more user colours in the palette
+;PALETTE.LF	dc.l	COLORMODE.NF
+;PALETTE.NF	dc.b	7 128 +
+;		dc.b	char E char T char T char E char L char A char P
+;PALETTE.SF	dc.w	4
+;PALETTE.CF	#.w	PALETTE
+;		rts
+PALETTE	dc.b	5			; input (yellow)
+		dc.b	6			; output (green)
+		dc.b	4			; error (red)
+		dc.b	8			; dos (blue)
+		dc.b	3			; cursor (white)
 ; 
 ; SCREENBASE ( -- addr) CONSTANT address of the pre-allocated screen buffer
-SCREENBASE.LF	dc.l	PALETTE.NF
+SCREENBASE.LF	dc.l	COLORMODE.NF
 SCREENBASE.NF	dc.b	10 128 +
 		dc.s	SCREENBASE
 SCREENBASE.SF	dc.w	6
