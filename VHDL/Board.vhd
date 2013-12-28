@@ -167,7 +167,7 @@ signal VGA_active : std_logic;
 signal VGA_newline : std_logic;
 
 alias clk_system is clk100;
-alias clk_VGA is clk50;
+alias clk_VGA is clk75;
 alias clk_MEM is clk100;
 
 	component CLOCKMANAGER

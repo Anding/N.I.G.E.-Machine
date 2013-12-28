@@ -6,7 +6,7 @@ textzero	equ	hex 010600
 	nop
 color	equ	hex 0100
 	#.l	textzero
-	#.b	20
+	#.b	5
 	zero
 	DO
 		#.b	255

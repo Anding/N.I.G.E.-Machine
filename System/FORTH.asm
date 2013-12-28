@@ -46,17 +46,18 @@ VBLANK		equ	hex f848
 ; **** MEMORY MAP ****
 ;
 SRAMSIZE	equ	48128			; Amount of SRAM
+SCREENWORDS	equ	hex 006000		; number of words in the screen buffer (96 rows * 128 cols * 2 screens)
 RSrxBUF	equ	hex 010000		; RS232 buffer (256 bytes)	
 PSBUF		equ	hex 010100		; PS/2 keyboard buffer (256 bytes)
 _input_buff	equ	hex 010200		; default input buffer location (used by ACCEPT)
 _input_size	equ	hex ff			; default input buffer size (used by ACCEPT)
 _PAD		equ	hex 010400		; PAD location (256 bytes below + 256 bytes above here)
 _STRING	equ	hex 010500		; buffer for internal string storage (e.g. S")
-_TEXT_ZERO	equ	hex 010600		; default text memory location (2 screens * 100 * 75 * 2 bytes)
-_TEXT_END	equ	hex 017B30		; one byte beyond the text memory location
-_FAT.buf	equ	hex 017B30		; FAT 512 byte storage space location 
-_FAT.buffat	equ	hex 017D30		; FAT 512 byte storage space location for file allocation table
-_END		equ	hex 017F30		; HEAP location
+_TEXT_ZERO	equ	hex 010600		; default text memory location
+_TEXT_END	equ	hex 01C600		; one byte beyond the text memory location
+_FAT.buf	equ	hex 01C600		; FAT 512 byte storage space location 017B30
+_FAT.buffat	equ	hex 01C800		; FAT 512 byte storage space location for file allocation table 017D30
+_END		equ	hex 01CA00		; HEAP location 017F30
 ;
 ; **** FORTH LANGUAGE CONSTANTS ****
 ;
@@ -937,8 +938,9 @@ CLS.NF		dc.b	3 128 +
 CLS.SF		dc.w	CLS.Z CLS.CF	del
 CLS.CF		#.l	_TEXT_ZERO		( start start)		; clear screen memory	
 		dup
-		#.w	15000			( start start 15000)			; number of words in 2 screens
-		zero				( start start 15000 color)		; fill word				
+		#.w	SCREENWORDS		( start start 24576)			; number of words in 2 screens
+		zero				( start start 24576 color)		; fill word	
+		jsl	VWAIT.CF
 		jsl	FILL.W.CF		( start)			
 		#.w	TEXT_ZERO					; reset pointer to TEXT_ZERO
 		store.l
@@ -982,7 +984,9 @@ SCRSET.CF	#.w	mode			; check screen mode
 		swap
 		#.b	binary	00010000
 		and
-		lsl				( v w); w is 0, 2
+		lsr
+		lsr
+		lsr				( v w); w is 0, 2
 		+				( offset)
 		#.w	SCRSET
 		+
@@ -1025,8 +1029,8 @@ NEWLINE.CF	#.w	CSR-Y
 				2*
 				+						; source for copy begins one line from top of page
 				#.l	_TEXT_ZERO				; destination
-				#.w	14800					; size = maximum full screen less the top line
-				jsl	MOVE.CF				; copy screen contents to top of buffer
+;				#.w	24320					; size = maximum full screen less the top line 95 rows * 128 cols * 2 bytes
+; copy screen contents to top of buffer
 				#.w	ROWS				; Step 2 is to blank the rest of the buffer
 				fetch.b				( rows)
 				1-					( rows-1)
@@ -1034,7 +1038,12 @@ NEWLINE.CF	#.w	CSR-Y
 				fetch.b				( rows-1 cols)
 				2*					( rows-1 col-bytes)
 				multu
-				drop					( bytes)
+				drop					( bytes) ; size = maximum full screen less the top line 
+				dup
+				>R
+				jsl	VWAIT.CF
+				jsl	MOVE.CF
+				R>
 				#.l	_TEXT_ZERO
 				+					( s-addr);  start address at the last line of the first page
 				dup					( s-addr s-addr)
@@ -1042,11 +1051,6 @@ NEWLINE.CF	#.w	CSR-Y
 				swap
 				-					( s-addr bytes)
 				2/					( s-addr words)					
-;				#.w	PALETTE 4 +				; set input color (to high byte of fill word)				
-;				fetch.b					
-;				#.w	256
-;				multu
-;				drop
 				zero						; blank color
 				jsl	FILL.W.CF				; clear remaining screen memory
 				#.l	_TEXT_ZERO			; Step 3 is to reset pointer to TEXT_ZERO	
@@ -1274,7 +1278,7 @@ BACKGROUND.Z	store.b,rts
 ;COLOR.Z	store.b,rts
 ;
 ; SCREENMODE ( flag --, set interlace mode on or off)
-INTERLACE.LF	dc.l	BACKROUND.NF
+INTERLACE.LF	dc.l	BACKGROUND.NF
 INTERLACE.NF	dc.b	9 128 +
 		dc.s	INTERLACE
 INTERLACE.SF	dc.w	INTERLACE.Z INTERLACE.CF del
@@ -1297,7 +1301,7 @@ INTERLACE.Z	rts
 VGA.LF	dc.l	INTERLACE.NF
 VGA.NF	dc.b	3 128 +
 		dc.s	VGA
-VGA.SF	dc.w	VGA.Z VGACF del
+VGA.SF	dc.w	VGA.Z VGA.CF del
 VGA.CF	jsl	CLS.CF					( VGA)
 		#.w	mode
 		fetch.b				( VGA mode)
@@ -1362,7 +1366,7 @@ INK.NF		dc.b	3 128 +
 INK.SF		dc.w	4
 INK.CF		#.w	INK
 		rts
-INK		dc.b	56			; note this variable is BYTE length!
+INK		dc.b	6			; note this variable is BYTE length!
 		ds.b	3			; padding
 ;
 CSR-X.LF	dc.l	INK.NF

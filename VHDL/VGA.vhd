@@ -31,7 +31,7 @@ entity VGA is
 end VGA;
 
 architecture Behavioral of VGA is
-signal Vcount : std_logic_vector(10 downto 0) := CONV_STD_LOGIC_VECTOR(665,11); 					-- := CONV_STD_LOGIC_VECTOR(526,11); 		-- Vertical pixel count
+signal Vcount : std_logic_vector(10 downto 0) := CONV_STD_LOGIC_VECTOR(0,11); 					--  Vertical pixel count  := CONV_STD_LOGIC_VECTOR(664,11);
 signal tVcount, height : std_logic_vector(3 downto 0) := (others=>'0'); 		-- text Vertical count
 signal Hcount : std_logic_vector(10 downto 0) := (others=>'0'); 					-- Horizontal pixel count
 signal addressPixel : std_logic_vector(8 downto 0):= (others=>'0');  			-- On screen address of current pixel
