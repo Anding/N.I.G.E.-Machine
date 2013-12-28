@@ -65,7 +65,7 @@ type state_type is (	startup, idle,
 							read_pagemode_lo, read_pagemode_hi, read_AXI_handshake,
 							write_async_lo, write_async_gap, write_async_hi, write_AXI_handshake,
 							set_RCR, set_gap1, set_BCR, set_gap2, read_after_set1, read_after_set2,
-							init_burst1, init_burst2, init_burst3, init_burst4, burst, burst_pause, end_burst1, end_burst2,
+							init_burst1, init_burst2, init_burst3, init_burst4, burst, burst_pause, end_burst,
 							resume_burst1, resume_burst2, resume_burst3 ); 
 							
 signal state, next_state : state_type; 
@@ -153,23 +153,20 @@ begin
 	with state select
 		t_axi_arready <=	'1' when init_burst2,															-- acknowledge only after entering read cycle
 								'0' when others;
-	
+								
 	with state select
-		t_axi_rlast <= 	'1' when end_burst2,
-								'0' when others;
-				
-	t_axi_rvalid <= '1' when (state = burst and WAIT_SDRAM_m2 = '0') or
-									 (state = burst_pause and WAIT_SDRAM_m2 = '0') or
-									(state = end_burst1 and WAIT_SDRAM_m2 = '0') or
-									(state = end_burst2 and WAIT_SDRAM_m2 = '0') else '0';
+		t_axi_rvalid <= 	'1' when burst,
+								'0' when others;								
+								
+	t_axi_rlast <= 	'1' when (state = burst and ADDR_r = TOP_r)
+								else '0';
+								
 	t_axi_rdata <= t_axi_rdata_r;
 	t_axi_rresp	<= "00";
 	
-	-- HERE
-	ADDR_n <= 	t_axi_araddr_r(23 downto 1) when (state = init_burst2) else
-					ADDR_r + "00000000000000000000001" when (state = burst) else
-					--ADDR_r + "00000000000000000000001" when (state = burst_pause) else  							-- increment past page boundary
-					ADDR_r;
+	ADDR_n <= 	t_axi_araddr_r(23 downto 1) when (state = init_burst2)
+					else ADDR_r + "00000000000000000000001" when (state = burst)
+					else ADDR_r;
 					
 	with state select
 	TOP_n <= 	(t_axi_arlen(7 downto 0) + t_axi_araddr_r(23 downto 1)) when init_burst2,
@@ -188,7 +185,6 @@ begin
 								s_axi_araddr_r(23 downto 2) & '1' when read_pagemode_hi,
 								s_axi_awaddr_r(23 downto 2) & '1' when write_async_hi,
 								"000"	& "0" & "00000000000" & "1" & "00" & "1" & "0" & "000" when set_RCR,
-							 --"000"	& "0" & "00000000000" & "1" & "00" & "1" & "0" & "000" when set_RCR,									--1
 								"000" & "1" & "000" & "0" & "0" & "011" & "1" & "0" & "0" & "0" & "1" & "0" & "0" & "1" & "111" when set_BCR,
 						    --"000     1		000     0     0     011     1     0     1     0		 0     0		 1     1     111"  v2.0
 								t_axi_araddr_r(23 downto 1) when init_burst1,
@@ -229,8 +225,7 @@ begin
 								'0' when resume_burst2,
 								'0' when resume_burst3,						
 								'0' when burst,
-								'0' when end_burst1,
-								'0' when end_burst2,
+								'0' when end_burst,
 								'1' when others;
 		
 	with state select
@@ -402,7 +397,7 @@ begin
 			when burst =>
 				timer <= (others=>'0');
 				if (ADDR_r = TOP_r) then
-					next_state <= end_burst1;
+					next_state <= end_burst;
 				elsif WAIT_SDRAM = '1' then
 					next_state <= burst_pause;
 				else
@@ -425,13 +420,9 @@ begin
 				timer <= (others=>'0');
 				next_state <= init_burst4;
 				
-			when end_burst1 =>
+			when end_burst =>
 				timer <= (others=>'0');
-				next_state <= end_burst2;
-				
-			when end_burst2 =>
-				timer <= (others=>'0');
-				next_state <= idle;				
+				next_state <= idle;			
 		
 			when others =>																	-- idle
 				timer <= (others=>'0');
