@@ -36,7 +36,7 @@ ARCHITECTURE behavior OF TestbenchBoard IS
 			  MISO : in STD_LOGIC;
 			  SD_CS : out STD_LOGIC;
 			  SD_CD : in STD_LOGIC;
-			  SD_WP : In STD_LOGIC;
+			  SD_RESET : out STD_LOGIC;
 			  -- Expansion
 --			  EppAstb: in std_logic;        
 --			  EppDstb: in std_logic;        
@@ -80,7 +80,7 @@ ARCHITECTURE behavior OF TestbenchBoard IS
 	signal SW : std_logic_vector(7 downto 0) := (others=>'0');
 	signal MISO : STD_LOGIC := '0';	
 	signal SD_CD : STD_LOGIC := '0';
-	signal SD_WP : STD_LOGIC := '1';	
+
 	
 	--BiDirs
    signal DATA_SDRAM : std_logic_vector(15 downto 0);
@@ -105,7 +105,8 @@ ARCHITECTURE behavior OF TestbenchBoard IS
 	signal SCK : STD_LOGIC;
 	signal MOSI : STD_LOGIC;
 	signal SD_CS :  STD_LOGIC;
-
+	signal SD_RESET : STD_LOGIC ;	
+	
    -- Clock period definitions
    constant CLK_IN_period : time := 10 ns;
 
@@ -141,7 +142,7 @@ BEGIN
 			 MISO => MOSI,			-- MISO
 			 SD_CS => SD_CS,
 			 SD_CD => SD_CD,
-			 SD_WP => SD_WP,
+			 SD_RESET => SD_RESET,
 --			 EppAstb => EppAstb,  
 --			 EppDstb => EppDstb,
 --			 EppWr =>  EppWr,     

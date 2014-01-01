@@ -35,7 +35,8 @@ entity Board_Nexys4 is
 			  MISO : in STD_LOGIC;
 			  SD_CS : out STD_LOGIC;
 			  SD_CD : in STD_LOGIC;
-			  SD_WP : In STD_LOGIC
+			  --SD_WP : In STD_LOGIC
+			  SD_RESET : out STD_LOGIC
 			  -- Expansion
 --			  EppAstb: in std_logic;        
 --			  EppDstb: in std_logic;        
@@ -48,6 +49,8 @@ end Board_Nexys4;
 architecture RTL of Board_Nexys4 is
 
 type bank_t is (Sys, Char, Color, Pstack, Rstack, Reg);
+signal SD_WP : std_logic;
+-- signal SD_RESET : std_logic;
 signal bank, bank_n : bank_t;	
 signal counter_clk, counter_ms : std_logic_vector(31 downto 0) := (others =>'0');
 signal timer_ms : std_logic_vector(15 downto 0) := (others =>'0');	
@@ -62,10 +65,10 @@ signal MEMdatain_Xi :  std_logic_vector(31 downto 0);
 signal MEMdata_Char :  std_logic_vector(7 downto 0);
 signal MEMdata_Color :  std_logic_vector(15 downto 0);
 signal MEMdata_Pstack, MEMdata_Rstack, MEMdata_Reg : std_logic_vector(31 downto 0);
-signal MEMdatain_Y : std_logic_vector(7 downto 0);
-signal MEM_RDY_Y :  std_logic;
-signal MEMdatain_Z :  std_logic_vector(15 downto 0);
-signal MEM_RDY_Z :  std_logic;          
+--signal MEMdatain_Y : std_logic_vector(7 downto 0);
+--signal MEM_RDY_Y :  std_logic;
+--signal MEMdatain_Z :  std_logic_vector(15 downto 0);
+--signal MEM_RDY_Z :  std_logic;          
 signal PSaddr :  std_logic_vector(8 downto 0);
 signal PSdataout :  std_logic_vector(31 downto 0);
 signal PSw :  std_logic_vector(0 to 0);
@@ -74,14 +77,14 @@ signal RSdataout :  std_logic_vector(31 downto 0);
 signal RSw :  std_logic_vector(0 to 0);
 signal MEMaddr :  std_logic_vector(31 downto 0);
 signal MEMdataout_X :  std_logic_vector(31 downto 0);
-signal MEMdataout_Y :  std_logic_vector(7 downto 0);
+--signal MEMdataout_Y :  std_logic_vector(7 downto 0);
 signal MEM_WRQ_X :  std_logic;
 signal MEM_WRQ_XX : std_logic_vector(0 downto 0);
-signal MEM_WRQ_Y :  std_logic;
-signal MEM_REQ_Y :  std_logic;
-signal MEMdataout_Z :  std_logic_vector(15 downto 0);
-signal MEM_WRQ_Z :  std_logic;
-signal MEM_REQ_Z : std_logic;
+--signal MEM_WRQ_Y :  std_logic;
+--signal MEM_REQ_Y :  std_logic;
+--signal MEMdataout_Z :  std_logic_vector(15 downto 0);
+--signal MEM_WRQ_Z :  std_logic;
+--signal MEM_REQ_Z : std_logic;
 signal Sys_EN, Pstack_EN, Rstack_EN, Char_EN, Reg_EN, Color_EN : std_logic;
 signal txt_zero : std_logic_vector(23 downto 0);
 signal DATA_OUT_VGA : std_logic_vector(7 downto 0) := (others=>'0');
@@ -92,7 +95,7 @@ signal DATA_Char : std_logic_vector(7 downto 0);
 signal ADDR_Char : std_logic_vector(10 downto 0);
 signal DATA_Color : std_logic_vector(15 downto 0);
 signal ADDR_Color : std_logic_vector(7 downto 0);
-signal start_VGA, start_TXT : std_logic;
+--signal start_VGA, start_TXT : std_logic;
 signal RS232_TX_S0 : std_logic_vector(7 downto 0);
 signal RS232_WR_S0 : std_logic;       
 signal RS232_RX_S0 : std_logic_vector(7 downto 0);
@@ -609,6 +612,9 @@ begin
 		mode => SD_control(3 downto 2),
 		MOSI_def => SD_control(1)
 	);
+	
+		SD_WP <= '0';				-- available on PMOD SD card adapter but not Nexys 4 microSD card clot
+		SD_RESET <= reset;		-- Nexys 4 microSD card slot needs SD_RESET driven low to power the SD card
 	
 		SD_CS <= SD_control(0);
 		SD_status(1) <= SD_CD;
