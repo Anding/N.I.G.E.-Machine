@@ -63,7 +63,7 @@ architecture Behavioral of DMAcontroller is
 
 type state_type is (	startup, idle,
 							read_pagemode_lo, read_pagemode_hi, read_AXI_handshake,
-							write_async_lo, write_async_gap, write_async_hi, write_AXI_handshake,
+							write_async_lo, write_async_gap, write_async_hi, write_AXI_a_handshake, write_AXI_b_handshake,
 							set_RCR, set_gap1, set_BCR, set_gap2, read_after_set1, read_after_set2,
 							init_burst1, init_burst2, init_burst3, init_burst4, burst, burst_pause, end_burst,
 							resume_burst1, resume_burst2, resume_burst3 ); 
@@ -135,17 +135,15 @@ begin
 	
 	-- write address, write, and write response channels
 	with state select
-		s_axi_awready <=	'1' when write_async_lo,														-- acknowledge only after entering write cycle
-								'1' when write_async_hi,	
+		s_axi_awready <=	'1' when write_AXI_a_handshake,														-- acknowledge only after entering write cycle
 								'0' when others;
 	
 	with state select
-		s_axi_wready <=	'1' when write_async_lo,														-- acknowledge only after entering write cycle
-								'1' when write_async_hi,	
+		s_axi_wready <=	'1' when write_AXI_a_handshake,														-- acknowledge only after entering write cycle
 								'0' when others;	
 
 	with state select
-		s_axi_bvalid <=	'1' when write_AXI_handshake,						
+		s_axi_bvalid <=	'1' when write_AXI_b_handshake,						
 								'0' when others;
 	s_axi_bresp	<= "00";
 	
@@ -322,10 +320,18 @@ begin
 					next_state <= state;
 				end if;
 				
+			when write_AXI_a_handshake =>
+				timer <= (others=>'0');
+				if s_axi_wstrb(1 downto 0) = "00" then
+					next_state <= write_async_hi;
+				else
+					next_state <= write_async_lo;
+				end if;
+				
 			when write_async_lo =>
 				timer <= CONV_STD_LOGIC_VECTOR(6,8);								-- 70ns async write cycle
 				if s_axi_wstrb_r(3 downto 2) = "00" then
-					next_state <= write_AXI_handshake;
+					next_state <= write_AXI_b_handshake;
 				else
 					next_state <= write_async_gap;			
 				end if;
@@ -336,9 +342,9 @@ begin
 				
 			when write_async_hi =>
 				timer <= CONV_STD_LOGIC_VECTOR(6,8);								-- 70ns write cycle
-				next_state <= write_AXI_handshake;		
+				next_state <= write_AXI_b_handshake;		
 
-			when write_AXI_handshake =>
+			when write_AXI_b_handshake =>
 				timer <= (others=>'0');
 				if s_axi_bready = '1' then
 					next_state <= idle;
@@ -429,11 +435,7 @@ begin
             if s_axi_arvalid = '1' then	
                next_state <= read_pagemode_lo;
 				elsif (s_axi_awvalid = '1' and s_axi_wvalid = '1') then
-					if s_axi_wstrb(1 downto 0) = "00" then
-						next_state <= write_async_hi;
-					else
-						next_state <= write_async_lo;
-					end if;
+					next_state <= write_AXI_a_handshake;
 				elsif t_axi_arvalid = '1' and t_axi_arsize = "001" and t_axi_arburst = "01" then
 					next_state <= init_burst1;
 				else

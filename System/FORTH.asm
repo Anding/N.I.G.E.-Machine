@@ -5362,13 +5362,16 @@ ALIGN.NF	dc.b	5 128 +
 		dc.b	char N char G char I char L char A
 ALIGN.SF	dc.w	1
 		rts
-; ALIGNED  ( addr -- a-addr, align an address)
+; ALIGNED  ( addr -- a-addr, align up to longword boundary)
 ALIGNED.LF	dc.l	ALIGN.NF
 ALIGNED.NF	dc.b	7 128 +
 		dc.b	char D char E char N char G char I char L char A
-ALIGNED.SF	dc.w	ALIGNED.Z ALIGNED.CF -
-ALIGNED.CF	1+
+ALIGNED.SF	dc.w	ALIGNED.Z ALIGNED.CF del
+ALIGNED.CF	#.b	3
+		+
 		lsr
+		lsr
+		lsl
 ALIGNED.Z	lsl,rts
 ;
 ; MARKER (--, create a deletion boundary)

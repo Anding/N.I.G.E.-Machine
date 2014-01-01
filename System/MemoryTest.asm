@@ -8,6 +8,7 @@ sevenseg	equ	hex F830
 		jsl	writeBreadL
 		jsl	writeLreadW
 		jsl	writeLreadB
+		jsl	fourwrites
 		#.b	255
 		jsl	announce
 l1		bra	l1
@@ -105,7 +106,44 @@ writeLreadB	#.b	05
 		or
 		or
 		#.w	assert
-		jmp		
+		jmp	
+;
+fourwrites	#.b	06
+		jsl	announce
+		#.l	hex 89ABCDEF
+		#.l	hex 010000		
+		store.l
+		#.l	hex 12345678
+		#.l	hex 010004
+		store.l
+		#.l	hex 13579BDF
+		#.l	hex 010008
+		store.l
+		#.l	hex 02468ACE
+		#.l	hex 01000C
+		store.l
+		#.l	hex 010000
+		fetch.l
+		#.l	hex 89ABCDEF
+		-
+		#.l	hex 010004
+		fetch.l
+		#.l	hex 12345678
+		-
+		#.l	hex 010008
+		fetch.l
+		#.l	hex 13579BDF
+		-
+		#.l	hex 01000C
+		fetch.l
+		#.l	hex 02468ACE
+		-
+		or
+		or
+		or
+		#.w	assert
+		jmp	
+;	
 ; Announce a test
 announce	#.w	sevenseg
 		store.l
