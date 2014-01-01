@@ -108,6 +108,7 @@ variable MEM.pointer		\ roving pointer to list of free memory blocks - Knuth's e
 ;
 
 : ALLOCATE ( u -- addr ior, allocate u bytes of memory, where u>0 )
+	aligned							\ ensure longword aligned requests only
 	32 max								\ minimum block allocation to reduce fragmentation
 	32 + >R 							\ need 32 extra bytes for tags in two blocks
 	MEM.pointer @ dup BEGIN			( rov ref R: u')	
