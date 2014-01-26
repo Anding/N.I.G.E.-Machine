@@ -26,7 +26,7 @@ entity Board_Nexys4 is
 			  PS2C : in STD_LOGIC;
 			  PS2D : in STD_LOGIC;
 			  -- Board
-			  SW : in STD_LOGIC_VECTOR (7 downto 0);
+			  SW : in STD_LOGIC_VECTOR (15 downto 0);
 			  sevenseg : out STD_LOGIC_VECTOR (6 downto 0);
 			  anode : out STD_LOGIC_VECTOR (7 downto 0);	
 			  -- SPI
@@ -104,7 +104,7 @@ signal RS232_TBE_S0 : std_logic;
 signal RS232_UBRR_S0 : std_logic_vector(15 downto 0);
 signal Boot_we : STD_LOGIC_VECTOR(0 DOWNTO 0);
 signal Boot_data : STD_LOGIC_VECTOR(31 DOWNTO 0);
-signal Boot_addr : STD_LOGIC_VECTOR(15 DOWNTO 0);
+signal Boot_addr : STD_LOGIC_VECTOR(31 DOWNTO 2);
 signal PS2_irq : std_logic;
 signal PS2_data : std_logic_vector(7 downto 0);
 signal reset_trigger : std_logic;
@@ -123,12 +123,12 @@ signal douta_sysram_i : std_logic_vector(31 downto 0);
 signal doutb_sysram_i : std_logic_vector(31 downto 0);         
 signal wea_sysram : std_logic_vector(0 to 0);
 signal wea_sysram_s : std_logic_vector(0 to 0);
-signal addra_sysram : std_logic_vector(15 downto 2);
-signal addra_sysram_s : std_logic_vector(15 downto 2);
+signal addra_sysram : std_logic_vector(31 downto 2);
+signal addra_sysram_s : std_logic_vector(31 downto 2);
 signal dina_sysram : std_logic_vector(31 downto 0);
 signal dina_sysram_s : std_logic_vector(31 downto 0);
 signal web_sysram : std_logic_vector(0 to 0);
-signal addrb_sysram : std_logic_vector(15 downto 2);
+signal addrb_sysram : std_logic_vector(31 downto 2);
 signal dinb_sysram : std_logic_vector(31 downto 0);
 signal MEMdata_Sys, MEMdata_Sys_plus : std_logic_vector(31 downto 0);
 signal MEMdata_Sys_quick : std_logic_vector(31 downto 0);
@@ -168,10 +168,9 @@ signal s_aresetn : std_logic;
 signal VGA_columns : std_logic_vector(6 downto 0);
 signal VGA_active : std_logic;
 signal VGA_newline : std_logic;
-
-alias clk_system is clk100;
-alias clk_VGA is clk75;
-alias clk_MEM is clk100;
+signal clk_system : std_logic;
+signal clk_VGA : std_logic;
+signal clk_MEM : std_logic;
 
 	component CLOCKMANAGER
 	port
@@ -211,6 +210,10 @@ begin
     CLK_OUT2 => CLK50,
     CLK_OUT3 => CLK75,
 	 CLK_OUT4 => CLK100);
+	 
+	clk_system <= clk100;
+	clk_VGA <= clk75;
+	clk_MEM <= clk100;
 	 
 	-- global counters
 	process														 
@@ -270,7 +273,7 @@ begin
 	-- splice IOExpansion data ahead of the SRAM
 	 wea_sysram <= wea_sysram_s when Boot_we = "0" else boot_we;
 	 dina_sysram <= dina_sysram_s when Boot_we = "0" else boot_data;
-	 addra_sysram <= addra_sysram_s when Boot_we = "0" else boot_addr(15 downto 2);	 
+	 addra_sysram <= addra_sysram_s when Boot_we = "0" else boot_addr;	 
 	 		
 	inst_Pstack_RAM : entity work.Pstack_RAM
 	  PORT MAP (
@@ -340,7 +343,7 @@ begin
 		 clka => clk_system,
 		 ena => ram_en,
 		 wea => wea_sysram,
-		 addra => addra_sysram (15 downto 2),					-- write depth 12032, 15downto2
+		 addra => addra_sysram (15 downto 2),					-- write depth 16384, 15downto2. write depth 32768, 16 downto 2. write depth 62976, 17downto2
 		 dina => dina_sysram,
 		 douta => douta_sysram,
 		 clkb => clk_system,
@@ -512,8 +515,8 @@ begin
 		CLK_VGA => CLK_VGA,
 		mode	=> mode,
 		background => background,
-		data_VGA => DATA_OUT_VGA,
-		addr_VGA => ADDR_VGA,
+--		data_VGA => DATA_OUT_VGA,
+--		addr_VGA => ADDR_VGA,
 		data_Text => DATA_TEXT,
 		addr_Text => ADDR_TEXT,
 		data_Char => data_Char,

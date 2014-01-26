@@ -103,7 +103,7 @@ begin
 				s_axi_rdata_r <= s_axi_rdata_n;	
 				t_axi_rdata_r <= t_axi_rdata_n;
 				WAIT_SDRAM_m1 <= WAIT_SDRAM;
-				WAIT_SDRAM_m2 <= WAIT_SDRAM_m1;
+--				WAIT_SDRAM_m2 <= WAIT_SDRAM_m1;
 				ADDR_r <= ADDR_n;
 				TOP_r <= TOP_n;
 				if (count >= timer) then 
@@ -300,7 +300,7 @@ begin
 	end generate;
  
    NEXT_STATE_DECODE: process (state, s_axi_rready, s_axi_bready, s_axi_arvalid, s_axi_awvalid, s_axi_wvalid, ADDR_r, TOP_r,
-											t_axi_arvalid, t_axi_arsize, t_axi_arburst, s_axi_wstrb, wait_SDRAM)
+											t_axi_arvalid, t_axi_arsize, t_axi_arburst, s_axi_wstrb, wait_SDRAM, s_axi_wstrb_r)
    begin
       case (state) is
 		

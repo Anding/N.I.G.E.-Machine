@@ -12,8 +12,8 @@ entity VGA is
 			  mode		: in STD_LOGIC_VECTOR (4 downto 0);		-- (4) VGA/SVGA	(3) interlace off/on (2) bitmapped off/on, 
 																				-- (1) 16&16/0&256 char color mode, (0) character mapped off/on
 			  background : in STD_LOGIC_VECTOR (15 downto 0);	-- background color for 0&256 char color mode
-			  data_VGA : in STD_LOGIC_VECTOR (7 downto 0);		-- bitmapped memory
-			  addr_VGA : out STD_LOGIC_VECTOR (8 downto 0);
+--			  data_VGA : in STD_LOGIC_VECTOR (7 downto 0);		-- bitmapped memory
+--			  addr_VGA : out STD_LOGIC_VECTOR (8 downto 0);
 			  data_Text : in STD_LOGIC_VECTOR (15 downto 0);	-- text memory
 			  addr_Text : out STD_LOGIC_VECTOR (6 downto 0);	-- refers to the column 0 - 79
 			  data_Char : in STD_LOGIC_VECTOR (7 downto 0);		-- character memory
@@ -34,7 +34,7 @@ architecture Behavioral of VGA is
 signal Vcount : std_logic_vector(10 downto 0) := CONV_STD_LOGIC_VECTOR(0,11); 					--  Vertical pixel count  := CONV_STD_LOGIC_VECTOR(664,11);
 signal tVcount, height : std_logic_vector(3 downto 0) := (others=>'0'); 		-- text Vertical count
 signal Hcount : std_logic_vector(10 downto 0) := (others=>'0'); 					-- Horizontal pixel count
-signal addressPixel : std_logic_vector(8 downto 0):= (others=>'0');  			-- On screen address of current pixel
+--signal addressPixel : std_logic_vector(8 downto 0):= (others=>'0');  			-- On screen address of current pixel
 signal addressText : std_logic_vector(6 downto 0):= (others=>'0');		  		-- On screen address of current character
 signal addressChar : std_logic_vector(10 downto 0):= (others=>'0');		  		-- Char RAM lookup of current character
 signal addressColor : std_logic_vector(7 downto 0):= (others=>'0');	
@@ -51,7 +51,7 @@ signal COLUMNS : std_logic_vector(6 downto 0);
 
 begin
 
-	addr_VGA <= addressPixel;
+--	addr_VGA <= addressPixel;
 	addr_Text <= addressText;
 	addr_Char <= addressChar;
 	addr_Color <= addressColor;

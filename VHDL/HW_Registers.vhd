@@ -35,7 +35,7 @@ entity HW_Registers is
 			  counter_ms : in std_logic_vector(31 downto 0);		-- 32 bit millisecond timer
 			  counter_clk : in std_logic_vector(31 downto 0);		-- 32 bit clock timer
 			  ssData	: out std_logic_vector(31 downto 0);			-- data for seven segment display
-			  SW	: in std_logic_vector(7 downto 0);					-- switches onboard Nexys2
+			  SW	: in std_logic_vector(15 downto 0);					-- switches onboard Nexys2
 			  VBLANK : in std_logic;										-- VGA vertical blank
 			  -- CPU system memory channel
 			  en : in STD_LOGIC;													-- Enable is set by board level logic depending on higher bit of 
@@ -69,7 +69,7 @@ architecture Behavioral of HW_Registers is
 	-- pipeline registers for hardware read
 	signal RS232_rx_S0_r : std_logic_vector(7 downto 0);
 	signal RS232_TBE_S0_r, RS232_RDA_S0_r : std_logic;	
-	signal SW_r : std_logic_vector(7 downto 0);
+	signal SW_r : std_logic_vector(15 downto 0);
 	signal PS2_data_r : std_logic_vector(7 downto 0);
 	signal SD_status_r : std_logic_vector(3 downto 0);
 	signal SD_datain_r : std_logic_vector(7 downto 0);
@@ -114,9 +114,9 @@ begin
 			SD_dataout_r <= (others=>'0');	
 			SD_control_r <= (others=>'0');	
 			SD_divide_r <= "11111111";								-- divide by 254	
-			UBRR_r_S0 <= CONV_STD_LOGIC_VECTOR(325,16);		-- 325 = 9600 BAUD at 50 MHz		
+			UBRR_r_S0 <= CONV_STD_LOGIC_VECTOR(651,16);		-- 651 = 9600 BAUD at 100 MHz		
 			irq_mask_r <= "000000000000111";						-- "000000000000111";
-			txt_zero_r <= X"010600";									
+			txt_zero_r <= X"040600";									
 			background_r <= X"0000";
 			mode_r <= "11011";										-- 11010
 			RS232_tx_r_S0 <= (others=>'0');	
@@ -225,7 +225,7 @@ begin
 					dataout_i	<=	blank2 & IRQ_mask_r & "1";
 					
 				when x"34" =>										-- SW
-					dataout_i	<= blank3 & SW_r;
+					dataout_i	<= blank2 & SW_r;
 
 				when x"38" =>										-- SD data
 					dataout_i	<= blank3 & SD_datain_r;

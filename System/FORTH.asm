@@ -45,19 +45,19 @@ VBLANK		equ	hex f848
 ;
 ; **** MEMORY MAP ****
 ;
-SRAMSIZE	equ	48128			; Amount of SRAM
+SRAMSIZE	equ	55296			; Amount of SRAM
 SCREENWORDS	equ	hex 006000		; number of words in the screen buffer (96 rows * 128 cols * 2 screens)
-RSrxBUF	equ	hex 010000		; RS232 buffer (256 bytes)	
-PSBUF		equ	hex 010100		; PS/2 keyboard buffer (256 bytes)
-_input_buff	equ	hex 010200		; default input buffer location (used by ACCEPT)
+RSrxBUF	equ	hex 040000		; RS232 buffer (256 bytes)	
+PSBUF		equ	hex 040100		; PS/2 keyboard buffer (256 bytes)
+_input_buff	equ	hex 040200		; default input buffer location (used by ACCEPT)
 _input_size	equ	hex ff			; default input buffer size (used by ACCEPT)
-_PAD		equ	hex 010400		; PAD location (256 bytes below + 256 bytes above here)
-_STRING	equ	hex 010500		; buffer for internal string storage (e.g. S")
-_TEXT_ZERO	equ	hex 010600		; default text memory location
-_TEXT_END	equ	hex 01C600		; one byte beyond the text memory location
-_FAT.buf	equ	hex 01C600		; FAT 512 byte storage space location 017B30
-_FAT.buffat	equ	hex 01C800		; FAT 512 byte storage space location for file allocation table 017D30
-_END		equ	hex 01CA00		; HEAP location 017F30
+_PAD		equ	hex 040400		; PAD location (256 bytes below + 256 bytes above here)
+_STRING	equ	hex 040500		; buffer for internal string storage (e.g. S")
+_TEXT_ZERO	equ	hex 040600		; default text memory location
+_TEXT_END	equ	hex 04C600		; one byte beyond the text memory location
+_FAT.buf	equ	hex 04C600		; FAT 512 byte storage space location 017B30
+_FAT.buffat	equ	hex 04C800		; FAT 512 byte storage space location for file allocation table 017D30
+_END		equ	hex 04CA00		; HEAP location 017F30
 ;
 ; **** FORTH LANGUAGE CONSTANTS ****
 ;
@@ -367,7 +367,7 @@ BAUD.LF	dc.l	SZERO.NF
 BAUD.NF	dc.b	4 128 +
 		dc.b	char D char U char A char B
 BAUD.SF	dc.w	BAUD.Z BAUD.CF del
-BAUD.CF	#.l	3125000		( baud clock/16)
+BAUD.CF	#.l	6250000		( baud clock/16)
 		swap				( clock/16 baud)
 		1+
 		divu

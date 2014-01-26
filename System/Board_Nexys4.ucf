@@ -61,26 +61,17 @@ NET "DATA_SDRAM<3>" 	LOC = "R13"	| IOSTANDARD = "LVCMOS33";
 NET "DATA_SDRAM<2>" 	LOC = "U12"	| IOSTANDARD = "LVCMOS33";
 NET "DATA_SDRAM<1>" 	LOC = "T11"	| IOSTANDARD = "LVCMOS33";
 NET "DATA_SDRAM<0>"	LOC = "R12"	| IOSTANDARD = "LVCMOS33";
-## Pmod Header JC RS232 (lower row)
-NET "RXD_S0" 		LOC = "J2"	| IOSTANDARD = "LVCMOS33";
-NET "TXD_S0" 		LOC = "G6"	| IOSTANDARD = "LVCMOS33";
+#
+## RS232 on Pmod Header JC (lower row)
+NET "RXD_S0" 			LOC = "J2"	| IOSTANDARD = "LVCMOS33";
+NET "TXD_S0" 			LOC = "G6"	| IOSTANDARD = "LVCMOS33";
+## RS232 via USB
+#NET "RXD_S0" 			LOC = "C4"	| IOSTANDARD = "LVCMOS33";
+#NET "TXD_S0" 			LOC = "D4"	| IOSTANDARD = "LVCMOS33";
+#
 NET "PS2C" CLOCK_DEDICATED_ROUTE = FALSE;
 NET "PS2C" 		LOC = "F4"	| PULLUP | IOSTANDARD = "LVCMOS33";
-NET "PS2D" 		LOC = "B2"	| PULLUP | IOSTANDARD = "LVCMOS33";
-#NET "EppAstb"   LOC = "V14"; 
-#NET "EppAstb"   CLOCK_DEDICATED_ROUTE = FALSE;
-#NET "EppDstb"   LOC = "U14"; 
-#NET "EppDstb"	 CLOCK_DEDICATED_ROUTE = FALSE;
-#NET "EppWr"   	 LOC = "V16"; 
-#NET "EppWait"   LOC = "N9"; 
-#NET "EppDB<0>"  LOC = "R14"; 
-#NET "EppDB<1>"  LOC = "R13"; 
-#NET "EppDB<2>"  LOC = "P13"; 
-#NET "EppDB<3>"  LOC = "T12"; 
-#NET "EppDB<4>"  LOC = "N11"; 
-#NET "EppDB<5>"  LOC = "R11"; 
-#NET "EppDB<6>"  LOC = "P10"; 
-#NET "EppDB<7>"  LOC = "R10"; 
+NET "PS2D" 		LOC = "B2"	| PULLUP | IOSTANDARD = "LVCMOS33"; 
 NET "sw<0>"		LOC = "U9"	| IOSTANDARD = "LVCMOS33";
 NET "sw<1>"		LOC = "U8"	| IOSTANDARD = "LVCMOS33";
 NET "sw<2>"		LOC = "R7"	| IOSTANDARD = "LVCMOS33";
@@ -89,6 +80,14 @@ NET "sw<4>"		LOC = "R5"	| IOSTANDARD = "LVCMOS33";
 NET "sw<5>"		LOC = "V7"	| IOSTANDARD = "LVCMOS33";
 NET "sw<6>"		LOC = "V6"	| IOSTANDARD = "LVCMOS33";
 NET "sw<7>"		LOC = "V5"	| IOSTANDARD = "LVCMOS33";
+NET "sw<8>"		LOC = "U4"	| IOSTANDARD = "LVCMOS33";
+NET "sw<9>"		LOC = "V2"	| IOSTANDARD = "LVCMOS33";
+NET "sw<10>"	LOC = "U2"	| IOSTANDARD = "LVCMOS33";
+NET "sw<11>"	LOC = "T3"	| IOSTANDARD = "LVCMOS33";
+NET "sw<12>"	LOC = "T1"	| IOSTANDARD = "LVCMOS33";
+NET "sw<13>"	LOC = "R3"	| IOSTANDARD = "LVCMOS33";
+NET "sw<14>"	LOC = "P3"	| IOSTANDARD = "LVCMOS33";
+NET "sw<15>"	LOC = "P4"	| IOSTANDARD = "LVCMOS33";	
 NET "anode<0>" 	LOC = "N6"	| IOSTANDARD = "LVCMOS33";
 NET "anode<1>" 	LOC = "M6"	| IOSTANDARD = "LVCMOS33";
 NET "anode<2>" 	LOC = "M3"	| IOSTANDARD = "LVCMOS33";
@@ -104,32 +103,29 @@ NET "sevenseg<3>" 	LOC = "L4"	| IOSTANDARD = "LVCMOS33";
 NET "sevenseg<4>" 	LOC = "K3"	| IOSTANDARD = "LVCMOS33";
 NET "sevenseg<5>" 	LOC = "M2"	| IOSTANDARD = "LVCMOS33";
 NET "sevenseg<6>" 	LOC = "L6"	| IOSTANDARD = "LVCMOS33";
-# SD card in PORT A
-NET "SD_CS" 		LOC="B13"	| IOSTANDARD = "LVCMOS33";
-NET "MOSI" 		LOC="F14"	| IOSTANDARD = "LVCMOS33";
-NET "MISO" 		LOC="D17"	| IOSTANDARD = "LVCMOS33";
-NET "SCK" 		LOC="E17"	| IOSTANDARD = "LVCMOS33";
-NET "SD_CD" 		LOC="D18"	| IOSTANDARD = "LVCMOS33";
-#NET "SD_WP" 		LOC="E18"	| IOSTANDARD = "LVCMOS33";
-# Micro SD card interface - SPI format
-#NET "SD_CS" 		LOC="D2"	| IOSTANDARD = "LVCMOS33";
-#NET "MOSI" 		LOC="C1"	| IOSTANDARD = "LVCMOS33";
-#NET "MISO" 		LOC="C2"	| IOSTANDARD = "LVCMOS33";
-#NET "SCK" 		LOC="B1"	| IOSTANDARD = "LVCMOS33";
-#NET "SD_CD" 		LOC="A1"	| IOSTANDARD = "LVCMOS33";
-#NET "SD_WP" 		LOC="E18"	| IOSTANDARD = "LVCMOS33";	# write protect not available in microSD slot
-NET "SD_RESET"	LOC = "E2"  	| IOSTANDARD = "LVCMOS33";	# Drive low to pwr SD card (connect to system reset)
-# Micro SD card interface - native format
-#NET "SD_Reset"	LOC = "E2"  	| IOSTANDARD = "LVCMOS33";
-#NET "sdCD"		LOC = "A1"  	| IOSTANDARD = "LVCMOS33";
-#NET "sdSCK"		LOC = "B1"  	| IOSTANDARD = "LVCMOS33";
-#NET "sdCmd"		LOC = "C1"  	| IOSTANDARD = "LVCMOS33";
-#NET "sdData<0>"	LOC = "C2"  	| IOSTANDARD = "LVCMOS33";
-#NET "sdData<1>" 	LOC = "E1"  	| IOSTANDARD = "LVCMOS33";
-#NET "sdData<2>"	LOC = "F1"  	| IOSTANDARD = "LVCMOS33";
-#NET "sdData<3>"	LOC = "D2"  	| IOSTANDARD = "LVCMOS33";
+#
+# SD card in JMOD PORT A
+NET "SD_CS" 		LOC = "B13"	| IOSTANDARD = "LVCMOS33";
+NET "MOSI" 			LOC = "F14"	| IOSTANDARD = "LVCMOS33";
+NET "MISO" 			LOC = "D17"	| IOSTANDARD = "LVCMOS33";
+NET "SCK" 			LOC = "E17"	| IOSTANDARD = "LVCMOS33";
+NET "SD_CD" 		LOC = "D18"	| IOSTANDARD = "LVCMOS33";
+NET "SD_RESET"		LOC = "E2"  	| IOSTANDARD = "LVCMOS33";	# Drive low to pwr SD card (connect to system reset)
+# Micro SD card interface
+#NET "SD_CS" 		LOC = "D2"	| IOSTANDARD = "LVCMOS33";
+#NET "MOSI" 		LOC = "C1"	| IOSTANDARD = "LVCMOS33";
+#NET "MISO" 		LOC = "C2"	| IOSTANDARD = "LVCMOS33";
+#NET "SCK" 			LOC = "B1"	| IOSTANDARD = "LVCMOS33";
+#NET "SD_CD" 		LOC = "A1"	| IOSTANDARD = "LVCMOS33";
+#NET "SD_RESET"	LOC = "E2"  	| IOSTANDARD = "LVCMOS33";	# Drive low to pwr SD card (connect to system reset)
+#
 # Timing 
 NET "CLK_IN" TNM_NET = CLK_IN;
 TIMESPEC TS_CLK_IN = PERIOD "CLK_IN" 10 ns HIGH 50% ;
 OFFSET = IN 10 ns VALID 10 ns BEFORE "CLK_IN" RISING;
 OFFSET = OUT 10 ns AFTER "CLK_IN";
+NET "clk75" TNM_NET = clk75;
+NET "clk100" TNM_NET = clk100;
+TIMESPEC TS_CROSS_1 = FROM "clk75" TO "clk100" 20 ns;
+TIMESPEC TS_CROSS_2 = FROM "clk100" TO "clk75" 20 ns;
+#TIMESPEC TS_LOCAL_1 = FROM "clk75" TO "clk75" 20 ns;

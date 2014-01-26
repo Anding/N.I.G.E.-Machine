@@ -182,7 +182,7 @@ begin
 	PC_plus_two <= PC + "010";
 	PC_plus_three <= PC + "011";
 	PC_plus_four <= PC + "100";
-	ReturnAddressJSL <= "000000000000" & PC_plus_three;
+	---ReturnAddressJSL <= "000000000000" & PC_plus_three;
 	
 	MEMaddr <= MEMaddr_i;
 	MEM_WRQ_X <= MEM_WRQ_X_i;
@@ -239,7 +239,7 @@ begin
 
 	process (state, state_n, PC, PC_n, PC_plus, PC_jsl, PC_branch, PC_skipbranch, PC_m1, PC_addr, delta, PC_plus_two, PC_plus_three, PC_plus_four,
 				ucode, equalzero,branch, opcode, chip_RAM, MEMdatain_X, retrap,
-				s_axi_awready, s_axi_wready, s_axi_arready, s_axi_rvalid, s_axi_rdata,
+				s_axi_awready, s_axi_wready, s_axi_arready, s_axi_rvalid, s_axi_rdata, axiaddr, 
 				TOS, TOS_r, NOS, TORS, int_trig, int_vector_ext, int_vector_ext_i, branch, opcode, delayed_RTS)
 	begin																					-- combinational section of state machine
 		case state is
