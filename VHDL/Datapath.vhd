@@ -177,7 +177,7 @@ begin
 	TORS <= TORS_n;								-- output TORS to control unit, once cycle ahead of registered value
 	
 	equalzero <= '1' when TOS_n = 0 else '0'; 
-	chip_RAM <= '1' when TOS_n(23 downto 16) = 0 else '0';		-- flag used to identify SRAM vs. PSDRAM memory access
+	chip_RAM <= '1' when TOS_n(23 downto 18) = 0 else '0';		-- flag used to identify SRAM vs. PSDRAM memory access
 							
 	PSdatain_i <= PwBuff when PSw_m1 = "1"	-- because of 1 cycle memory latency, need to use the buffered value for a stack memory read
 														--   if the stack memory was written just one cycle before (as memory update will not yet have occured)

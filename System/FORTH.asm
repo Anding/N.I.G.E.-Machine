@@ -2,9 +2,9 @@
 ;
 ; Copyright and license
 ;
-; The N.I.G.E machine, its design and its source code are Copyright (C) 2012 by Andrew Richard Read and dual licensed.
+; The N.I.G.E machine, its design and its source code are Copyright (C) 2012-2014 by Andrew Richard Read and dual licensed.
 ;    
-; (1) For commercial or proprietary use you must obtain a commercial license agreement with Andrew Richard Read (anding_eunding@yahoo.com)
+; (1) For commercial or proprietary use you must obtain a commercial license agreement with Andrew Richard Read (andrew81244@outlook.com)
 ;    
 ; (2) You can redistribute the N.I.G.E. Machine, its design and its source code and/or modify it under the terms of the GNU General Public 
 ; License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.  
@@ -23,29 +23,29 @@
 ;
 ; **** HARDWARE REGISTERS ****
 ;
-TEXT_ZERO	equ	hex f800
-BACKGROUND	equ	hex f808
-mode		equ	hex f80c
-RS232rx	equ	hex f810
-RS232tx	equ	hex f814
-RS232UBRR	equ	hex f818
-HWstatus	equ	hex f81c
+TEXT_ZERO	equ	hex 03f800
+BACKGROUND	equ	hex 03f808
+mode		equ	hex 03f80c
+RS232rx	equ	hex 03f810
+RS232tx	equ	hex 03f814
+RS232UBRR	equ	hex 03f818
+HWstatus	equ	hex 03f81c
 HWmask_TBE	equ	02
-PS2rx		equ	hex f820
-CLKcounter	equ	hex f824
-MScounter	equ	hex f828
-intmask	equ	hex f82c		
+PS2rx		equ	hex 03f820
+CLKcounter	equ	hex 03f824
+MScounter	equ	hex 03f828
+intmask	equ	hex 03f82c		
 intmask_MS	equ	16
-sevenseg	equ	hex f830
-SPI.data	equ	hex f838  
-SPI.control	equ	hex f83C  
-SPI.status	equ	hex f840  
-SPI.divide	equ	hex f844 
-VBLANK		equ	hex f848 
+sevenseg	equ	hex 03f830
+SPI.data	equ	hex 03f838  
+SPI.control	equ	hex 03f83C  
+SPI.status	equ	hex 03f840  
+SPI.divide	equ	hex 03f844 
+VBLANK		equ	hex 03f848 
 ;
 ; **** MEMORY MAP ****
 ;
-SRAMSIZE	equ	55296			; Amount of SRAM
+SRAMSIZE	equ	128 1024 *		; Amount of SRAM in bytes
 SCREENWORDS	equ	hex 006000		; number of words in the screen buffer (96 rows * 128 cols * 2 screens)
 RSrxBUF	equ	hex 040000		; RS232 buffer (256 bytes)	
 PSBUF		equ	hex 040100		; PS/2 keyboard buffer (256 bytes)
@@ -140,7 +140,7 @@ RDA		#.w 	RSrxWPOS	; buffer write position
 			store.b		; RS_wr
 			#.l RSrxBUF		; RS_wr RSrxBUF_S0
 			+			; RSrxBUF_S0+RS_wr
-			#.w RS232rx	
+			#.l RS232rx	
 			fetch.b
 			swap			; RS232rx_S0 RSrxBUF_S0+RS_wr
 			store.b
@@ -166,14 +166,14 @@ TBE		#.l	RStxCNT
 			rot			(addr+1 addr+1 buf&)
 			store.l		(addr+1)
 			fetch.b		(char)
-			#.w RS232tx		(char RS232tx)
+			#.l RS232tx		(char RS232tx)
 			store.b
 		THEN
 TBE.Z		rti
 RStxCNT	dc.l	hex 00
 RStxBUF	dc.l	hex 00
 ;
-PS2		#.w 	PS2rx	
+PS2		#.l 	PS2rx	
 		fetch.b			( raw)
 		jsl 	PS2DECODE.CF		( char, decode the raw character)			
 		?dup				; process only completed keystrokes
@@ -251,29 +251,29 @@ TIMEOUT.CF	?dup
 		IF
 			#.w	MS.TIMEOUT
 			store.l
-			#.w	intmask
+			#.l	intmask
 			fetch.l
 			#.b	intmask_MS
 			or
 		ELSE
-			#.w	intmask
+			#.l	intmask
 			fetch.l
 			#.b	intmask_MS
 			invert
 			and
 		THEN
-		#.w	intmask
+		#.l	intmask
 TIMEOUT.Z	store.l,rts			
 ; MS ( n --, wait for n ms)
 MS.LF		dc.l	TIMEOUT.NF
 MS.NF		dc.b	2 128 +
 		dc.b	char S char M
 MS.SF		dc.w	MS.Z MS.CF del
-MS.CF		#.w	MScounter
+MS.CF		#.l	MScounter
 		fetch.l		( n ms)
 		+			( end)
 			begin
-				#.w	MScounter
+				#.l	MScounter
 				fetch.l		( end now)
 				over			( end now end)
 				=
@@ -287,12 +287,12 @@ SEMIT.NF	dc.b	5 128 +
 		dc.b 	char T char I char M char E char S
 SEMIT.SF	dc.w 	SEMIT.Z SEMIT.CF del 	
 		BEGIN
-SEMIT.CF		#.w HWstatus
+SEMIT.CF		#.l HWstatus
 			fetch.b	
 			#.b HWmask_TBE
 			and			; TBE bit
 		UNTIL		
-		#.w RS232tx
+		#.l RS232tx
 SEMIT.Z	store.b,rts
 ;	
 SKEY?.LF	dc.l 	SEMIT.NF
@@ -372,7 +372,7 @@ BAUD.CF	#.l	6250000		( baud clock/16)
 		1+
 		divu
 		nip				( ubrr)
-		#.w	RS232UBRR
+		#.l	RS232UBRR
 BAUD.Z		store.w,rts
 ;
 ; **** KEYBOARD ****
@@ -839,7 +839,7 @@ CSR-ADDR.CF	#.w	CSR-X
 		mults
 		drop
 		+
-		#.w	TEXT_ZERO
+		#.l	TEXT_ZERO
 		fetch.l
 CSR-ADDR.Z	+,rts				( addr)
 ;	
@@ -894,7 +894,7 @@ SCROLL.CF	#.w	COLS
 		2*				; width of the screen including color bytes
 		mults
 		drop				( delta)
-		#.w	TEXT_ZERO
+		#.l	TEXT_ZERO
 		fetch.l			( delta current)	
 		+				( new)
 		dup				( new new)		; check bottom of range
@@ -929,7 +929,7 @@ SCROLL.CF	#.w	COLS
 			THEN
 		THEN
 		swap				( result new)
-		#.w	TEXT_ZERO
+		#.l	TEXT_ZERO
 SCROLL.Z	store.l,rts		
 ;
 CLS.LF		dc.l	SCROLL.NF
@@ -942,7 +942,7 @@ CLS.CF		#.l	_TEXT_ZERO		( start start)		; clear screen memory
 		zero				( start start 24576 color)		; fill word	
 		jsl	VWAIT.CF
 		jsl	FILL.W.CF		( start)			
-		#.w	TEXT_ZERO					; reset pointer to TEXT_ZERO
+		#.l	TEXT_ZERO					; reset pointer to TEXT_ZERO
 		store.l
 		zero							; reset cursor position
 		#.w	CSR-X
@@ -956,7 +956,7 @@ VWAIT.LF	dc.l	CLS.NF
 VWAIT.NF	dc.b	5 128 +
 		dc.S	VWAIT
 VWAIT.SF	dc.w	VWAIT.Z VWAIT.CF del
-VWAIT.CF	#.w	VBLANK
+VWAIT.CF	#.l	VBLANK
 		BEGIN							; wait for 0 to ensure we get a full interval
 			dup
 			fetch.b
@@ -973,7 +973,7 @@ SCRSET.LF	dc.l	VWAIT.NF
 SCRSET.NF	dc.b	6 128 +
 		dc.b	char T char E char S char R char C char S
 SCRSET.SF	dc.w	SCRSET.Z SCRSET.CF del
-SCRSET.CF	#.w	mode			; check screen mode
+SCRSET.CF	#.l	mode			; check screen mode
 		fetch.b
 		dup				( mode mode)
 		#.b	binary 00000111
@@ -1022,7 +1022,7 @@ NEWLINE.CF	#.w	CSR-Y
 			#.b	1
 			jsl	SCROLL.CF	( flag)		; SCROLL forwards 1 row			
 			IF						; SCROLL returned true, indicating that the screen page is now at the bottom of the buffer
-				#.w	TEXT_ZERO			; Step 1 is to copy the current screen to the top of the buffer
+				#.l	TEXT_ZERO			; Step 1 is to copy the current screen to the top of the buffer
 				fetch.l
 				#.w	COLS
 				fetch.b
@@ -1054,7 +1054,7 @@ NEWLINE.CF	#.w	CSR-Y
 				zero						; blank color
 				jsl	FILL.W.CF				; clear remaining screen memory
 				#.l	_TEXT_ZERO			; Step 3 is to reset pointer to TEXT_ZERO	
-				#.w	TEXT_ZERO			
+				#.l	TEXT_ZERO			
 				store.l				
 			THEN
 		ELSE							; cursor is mid screen - simply need to go down one row
@@ -1262,8 +1262,8 @@ BACKGROUND.LF	dc.l	VTYPE.NF
 BACKGROUND.NF	dc.b	10 128 +
 		dc.s	BACKGROUND
 BACKGROUND.SF	dc.w	BACKGROUND.Z BACKGROUND.CF del
-BACKGROUND.CF	#.w	BACKGROUND
-BACKGROUND.Z	store.b,rts
+BACKGROUND.CF	#.l	BACKGROUND
+BACKGROUND.Z	store.w,rts
 ;
 ;
 ;COLOR ( n --, set the ink from the palette)
@@ -1282,7 +1282,7 @@ INTERLACE.LF	dc.l	BACKGROUND.NF
 INTERLACE.NF	dc.b	9 128 +
 		dc.s	INTERLACE
 INTERLACE.SF	dc.w	INTERLACE.Z INTERLACE.CF del
-INTERLACE.CF	#.w	mode
+INTERLACE.CF	#.l	mode
 		fetch.b
 		swap
 		IF
@@ -1292,7 +1292,7 @@ INTERLACE.CF	#.w	mode
 			#.b	239
 			and
 		THEN
-		#.w	mode
+		#.l	mode
 		store.b	
 		jsl	SCRSET.CF
 INTERLACE.Z	rts
@@ -1303,12 +1303,12 @@ VGA.NF	dc.b	3 128 +
 		dc.s	VGA
 VGA.SF	dc.w	VGA.Z VGA.CF del
 VGA.CF	jsl	CLS.CF					( VGA)
-		#.w	mode
+		#.l	mode
 		fetch.b				( VGA mode)
 		#.b	binary	11111000		
 		and					( VGA mode`)
 		or					( mode``)
-		#.w	mode
+		#.l	mode
 		store.b	
 		jsl	SCRSET.CF
 VGA.Z	rts
@@ -1318,7 +1318,7 @@ COLORMODE.LF	dc.l	VGA.NF
 COLORMODE.NF	dc.b	9 128 +
 		dc.s	COLORMODE
 COLORMODE.SF	dc.w	COLORMODE.Z COLORMODE.CF del
-COLORMODE.CF	#.w	mode
+COLORMODE.CF	#.l	mode
 		fetch.b
 		swap
 		IF
@@ -1328,7 +1328,7 @@ COLORMODE.CF	#.w	mode
 			#.b	247
 			and
 		THEN
-		#.w	mode
+		#.l	mode
 		store.b	
 COLORMODE.Z	rts
 ;
@@ -1357,7 +1357,7 @@ SCREENPLACE.LF	dc.l	SCREENBASE.NF
 SCREENPLACE.NF	dc.b	11 128 +
 			dc.s	SCREENPLACE
 SCREENPLACE.SF	dc.w	4
-SCREENPLACE.CF	#.w TEXT_ZERO
+SCREENPLACE.CF	#.l TEXT_ZERO
 			rts			; cannot use #.l,rts with inline compiler
 ;
 INK.LF		dc.l	SCREENPLACE.NF
@@ -1455,7 +1455,7 @@ COLS		dc.b	100
 ;
 ; **** SPI, SD & FAT FILE SYSTEM ****
 ; SPI functions
-SPI.CS-hi	#.w	SPI.control					; DESELECT - CS is active low
+SPI.CS-hi	#.l	SPI.control					; DESELECT - CS is active low
 		dup
 		fetch.b	
 		#.b	1 
@@ -1463,7 +1463,7 @@ SPI.CS-hi	#.w	SPI.control					; DESELECT - CS is active low
 		swap
 		store.b,rts	 
 ;
-SPI.CS-lo 	#.w	SPI.control 					; SELECT - CS is active low
+SPI.CS-lo 	#.l	SPI.control 					; SELECT - CS is active low
 		dup
 		fetch.b
 		#.b	254 
@@ -1471,7 +1471,7 @@ SPI.CS-lo 	#.w	SPI.control 					; SELECT - CS is active low
 		swap
 		store.b,rts
 ;	
-SPI.MOSI-hi	#.w	SPI.control 
+SPI.MOSI-hi	#.l	SPI.control 
 		dup
 		fetch.b
 		#.b	2 
@@ -1479,7 +1479,7 @@ SPI.MOSI-hi	#.w	SPI.control
 		swap
 		store.b,rts
 ;
-SPI.MOSI-lo 	#.w	SPI.control 
+SPI.MOSI-lo 	#.l	SPI.control 
 		dup
 		fetch.b
 		#.b	253 
@@ -1487,16 +1487,16 @@ SPI.MOSI-lo 	#.w	SPI.control
 		swap
 		store.b,rts 
 ;
-SPI.slow 	#.b	255 						; 196kHz at 50MHz clock
-		#.w	SPI.divide 
+SPI.slow 	#.b	255 						; 392kHz at 100MHz clock
+		#.l	SPI.divide 
 		store.b,rts
 ;	
-SPI.fast 	#.b	8 						; 6.25MHz at 50MHz
-		#.w	SPI.divide 
+SPI.fast 	#.b	16 						; 6.25MHz at 100MHz
+		#.l	SPI.divide 
 		store.b,rts	
 ;
 ; SPI.wait ( --, wait until the SPI transfer-bus is available)	
-SPI.wait 	#.w	SPI.status 
+SPI.wait 	#.l	SPI.status 
 		BEGIN
 			dup
 			fetch.b
@@ -1507,14 +1507,14 @@ SPI.wait 	#.w	SPI.status
 ;
 ; SPI.put ( n --, put a byte to the SPI port)
 SPI.put	jsl	SPI.wait 
-		#.w	SPI.data
+		#.l	SPI.data
 		store.b,rts
 ;
 ; SPI.get ( -- n, get a byte from the SPI port)
 SPI.get	#.b	255 
 		jsl	SPI.put 
 		jsl	SPI.wait 
-		#.w	SPI.data
+		#.l	SPI.data
 		fetch.b,rts
 ;
 ; SD card functions
@@ -2661,7 +2661,7 @@ D+.LF		dc.l	DIGIT.NF
 D+.NF		dc.b	2 128 +
 		dc.b	char + char D
 D+.SF		dc.w	D+.Z D+.CF del
-D+.CF		#.w	intmask		; disable interrupts to protect ADDX flag
+D+.CF		#.l	intmask		; disable interrupts to protect ADDX flag
 		dup
 		fetch.l
 		>R
@@ -2680,7 +2680,7 @@ D+.CF		#.w	intmask		; disable interrupts to protect ADDX flag
 		swap		( h3 l3)
 ; restore interrupts
 		R>
-		#.w	intmask
+		#.l	intmask
 D+.Z		store.l,rts
 ;
 ; D- 	(ud1 ud2 -- ud3)  double precision arithmetic
@@ -2688,7 +2688,7 @@ D-.LF		dc.l	D+.NF
 D-.NF		dc.b	2 128 +
 		dc.b	char - char D
 D-.SF		dc.w	D-.Z D-.CF del
-D-.CF		#.w	intmask		; disable interrupts to protect SUBX flag
+D-.CF		#.l	intmask		; disable interrupts to protect SUBX flag
 		dup
 		fetch.l
 		>R
@@ -2705,7 +2705,7 @@ D-.CF		#.w	intmask		; disable interrupts to protect SUBX flag
 		SUBX
 ; restore interrupts
 		R>
-		#.w	intmask
+		#.l	intmask
 D-.Z		store.l,rts
 ;
 ; >NUMBER ( ud1 c-addr1 u1 -- ud2 c-addr2 u2 , convert till bad char , CORE )
@@ -3427,7 +3427,7 @@ ERROR.NF	dc.b	5 128 +
 		dc.b	char R char O char R char R char E
 ERROR.SF	dc.w	ERROR.Z ERROR.CF del
 ERROR.CF	R@			; indicate calling address on the display
-		#.w	sevenseg
+		#.l	sevenseg
 		store.w
 		#.w 	PALETTE 2 +
 		fetch.b
@@ -4232,7 +4232,7 @@ UNUSED.LF	dc.l	DOTS.NF
 UNUSED.NF	dc.b	6 128 +
 		dc.b	char D char E char S char U char N char U
 UNUSED.SF	dc.w	UNUSED.Z UNUSED.CF del
-UNUSED.CF	#.w	SRAMSIZE
+UNUSED.CF	#.l	SRAMSIZE
 		#.w	HERE_
 		fetch.l
 UNUSED.Z	-,rts

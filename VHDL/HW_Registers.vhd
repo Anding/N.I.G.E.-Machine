@@ -118,7 +118,7 @@ begin
 			irq_mask_r <= "000000000000111";						-- "000000000000111";
 			txt_zero_r <= X"040600";									
 			background_r <= X"0000";
-			mode_r <= "11011";										-- 11010
+			mode_r <= "11011";										-- 11011
 			RS232_tx_r_S0 <= (others=>'0');	
 			ssData_r <= (others=>'0');
 			
@@ -175,18 +175,23 @@ begin
 	
 	-- read hardware signals
 	
-	--process
-	--begin
-		--wait until rising_edge(clk);
+	-- register external signals
+	process
+	begin
+		wait until rising_edge(clk);
+		SW_r <= SW;
+		SD_status_r <= SD_status;	
+	end process;
+	
+		PS2_data_r <= PS2_data;
+		SD_datain_r <= SD_datain;		
+	
+	-- internal signals unregistered
 		RS232_rx_S0_r <= RS232_rx_S0;
 		RS232_TBE_S0_r <= RS232_TBE_S0;
 		RS232_RDA_S0_r <= RS232_RDA_S0;
-		SW_r <= SW;
-		PS2_data_r <= PS2_data;
-		SD_status_r <= SD_status;
-		SD_datain_r <= SD_datain;
 		VBLANK_r <= VBLANK;
-	--end process;
+
 	
 		dataout <= dataout_i;
 	

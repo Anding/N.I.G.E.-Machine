@@ -55,7 +55,7 @@ signal bank, bank_n : bank_t;
 signal counter_clk, counter_ms : std_logic_vector(31 downto 0) := (others =>'0');
 signal timer_ms : std_logic_vector(15 downto 0) := (others =>'0');	
 signal reset : std_logic;
-signal clk25, clk50, clk75, clk100 : std_logic;
+signal VGAclk25, VGAclk50, VGAclk75, clk100 : std_logic;
 signal irq, rti, ms_irq : std_logic;
 signal irv : std_logic_vector(3 downto 0);
 signal irq_mask : std_logic_vector(15 downto 1);
@@ -171,6 +171,8 @@ signal VGA_newline : std_logic;
 signal clk_system : std_logic;
 signal clk_VGA : std_logic;
 signal clk_MEM : std_logic;
+-- DEBUG
+--signal SW : STD_LOGIC_VECTOR (15 downto 0);
 
 	component CLOCKMANAGER
 	port
@@ -200,20 +202,32 @@ signal clk_MEM : std_logic;
 	END COMPONENT;
 		
 begin
+
+-- DEBUG
+--SW <= (others=>'0');
 	
 	inst_CLOCKMANAGER : CLOCKMANAGER
   port map
    (-- Clock in ports
     CLK_IN1 => CLK_IN,
     -- Clock out ports
-	 CLK_OUT1 => CLK25,
-    CLK_OUT2 => CLK50,
-    CLK_OUT3 => CLK75,
+	 CLK_OUT1 => VGACLK25,
+    CLK_OUT2 => VGACLK50,
+    CLK_OUT3 => VGACLK75,
 	 CLK_OUT4 => CLK100);
 	 
+	-- System and memory clock selector
 	clk_system <= clk100;
-	clk_VGA <= clk75;
 	clk_MEM <= clk100;
+	
+	-- VGA clock selector
+		-- gated clocks are not good design practice in general but here we explicitly assume 
+		-- that the VGA clock domain is not synchronized with the SYSTEM clock domain
+		-- do not use these clocks to drive modules aside from VGA since they are be not timing constrained
+	with mode(1 downto 0) select
+			clk_VGA <= VGAclk25 when "01",
+						  VGAclk50 when "10",
+						  VGAclk75 when others;
 	 
 	-- global counters
 	process														 
@@ -225,8 +239,8 @@ begin
 	-- ms interrupt
 	process														
 	begin
-		wait until rising_edge(clk50);						-- 50MHz clock
-		if timer_ms = CONV_STD_LOGIC_VECTOR(50000,16) then
+		wait until rising_edge(clk100);						-- 100MHz clock
+		if timer_ms = CONV_STD_LOGIC_VECTOR(100000,16) then
 			timer_ms <=(others =>'0');
 			counter_ms <= counter_ms + 1;
 		else
@@ -246,12 +260,12 @@ begin
 		bank <= bank_n;	
 	end process;
 	 
-	with MEMaddr(15 downto 11) select
-		bank_n <= Color when "11011",
-					 Pstack when "11100",
-					 Rstack when "11101",
-					 Char when "11110",
-					 Reg when "11111",
+	with MEMaddr(17 downto 11) select
+		bank_n <= Color when "1111011",
+					 Pstack when "1111100",
+					 Rstack when "1111101",
+					 Char when "1111110",
+					 Reg when "1111111",
 					 Sys when others;
 	 
 	 Color_EN <= '1' when bank_n = Color else '0';
@@ -343,13 +357,13 @@ begin
 		 clka => clk_system,
 		 ena => ram_en,
 		 wea => wea_sysram,
-		 addra => addra_sysram (15 downto 2),					-- write depth 16384, 15downto2. write depth 32768, 16 downto 2. write depth 62976, 17downto2
+		 addra => addra_sysram (16 downto 2),					-- 64K write depth 16384, 15downto2. 128K write depth 32768, 16 downto 2. 256K write depth 62976, 17downto2
 		 dina => dina_sysram,
 		 douta => douta_sysram,
 		 clkb => clk_system,
 		 enb => ram_en,
 		 web => web_sysram,
-		 addrb => addrb_sysram (15 downto 2),
+		 addrb => addrb_sysram (16 downto 2),
 		 dinb => dinb_sysram,
 		 doutb => doutb_sysram
 	  );
@@ -595,7 +609,7 @@ begin
 		
 		Inst_ByteHEXdisplay: entity work.ByteHEXdisplay PORT MAP(
 		ssData => ssData,
-		clk50MHz => CLK_SYSTEM,
+		clk => CLK_SYSTEM,
 		count => counter_clk(15 downto 13),
 		sevenseg => sevenseg,
 		anode => anode

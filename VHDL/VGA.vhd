@@ -48,8 +48,20 @@ signal back_color : STD_LOGIC_VECTOR(11 downto 0);
 signal Ha, Hb, Hc, Hd, He : std_logic_vector(10 downto 0);
 signal Va, Vb, Vc, Vd, Ve : std_logic_vector(10 downto 0);
 signal COLUMNS : std_logic_vector(6 downto 0);
+signal Hsync_i, Vsync_i : std_logic;
+signal RGB_i :  STD_LOGIC_VECTOR (11 downto 0);
+
 
 begin
+
+	-- register outputs
+	--process
+	--begin
+		--wait until rising_edge(clk_VGA);
+		RGB <= RGB_i;
+		Hsync <= Hsync_i;
+		VSync <= VSync_i;
+	--end process;
 
 --	addr_VGA <= addressPixel;
 	addr_Text <= addressText;
@@ -131,16 +143,16 @@ begin
 		
 		-- Horizontal sync signal
 		if Hcount = Hb then						-- screen width plus horizontal front porch (HFP) plus 2: VGA 660, SVGA 861 
-			HSync <= '0';
+			HSync_i <= '0';
 		elsif Hcount = Hc then					-- screen width plus HFB plus Hpulse plus 2: VGA 756, SVGA 981 
-			HSync <= '1';			
+			HSync_i <= '1';			
 		end if;
 		
 		-- Vertical sync signal
 		if Vcount = Vb then						-- screen height plus vertical front porch (VFP) plus one: VGA 491, SVGA 637
-			VSync <= '0';			
+			VSync_i <= '0';			
 		elsif Vcount = Vc then					-- screen height plus VFP plus Vpulse plus one: VGA 493, SVGA 643
-			VSync <= '1';			
+			VSync_i <= '1';			
 		end if;	
 		
 		-- Vertical blank signal
@@ -242,12 +254,12 @@ begin
 		-- Drive pixel to output
 		if Hblk4 = '0' and Vblk0 = '0' and mode(2 downto 0) /= "000" then	-- Hblk4 for synchronization
 			if char_pixels(7) = '1' then		
-				RGB <= text_f;
+				RGB_i <= text_f;
 			else
-				RGB <= text_b;
+				RGB_i <= text_b;
 			end if;
 		else											
-			RGB <= (others=>'0');														-- RGB low in horizantal and vertical blank interval and when VGA is off
+			RGB_i <= (others=>'0');														-- RGB low in horizantal and vertical blank interval and when VGA is off
 		end if;
 
 	end process;

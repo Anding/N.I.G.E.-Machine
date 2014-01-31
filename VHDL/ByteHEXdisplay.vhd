@@ -6,7 +6,7 @@ use IEEE.STD_LOGIC_UNSIGNED.ALL;
 
 entity ByteHEXdisplay is
     Port ( ssData		: in  STD_LOGIC_VECTOR (31 downto 0);
-			  clk50MHz 	: in  STD_LOGIC;
+			  clk		 	: in  STD_LOGIC;
 			  count		: in  STD_LOGIC_VECTOR (15 downto 13);
            sevenseg 	: out  STD_LOGIC_VECTOR (6 downto 0);
            anode 		: out  STD_LOGIC_VECTOR (7 downto 0)
@@ -20,7 +20,7 @@ begin
 
 	PROCESS
 	begin
-		wait until rising_edge(clk50MHz);
+		wait until rising_edge(clk);
 		
 			if count(15 downto 13) = "001" then				-- toggle on MSBits of count
 				anode <= "11111110";
