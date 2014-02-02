@@ -1735,7 +1735,7 @@ SD.select&check 	jsl spi.cs-lo		; SELECT
 		UNTIL
 		rts
 ;
-; SD.read-sector ( addr n --, read 512 bytes from sector n into a buffer at addr)
+; SD.read-sector ( addr n --, read 512 bytes from sector n of the SD card into a buffer at addr)
 SD.read-sector.LF	dc.l	SD.init.NF
 SD.read-sector.NF	dc.b	14 128 +
 			dc.b	char R char O char T char C char E char S char - char D char A char E char R char . char D char S
@@ -1781,7 +1781,7 @@ SD.read-sector.CF	#.w	1000
 		jsl	timeout.CF
 SD.read-sector.Z		rts
 ;
-; SD.write-sector ( addr n --, write 512 byte to sector n from addr)
+; SD.write-sector ( addr n --, write 512 byte to sector n of the SD card from addr)
 SD.write-sector.LF	dc.l	SD.read-sector.NF
 SD.write-sector.NF	dc.b	15 128 +
 			dc.b	char R char O char T char C char E char S char - char E char T char I char R char W char . char D char S
@@ -1896,7 +1896,6 @@ FAT.write-long.CF	+
 		LOOP
 FAT.write-long.Z	rts
 ;
-	
 ; FAT.read-word ( addr n -- x, get a little endian word from the buffer)
 FAT.read-word.LF	dc.l	FAT.write-long.NF
 FAT.read-word.NF	dc.b	13 128 +
@@ -1914,7 +1913,7 @@ FAT.read-word.CF	1+
 		fetch.b 
 FAT.read-word.Z	+,rts
 ;
-; FAT.write-word ( x addr n --, write a litte endian word to the buffer)
+; FAT.write-word ( x addr n --, write a little endian word to the buffer)
 FAT.write-word.LF	dc.l	FAT.read-word.NF
 FAT.write-word.NF	dc.b	14 128 +
 			dc.s	FAT.write-word
@@ -1942,28 +1941,31 @@ MOUNT.NF	dc.b	5 128 +
 		dc.s	MOUNT
 MOUNT.SF	dc.w	MOUNT.Z MOUNT.CF del
 MOUNT.CF	jsl	sd.init.cf
+		zero
+		#.w 	FAT.PtnOff
+		store.l
 		#.l	_fat.buf 
 		dup
 		>R
 		zero 
-		jsl	sd.read-sector.cf
-		R@
-		#.w	510 
-		jsl	fat.read-word.cf 
-		#.w	43605 
-		<> 
-		IF		; confirm sector signature 0xAA55
-			#.w	2000 
-			jsl	error.cf
-		THEN
-		R@ 
-		#.b	82 
-		jsl	fat.read-word.cf 
-		#.w	16710 
-		<> 
-		IF		; confirm FAT32 signature 0x4146
-			#.w	2001 
-			jsl	error.cf
+		jsl	FAT.read-sector.cf
+		jsl	checkFAT32
+		not					; sector may be a partiton table
+		IF
+			R@
+			dup
+			#.w	454			; Offset to sector of first partition
+			jsl	fat.read-long.cf	( _fat.buf firstSectorOfFirstPartition )
+			#.w 	FAT.PtnOff
+			store.l
+			zero
+			jsl	FAT.read-sector.cf	
+			jsl	checkFAT32
+			not
+			IF	
+				#.w	2001 
+				jsl	error.cf
+			THEN
 		THEN
 		R@			
 		#.b	13 
@@ -2004,7 +2006,7 @@ MOUNT.CF	jsl	sd.init.cf
 		store.l
 		R@
 		#.b	1 
-		jsl	sd.read-sector.cf		; FAT32 FSInfo
+		jsl	FAT.read-sector.cf		; FAT32 FSInfo
 		R@
 		zero 
 		jsl	fat.read-long.cf 
@@ -2031,8 +2033,45 @@ MOUNT.CF	jsl	sd.init.cf
 		#.w	FAT.FATinBuf 
 MOUNT.Z	store.l,rts				; FAT buffer initialized
 ;
+; checkFAT32  ( -- flag) examine the current sector to see if it is a FAT32 boot sector
+checkFAT32	#.l	_fat.buf
+		#.w	510 
+		jsl	fat.read-word.cf 
+		#.w	43605 				; confirm sector signature 0xAA55
+		= 
+		#.l	_fat.buf
+		#.b	82 				; confirm FAT32 signature 0x4146
+		jsl	fat.read-word.cf 
+		#.w	16710 
+		=
+		and,rts
+;
+; Add the approprate partition offset and then call SD.read-sector
+; FAT.read-sector ( addr n --, read 512 bytes from sector n of the current partition into a buffer at addr)
+FAT.read-sector.LF	dc.l	MOUNT.NF
+FAT.read-sector.NF	dc.b	15 128 +
+			dc.s	FAT.read-sector
+FAT.read-sector.SF	dc.w	FAT.read-sector.Z FAT.read-sector.CF del
+FAT.read-sector.CF	#.w 	FAT.PtnOff
+			fetch.l
+			+
+			jsl SD.read-sector.CF
+FAT.read-sector.Z	rts				
+;
+; Add the appropriate partition offset and then call SD.write-sector
+; FAT.write-sector ( addr n --, write 512 byte to sector n of the current partition from addr)
+FAT.write-sector.LF	dc.l	FAT.read-sector.NF
+FAT.write-sector.NF	dc.b	16 128 +
+			dc.s	FAT.write-sector
+FAT.write-sector.SF	dc.w	FAT.write-sector.Z FAT.write-sector.CF del
+FAT.write-sector.CF	#.w 	FAT.PtnOff
+			fetch.l
+			+
+			jsl SD.write-sector.CF
+FAT.write-sector.Z	rts
+;
 ; FAT.UpdateFSInfo ( --, update the FAT32 FSInfo sector with next free cluster)
-FAT.UpdateFSInfo.LF	dc.l	MOUNT.NF
+FAT.UpdateFSInfo.LF	dc.l	FAT.write-sector.NF
 FAT.UpdateFSInfo.NF	dc.b	16 128 +
 			dc.s	FAT.UpdateFSInfo
 FAT.UpdateFSInfo.SF	dc.w	FAT.UpdateFSInfo.Z FAT.UpdateFSInfo.CF del
@@ -2040,7 +2079,7 @@ FAT.UpdateFSInfo.CF	#.l	_fat.buf
 		dup
 		>R
 		#.b	1 
-		jsl	sd.read-sector.cf
+		jsl	FAT.read-sector.cf
 		#.w	FAT.NextFreeCluster 
 		fetch.l 
 		R@	 			
@@ -2048,7 +2087,7 @@ FAT.UpdateFSInfo.CF	#.l	_fat.buf
 		jsl	FAT.write-long.CF
 		R> 
 		#.b	1 
-		jsl	sd.write-sector.cf
+		jsl	FAT.write-sector.cf
 FAT.UpdateFSInfo.Z		rts
 ;
 ; FAT.clus2sec ( n -- n, given a valid cluster number return the number of the first sector in that cluster)
@@ -2086,7 +2125,7 @@ FAT.prep-fat	#.b	4
 			store.l			; remember the buffered sector
 			#.l	_fat.buffat 
 			swap	 			( ThisFATEntOffset fat.fatbuf ThisFATSecNum)
-			jsl	SD.read-sector.cf	( ThisFATEntOffset)
+			jsl	FAT.read-sector.cf	( ThisFATEntOffset)
 		ELSE
 			drop				( ThisFATEntOffset)
 		THEN
@@ -2116,7 +2155,7 @@ FAT.put-fat.CF	jsl	FAT.prep-fat		( value ThisFATEntOffset)
 			#.l	_FAT.buffat 
 			#.w	FAT.FATinBuf 
 			fetch.l
-			jsl	SD.write-sector.cf
+			jsl	FAT.write-sector.cf
 FAT.put-fat.Z		rts
 ;
 ; FAT.string2filename ( addr n -- addr, convert an ordinary string to a short FAT filename)
@@ -2194,7 +2233,7 @@ FAT.find-file-local	jsl	FAT.String2Filename.CF	( cluster filestring)
 		DO					( filestring R:LOOP cluster)	; examine each sector in the cluster
 			#.l	_FAT.buf 
 			i 
-			jsl	SD.read-sector.cf
+			jsl	FAT.read-sector.cf
 			#.l	_FAT.buf 
 			dup 
 			#.w	512 
@@ -2396,7 +2435,7 @@ FAT.load-file.CF	BEGIN
 			DO
 				dup 
 				i 
-				jsl SD.read-sector.cf		
+				jsl FAT.read-sector.cf		
 				#.w	512 
 				+				( addr)
 			LOOP
@@ -2480,7 +2519,15 @@ FAT.RootClus.CF		#.w	FAT.RootClus
 				rts
 FAT.RootClus			dc.l 	0	; first cluster of root directory
 ;
-FAT.buf.LF			dc.l	FAT.RootClus.NF
+FAT.PtnOff.LF			dc.l	FAT.RootClus.NF
+FAT.PtnOff.NF			dc.b	10 128 +
+				dc.s	FAT.PtnOff
+FAT.PtnOff.SF			dc.w	4
+FAT.PtnOff.CF			#.w	FAT.PtnOff
+				rts
+FAT.PtnOff			dc.l 	0	; partition offset
+;
+FAT.buf.LF			dc.l	FAT.PtnOff.NF
 FAT.buf.NF			dc.b	7 128 +
 				dc.s	FAT.buf
 FAT.buf.SF			dc.w	6

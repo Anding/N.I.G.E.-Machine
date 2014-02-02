@@ -228,7 +228,7 @@ FILE.LIST LIST.INIT
 	BEGIN
 		R@ FAT.Clus2Sec			( Addr Sector R:endAddr Cluster)
 		dup 8 + swap DO							\ write a complete sector
-			dup i SD.write-sector
+			dup i FAT.write-sector
 			512 +
 		LOOP					( Addr R: endAddr Cluster)
 		R> over R@ swap			( Addr cluster endAddr Addr	R:endAddr)
@@ -265,9 +265,9 @@ FILE.LIST LIST.INIT
 	dup 8 + @ 4 and IF								\ check modified flag
 		>R R@ 36 + @ R@ 12 + @ R@ 16 + @			( addr size firstCluster R:fileid) 
 		FAT.save-file						( R:fileid)
-		FAT.buf R@ 24 + @ sd.read-sector 			( R:fileid)	\ read the DirectorySector into the buffer
+		FAT.buf R@ 24 + @ FAT.read-sector 			( R:fileid)	\ read the DirectorySector into the buffer
 		R@ 12 + @ FAT.buf R@ 20 + @ + 28 FAT.write-long	( R:fileid)	\ update the file size
-		FAT.buf R> 24 + @ sd.write-sector 			( R:fileid)	\ write the modified dir sector to disk
+		FAT.buf R> 24 + @ FAT.write-sector 			( R:fileid)	\ write the modified dir sector to disk
 	ELSE
 		drop
 	THEN	
@@ -287,7 +287,7 @@ FILE.LIST LIST.INIT
 		FAT.Clus2Sec						( firstSec R:Cluster)
 		dup FAT.SecPerClus @ + swap				( lastSec firstSec R:Cluster)			
 		DO										\ examine each sector in the cluster
-			FAT.buf i SD.read-sector
+			FAT.buf i FAT.read-sector
 			FAT.buf dup 512 + swap DO						\ examine each 32 byte entry in the sector
 				i c@ dup 0= swap 229 = or IF
 					j i FAT.buf - -1		( dirSector dirOffset TRUE R:Cluster)
@@ -341,7 +341,7 @@ FILE.LIST LIST.INIT
 		drop 	
 		FAT.buf +				( dirSector FAT.buf+dirOffset)
 		229 swap c!				( dirSector)				\ smudge the directory entry
-		FAT.buf swap SD.write-sector	( )	
+		FAT.buf swap FAT.write-sector	( )	
 		0
 	ELSE
 		-1
@@ -361,7 +361,7 @@ FILE.LIST LIST.INIT
 		268435455 over FAT.put-fat swap		( dirSector dirOffset firstCluster addr R: fam)	\ update FAT
 		over 65535 and over 26 FAT.write-word	( dirSector dirOffset firstCluster addr R: fam)	\ DIR_FstClusLO
 		over 65536 / swap 20 FAT.write-word	( dirSector dirOffset firstCluster  R: fam)	\ DIR_FstClusHI		
-		rot dup FAT.buf swap SD.write-sector	( dirOffset firstCluster dirSector R: fam)	\ update dir sector on SD
+		rot dup FAT.buf swap FAT.write-sector	( dirOffset firstCluster dirSector R: fam)	\ update dir sector on SD
 		rot rot 0 R>					( dirSector dirOffset firstCluster size fam)
 		FAT.new-file
 	ELSE
@@ -475,7 +475,7 @@ FILE.LIST LIST.INIT
 		FAT.buf + 					( dirSector addrD R:u2 c-addr2)
 		R> R> FAT.String2Filename			( dirSector addrD addrS)
 		swap 11 move
-		FAT.buf swap SD.write-sector
+		FAT.buf swap FAT.write-sector
 		0
 	ELSE
 		R> R> drop drop -1
@@ -516,17 +516,23 @@ FILE.LIST LIST.INIT
 		FAT.Clus2Sec				( firstSec)
 		dup FAT.SecPerClus @ + swap		( lastSec firstSec)			
 		cr DO										\ examine each sector in the cluster
-			FAT.buf i SD.read-sector
+			FAT.buf i FAT.read-sector
 			FAT.buf dup 512 + swap DO						\ examine each 32 byte entry in the sector
 				i c@ ?dup 0= IF UNLOOP UNLOOP R> drop EXIT THEN		\ empty entry and no following entries
 				229 <> IF							\ non-0xE5 first byte indicates valid entry
 					i 11 + c@ 
 					dup 15 and 15 <> IF					\ is not a long-name entry
-						2 u.r 9 emit					\ flags
-						i 28 FAT.read-long 6 u.r 			\ file size
-						9 emit
-						i 20 FAT.read-word 65536 *			\ first cluster hi
-						i 26 FAT.read-word + 6 u.r  		\ first cluster lo
+						CASE
+							8 OF
+								." VOLUME" ENDOF
+							16 OF 					\ directory
+								." DIR   " ENDOF
+							32 OF 					\ filename
+								i 28 FAT.read-long 6 u.r 	\ file size
+								\ i 20 FAT.read-word 65536 *	\ first cluster hi
+								\ i 26 FAT.read-word + 6 u.r  	\ first cluster lo	
+							   ENDOF
+						ENDCASE
 						9 emit
 						i FAT.Filename2String type	
 						cr
