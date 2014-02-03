@@ -19,7 +19,7 @@ entity Interrupt is
 end Interrupt;
 
 architecture Behavioral of Interrupt is
-	type state_T is (run, int);
+	type state_T is (run, int, idle);
 	signal state, state_n : state_T;
 	signal ira_input, ira_input_m1, ira_register, ira_output, local_mask : std_logic_vector(7 downto 1);  -- extend width for interrupts 8 - 15
 	signal irv_n, irv_register : std_logic_vector(3 downto 0);
@@ -42,7 +42,7 @@ begin
 	begin
 		wait until rising_edge(clk);
 		if rst = '1' then
-			state <= run;
+			state <= idle;
 			ira_register <= (others=>'0');
 			ira_input_m1 <= "0000010";									-- default TBE state is high
 			irv_register <= (others=>'0');
@@ -57,6 +57,12 @@ begin
 	process (state, ira_output, irv_register, rti)
 	begin
 		case state is
+			when idle =>
+				state_n <= run;
+				irq <= '0';
+				local_mask <= (others=>'1');
+				irv_n <= x"0";
+					
 			when run =>
 				if ira_output(1) = '1' then
 					irv_n <= x"1";

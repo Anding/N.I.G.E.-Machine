@@ -13,10 +13,10 @@ entity RAM_for_Testbench is
            clk : in  STD_LOGIC;
            weA : in  STD_LOGIC;
 			  weB : in  STD_LOGIC;
-           addressA : in  STD_LOGIC_VECTOR (15 downto 2);
+           addressA : in  STD_LOGIC_VECTOR (16 downto 2);
            data_inA : in  STD_LOGIC_VECTOR (31 downto 0);
            data_outA : out  STD_LOGIC_VECTOR (31 downto 0);
-           addressB : in  STD_LOGIC_VECTOR (15 downto 2);
+           addressB : in  STD_LOGIC_VECTOR (16 downto 2);
 			  data_inB : in  STD_LOGIC_VECTOR (31 downto 0); 
            data_outB : out  STD_LOGIC_VECTOR (31 downto 0)
 			  );
@@ -27,7 +27,6 @@ architecture Behavioral of RAM_for_Testbench is
 	file f : text open read_mode is "E:\N.I.G.E.-Machine\System\sram.txt";	
 	signal sysRAM : memory := (others=>X"00000000");
 	signal addressA_i, addressB_i : integer;
---	signal addressA_t, addressB_t : STD_LOGIC_VECTOR (29 downto 0);
 	signal CE_A, CE_B : std_logic;
 
 begin

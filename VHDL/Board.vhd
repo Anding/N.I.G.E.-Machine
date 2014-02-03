@@ -29,6 +29,7 @@ entity Board_Nexys4 is
 			  SW : in STD_LOGIC_VECTOR (15 downto 0);
 			  sevenseg : out STD_LOGIC_VECTOR (6 downto 0);
 			  anode : out STD_LOGIC_VECTOR (7 downto 0);	
+			  CPUreset : in STD_LOGIC;
 			  -- SPI
 			  SCK : out STD_LOGIC;
 			  MOSI : out STD_LOGIC;
@@ -37,12 +38,6 @@ entity Board_Nexys4 is
 			  SD_CD : in STD_LOGIC;
 			  --SD_WP : In STD_LOGIC
 			  SD_RESET : out STD_LOGIC
-			  -- Expansion
---			  EppAstb: in std_logic;        
---			  EppDstb: in std_logic;        
---			  EppWr  : in std_logic;        
---			  EppDB  : inout std_logic_vector(7 downto 0); 
---			  EppWait: out std_logic
 			  );
 end Board_Nexys4;
 
@@ -50,11 +45,10 @@ architecture RTL of Board_Nexys4 is
 
 type bank_t is (Sys, Char, Color, Pstack, Rstack, Reg);
 signal SD_WP : std_logic;
--- signal SD_RESET : std_logic;
 signal bank, bank_n : bank_t;	
 signal counter_clk, counter_ms : std_logic_vector(31 downto 0) := (others =>'0');
 signal timer_ms : std_logic_vector(15 downto 0) := (others =>'0');	
-signal reset : std_logic;
+signal reset, invReset, trig : std_logic;
 signal VGAclk25, VGAclk50, VGAclk75, clk100 : std_logic;
 signal irq, rti, ms_irq : std_logic;
 signal irv : std_logic_vector(3 downto 0);
@@ -64,11 +58,7 @@ signal RSdatain :  std_logic_vector(31 downto 0);
 signal MEMdatain_Xi :  std_logic_vector(31 downto 0);
 signal MEMdata_Char :  std_logic_vector(7 downto 0);
 signal MEMdata_Color :  std_logic_vector(15 downto 0);
-signal MEMdata_Pstack, MEMdata_Rstack, MEMdata_Reg : std_logic_vector(31 downto 0);
---signal MEMdatain_Y : std_logic_vector(7 downto 0);
---signal MEM_RDY_Y :  std_logic;
---signal MEMdatain_Z :  std_logic_vector(15 downto 0);
---signal MEM_RDY_Z :  std_logic;          
+signal MEMdata_Pstack, MEMdata_Rstack, MEMdata_Reg : std_logic_vector(31 downto 0);          
 signal PSaddr :  std_logic_vector(8 downto 0);
 signal PSdataout :  std_logic_vector(31 downto 0);
 signal PSw :  std_logic_vector(0 to 0);
@@ -77,14 +67,8 @@ signal RSdataout :  std_logic_vector(31 downto 0);
 signal RSw :  std_logic_vector(0 to 0);
 signal MEMaddr :  std_logic_vector(31 downto 0);
 signal MEMdataout_X :  std_logic_vector(31 downto 0);
---signal MEMdataout_Y :  std_logic_vector(7 downto 0);
 signal MEM_WRQ_X :  std_logic;
 signal MEM_WRQ_XX : std_logic_vector(0 downto 0);
---signal MEM_WRQ_Y :  std_logic;
---signal MEM_REQ_Y :  std_logic;
---signal MEMdataout_Z :  std_logic_vector(15 downto 0);
---signal MEM_WRQ_Z :  std_logic;
---signal MEM_REQ_Z : std_logic;
 signal Sys_EN, Pstack_EN, Rstack_EN, Char_EN, Reg_EN, Color_EN : std_logic;
 signal txt_zero : std_logic_vector(23 downto 0);
 signal DATA_OUT_VGA : std_logic_vector(7 downto 0) := (others=>'0');
@@ -95,19 +79,17 @@ signal DATA_Char : std_logic_vector(7 downto 0);
 signal ADDR_Char : std_logic_vector(10 downto 0);
 signal DATA_Color : std_logic_vector(15 downto 0);
 signal ADDR_Color : std_logic_vector(7 downto 0);
---signal start_VGA, start_TXT : std_logic;
 signal RS232_TX_S0 : std_logic_vector(7 downto 0);
 signal RS232_WR_S0 : std_logic;       
 signal RS232_RX_S0 : std_logic_vector(7 downto 0);
 signal RS232_RDA_S0 : std_logic;
 signal RS232_TBE_S0 : std_logic;
-signal RS232_UBRR_S0 : std_logic_vector(15 downto 0);
+signal RS232_DIVIDE_S0 : std_logic_vector(31 downto 0);
 signal Boot_we : STD_LOGIC_VECTOR(0 DOWNTO 0);
 signal Boot_data : STD_LOGIC_VECTOR(31 DOWNTO 0);
 signal Boot_addr : STD_LOGIC_VECTOR(31 DOWNTO 2);
 signal PS2_irq : std_logic;
 signal PS2_data : std_logic_vector(7 downto 0);
-signal reset_trigger : std_logic;
 signal mode : STD_LOGIC_VECTOR (4 downto 0);		
 signal background : STD_LOGIC_VECTOR (15 downto 0);
 signal ssData	: STD_LOGIC_VECTOR (31 downto 0);
@@ -171,8 +153,6 @@ signal VGA_newline : std_logic;
 signal clk_system : std_logic;
 signal clk_VGA : std_logic;
 signal clk_MEM : std_logic;
--- DEBUG
---signal SW : STD_LOGIC_VECTOR (15 downto 0);
 
 	component CLOCKMANAGER
 	port
@@ -185,26 +165,8 @@ signal clk_MEM : std_logic;
 	  CLK_OUT4          : out    std_logic
 	 );
 	end component;
-	
-	COMPONENT RS232v2
-	PORT(
-		RXD : IN std_logic;
-		UBRR : IN std_logic_vector(15 downto 0);
-		TXDATA : IN std_logic_vector(7 downto 0);
-		WR : IN std_logic;
-		CLK : IN std_logic;
-		RST : IN std_logic;          
-		TXD : OUT std_logic;
-		RXDATA : OUT std_logic_vector(7 downto 0);
-		RDA : OUT std_logic;
-		TBE : OUT std_logic
-		);
-	END COMPONENT;
 		
 begin
-
--- DEBUG
---SW <= (others=>'0');
 	
 	inst_CLOCKMANAGER : CLOCKMANAGER
   port map
@@ -344,10 +306,10 @@ begin
 --		clk => clk_system,
 --		weA => wea_sysram(0),
 --		weB => web_sysram(0),
---		addressA => addra_sysram,
+--		addressA => addra_sysram (16 downto 2),
 --		data_inA => dina_sysram,
 --		data_outA => douta_sysram,
---		addressB => addrb_sysram,
+--		addressB => addrb_sysram (16 downto 2),
 --		data_inB => dinb_sysram,
 --		data_outB => doutb_sysram
 --	);
@@ -419,7 +381,7 @@ begin
 		RS232_wr_S0 => RS232_wr_S0,
 		RS232_TBE_S0 => RS232_TBE_S0,
 		RS232_RDA_S0 => RS232_RDA_S0,
-		RS232_UBRR_S0 => RS232_UBRR_S0,		
+		RS232_DIVIDE_S0 => RS232_DIVIDE_S0,		
 		PS2_data => PS2_data,
 		counter_clk => counter_clk,
 		counter_ms => counter_ms,
@@ -519,18 +481,19 @@ begin
 		WAIT_SDRAM => WAIT_SDRAM
 	);
 	
+		trig <= not CPUreset;
+		
 		Inst_Controller: entity work.Controller PORT MAP(
 		clk => CLK_SYSTEM,
-		trig => reset_trigger,
+		trig => trig,
 		reset => reset
 	);
 		
 		Inst_VGAController: entity work.VGA PORT MAP(
 		CLK_VGA => CLK_VGA,
+		reset => reset,
 		mode	=> mode,
 		background => background,
---		data_VGA => DATA_OUT_VGA,
---		addr_VGA => ADDR_VGA,
 		data_Text => DATA_TEXT,
 		addr_Text => ADDR_TEXT,
 		data_Char => data_Char,
@@ -581,17 +544,16 @@ begin
 		irv => irv
 	);
 	
-		Inst_RS232_SDA: RS232v2 PORT MAP(
+		Inst_UART: entity work.UART PORT MAP(
 		RXD => RXD_S0,
 		TXD => TXD_S0,
-		UBRR => RS232_UBRR_S0,
+		DIVIDE => RS232_DIVIDE_S0,
 		TXDATA => RS232_tx_S0,
 		RXDATA => RS232_rx_S0,
 		RDA => RS232_RDA_S0,
 		WR => RS232_WR_S0,
 		TBE => RS232_TBE_S0,
-		CLK => CLK_SYSTEM,
-		RST => reset
+		CLK => CLK_SYSTEM
 	);
 	
 		Inst_PS2KeyboardDecoder: entity work.PS2KeyboardDecoder PORT MAP(
@@ -602,7 +564,18 @@ begin
 		data => PS2_data
 	);
 
-		reset_trigger <= '0';
+		invReset <= not reset;
+		
+--		Inst_BootLoader: entity work.BootLoader PORT MAP(
+--		invReset => invReset,
+--		clk => clk_system,
+--		RDA => RS232_RDA_S0,
+--		RXDATA => RS232_rx_S0,
+--		data => Boot_data,
+--		addr => Boot_addr,
+--		we => Boot_we
+--	);
+
 		Boot_we <= (others=>'0');
 		Boot_data <= (others=>'0');
 		Boot_addr <= (others=>'0');

@@ -165,7 +165,7 @@ STRINGTABLE DASM.lookup-ops
 
 \ SIZEOF ( xt -- n), return the size of an executable
 : SIZEOF
-	1- 1- w@ 32767 and
+	1- 1- w@ 16383 and
 ;
 
 \ see WORD, disassemble the word 

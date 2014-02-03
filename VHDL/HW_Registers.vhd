@@ -9,7 +9,6 @@ use IEEE.STD_LOGIC_UNSIGNED.ALL;
 
 entity HW_Registers is
     Port ( clk : in  STD_LOGIC;
-			  --clk2x : in STD_LOGIC;
            rst : in  STD_LOGIC;
 			  -- connections to other hardware components
 			  SD_datain : in std_logic_vector(7 downto 0);			-- SD card interface
@@ -30,7 +29,7 @@ entity HW_Registers is
 																					--   data byte is places in the register RS232_tx_S0
 			  RS232_TBE_S0 : in std_logic;								-- RS232 port 0 Transfer Bus Enable (TBE) signal
 			  RS232_RDA_S0 : in std_logic;								-- RS232 port 0 Read Data Available (RDA) signal
-			  RS232_UBRR_S0 : out std_logic_vector(15 downto 0);	-- RS232 port 0 baud rate setting (UBRR = Clock / (Baud+1) / 16)
+			  RS232_DIVIDE_S0 : out std_logic_vector(31 downto 0);	-- RS232 port 0 baud rate setting (DIVIDE = Clock (Baud+1))
 			  PS2_data : in std_logic_vector(7 downto 0);			-- PS/2 port
 			  counter_ms : in std_logic_vector(31 downto 0);		-- 32 bit millisecond timer
 			  counter_clk : in std_logic_vector(31 downto 0);		-- 32 bit clock timer
@@ -55,7 +54,7 @@ architecture Behavioral of HW_Registers is
 	signal txt_zero_r : std_logic_vector(23 downto 0);		
 	signal irq_mask_r : std_logic_vector(15 downto 1);
 	signal RS232_tx_r_S0 : std_logic_vector(7 downto 0);	
-	signal UBRR_r_S0	: std_logic_vector(15 downto 0);
+	signal DIVIDE_r_S0	: std_logic_vector(31 downto 0);
 	signal background_r : std_logic_vector(15 downto 0);
 	signal mode_r : std_logic_vector(4 downto 0);
 	signal ssData_r : std_logic_vector(31 downto 0);
@@ -90,7 +89,7 @@ begin
 	RS232_tx_S0 <= RS232_tx_r_S0;
 	background <= background_r;
 	mode <= mode_r;
-	RS232_UBRR_S0 <= UBRR_r_S0;
+	RS232_DIVIDE_S0 <= DIVIDE_r_S0;
 	ssData <= ssData_r;
 	addr_i <= addr(7 downto 0);
 	clk_i <= counter_clk(13);
@@ -114,7 +113,7 @@ begin
 			SD_dataout_r <= (others=>'0');	
 			SD_control_r <= (others=>'0');	
 			SD_divide_r <= "11111111";								-- divide by 254	
-			UBRR_r_S0 <= CONV_STD_LOGIC_VECTOR(651,16);		-- 651 = 9600 BAUD at 100 MHz		
+			DIVIDE_r_S0 <= CONV_STD_LOGIC_VECTOR(1736,32);		-- 10416 = 9600 BAUD at 100 MHz		
 			irq_mask_r <= "000000000000111";						-- "000000000000111";
 			txt_zero_r <= X"040600";									
 			background_r <= X"0000";
@@ -136,8 +135,8 @@ begin
 					when x"14" =>										-- RS232_S0 data_out
 						RS232_tx_r_S0 <= datain_r(7 downto 0);	
 				
-					when x"18" =>										-- UBRR_S0
-						UBRR_r_S0 <= datain_r(15 downto 0);
+					when x"18" =>										-- DIVIDE_S0
+						DIVIDE_r_S0 <= datain_r(31 downto 0);
 						
 					when x"2C" =>										-- IRQ_mask
 						IRQ_mask_r <= datain_r(15 downto 1);

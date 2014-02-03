@@ -9,6 +9,7 @@ use IEEE.STD_LOGIC_UNSIGNED.ALL;
 
 entity VGA is
     Port ( clk_VGA	: in STD_LOGIC;								-- 25/50MHz
+			  reset 		: in STD_LOGIC;
 			  mode		: in STD_LOGIC_VECTOR (4 downto 0);		-- (4) VGA/SVGA	(3) interlace off/on (2) bitmapped off/on, 
 																				-- (1) 16&16/0&256 char color mode, (0) character mapped off/on
 			  background : in STD_LOGIC_VECTOR (15 downto 0);	-- background color for 0&256 char color mode
@@ -252,7 +253,7 @@ begin
 		end if;
 		
 		-- Drive pixel to output
-		if Hblk4 = '0' and Vblk0 = '0' and mode(2 downto 0) /= "000" then	-- Hblk4 for synchronization
+		if reset = '0' and Hblk4 = '0' and Vblk0 = '0' and mode(2 downto 0) /= "000" then	-- Hblk4 for synchronization
 			if char_pixels(7) = '1' then		
 				RGB_i <= text_f;
 			else

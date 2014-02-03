@@ -30,6 +30,7 @@ ARCHITECTURE behavior OF TestbenchBoard IS
 			  TXD_S0 : out STD_LOGIC;
 			  PS2C : in STD_LOGIC;
 			  PS2D : in STD_LOGIC;
+			  CPUreset : in STD_LOGIC;
 			  -- SPI
 			  SCK : out STD_LOGIC;
 			  MOSI : out STD_LOGIC;
@@ -44,7 +45,7 @@ ARCHITECTURE behavior OF TestbenchBoard IS
 --			  EppDB  : inout std_logic_vector(7 downto 0); 
 --			  EppWait: out std_logic;
 			  -- Board
-			  SW : in STD_LOGIC_VECTOR (7 downto 0);
+			  SW : in STD_LOGIC_VECTOR (15 downto 0);
 			  sevenseg : out STD_LOGIC_VECTOR (6 downto 0);
 			  anode : out STD_LOGIC_VECTOR (3 downto 0)
 			  );
@@ -67,6 +68,7 @@ ARCHITECTURE behavior OF TestbenchBoard IS
 	END COMPONENT;
 
    --Inputs
+	signal CPUreset : std_logic := '0';
    signal CLK_IN : std_logic := '0';
    signal WAIT_SDRAM : std_logic := '0';
 	signal RXD_S0 : std_logic := '1';
@@ -77,7 +79,7 @@ ARCHITECTURE behavior OF TestbenchBoard IS
 	signal EppDstb: std_logic := '0';        
 	signal EppWr  : std_logic := '0';        
 	signal EppDB  : std_logic_vector(7 downto 0) := (others=>'0');
-	signal SW : std_logic_vector(7 downto 0) := (others=>'0');
+	signal SW : std_logic_vector(15 downto 0) := (others=>'0');
 	signal MISO : STD_LOGIC := '0';	
 	signal SD_CD : STD_LOGIC := '0';
 
@@ -143,6 +145,7 @@ BEGIN
 			 SD_CS => SD_CS,
 			 SD_CD => SD_CD,
 			 SD_RESET => SD_RESET,
+			 CPUreset => CPUreset,
 --			 EppAstb => EppAstb,  
 --			 EppDstb => EppDstb,
 --			 EppWr =>  EppWr,     
@@ -250,19 +253,19 @@ BEGIN
 		end;
 
    begin		
-      -- hold reset state for 100 ns.
-		
-		wait for 100 ns;	
---		send_RS232(tx_line, CONV_STD_LOGIC_VECTOR(54,8));
---		wait for 150 ns;	
+		wait for 1 us;	
+		cpuReset <= '1';
+		wait for 50 ns;
+		cpuReset <= '0';		
 --		send_PS2(PS2C_line, PS2D_line, "01001101");
---		send_RS232(tx_line, CONV_STD_LOGIC_VECTOR(54,8));	
---		send_RS232(tx_line, CONV_STD_LOGIC_VECTOR(53,8));
---		send_RS232(tx_line, CONV_STD_LOGIC_VECTOR(32,8));
---		send_RS232(tx_line, CONV_STD_LOGIC_VECTOR(46,8));
---		send_RS232(tx_line, CONV_STD_LOGIC_VECTOR(13,8));
---		send_RS232(tx_line, CONV_STD_LOGIC_VECTOR(70,8));
---		send_RS232(tx_line, CONV_STD_LOGIC_VECTOR(13,8));
+		send_RS232(tx_line, CONV_STD_LOGIC_VECTOR(192,8));	
+		send_RS232(tx_line, CONV_STD_LOGIC_VECTOR(179,8));		
+		send_RS232(tx_line, CONV_STD_LOGIC_VECTOR(124,8));	
+		send_RS232(tx_line, CONV_STD_LOGIC_VECTOR(0,8));
+		send_RS232(tx_line, CONV_STD_LOGIC_VECTOR(192,8));		
+		send_RS232(tx_line, CONV_STD_LOGIC_VECTOR(29,8));
+		send_RS232(tx_line, CONV_STD_LOGIC_VECTOR(192,8));				
+		send_RS232(tx_line, CONV_STD_LOGIC_VECTOR(67,8));		
       -- insert stimulus here 
 
       wait;

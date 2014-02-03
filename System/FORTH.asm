@@ -28,7 +28,7 @@ BACKGROUND	equ	hex 03f808
 mode		equ	hex 03f80c
 RS232rx	equ	hex 03f810
 RS232tx	equ	hex 03f814
-RS232UBRR	equ	hex 03f818
+RS232DIVIDE	equ	hex 03f818
 HWstatus	equ	hex 03f81c
 HWmask_TBE	equ	02
 PS2rx		equ	hex 03f820
@@ -45,6 +45,7 @@ VBLANK		equ	hex 03f848
 ;
 ; **** MEMORY MAP ****
 ;
+PSTACK		equ	hex 03e000		; Parameter stack
 SRAMSIZE	equ	128 1024 *		; Amount of SRAM in bytes
 SCREENWORDS	equ	hex 006000		; number of words in the screen buffer (96 rows * 128 cols * 2 screens)
 RSrxBUF	equ	hex 040000		; RS232 buffer (256 bytes)	
@@ -154,7 +155,7 @@ RSrxRPOS	dc.b	hex ff
 TBE		#.l	RStxCNT
 		fetch.l	
 		?dup
-		IF			; remaining char count zero
+		IF			; remaining char count not yet zero
 			1-			(count-1 )
 			#.l	RStxCNT	(count addr)
 			store.l
@@ -216,8 +217,11 @@ MS.TIMEOUT	dc.l	hex 00
 ; Boot code (within branch distance from 0)
 ; -----------------------------------------------------------------------------------------------
 ;
-START.CF	jsl	CLS.CF
-		jsl	SCRSET.CF
+START.CF	jsl	SCRSET.CF
+		jsl	CLS.CF
+		#.b	6
+		#.w	INK
+		store.b
 		#.w	START.0	; First part of power-on message
 		#.b	52
 		jsl	TYPE.CF
@@ -286,8 +290,13 @@ SEMIT.LF	dc.l	MS.NF
 SEMIT.NF	dc.b	5 128 +	
 		dc.b 	char T char I char M char E char S
 SEMIT.SF	dc.w 	SEMIT.Z SEMIT.CF del 	
-		BEGIN
-SEMIT.CF		#.l HWstatus
+SEMIT.CF	BEGIN		; check STYPE is not already in progress		
+			#.l	RStxCNT
+			fetch.l
+			0=
+		UNTIL
+		BEGIN		; wait for TBE
+			#.l HWstatus
 			fetch.b	
 			#.b HWmask_TBE
 			and			; TBE bit
@@ -331,7 +340,7 @@ STYPE.NF	dc.b	5 128 +
 		dc.b 	char E char P char Y char T char S
 STYPE.SF	dc.w	STYPE.Z STYPE.CF del
 STYPE.CF	?dup				( c-addr n true | c-addr false)			
-		IF				; check not zero length string
+		IF			; check not zero length string
 ; EMIT the first character
 			over			( c-addr n c-addr)
 			fetch.b		( c-addr n char)
@@ -367,13 +376,13 @@ BAUD.LF	dc.l	SZERO.NF
 BAUD.NF	dc.b	4 128 +
 		dc.b	char D char U char A char B
 BAUD.SF	dc.w	BAUD.Z BAUD.CF del
-BAUD.CF	#.l	6250000		( baud clock/16)
-		swap				( clock/16 baud)
+BAUD.CF	#.l	100000000		( system freq)
+		swap				( freq baud)
 		1+
 		divu
-		nip				( ubrr)
-		#.l	RS232UBRR
-BAUD.Z		store.w,rts
+		nip				( divide)
+		#.l	RS232DIVIDE
+BAUD.Z		store.l,rts
 ;
 ; **** KEYBOARD ****
 ;
@@ -4199,7 +4208,9 @@ PICK.CF	psp@		( n depth)
 		#.b	4
 		multu		( offsetLO offsetHI)
 		drop		( offset)
-		#.w	hex E004
+		#.l	PSTACK
+		#.b	4
+		+
 		+		( addr)
 PICK.Z		fetch.l,rts	( n)
 ;	
@@ -4255,11 +4266,15 @@ DOTS.CF	psp@			( depth)
 		#.b	4		( depth 4)
 		multu
 		drop			( offset)
-		#.w	hex E008
+		#.l	PSTACK
+		#.b	8
+		+
 		+			( addr)
 		BEGIN
 			dup		( addr addr)
-			#.w hex E008	( addr addr E008)
+			#.l	PSTACK
+			#.b	8
+			+		( addr addr PSTACK+8)
 			>
 		WHILE
 			#.b	EOL
