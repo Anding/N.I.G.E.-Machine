@@ -30,6 +30,7 @@ entity Board_Nexys4 is
 			  sevenseg : out STD_LOGIC_VECTOR (6 downto 0);
 			  anode : out STD_LOGIC_VECTOR (7 downto 0);	
 			  CPUreset : in STD_LOGIC;
+			  RGB1_Red : out STD_LOGIC;										-- useful for debugging but do not drive high continuously
 			  -- SPI
 			  SCK : out STD_LOGIC;
 			  MOSI : out STD_LOGIC;
@@ -249,9 +250,76 @@ begin
 	-- splice IOExpansion data ahead of the SRAM
 	 wea_sysram <= wea_sysram_s when Boot_we = "0" else boot_we;
 	 dina_sysram <= dina_sysram_s when Boot_we = "0" else boot_data;
-	 addra_sysram <= addra_sysram_s when Boot_we = "0" else boot_addr;	 
-	 		
-	inst_Pstack_RAM : entity work.Pstack_RAM
+	 addra_sysram <= addra_sysram_s when Boot_we = "0" else boot_addr;	
+
+	  inst_SYS_RAM : entity work.Sys_RAM
+	  PORT MAP (
+		 clka => clk_system,
+		 ena => ram_en,
+		 wea => wea_sysram,
+		 addra => addra_sysram (16 downto 2),					-- 64K write depth 16384, 15downto2. 128K write depth 32768, 16 downto 2. 256K write depth 62976, 17downto2
+		 dina => dina_sysram,
+		 douta => douta_sysram,
+		 clkb => clk_system,
+		 enb => ram_en,
+		 web => web_sysram,
+		 addrb => addrb_sysram (16 downto 2),
+		 dinb => dinb_sysram,
+		 doutb => doutb_sysram
+	  );
+	  
+--	Inst_RAM_for_Testbench: entity work.RAM_for_Testbench PORT MAP(
+--		rst => reset,
+--		clk => clk_system,
+--		weA => wea_sysram(0),
+--		weB => web_sysram(0),
+--		addressA => addra_sysram (16 downto 2),
+--		data_inA => dina_sysram,
+--		data_outA => douta_sysram,
+--		addressB => addrb_sysram (16 downto 2),
+--		data_inB => dinb_sysram,
+--		data_outB => doutb_sysram
+--	);
+
+	  douta_sysram_i <= douta_sysram;
+	  doutb_sysram_i <= doutb_sysram;
+
+		Inst_SRAM_controller: entity work.SRAM_controller PORT MAP(
+		RST => reset,
+		CLK => clk_system,
+		en => SYS_EN,
+		ADDR => MEMaddr,
+		size => MEMsize_X,
+		WE => MEM_WRQ_XX,
+		DATA_in => MEMdataout_X,
+		DATA_out => MEMdata_Sys,
+		DATA_out_quick => MEMdata_Sys_quick,
+		wea => wea_sysram_s,
+		addra => addra_sysram_s,
+		dina => dina_sysram_s,
+		douta => douta_sysram_i,
+		web => web_sysram,
+		addrb => addrb_sysram,
+		dinb => dinb_sysram,
+		doutb => doutb_sysram_i
+	);
+	
+	  inst_Char_RAM : entity work.Char_RAM
+	  PORT MAP (
+		 clka => clk_VGA,
+		 wea => "0",
+		 addra => addr_Char,
+		 dina => (others=>'0'),
+		 douta => data_Char,
+		 clkb => clk_system,
+		 enb => Char_EN,
+		 web => MEM_WRQ_XX,
+		 addrb => MEMaddr(10 downto 0),
+		 dinb => MEMdataout_X(7 downto 0),
+		 doutb => MEMdata_Char
+	  );		
+	
+	  	inst_Pstack_RAM : entity work.Pstack_RAM
 	  PORT MAP (
 		 clka => clk_system,
 		 wea => PSw,
@@ -279,74 +347,7 @@ begin
 		 addrb => MEMaddr(10 downto 2),
 		 dinb => MEMdataout_X,
 		 doutb => MEMdata_Rstack
-	  );			
-
-	Inst_SRAM_controller: entity work.SRAM_controller PORT MAP(
-		RST => reset,
-		CLK => clk_system,
-		en => SYS_EN,
-		ADDR => MEMaddr,
-		size => MEMsize_X,
-		WE => MEM_WRQ_XX,
-		DATA_in => MEMdataout_X,
-		DATA_out => MEMdata_Sys,
-		DATA_out_quick => MEMdata_Sys_quick,
-		wea => wea_sysram_s,
-		addra => addra_sysram_s,
-		dina => dina_sysram_s,
-		douta => douta_sysram_i,
-		web => web_sysram,
-		addrb => addrb_sysram,
-		dinb => dinb_sysram,
-		doutb => doutb_sysram_i
-	);
-	
---	Inst_RAM_for_Testbench: entity work.RAM_for_Testbench PORT MAP(
---		rst => reset,
---		clk => clk_system,
---		weA => wea_sysram(0),
---		weB => web_sysram(0),
---		addressA => addra_sysram (16 downto 2),
---		data_inA => dina_sysram,
---		data_outA => douta_sysram,
---		addressB => addrb_sysram (16 downto 2),
---		data_inB => dinb_sysram,
---		data_outB => doutb_sysram
---	);
-
-	  inst_SYS_RAM : entity work.Sys_RAM
-	  PORT MAP (
-		 clka => clk_system,
-		 ena => ram_en,
-		 wea => wea_sysram,
-		 addra => addra_sysram (16 downto 2),					-- 64K write depth 16384, 15downto2. 128K write depth 32768, 16 downto 2. 256K write depth 62976, 17downto2
-		 dina => dina_sysram,
-		 douta => douta_sysram,
-		 clkb => clk_system,
-		 enb => ram_en,
-		 web => web_sysram,
-		 addrb => addrb_sysram (16 downto 2),
-		 dinb => dinb_sysram,
-		 doutb => doutb_sysram
-	  );
-	  
-	  douta_sysram_i <= douta_sysram;
-	  doutb_sysram_i <= doutb_sysram;
-
-	  inst_Char_RAM : entity work.Char_RAM
-	  PORT MAP (
-		 clka => clk_VGA,
-		 wea => "0",
-		 addra => addr_Char,
-		 dina => (others=>'0'),
-		 douta => data_Char,
-		 clkb => clk_system,
-		 enb => Char_EN,
-		 web => MEM_WRQ_XX,
-		 addrb => MEMaddr(10 downto 0),
-		 dinb => MEMdataout_X(7 downto 0),
-		 doutb => MEMdata_Char
-	  );		
+	  );	
 	  
 	  inst_Color_RAM : entity work.Color_RAM
 	  PORT MAP (
@@ -556,6 +557,8 @@ begin
 		CLK => CLK_SYSTEM
 	);
 	
+		 RGB1_Red <= RS232_RDA_S0;
+	
 		Inst_PS2KeyboardDecoder: entity work.PS2KeyboardDecoder PORT MAP(
 		clk => CLK_SYSTEM,
 		PS2C => PS2C,
@@ -566,19 +569,19 @@ begin
 
 		invReset <= not reset;
 		
---		Inst_BootLoader: entity work.BootLoader PORT MAP(
---		invReset => invReset,
---		clk => clk_system,
---		RDA => RS232_RDA_S0,
---		RXDATA => RS232_rx_S0,
---		data => Boot_data,
---		addr => Boot_addr,
---		we => Boot_we
---	);
+		Inst_BootLoader: entity work.BootLoader PORT MAP(
+		invReset => invReset,
+		clk => clk_system,
+		RDA => RS232_RDA_S0,
+		RXDATA => RS232_rx_S0,
+		data => Boot_data,
+		addr => Boot_addr,
+		we => Boot_we
+	);
 
-		Boot_we <= (others=>'0');
-		Boot_data <= (others=>'0');
-		Boot_addr <= (others=>'0');
+--		Boot_we <= (others=>'0');
+--		Boot_data <= (others=>'0');
+--		Boot_addr <= (others=>'0');
 		
 		Inst_ByteHEXdisplay: entity work.ByteHEXdisplay PORT MAP(
 		ssData => ssData,

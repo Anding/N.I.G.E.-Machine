@@ -51,7 +51,7 @@ begin
 		if RDAtrig = '1' then
 			addr_n <= addr_r + 1;
 		elsif state = idle then
-			addr_n <= (others=>'0');
+			addr_n <= (others=>'1');--CONV_STD_LOGIC_VECTOR(32767,32);			-- start address minus 1
 		else
 			addr_n <= addr_r;
 		end if;
@@ -65,7 +65,7 @@ begin
 		if invReset = '0' then
 			case state is
 				when reading =>
-					if addr_r(1 downto 0) = "11" and RDAtrig = '1' then
+					if addr_r(1 downto 0) = "10" and RDAtrig = '1' then
 						next_state <= writing;
 					else
 						next_state <= state;

@@ -38,16 +38,11 @@ ARCHITECTURE behavior OF TestbenchBoard IS
 			  SD_CS : out STD_LOGIC;
 			  SD_CD : in STD_LOGIC;
 			  SD_RESET : out STD_LOGIC;
-			  -- Expansion
---			  EppAstb: in std_logic;        
---			  EppDstb: in std_logic;        
---			  EppWr  : in std_logic;        
---			  EppDB  : inout std_logic_vector(7 downto 0); 
---			  EppWait: out std_logic;
 			  -- Board
 			  SW : in STD_LOGIC_VECTOR (15 downto 0);
 			  sevenseg : out STD_LOGIC_VECTOR (6 downto 0);
-			  anode : out STD_LOGIC_VECTOR (3 downto 0)
+			  anode : out STD_LOGIC_VECTOR (3 downto 0);
+			  RGB1_Red : out STD_LOGIC
 			  );
     END COMPONENT;
     
@@ -72,7 +67,6 @@ ARCHITECTURE behavior OF TestbenchBoard IS
    signal CLK_IN : std_logic := '0';
    signal WAIT_SDRAM : std_logic := '0';
 	signal RXD_S0 : std_logic := '1';
-	signal RXD_S1 : std_logic := '1';
 	signal PS2C :  std_logic := '1';
 	signal PS2D :  std_logic := '1';	
 	signal EppAstb: std_logic := '0';        
@@ -102,8 +96,7 @@ ARCHITECTURE behavior OF TestbenchBoard IS
    signal CE_SDRAM : std_logic;
    signal CRE_SDRAM : std_logic;
 	signal TXD_S0 : std_logic;
-	signal TXD_S1 : std_logic;
-	signal EppWait : std_logic;
+	signal RGB1_Red : std_logic;
 	signal SCK : STD_LOGIC;
 	signal MOSI : STD_LOGIC;
 	signal SD_CS :  STD_LOGIC;
@@ -146,14 +139,10 @@ BEGIN
 			 SD_CD => SD_CD,
 			 SD_RESET => SD_RESET,
 			 CPUreset => CPUreset,
---			 EppAstb => EppAstb,  
---			 EppDstb => EppDstb,
---			 EppWr =>  EppWr,     
---			 EppDB => EppDB,
---			 EppWait => EppWait,
 			 SW => SW,
 			 sevenseg => open,
-			 anode => open
+			 anode => open,
+			 RGB1_Red => RGB1_Red
         );
 		  
   instCellRAM: entity work.cellram PORT MAP (
