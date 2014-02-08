@@ -1249,7 +1249,7 @@ BACKGROUND.SF	dc.w	BACKGROUND.Z BACKGROUND.CF del
 BACKGROUND.CF	#.l	BACKGROUND
 BACKGROUND.Z	store.w,rts
 ;
-; BACKGROUND ( n --, set the background color)
+; SEVENSEG ( n --, write to the seven-segment display)
 SEVENSEG.LF	dc.l	BACKGROUND.NF
 SEVENSEG.NF	dc.b	8 128 +
 		dc.s	SEVENSEG

@@ -30,7 +30,9 @@ entity Board_Nexys4 is
 			  sevenseg : out STD_LOGIC_VECTOR (6 downto 0);
 			  anode : out STD_LOGIC_VECTOR (7 downto 0);	
 			  CPUreset : in STD_LOGIC;
-			  RGB1_Red : out STD_LOGIC;										-- useful for debugging but do not drive high continuously
+			  RGB1_Red : out STD_LOGIC;				  -- useful for debugging but do not drive high continuously
+			  RGB1_Green : out STD_LOGIC;
+			  RGB1_Blue : out STD_LOGIC;
 			  -- SPI
 			  SCK : out STD_LOGIC;
 			  MOSI : out STD_LOGIC;
@@ -168,6 +170,11 @@ signal clk_MEM : std_logic;
 	end component;
 		
 begin
+
+	-- use these connections for debugging but do not drive high continuously (use PWM)
+	RGB1_Red <= '0';
+	RGB1_Green <= '0';
+	RGB1_Blue <= RS232_RDA_S0;
 	
 	inst_CLOCKMANAGER : CLOCKMANAGER
   port map
@@ -556,8 +563,6 @@ begin
 		TBE => RS232_TBE_S0,
 		CLK => CLK_SYSTEM
 	);
-	
-		 RGB1_Red <= RS232_RDA_S0;
 	
 		Inst_PS2KeyboardDecoder: entity work.PS2KeyboardDecoder PORT MAP(
 		clk => CLK_SYSTEM,

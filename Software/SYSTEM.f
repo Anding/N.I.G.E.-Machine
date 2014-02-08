@@ -224,6 +224,7 @@ FILE.LIST LIST.INIT
 ;
 
 : FAT.save-file ( addr size firstCluster , save a file to disk assuming size <> 0)
+	>remote
 	rot rot over + >R swap >R			( startAddr R:endAddr firstCluster)
 	BEGIN
 		R@ FAT.Clus2Sec			( Addr Sector R:endAddr Cluster)
@@ -239,6 +240,7 @@ FILE.LIST LIST.INIT
 	268435455 swap FAT.put-fat							\ last cluster marker
 	drop R> drop
 	FAT.UpdateFSInfo								\ save latest free cluster
+	>local
 ;
 
 : FILE-SIZE ( fileid - uD ior)
