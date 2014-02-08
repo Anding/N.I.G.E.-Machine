@@ -594,7 +594,8 @@ PS2DECODE.CF	#.b	hex 12	( raw 12)			; LEFT SHIFT
 		R>			( FLAGS' &FLAGS)
 PS2DECODE.Z	store.b,rts	
 ;
-PS2ASCII    dc.b 0
+PS2ASCII	CMD			; label here but do nothing    
+ dc.b 0
  dc.b 22
  dc.b 0
  dc.b 18
@@ -699,27 +700,27 @@ PS2ASCII    dc.b 0
  dc.b 8
  dc.b 0
  dc.b 0
- dc.b 49
- dc.b 0
- dc.b 52
- dc.b 55
  dc.b 0
  dc.b 0
+ dc.b 6
  dc.b 0
- dc.b 48
+ dc.b 0
+ dc.b 0
+ dc.b 0
+ dc.b 0
  dc.b 46
- dc.b 50
- dc.b 53
- dc.b 54
- dc.b 56
+ dc.b 5
+ dc.b 0
+ dc.b 7
+ dc.b 4
  dc.b 27
  dc.b 0
  dc.b 24
  dc.b 43
- dc.b 51
+ dc.b 0
  dc.b 45
  dc.b 42
- dc.b 57
+ dc.b 0
  dc.b 0
  dc.b 0
  dc.b 0
@@ -829,6 +830,7 @@ PS2ASCII    dc.b 0
  dc.b 0
  dc.b 0
  dc.b 29
+;
 ;
 ; **** SCREEN ****
 ;

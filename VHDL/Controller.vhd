@@ -38,7 +38,7 @@ begin
 			when startup =>
 				reset <= '1';
 				state_n <= run;
-				timer <= CONV_STD_LOGIC_VECTOR(10,32);	-- 25000000 quarter second at startup	
+				timer <= CONV_STD_LOGIC_VECTOR(10,32);
 				
 			when pause =>
 				reset <= '1';	
