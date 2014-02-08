@@ -207,7 +207,7 @@ begin
 		-- Read text memory and set char and color memory address
 		addressChar(10 downto 3)<= data_Text(15 downto 8); 		-- char contents of Text RAM
 		addressChar(2 downto 0) <= tVcount(2 downto 0);				-- Vcount(2 downto 0) or (3 downto 1) for 8 or 16 bit char width	
-		if mode(4) = '1' then												-- 256/0 color mode
+		if mode(3) = '1' then												-- 256/0 color mode
 			addressColor <= data_TEXT(7 downto 0);
 		else																		-- 16/16 color mode
 			addressColor <= "0000" & data_TEXT(3 downto 0);

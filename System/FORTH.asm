@@ -98,7 +98,7 @@ V.TRAP		RTI
 V.RDA		BRA	RDA					; RS232 RDA
 V.TBE		BRA	TBE					; RS232 TBE
 V.PS2		BRA	PS2					; PS2
-V.MS		BRA	MS					; MS
+V.MS		BRA	MSIRQ					; MS
 		RTI
 		NOP
 		RTI
@@ -195,7 +195,7 @@ PS2		#.l 	PS2rx
 PSWPOS		dc.b	hex ff
 PSRPOS		dc.b	hex ff
 ;
-MS		#.w	MS.TIMEOUT
+MSIRQ		#.w	MS.TIMEOUT
 		fetch.l
 		?dup
 		IF
@@ -267,7 +267,8 @@ TIMEOUT.CF	?dup
 			and
 		THEN
 		#.l	intmask
-TIMEOUT.Z	store.l,rts			
+TIMEOUT.Z	store.l,rts	
+;		
 ; MS ( n --, wait for n ms)
 MS.LF		dc.l	TIMEOUT.NF
 MS.NF		dc.b	2 128 +
@@ -284,9 +285,17 @@ MS.CF		#.l	MScounter
 			until
 MS.Z		drop,rts
 ;
+; COUNTER ( n --, current count of the rolling 32 bit MS counter)
+COUNTER.LF		dc.l	MS.NF
+COUNTER.NF		dc.b	7 128 +
+			dc.s	COUNTER
+COUNTER.SF		dc.w	COUNTER.Z COUNTER.CF del
+COUNTER.CF		#.l	MScounter
+COUNTER.Z		fetch.l,rts
+;
 ; **** RS232 ****
 ;
-SEMIT.LF	dc.l	MS.NF		
+SEMIT.LF	dc.l	COUNTER.NF		
 SEMIT.NF	dc.b	5 128 +	
 		dc.b 	char T char I char M char E char S
 SEMIT.SF	dc.w 	SEMIT.Z SEMIT.CF del 	
@@ -1040,8 +1049,6 @@ NEWLINE.CF	#.w	CSR-Y
 				2*
 				+						; source for copy begins one line from top of page
 				#.l	_TEXT_ZERO				; destination
-;				#.w	24320					; size = maximum full screen less the top line 95 rows * 128 cols * 2 bytes
-; copy screen contents to top of buffer
 				#.w	ROWS				; Step 2 is to blank the rest of the buffer
 				fetch.b				( rows)
 				1-					( rows-1)
@@ -1198,16 +1205,6 @@ VEMIT.CF 	#.b	EOL
 		THEN
 VEMIT.Z	rts
 ;
-; VEMIT ( n --, emit a character to the VDU, including non-printing recognition and cursor update)
-;VEMIT.LF	dc.l	EMITRAW.NF
-;VEMIT.NF	dc.b	5 128 +
-;		dc.b	char T char I char M char E char V
-;		dc.w	VEMIT.Z VEMIT.CF del
-;VEMIT.CF	jsl	CSR-OFF.CF					; undraw cursor
-;		jsl	{VEMIT}.CF
-;		jsl	CSR-ON.CF					; draw cursor
-;VEMIT.Z	rts
-;
 ; TYPERAW ( addr len, type to VDU, excluding non-printing recognition including cursor update)
 TYPERAW.LF	dc.l	VEMIT.NF
 TYPERAW.NF	dc.b	7 128 +
@@ -1244,30 +1241,6 @@ VTYPE.CF	?dup
 		THEN
 VTYPE.Z	rts
 ;				
-;COLOR-TABLE.LF dc.l	include.NF
-;COLOR-TABLE.NF dc.b	11 128 +
-;		 dc.b char E char L char B char A char T char - char R char O char L char O char C
-;COLOR-TABLE.SF dc.w	COLOR-TABLE.Z COLOR-TABLE.CF del
-;COLOR-TABLE.CF #.w	CR.CF
-;		 jsr
-;		 #.w	256
-;		 zero
-;		 DO
-;			R@
-;			#.w	INK
-;			store.b
-;			R@
-;			#.w 	DOT.CF
-;			jsr
-;			#.w	SPACE.CF
-;			jsr
-;		LOOP
-;		#.w	PALETTE 1 +
-;		fetch.b
-;		#.w	INK
-;		store.b
-;COLOR-TABLE.Z	rts
-;
 ; BACKGROUND ( n --, set the background color)
 BACKGROUND.LF	dc.l	VTYPE.NF
 BACKGROUND.NF	dc.b	10 128 +
@@ -1276,20 +1249,16 @@ BACKGROUND.SF	dc.w	BACKGROUND.Z BACKGROUND.CF del
 BACKGROUND.CF	#.l	BACKGROUND
 BACKGROUND.Z	store.w,rts
 ;
-;
-;COLOR ( n --, set the ink from the palette)
-;COLOR.LF	dc.l	BACKGROUND.NF
-;COLOR.NF	dc.b	3 128 +
-;		dc.s	PEN
-;COLOR.SF	dc.w	PEN.Z COLOR.CF del
-;COLOR.CF	#.w	palette
-;		+
-;		fetch.b
-;		#.w	INK
-;COLOR.Z	store.b,rts
+; BACKGROUND ( n --, set the background color)
+SEVENSEG.LF	dc.l	BACKGROUND.NF
+SEVENSEG.NF	dc.b	8 128 +
+		dc.s	SEVENSEG
+SEVENSEG.SF	dc.w	SEVENSEG.Z SEVENSEG.CF del
+SEVENSEG.CF	#.l	SEVENSEG
+SEVENSEG.Z	store.l,rts
 ;
 ; SCREENMODE ( flag --, set interlace mode on or off)
-INTERLACE.LF	dc.l	BACKGROUND.NF
+INTERLACE.LF	dc.l	SEVENSEG.NF
 INTERLACE.NF	dc.b	9 128 +
 		dc.s	INTERLACE
 INTERLACE.SF	dc.w	INTERLACE.Z INTERLACE.CF del
@@ -1352,24 +1321,24 @@ COLORMODE.Z	rts
 PALETTE	dc.b	5			; input (yellow)
 		dc.b	6			; output (green)
 		dc.b	4			; error (red)
-		dc.b	8			; dos (blue)
+		dc.b	8			; (blue)
 		dc.b	3			; cursor (white)
 ; 
 ; SCREENBASE ( -- addr) CONSTANT address of the pre-allocated screen buffer
 SCREENBASE.LF	dc.l	COLORMODE.NF
 SCREENBASE.NF	dc.b	10 128 +
 		dc.s	SCREENBASE
-SCREENBASE.SF	dc.w	6
+SCREENBASE.SF	dc.w	SCREENBASE.Z SCREENBASE.SF del
 SCREENBASE.CF	#.l	 _TEXT_ZERO
-		rts				; cannot use #.l,rts with inline compiler
+SCREENBASE.Z	rts				; cannot use #.l,rts with inline compiler
 ;
 ; SCREENPLACE ( -- addr) VARIABLE address of the current screen buffer
 SCREENPLACE.LF	dc.l	SCREENBASE.NF
 SCREENPLACE.NF	dc.b	11 128 +
 			dc.s	SCREENPLACE
-SCREENPLACE.SF	dc.w	4
+SCREENPLACE.SF	dc.w	SCREENPLACE.Z SCREENPLACE.CF del
 SCREENPLACE.CF	#.l TEXT_ZERO
-			rts			; cannot use #.l,rts with inline compiler
+SCREENPLACE.Z		rts			; cannot use #.l,rts with inline compiler
 ;
 INK.LF		dc.l	SCREENPLACE.NF
 INK.NF		dc.b	3 128 +
@@ -1797,7 +1766,7 @@ SD.write-sector.LF	dc.l	SD.read-sector.NF
 SD.write-sector.NF	dc.b	15 128 +
 			dc.b	char R char O char T char C char E char S char - char E char T char I char R char W char . char D char S
 SD.write-sector.SF	dc.w	SD.write-sector.Z SD.write-sector.CF del
-SD.write-sector.CF	#.w	2000
+SD.write-sector.CF	#.w	10000
 		jsl	timeout.CF
 		jsl	sd.select&check	
 		#.b	1 				; checksum
@@ -4157,7 +4126,13 @@ CHAR.CF	#.b	32
 		1+			( c-addr)
 CHAR.Z		fetch.b,rts		( char)
 ;
-BL.LF		dc.l	CHAR.NF
+CHARS.LF	dc.l	CHAR.NF
+CHARS.NF	dc.b	5 128 +
+		dc.s	CHARS
+CHARS.SF	dc.w	1
+CHARS.CF	rts
+;
+BL.LF		dc.l	CHARS.NF
 BL.NF		dc.b	2 128 +
 		dc.b	char L char B
 BL.SF		dc.w	2

@@ -48,7 +48,7 @@ type bank_t is (Sys, Char, Color, Pstack, Rstack, Reg);
 signal SD_WP : std_logic;
 signal bank, bank_n : bank_t;	
 signal counter_clk, counter_ms : std_logic_vector(31 downto 0) := (others =>'0');
-signal timer_ms : std_logic_vector(15 downto 0) := (others =>'0');	
+signal timer_ms : std_logic_vector(31 downto 0) := (others =>'0');	
 signal reset, invReset, trig : std_logic;
 signal VGAclk25, VGAclk50, VGAclk75, clk100 : std_logic;
 signal irq, rti, ms_irq : std_logic;
@@ -203,7 +203,7 @@ begin
 	process														
 	begin
 		wait until rising_edge(clk100);						-- 100MHz clock
-		if timer_ms = CONV_STD_LOGIC_VECTOR(100000,16) then
+		if timer_ms = CONV_STD_LOGIC_VECTOR(100000,32) then
 			timer_ms <=(others =>'0');
 			counter_ms <= counter_ms + 1;
 		else

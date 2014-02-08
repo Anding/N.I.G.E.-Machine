@@ -4,10 +4,6 @@ DECIMAL
 	cr
 ;
 
-: counter				\ address of MS counter
-	260136 @			
-;
-
 : >pos		\ n -- ; step to position n
 	CSR-X 
 	@ - spaces
