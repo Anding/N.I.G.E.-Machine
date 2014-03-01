@@ -63,7 +63,7 @@ ARCHITECTURE behavior OF TestbenchBoard IS
 	END COMPONENT;
 
    --Inputs
-	signal CPUreset : std_logic := '0';
+	signal CPUreset : std_logic := '1';
    signal CLK_IN : std_logic := '0';
    signal WAIT_SDRAM : std_logic := '0';
 	signal RXD_S0 : std_logic := '1';
@@ -242,19 +242,16 @@ BEGIN
 		end;
 
    begin		
-		wait for 1 us;	
-		cpuReset <= '1';
-		wait for 50 ns;
-		cpuReset <= '0';		
+		wait for 1 us;		
 --		send_PS2(PS2C_line, PS2D_line, "01001101");
-		send_RS232(tx_line, CONV_STD_LOGIC_VECTOR(192,8));	
-		send_RS232(tx_line, CONV_STD_LOGIC_VECTOR(179,8));		
-		send_RS232(tx_line, CONV_STD_LOGIC_VECTOR(124,8));	
-		send_RS232(tx_line, CONV_STD_LOGIC_VECTOR(0,8));
-		send_RS232(tx_line, CONV_STD_LOGIC_VECTOR(192,8));		
-		send_RS232(tx_line, CONV_STD_LOGIC_VECTOR(29,8));
-		send_RS232(tx_line, CONV_STD_LOGIC_VECTOR(192,8));				
-		send_RS232(tx_line, CONV_STD_LOGIC_VECTOR(67,8));		
+--		send_RS232(tx_line, CONV_STD_LOGIC_VECTOR(192,8));	
+--		send_RS232(tx_line, CONV_STD_LOGIC_VECTOR(179,8));		
+--		send_RS232(tx_line, CONV_STD_LOGIC_VECTOR(124,8));	
+--		send_RS232(tx_line, CONV_STD_LOGIC_VECTOR(0,8));
+--		send_RS232(tx_line, CONV_STD_LOGIC_VECTOR(192,8));		
+--		send_RS232(tx_line, CONV_STD_LOGIC_VECTOR(29,8));
+--		send_RS232(tx_line, CONV_STD_LOGIC_VECTOR(192,8));				
+--		send_RS232(tx_line, CONV_STD_LOGIC_VECTOR(67,8));		
       -- insert stimulus here 
 
       wait;

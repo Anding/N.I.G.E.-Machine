@@ -48,19 +48,9 @@ entity CPU is
 				s_axi_rdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 				s_axi_rresp : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
 				s_axi_rvalid : IN STD_LOGIC;
-				s_axi_rready : OUT STD_LOGIC
-				-- 8 bit wide PSDRAM databus
---			   MEMdatain_Y : in STD_LOGIC_VECTOR (7 downto 0);			
---				MEMdataout_Y : out STD_LOGIC_VECTOR (7 downto 0);		
---			   MEM_WRQ_Y : out STD_LOGIC;				
---			   MEM_REQ_Y : out STD_LOGIC;										
---			   MEM_RDY_Y : in STD_LOGIC;		
---				-- 16 bit wide PSDRAM bus
---			   MEMdatain_Z : in STD_LOGIC_VECTOR (15 downto 0);		
---			   MEMdataout_Z : out STD_LOGIC_VECTOR (15 downto 0);		
---			   MEM_WRQ_Z : out STD_LOGIC;				
---			   MEM_REQ_Z : out STD_LOGIC;										
---			   MEM_RDY_Z : in STD_LOGIC												
+				s_axi_rready : OUT STD_LOGIC;
+				-- debug
+				debug : OUT STD_LOGIC_VECTOR(7 DOWNTO 0)
 				);
 end CPU;
 
@@ -113,17 +103,7 @@ architecture Structural of CPU is
 		MEMdatain_X : in STD_LOGIC_VECTOR (31 downto 0);
 		MEMdataout_X : out STD_LOGIC_VECTOR (31 downto 0);
 		MEMsize_X : out STD_LOGIC_VECTOR (1 downto 0);	
-		MEM_WRQ_X : out STD_LOGIC;							  		  
---		MEMdatain_Y : in STD_LOGIC_VECTOR (7 downto 0);			
---		MEMdataout_Y : out STD_LOGIC_VECTOR (7 downto 0);				
---		MEM_WRQ_Y : out STD_LOGIC;				
---		MEM_REQ_Y : out STD_LOGIC;										
---		MEM_RDY_Y : in STD_LOGIC;												  		  
---		MEMdatain_Z : in STD_LOGIC_VECTOR (15 downto 0);			
---		MEMdataout_Z : out STD_LOGIC_VECTOR (15 downto 0);		
---		MEM_WRQ_Z : out STD_LOGIC;				
---		MEM_REQ_Z : out STD_LOGIC;										
---		MEM_RDY_Z : in STD_LOGIC	
+		MEM_WRQ_X : out STD_LOGIC;							  		  	
 		s_axi_awaddr : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
 		s_axi_awvalid : OUT STD_LOGIC;
 		s_axi_awready : IN STD_LOGIC;
@@ -144,7 +124,9 @@ architecture Structural of CPU is
 		s_axi_rdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 		s_axi_rresp : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
 		s_axi_rvalid : IN STD_LOGIC;
-		s_axi_rready : OUT STD_LOGIC										
+		s_axi_rready : OUT STD_LOGIC;
+		-- debug
+		debug : OUT STD_LOGIC_VECTOR(7 DOWNTO 0)
 		);
 	END COMPONENT;
 
@@ -157,11 +139,8 @@ architecture Structural of CPU is
 	signal	TORS :  std_logic_vector(31 downto 0);
 	signal	equalzero : std_logic;
 	signal	chip_RAM : std_logic;
---	signal 	MEMdatain_X : std_logic_vector(31 downto 0);
 
 begin
-
---	MEMdatain_X_extended <= MEMdatain_X (31 downto 0) & MEMdatain_X_plus (7 downto 0);
 
 	Inst_Datapath: Datapath PORT MAP(
 		rst => rst,
@@ -208,16 +187,6 @@ begin
 		MEMdataout_X => MEMdataout_X,
 		MEM_WRQ_X => MEM_WRQ_X,
 		MEMsize_X => MEMsize_X,
---		MEMdatain_Y => MEMdatain_Y,
---		MEMdataout_Y => MEMdataout_Y,
---		MEM_WRQ_Y => MEM_WRQ_Y,
---		MEM_REQ_Y => MEM_REQ_Y,
---		MEM_RDY_Y => MEM_RDY_Y,
---		MEMdatain_Z => MEMdatain_Z,
---		MEMdataout_Z => MEMdataout_Z,
---		MEM_WRQ_Z => MEM_WRQ_Z,
---		MEM_REQ_Z => MEM_REQ_Z,
---		MEM_RDY_Z => MEM_RDY_Z,
 		s_axi_awaddr => s_axi_awaddr,
 		s_axi_awvalid => s_axi_awvalid,
 		s_axi_awready => s_axi_awready,
@@ -234,7 +203,8 @@ begin
 		s_axi_rdata => s_axi_rdata, 
 		s_axi_rresp => s_axi_rresp,
 		s_axi_rvalid => s_axi_rvalid,
-		s_axi_rready => s_axi_rready
+		s_axi_rready => s_axi_rready,
+		debug => debug
 	);
 
 end Structural;

@@ -224,23 +224,22 @@ FILE.LIST LIST.INIT
 ;
 
 : FAT.save-file ( addr size firstCluster , save a file to disk assuming size <> 0)
-	>remote
 	rot rot over + >R swap >R			( startAddr R:endAddr firstCluster)
 	BEGIN
 		R@ FAT.Clus2Sec			( Addr Sector R:endAddr Cluster)
 		dup 8 + swap DO							\ write a complete sector
-			dup i FAT.write-sector
+			dup i 
+			FAT.write-sector
 			512 +
 		LOOP					( Addr R: endAddr Cluster)
 		R> over R@ swap			( Addr cluster endAddr Addr	R:endAddr)
 	> WHILE					( Addr cluster R:endAddr)
 		FAT.FindFreeCluster dup >R		( Addr cluster nextCluster R:endAddr nextCluster)
 		swap FAT.put-fat			( Addr R:endAddr nextCluster)
-	REPEAT						
+	REPEAT		
 	268435455 swap FAT.put-fat							\ last cluster marker
 	drop R> drop
 	FAT.UpdateFSInfo								\ save latest free cluster
-	>local
 ;
 
 : FILE-SIZE ( fileid - uD ior)
@@ -269,7 +268,7 @@ FILE.LIST LIST.INIT
 		FAT.save-file						( R:fileid)
 		FAT.buf R@ 24 + @ FAT.read-sector 			( R:fileid)	\ read the DirectorySector into the buffer
 		R@ 12 + @ FAT.buf R@ 20 + @ + 28 FAT.write-long	( R:fileid)	\ update the file size
-		FAT.buf R> 24 + @ FAT.write-sector 			( R:fileid)	\ write the modified dir sector to disk
+		FAT.buf R> 24 + @ FAT.write-sector 		( R:fileid)	\ write the modified dir sector to disk
 	ELSE
 		drop
 	THEN	

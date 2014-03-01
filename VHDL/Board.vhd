@@ -156,6 +156,9 @@ signal VGA_newline : std_logic;
 signal clk_system : std_logic;
 signal clk_VGA : std_logic;
 signal clk_MEM : std_logic;
+signal debug : std_logic_vector(31 downto 0);
+signal debug_CPU : std_logic_vector(7 downto 0);
+signal debug_DMAcontroller : std_logic_vector(7 downto 0);
 
 	component CLOCKMANAGER
 	port
@@ -171,10 +174,14 @@ signal clk_MEM : std_logic;
 		
 begin
 
-	-- use these connections for debugging but do not drive high continuously (use PWM)
+	-- debug and monitoring
+		-- use these connections for debugging but do not drive high continuously (use PWM)
 	RGB1_Red <= '0';
 	RGB1_Green <= '0';
 	RGB1_Blue <= RS232_RDA_S0;
+	
+		-- can route to sevenseg display
+	debug <= "0000000000000000" & debug_DMAcontroller & debug_CPU;
 	
 	inst_CLOCKMANAGER : CLOCKMANAGER
   port map
@@ -440,7 +447,8 @@ begin
 		s_axi_rdata => s_axi_rdata,
 		s_axi_rresp => s_axi_rresp,
 		s_axi_rvalid => s_axi_rvalid,
-		s_axi_rready => s_axi_rready
+		s_axi_rready => s_axi_rready,
+		debug => debug_CPU
 	);
 	
 	s_aresetn <= not RESET;
@@ -486,7 +494,8 @@ begin
 		LB_SDRAM => LB_SDRAM,
 		CE_SDRAM => CE_SDRAM,
 		CRE_SDRAM => CRE_SDRAM,
-		WAIT_SDRAM => WAIT_SDRAM
+		WAIT_SDRAM => WAIT_SDRAM,
+		debug => debug_DMAcontroller
 	);
 	
 		trig <= not CPUreset;
@@ -583,10 +592,6 @@ begin
 		addr => Boot_addr,
 		we => Boot_we
 	);
-
---		Boot_we <= (others=>'0');
---		Boot_data <= (others=>'0');
---		Boot_addr <= (others=>'0');
 		
 		Inst_ByteHEXdisplay: entity work.ByteHEXdisplay PORT MAP(
 		ssData => ssData,

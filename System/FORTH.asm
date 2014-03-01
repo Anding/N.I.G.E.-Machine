@@ -1790,13 +1790,13 @@ SD.write-sector.CF	#.w	10000
 		swap 
 		DO 					; write sector
 			I 
-			fetch.b 
-			jsl spi.put 
+			fetch.b 	
+			jsl spi.put 			
 		LOOP	
 		#.b	2 
 		zero 
 		DO 					; dummy checksum
-			#.b	1 
+			#.b	1 			
 			jsl	spi.put 
 		LOOP			
 		jsl	sd.get-R1 
@@ -1994,7 +1994,7 @@ MOUNT.CF	jsl	sd.init.cf
 		<> 
 		IF					; confirm valid FSInfo sector
 			#.w	2002 
-			jsl	error					
+			jsl	error.cf					
 		THEN
 		R>
 		#.w	492 

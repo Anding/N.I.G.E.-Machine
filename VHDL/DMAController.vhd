@@ -55,7 +55,9 @@ entity DMAcontroller is
 				LB_SDRAM : out  STD_LOGIC;
 				CE_SDRAM : out  STD_LOGIC;
 				CRE_SDRAM : out  STD_LOGIC;
-				WAIT_SDRAM : in  STD_LOGIC
+				WAIT_SDRAM : in  STD_LOGIC;
+				-- debug
+				debug : out std_logic_vector(7 downto 0)
 			  );			
 end DMAcontroller;
 
@@ -79,9 +81,9 @@ signal DATA_SDRAM_ISINPUT : std_logic;
 signal ADDR_r, ADDR_n : std_logic_vector(23 downto 1);
 signal TOP_r, TOP_n : std_logic_vector(23 downto 1);
 signal t_axi_araddr_r : std_logic_vector(31 downto 0);
-signal WAIT_SDRAM_m1, WAIT_SDRAM_m2: std_logic;
+signal WAIT_SDRAM_m1 : std_logic;
 signal t_axi_rdata_r, t_axi_rdata_n : std_logic_vector(31 downto 0);
-
+signal debug_i : std_logic_vector(7 downto 0);
 	
 begin
 
@@ -90,9 +92,10 @@ begin
       wait until rising_edge(CLK);
          if (s_aresetn = '0') then
 				state <= startup;
-            --<output> <= '0';
+				debug <= (others=>'0');
          else
 				count <= count + 1;
+				debug <= debug_i;
 				if state = idle then							-- set registers only on entering a cycle
 					s_axi_awaddr_r <= s_axi_awaddr;
 					s_axi_wstrb_r <= s_axi_wstrb;
@@ -103,7 +106,6 @@ begin
 				s_axi_rdata_r <= s_axi_rdata_n;	
 				t_axi_rdata_r <= t_axi_rdata_n;
 				WAIT_SDRAM_m1 <= WAIT_SDRAM;
---				WAIT_SDRAM_m2 <= WAIT_SDRAM_m1;
 				ADDR_r <= ADDR_n;
 				TOP_r <= TOP_n;
 				if (count >= timer) then 
@@ -119,7 +121,7 @@ begin
 		
 	-- read channel	
 	with state select
-		s_axi_arready <=	'1' when read_pagemode_lo,														-- acknowledge only after entering read cycle
+		s_axi_arready <=	'1' when read_pagemode_lo,														-- acknowledge at idle since this channel has first priority
 								'0' when others;
 								
 	with state select
@@ -307,10 +309,12 @@ begin
 			when read_pagemode_lo =>
 				timer <= CONV_STD_LOGIC_VECTOR(8,8);								-- 70ns async read access but simulator suggests needs 90ns
 				next_state <= read_pagemode_hi;
+				debug_i <= x"01";
 				
 			when read_pagemode_hi =>
 				timer <= CONV_STD_LOGIC_VECTOR(6,8);								-- 20ns page read access but hardware tests suggests needs 70ns
 				next_state <= read_AXI_handshake;
+				debug_i <= x"02";
 				
 			when read_AXI_handshake =>
 				timer <= (others=>'0');
@@ -319,6 +323,7 @@ begin
 				else
 					next_state <= state;
 				end if;
+				debug_i <= x"03";
 				
 			when write_AXI_a_handshake =>
 				timer <= (others=>'0');
@@ -327,6 +332,7 @@ begin
 				else
 					next_state <= write_async_lo;
 				end if;
+				debug_i <= x"04";
 				
 			when write_async_lo =>
 				timer <= CONV_STD_LOGIC_VECTOR(6,8);								-- 70ns async write cycle
@@ -335,14 +341,17 @@ begin
 				else
 					next_state <= write_async_gap;			
 				end if;
+				debug_i <= x"05";
 				
 			when write_async_gap =>														-- 10ns interval between write cycles
 				timer <= (others=>'0');
 				next_state <= write_async_hi;
+				debug_i <= x"06";
 				
 			when write_async_hi =>
 				timer <= CONV_STD_LOGIC_VECTOR(6,8);								-- 70ns write cycle
 				next_state <= write_AXI_b_handshake;		
+				debug_i <= x"07";
 
 			when write_AXI_b_handshake =>
 				timer <= (others=>'0');
@@ -351,46 +360,57 @@ begin
 				else
 					next_state <= state;
 				end if;		
+				debug_i <= x"08";
 
 			when startup =>
 				timer <= (others=>'0');
 				next_state <= set_RCR;
+				debug_i <= x"09";
 				
 			when set_RCR =>
 				timer <= CONV_STD_LOGIC_VECTOR(6,8);
-				next_state <= set_gap1;		
+				next_state <= set_gap1;	
+				debug_i <= x"0A";				
 				
 			when set_BCR =>
 				timer <= CONV_STD_LOGIC_VECTOR(6,8);
 				next_state <= set_gap2;	
+				debug_i <= x"0B";
 
 			when set_gap1 =>
 				timer <= (others=>'0');
 				next_state <= read_after_set1;
+				debug_i <= x"0C";
 
 			when set_gap2 =>
 				timer <= (others=>'0');
-				next_state <= read_after_set2;	
+				next_state <= read_after_set2;
+				debug_i <= x"0D";				
 
 			when read_after_set1 =>
 				timer <= CONV_STD_LOGIC_VECTOR(8,8);
-				next_state <= set_BCR;	
+				next_state <= set_BCR;
+				debug_i <= x"0E";					
 
 			when read_after_set2 =>
 				timer <= CONV_STD_LOGIC_VECTOR(8,8);
-				next_state <= idle;				
+				next_state <= idle;	
+				debug_i <= x"0F";	
 				
 			when init_burst1 =>
 				timer <= (others=>'0');
 				next_state <= init_burst2;
+				debug_i <= x"10";	
 				
 			when init_burst2 =>
 				timer <= (others=>'0');
 				next_state <= init_burst3;
+				debug_i <= x"11";	
 
 			when init_burst3 =>
 				timer <= (others=>'0');
 				next_state <= init_burst4;
+				debug_i <= x"12";
 				
 			when init_burst4 =>
 				timer <= (others=>'0');
@@ -399,6 +419,7 @@ begin
 				else
 					next_state <= state;
 				end if;
+				debug_i <= x"13";
 					
 			when burst =>
 				timer <= (others=>'0');
@@ -409,26 +430,32 @@ begin
 				else
 					next_state <= state;
 				end if;
+				debug_i <= x"14";
 				
 			when burst_pause =>
 				timer <= CONV_STD_LOGIC_VECTOR(8,8);
-					next_state <= resume_burst1;	
+				next_state <= resume_burst1;	
+				debug_i <= x"13";
 					
 			when resume_burst1 =>
 				timer <= (others=>'0');
 				next_state <= resume_burst2;
+				debug_i <= x"14";
 				
 			when resume_burst2 =>
 				timer <= (others=>'0');
 				next_state <= resume_burst3;
+				debug_i <= x"15";
 
 			when resume_burst3 =>
 				timer <= (others=>'0');
 				next_state <= init_burst4;
+				debug_i <= x"16";
 				
 			when end_burst =>
 				timer <= (others=>'0');
-				next_state <= idle;			
+				next_state <= idle;
+				debug_i <= x"17";				
 		
 			when others =>																	-- idle
 				timer <= (others=>'0');
@@ -441,6 +468,7 @@ begin
 				else
 					next_state <= state;
             end if;
+				debug_i <= x"00";
 				
       end case;      
    end process;
