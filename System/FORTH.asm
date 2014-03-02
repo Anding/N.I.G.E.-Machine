@@ -1761,8 +1761,59 @@ SD.read-sector.CF	#.w	1000
 		jsl	timeout.CF
 SD.read-sector.Z		rts
 ;
+; SD.verify-sector ( addr n --, verify 512 bytes from sector n of the SD card with a buffer at addr)
+SD.verify-sector.LF	dc.l	SD.read-sector.NF
+SD.verify-sector.NF	dc.b	16 128 +
+			dc.s	SD.VERIFY-SECTOR
+SD.verify-sector.SF	dc.w	SD.verify-sector.Z SD.verify-sector.CF del
+SD.verify-sector.CF	#.w	1000 
+		jsl 	timeout.cf
+		jsl 	sd.select&check
+		#.b	1 				; checksum
+		swap					
+		jsl 	sd.sector-code		; encode sector number
+		#.b	81 				; complete CMD17
+		jsl 	sd.cmd				
+		jsl 	sd.get-R1 
+		0<> 
+		IF					; check response OK
+			#.w	1005 
+			jsl	ERROR.CF
+		THEN
+		BEGIN					; wait for data token
+			jsl	spi.get
+			#.b	254 
+			=
+		UNTIL
+		dup 
+		#.w	512 
+		+ 
+		swap 
+		DO 					; read sector
+			jsl 	spi.get 
+			I 
+			fetch.b 
+			=
+			not
+			IF
+				#.w	1007
+				jsl	ERROR.CF
+			THEN
+		LOOP	
+		#.b	3 
+		zero 
+		DO 					; drop CRC and read safety byte
+			jsl 	spi.get 
+			drop 
+		LOOP			
+		jsl 	SPI.CS-hi 
+		#.b	255 
+		jsl	spi.put			; DESELECT
+		zero 
+		jsl	timeout.CF
+SD.verify-sector.Z		rts
 ; SD.write-sector ( addr n --, write 512 byte to sector n of the SD card from addr)
-SD.write-sector.LF	dc.l	SD.read-sector.NF
+SD.write-sector.LF	dc.l	SD.verify-sector.NF
 SD.write-sector.NF	dc.b	15 128 +
 			dc.b	char R char O char T char C char E char S char - char E char T char I char R char W char . char D char S
 SD.write-sector.SF	dc.w	SD.write-sector.Z SD.write-sector.CF del
@@ -2039,7 +2090,7 @@ FAT.read-sector.CF	#.w 	FAT.PtnOff
 FAT.read-sector.Z	rts				
 ;
 ; Add the appropriate partition offset and then call SD.write-sector
-; FAT.write-sector ( addr n --, write 512 byte to sector n of the current partition from addr)
+; FAT.write-sector ( addr n --, write and verify 512 byte to sector n of the current partition from addr)
 FAT.write-sector.LF	dc.l	FAT.read-sector.NF
 FAT.write-sector.NF	dc.b	16 128 +
 			dc.s	FAT.write-sector
@@ -2047,7 +2098,10 @@ FAT.write-sector.SF	dc.w	FAT.write-sector.Z FAT.write-sector.CF del
 FAT.write-sector.CF	#.w 	FAT.PtnOff
 			fetch.l
 			+
+			over
+			over
 			jsl SD.write-sector.CF
+			jsl SD.verify-sector.CF
 FAT.write-sector.Z	rts
 ;
 ; FAT.UpdateFSInfo ( --, update the FAT32 FSInfo sector with next free cluster)
