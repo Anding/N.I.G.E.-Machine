@@ -67,6 +67,10 @@ END COMPONENT;
 -- opcodes (bits 5 downto 0) of the instructions
 constant ops_NOP : std_logic_vector(5 downto 0):= "000000";
 constant ops_DROP : std_logic_vector(5 downto 0) := "000001";
+-- @2D RETURN STACK
+constant ops_toR : std_logic_vector(5 downto 0) := "000111";
+constant ops_Rfrom : std_logic_vector(5 downto 0) := "001001";
+--
 constant ops_IFDUP : std_logic_vector(5 downto 0) := "110011";
 constant ops_INC : std_logic_vector(5 downto 0) := "010001";
 constant ops_SMULT : std_logic_vector(5 downto 0) := "101001";
@@ -235,7 +239,8 @@ begin
 			if int_trig = '1' or retrap(0) = '1' or branch = bps_BRA or branch = bps_BEQ 
 				or opcode = ops_JSL  or opcode = ops_JSR or opcode = ops_JMP or opcode = ops_TRAP or opcode = ops_RETRAP or
 				opcode = ops_byte or opcode = ops_word or opcode = ops_long or 
-				(opcode = ops_ifdup and equalzero = '0') 
+				(opcode = ops_ifdup and equalzero = '0') or
+				((opcode = ops_toR or opcode = ops_Rfrom) and MEMdatain_X(23 downto 22) = "01")  -- 2D return stack
 				then state_n <= skip1;														
 			elsif opcode = ops_lfetch then
 				if chip_RAM = '1' then
@@ -358,7 +363,20 @@ begin
 							when ops_UMULT =>
 								PC_n <= PC;		
 							when ops_IFDUP =>
-								PC_n <= PC;										
+								PC_n <= PC;	
+		-- 2D Return stack
+							when ops_toR =>
+								if MEMdatain_X(23 downto 22) = "01" then
+									PC_n <= PC;
+								else
+									PC_n <= PC_plus;
+								end if;
+							when ops_Rfrom =>
+								if MEMdatain_X(23 downto 22) = "01" then
+									PC_n <= PC;
+								else
+									PC_n <= PC_plus;
+								end if;								
 							when others =>
 								PC_n <= PC_plus;
 							end case;

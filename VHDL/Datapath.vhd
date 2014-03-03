@@ -119,11 +119,11 @@ signal adder_out, compare_out, genmux_out, logic_out : std_logic_vector(31 downt
 signal unsigned_product, signed_product : std_logic_vector(63 downto 0);
 signal signed_quotient, signed_remainder, unsigned_quotient, unsigned_remainder : std_logic_vector(31 downto 0);
 signal TOS_i, NOS_i, TOS_n, NOS_alu, NOS_n : std_logic_vector (31 downto 0);
-signal TORS_i, TORS_n, TORS_n1, TORS_j : std_logic_vector (31 downto 0);
-signal PwBuff, RwBuff : std_logic_vector(31 downto 0);
+--signal TORS_i, TORS_n, TORS_n1, TORS_j : std_logic_vector (31 downto 0);
+signal PwBuff : std_logic_vector(31 downto 0);
 signal PSP, RSP, PSP_n, RSP_n, RSP_n1, PSP_m1, PSP_p1, RSP_m1, RSP_p1 : std_logic_vector (8 downto 0);
-signal RSdataout_i, PSdataout_i, PSdatain_i, RSdatain_i : std_logic_vector (31 downto 0);
-signal PSw_i, RSw_i, PSw_m1, RSw_m1 : std_logic_vector (0 downto 0);
+signal PSdataout_i, PSdatain_i : std_logic_vector (31 downto 0);
+signal PSw_i, PSw_m1 : std_logic_vector (0 downto 0);
 signal data : std_logic_vector (31 downto 0);
 
 begin
@@ -134,92 +134,66 @@ begin
 		if rst = '0' then
 			TOS_i <= TOS_n;						-- TOS is held in a register
 			NOS_i <= NOS_n;						-- NOS is held in a register
-			TORS_i <= TORS_n;						-- TORS is held in a register
 			PSP <= PSP_n;
 			RSP <= RSP_n1;
 			PwBuff <= PSdataOUT_i;				-- buffer for last written paramter stack value
-			RwBuff <= RSdataOUT_i;				-- buffer for last written return stack value
 			PSw_m1 <= PSw_i;
-			RSw_m1 <= RSw_i;
-			--MEMdatain_X_plus_m1 <= MEMdatain_X_plus;
 		else
 			TOS_i <= (others=>'0');
 			NOS_i <= (others=>'0');
-			TORS_i <= (others=>'0');
 			PSP <= (others=>'0');
 			RSP <= (others=>'0');	
+			PwBuff <= (others=>'0');	
+			PSw_m1 <= (others=>'0');
 		end if;
 	end process;
 	
 	PSP_m1 <= PSP - 1;							-- available for incrementing and decrementing stack pointers
 	PSP_p1 <= PSP + 1;
-	RSP_m1 <= RSP - 1;
-	RSP_p1 <= RSP + 1;	
-	
-	RSaddr <= RSP_n1;								-- return stack address  (use the post-auxiliary override value for RSP so that RTS is processed same cycle)
-	PSaddr <= PSP_n; 								-- parameter stack address
-	
-	PSdataout_i <= NOS_i;						-- for pushing NOS into memory
-	RSdataout_i <= TORS_i;						-- for pushing TORS into memory
-	
-														-- make big endian for compatability with system memory
-	--PSdataout <= PSdataout_i(7 downto 0) & PSdataout_i(15 downto 8) & PSdataout_i(23 downto 16) & PSdataout_i(31 downto 24);			
-	--RSdataout <= RSdataout_i(7 downto 0) & RSdataout_i(15 downto 8) & RSdataout_i(23 downto 16) & RSdataout_i(31 downto 24);
-	PSdataout <= PSdataout_i;
-	RSdataout <= RSdataout_i;
-	
-	PSw <= PSw_i;
-	RSw <= RSw_i;
-	
-	TOS <= TOS_n;									-- output TOS to control unit, once cycle ahead of registered value		
+	PSaddr <= PSP_n; 								-- parameter stack address	
+	PSdataout_i <= NOS_i;						-- for pushing NOS into memory	
+	PSdataout <= PSdataout_i;	
+	PSw <= PSw_i;	
+	TOS <= TOS_n;									-- output TOS to control unit, once cycle ahead of registered value	IS THIS ESSENTIAL?	
 	TOS_r <= TOS_i;								-- the registered value of TOS
-	NOS <= NOS_n;									-- output NOS to control unit, once cycle ahead of regsitered value
-	TORS <= TORS_n;								-- output TORS to control unit, once cycle ahead of registered value
+	NOS <= NOS_n;									-- output NOS to control unit, once cycle ahead of regsitered value	
+
+	-- Return stack
+		--	Rstack_RAM must be configured as write first!
 	
-	equalzero <= '1' when TOS_n = 0 else '0'; 
-	chip_RAM <= '1' when TOS_n(23 downto 18) = 0 else '0';		-- flag used to identify SRAM vs. PSDRAM memory access
-							
-	PSdatain_i <= PwBuff when PSw_m1 = "1"	-- because of 1 cycle memory latency, need to use the buffered value for a stack memory read
-														--   if the stack memory was written just one cycle before (as memory update will not yet have occured)
-				--else (PSdatain(7 downto 0) & PSdatain(15 downto 8) & PSdatain(23 downto 16) & PSdatain(31 downto 24));					
-				else PSdatain;										
-														
-	RSdatain_i <= RwBuff when RSw_m1 = "1"	-- anti-latency buffer for return stack memory
-				--else (RSdatain(7 downto 0) & RSdatain(15 downto 8) & RSdatain(23 downto 16) & RSdatain(31 downto 24));		
-				else RSdatain;
-				
+	RSP_m1 <= RSP - 1;							-- available for incrementing and decrementing stack pointers
+	RSP_p1 <= RSP + 1;	
+	RSaddr <= RSP_n1;								-- return stack address  (use the post-auxiliary override value for RSP so that RTS is processed same cycle)
+	TORS <= RSdatain;								-- TORS is directly read from BLOCK RAM
+	
 	with AuxControl (0 downto 0) select					-- instruction RTS requires decrement of return stack pointer
 		RSP_n1 <= RSP_m1 when "1",
-					 RSP_n when others;
-		
-	with AuxControl (0 downto 0) select					-- RTS will override update of TORS
-		TORS_n <= RSdatain_i when "1",
-					 TORS_n1 when others;
+					 RSP_n when others;	
 					 
-	with AuxControl (1 downto 1) select					-- immediate value for loading into TOS (one cycle delay to coincide with microcode)
-		DATA <= 	--MEMdatain_X_plus_m1 when "00",			-- load literal
-					MEMdatain_X when "0",						-- SRAM fetch or load literal
-					accumulator when others;					-- PSDRAM control unit mediated fetch via accumulator
-		
-	with MicroControl(13 downto 13) select				-- multiplexer for selecting value to write to TORS
-		TORS_j <= ReturnAddress when "1",
-					 TOS_i 	when others;	
-	
 	with MicroControl(12 downto 11) select				-- multiplexer for setting return stack pointer
 		RSP_n <= RSP_m1 when "01",
 					RSP_p1 when "10",
 					TOS_i(8 downto 0) when "11",
-					RSP when others;
-	
-	with MicroControl(12 downto 11) select				-- multiplexer for update of TORS register
-		TORS_n1 <= RSdatain_i when "01",
-					 TORS_j when "10",
-					 TORS_i when others;
-	
+					RSP when others;	
+					 
+	with MicroControl(13 downto 13) select				-- multiplexer for selecting value to write to TORS
+		RSdataout <= ReturnAddress when "1",
+						 TOS_i 	when others;	
+					 
 	with MicroControl(12 downto 11) select				-- write enable on return stack memory follows increment of return stack pointer
-		RSw_i <= "1" when "10",
-					"0" when others;					
+		RSw	 <= "1" when "10",
+					 "0" when others;		
+
+	-- Parameter stack
 	
+	PSdatain_i <= PwBuff when PSw_m1 = "1"	-- because of 1 cycle memory latency, need to use the buffered value for a stack memory read
+														--   if the stack memory was written just one cycle before (as memory update will not yet have occured)			
+				else PSdatain;		
+			
+	with AuxControl (1 downto 1) select					-- immediate value for loading into TOS (one cycle delay to coincide with microcode)
+		DATA <= 	MEMdatain_X when "0",						-- SRAM fetch or load literal
+					accumulator when others;					-- PSDRAM control unit mediated fetch via accumulator
+		
 	with MicroControl(10 downto 9) select				-- multiplexer for parameter stack pointer
 		PSP_n <= PSP_m1 when "01",
 					PSP_p1 when "10",
@@ -251,6 +225,11 @@ begin
 					signed_remainder when "110",
 					unsigned_remainder when "111",
 					dont_care when others;
+	
+	-- signals for control unit
+	
+	equalzero <= '1' when TOS_n = 0 else '0'; 
+	chip_RAM <= '1' when TOS_n(23 downto 18) = 0 else '0';		-- flag used to identify SRAM vs. PSDRAM memory access
 
 	Inst_Adder: Adder 
 	PORT MAP(
@@ -274,7 +253,7 @@ begin
 	TOS => TOS_i,
 	NOS => NOS_i,
 	PSdata => PSdataIN_i,
-	RSdata => TORS_i,
+	RSdata => RSdatain,
 	PSP => PSP,
 	RSP => RSP,
 	Data => Data,

@@ -1,9 +1,13 @@
 ;	N.I.G.E. Machine test suite
 ;	30us test time
 ;
-sevenseg	equ	hex F830
+sevenseg	equ	hex 03F830
 		ds.l	2		; BLOCK RAM simulator bug
-		zero			; test branching
+		#.b	0	
+		jsl	announce	; test subroutine call
+		#.b	1	
+		jsl	announce	; test branching	
+		zero			
 		1+
 l0		beq	l1
 		zero
@@ -20,7 +24,11 @@ l3		jsl	loadliteral	; run test suite
 		jsl	bincompare
 		jsl	uncompare
 		jsl	bitwise
+		jsl	pushpop
+		jsl	dbl
+		jsl	adjacent
 		jsl	stacks
+		jsl	rstacks
 		jsl	arith
 		jsl	others
 		#.b	255
@@ -28,7 +36,7 @@ l3		jsl	loadliteral	; run test suite
 l1		bra	l1
 ;	
 ;load literals	
-loadliteral	#.b	1
+loadliteral	#.b	2
 		jsl	announce
 		#.b	hex	a9
 		#.w	hex	bbcc
@@ -40,7 +48,7 @@ loadliteral	#.b	1
 		jmp
 ; 
 ; loadliterals with ,rts
-llrts		#.b	2
+llrts		#.b	3
 		jsl	announce
 		jsl	llsub1
 		+
@@ -55,7 +63,7 @@ llsub2		jsl	llsub3
 llsub3		#.l,rts hex ffff438a 
 ;
 ; fetch and store
-fas		#.b	3
+fas		#.b	4
 		jsl	announce
 		#.w	0
 		jsl	fssub1
@@ -92,7 +100,7 @@ fssub1		#.l	hex	ffffffff
 		rts
 ;
 ; fetch and store PSDRAM
-fasd		#.b	4
+fasd		#.b	5
 		jsl	announce
 		#.w	65536
 		jsl	fssub1
@@ -109,7 +117,7 @@ fasd		#.b	4
 		jmp	
 ;		
 ; fetch store,rts	
-frts		#.b	5
+frts		#.b	6
 		jsl	announce
 		jsl	fsrsub3
 		jsl	fsrsub6
@@ -140,7 +148,7 @@ fsrsub6	jsl	fsrsub5
 		fetch.b,rts
 ;
 ; ifdup
-ifdup		#.b	6
+ifdup		#.b	7
 		jsl	announce
 		#.l	hex 7fffffff
 		jsl	ifdups1
@@ -158,7 +166,7 @@ ifdup		#.b	6
 ifdups1	?dup,rts
 ;
 ; multipy
-multiply	#.b	7
+multiply	#.b	8
 		jsl	announce
 		#.l	-1
 		#.l	2
@@ -179,7 +187,7 @@ mulsub1	mults,rts
 mulsub2	multu,rts
 ;	
 ; divide
-divide		#.b	8
+divide		#.b	9
 		jsl	announce
 		#.l	-1
 		#.l	2
@@ -199,7 +207,7 @@ divsub1	divu,rts
 divsub2	divs,rts	
 ;
 ; binary compare
-bincompare	#.b	9
+bincompare	#.b	10
 		jsl	announce
 		zero
 		#.w	bcmplist
@@ -249,7 +257,7 @@ bresultlist	dc.b	binary 110
 		dc.b	binary	011
 ;
 ; Unary compare
-uncompare	#.b	10
+uncompare	#.b	11
 		jsl 	announce
 		zero
 		#.w	ucmplist
@@ -292,7 +300,7 @@ uresultlist	dc.b	binary 101
 		dc.b	binary	011
 ;
 ; bitwise test
-bitwise	#.b	11
+bitwise	#.b	12
 		jsl	announce
 		#.l	hex ffffffff
 		invert
@@ -329,8 +337,31 @@ bitwise	#.b	11
 		#.w	assert
 		jmp
 ;
-; Stacks
-stacks		#.b	12
+pushpop	#.b	13
+		jsl	announce
+		#.b	2
+		>R
+		R>
+		#.b	2
+		-
+		#.w	assert
+		jmp
+;
+dbl		#.b	14
+		jsl	announce
+		jsl	dbl2
+		rts
+dbl2		rts
+;
+adjacent	#.b	15
+		dup
+		jsl 	announce
+		>R
+		R>
+		rts
+;
+; Parameter stack
+stacks		#.b	16
 		jsl 	announce	
 		PSP@		; 1
 		PSP@
@@ -347,38 +378,34 @@ stacks		#.b	12
 		drop
 		1-		; 2
 		+
+		#.w	assert
+		jmp
+;
+rstacks	#.b	17
+		jsl 	announce	
 		RSP@
 		#.b	1
 		>R
 		RSP@
 		-
-		1+		; 3
-		+
+		1+		; first check
 		#.b	2
 		>R
 		R@
 		1-
-		1-		; 4
+		1-		
 		+
-		zero
-		>R
-		zero
-		>R
 		RSP@
 		1-
 		RSP!
 		R>
-		drop
-		R>
-		drop
-		R>
-		1-	
+		1-		; second check
 		+
 		#.w	assert
 		jmp
 ;
 ; arithmatic test
-arith    	#.b	13
+arith    	#.b	18
 		jsl 	announce
 		#.l	hex	12345678
 		#.l	hex	aaaa0000
@@ -451,7 +478,7 @@ D-sub		>R		( h2 l2 h1 R: l1)
 		SUBX,rts	( h3 l3)
 ;
 ; others	
-others		#.b	14
+others		#.b	19
 		jsl 	announce
 		#.w	-1	
 		xword
@@ -474,7 +501,7 @@ others		#.b	14
 		jmp
 ;
 ; Announce a test
-announce	#.w	sevenseg
+announce	#.l	sevenseg
 		store.l
 		rts
 ;
