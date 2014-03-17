@@ -1,5 +1,5 @@
 ; Microcode ROM
-; Width = 14, Depth = 64
+; Width = 18, Depth = 64
 ;
 memory_initialization_radix=10;
 memory_initialization_vector=
@@ -10,13 +10,13 @@ memory_initialization_vector=
 1184
 768
 161
-4896
+8992
 1186
-3234
+5282
 1187
-1188
-1824
-6944
+1221408
+1858048
+722944
 770
 771
 1
@@ -46,8 +46,8 @@ memory_initialization_vector=
 38
 448
 464
-480
-496
+0
+0
 0
 0
 0
@@ -58,12 +58,12 @@ memory_initialization_vector=
 1191
 1191
 1191
-8992
-12288
-13088
+33568
+172032
+172832
 0
 0
 0
-1191
+16384
 39
 0

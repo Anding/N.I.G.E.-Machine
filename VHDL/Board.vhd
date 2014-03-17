@@ -159,6 +159,15 @@ signal clk_MEM : std_logic;
 signal debug : std_logic_vector(31 downto 0);
 signal debug_CPU : std_logic_vector(7 downto 0);
 signal debug_DMAcontroller : std_logic_vector(7 downto 0);
+signal SSdataOUT : std_logic_vector(543 downto 0);
+signal SSdataIN : std_logic_vector(543 downto 0);
+signal SSw : std_logic_vector(67 downto 0);
+signal SSaddr : std_logic_vector(8 downto 0);
+signal ESdataOUT : std_logic_vector(303 downto 0);
+signal ESdataIN : std_logic_vector(303 downto 0);
+signal ESw : std_logic_vector(37 downto 0);
+signal ESaddr : std_logic_vector(8 downto 0);
+
 
 	component CLOCKMANAGER
 	port
@@ -363,6 +372,24 @@ begin
 		 doutb => MEMdata_Rstack
 	  );	
 	  
+		inst_Sstack_RAM : entity work.Sstack_RAM
+		PORT MAP (
+		clka => clk_system,
+		wea => SSw,
+		addra => SSaddr,
+		dina => SSdataOUT,
+		douta => SSdataIN
+		);
+		
+		inst_Estack_RAM : entity work.Estack_RAM
+		PORT MAP (
+		clka => clk_system,
+		wea => ESw,
+		addra => ESaddr,
+		dina => ESdataOUT,
+		douta => ESdataIN
+		);
+	  
 	  inst_Color_RAM : entity work.Color_RAM
 	  PORT MAP (
 		 clka => clk_VGA,
@@ -425,6 +452,14 @@ begin
 		RSdatain => RSdatain,
 		RSdataout => RSdataout,
 		RSw => RSw,
+		SSaddr => SSaddr,
+		SSdatain => SSdatain(543 downto 512),	
+		SSdataout => SSdataout(543 downto 512),
+		SSw => SSw(67 downto 64),
+		ESaddr => ESaddr(8 downto 0),
+		ESdatain => ESdatain(303 downto 256),
+		ESdataout => ESdataout(303 downto 256),
+		ESw => ESw(37 downto 32),
 		MEMaddr => MEMaddr,
 		MEMdatain_X => MEMdatain_Xi,
 		MEMdatain_X_quick => MEMdata_Sys_quick,
@@ -451,6 +486,13 @@ begin
 		debug => debug_CPU
 	);
 	
+		SSdatain(511 downto 0) <= (others=>'0');
+		SSdataout(511 downto 0) <= (others=>'0');
+		SSw(63 downto 0) <= (others=>'0');
+		ESdatain(255 downto 0) <= (others=>'0');
+		ESdataout(255 downto 0) <= (others=>'0');
+		ESw(31 downto 0) <= (others=>'0');
+
 	s_aresetn <= not RESET;
 		
 	Inst_DMAcontroller: entity work.DMAcontroller PORT MAP(

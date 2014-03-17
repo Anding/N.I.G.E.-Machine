@@ -28,7 +28,7 @@ l3		jsl	loadliteral	; run test suite
 		jsl	dbl
 		jsl	adjacent
 		jsl	stacks
-		jsl	rstacks
+;		jsl	rstacks
 		jsl	arith
 		jsl	others
 		#.b	255
