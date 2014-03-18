@@ -46,7 +46,7 @@ end Board_Nexys4;
 
 architecture RTL of Board_Nexys4 is
 
-type bank_t is (Sys, Char, Color, Pstack, Rstack, Reg);
+type bank_t is (Sys, Char, Color, Pstack, Rstack, Reg, Stack_access);
 signal SD_WP : std_logic;
 signal bank, bank_n : bank_t;	
 signal counter_clk, counter_ms : std_logic_vector(31 downto 0) := (others =>'0');
@@ -61,7 +61,7 @@ signal RSdatain :  std_logic_vector(31 downto 0);
 signal MEMdatain_Xi :  std_logic_vector(31 downto 0);
 signal MEMdata_Char :  std_logic_vector(7 downto 0);
 signal MEMdata_Color :  std_logic_vector(15 downto 0);
-signal MEMdata_Pstack, MEMdata_Rstack, MEMdata_Reg : std_logic_vector(31 downto 0);          
+signal MEMdata_Pstack, MEMdata_Rstack, MEMdata_Reg, MEMdata_stack_access : std_logic_vector(31 downto 0);          
 signal PSaddr :  std_logic_vector(8 downto 0);
 signal PSdataout :  std_logic_vector(31 downto 0);
 signal PSw :  std_logic_vector(0 to 0);
@@ -72,7 +72,7 @@ signal MEMaddr :  std_logic_vector(31 downto 0);
 signal MEMdataout_X :  std_logic_vector(31 downto 0);
 signal MEM_WRQ_X :  std_logic;
 signal MEM_WRQ_XX : std_logic_vector(0 downto 0);
-signal Sys_EN, Pstack_EN, Rstack_EN, Char_EN, Reg_EN, Color_EN : std_logic;
+signal Sys_EN, Pstack_EN, Rstack_EN, Char_EN, Reg_EN, Color_EN, stack_access_EN : std_logic;
 signal txt_zero : std_logic_vector(23 downto 0);
 signal DATA_OUT_VGA : std_logic_vector(7 downto 0) := (others=>'0');
 signal ADDR_VGA : std_logic_vector(8 downto 0);
@@ -247,13 +247,15 @@ begin
 	end process;
 	 
 	with MEMaddr(17 downto 11) select
-		bank_n <= Color when "1111011",
+		bank_n <= Stack_access when "1111010",
+					 Color when "1111011",
 					 Pstack when "1111100",
 					 Rstack when "1111101",
 					 Char when "1111110",
 					 Reg when "1111111",
 					 Sys when others;
 	 
+	 Stack_access_EN <= '1' when bank_n = Stack_access else '0';
 	 Color_EN <= '1' when bank_n = Color else '0';
 	 Pstack_EN <= '1' when bank_n = Pstack else '0';
 	 Rstack_EN <= '1' when bank_n = Rstack else '0';
@@ -268,6 +270,7 @@ begin
 							"000000000000000000000000" & MEMdata_Char when Char,
 							"0000000000000000" & MEMdata_Color when Color,
 							MEMdata_Reg when Reg,
+							Memdata_stack_access when stack_access,
 							MEMdata_Sys when others;
 							
 	-- splice IOExpansion data ahead of the SRAM
@@ -275,34 +278,34 @@ begin
 	 dina_sysram <= dina_sysram_s when Boot_we = "0" else boot_data;
 	 addra_sysram <= addra_sysram_s when Boot_we = "0" else boot_addr;	
 
---	  inst_SYS_RAM : entity work.Sys_RAM
---	  PORT MAP (
---		 clka => clk_system,
---		 ena => ram_en,
---		 wea => wea_sysram,
---		 addra => addra_sysram (16 downto 2),					-- 64K write depth 16384, 15downto2. 128K write depth 32768, 16 downto 2. 256K write depth 62976, 17downto2
---		 dina => dina_sysram,
---		 douta => douta_sysram,
---		 clkb => clk_system,
---		 enb => ram_en,
---		 web => web_sysram,
---		 addrb => addrb_sysram (16 downto 2),
---		 dinb => dinb_sysram,
---		 doutb => doutb_sysram
---	  );
---	  
-	Inst_RAM_for_Testbench: entity work.RAM_for_Testbench PORT MAP(
-		rst => reset,
-		clk => clk_system,
-		weA => wea_sysram(0),
-		weB => web_sysram(0),
-		addressA => addra_sysram (16 downto 2),
-		data_inA => dina_sysram,
-		data_outA => douta_sysram,
-		addressB => addrb_sysram (16 downto 2),
-		data_inB => dinb_sysram,
-		data_outB => doutb_sysram
-	);
+	  inst_SYS_RAM : entity work.Sys_RAM
+	  PORT MAP (
+		 clka => clk_system,
+		 ena => ram_en,
+		 wea => wea_sysram,
+		 addra => addra_sysram (16 downto 2),					-- 64K write depth 16384, 15downto2. 128K write depth 32768, 16 downto 2. 256K write depth 62976, 17downto2
+		 dina => dina_sysram,
+		 douta => douta_sysram,
+		 clkb => clk_system,
+		 enb => ram_en,
+		 web => web_sysram,
+		 addrb => addrb_sysram (16 downto 2),
+		 dinb => dinb_sysram,
+		 doutb => doutb_sysram
+	  );
+	  
+--	Inst_RAM_for_Testbench: entity work.RAM_for_Testbench PORT MAP(
+--		rst => reset,
+--		clk => clk_system,
+--		weA => wea_sysram(0),
+--		weB => web_sysram(0),
+--		addressA => addra_sysram (16 downto 2),
+--		data_inA => dina_sysram,
+--		data_outA => douta_sysram,
+--		addressB => addrb_sysram (16 downto 2),
+--		data_inB => dinb_sysram,
+--		data_outB => doutb_sysram
+--	);
 
 	  douta_sysram_i <= douta_sysram;
 	  doutb_sysram_i <= doutb_sysram;
@@ -414,7 +417,7 @@ begin
 		mode => mode,
 		background => background,
 		en => reg_en,
-		addr => MEMaddr(10 downto 0) ,
+		addr => MEMaddr(10 downto 0),
 		datain => MEMdataout_X,
 		dataout => MEMdata_Reg,
 		wrq => MEM_WRQ_XX,
@@ -437,6 +440,25 @@ begin
 		SD_divide => SD_divide,
 		VBLANK => VBLANK
 	);
+	
+		Inst_stack_access: entity work.stack_access PORT MAP(
+		clk => CLK_SYSTEM,
+		rst => reset,
+		SSdatain => SSdatain(511 downto 0),
+		SSdataout => SSdataout(511 downto 0),
+		SSw => SSw(63 downto 0),
+		SSwSignal => SSw(64),
+		ESdatain => ESdatain(255 downto 0),
+		ESdataout => ESdataout(255 downto 0),
+		ESw => ESw(31 downto 0),
+		ESwSignal => ESw(32),
+		en => stack_access_en,
+		addr => MEMaddr(10 downto 0),
+		datain => MEMdataout_X,
+		dataout => MEMdata_stack_access,
+		wrq => MEM_WRQ_XX
+	);
+	
 	
 		inst_CPU: entity work.CPU PORT MAP(
 		rst => reset,
@@ -486,13 +508,6 @@ begin
 		debug => debug_CPU
 	);
 	
-		SSdatain(511 downto 0) <= (others=>'0');
-		SSdataout(511 downto 0) <= (others=>'0');
-		SSw(63 downto 0) <= (others=>'0');
-		ESdatain(255 downto 0) <= (others=>'0');
-		ESdataout(255 downto 0) <= (others=>'0');
-		ESw(31 downto 0) <= (others=>'0');
-
 	s_aresetn <= not RESET;
 		
 	Inst_DMAcontroller: entity work.DMAcontroller PORT MAP(

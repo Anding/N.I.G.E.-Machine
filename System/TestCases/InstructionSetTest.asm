@@ -27,8 +27,7 @@ l3		jsl	loadliteral	; run test suite
 		jsl	pushpop
 		jsl	dbl
 		jsl	adjacent
-		jsl	stacks
-;		jsl	rstacks
+;
 		jsl	arith
 		jsl	others
 		#.b	255
@@ -359,50 +358,6 @@ adjacent	#.b	15
 		>R
 		R>
 		rts
-;
-; Parameter stack
-stacks		#.b	16
-		jsl 	announce	
-		PSP@		; 1
-		PSP@
-		-
-		1+
-		#.b	1
-		#.b	2
-		zero
-		zero
-		PSP@
-		1-
-		PSP!
-		drop
-		drop
-		1-		; 2
-		+
-		#.w	assert
-		jmp
-;
-rstacks	#.b	17
-		jsl 	announce	
-		RSP@
-		#.b	1
-		>R
-		RSP@
-		-
-		1+		; first check
-		#.b	2
-		>R
-		R@
-		1-
-		1-		
-		+
-		RSP@
-		1-
-		RSP!
-		R>
-		1-		; second check
-		+
-		#.w	assert
-		jmp
 ;
 ; arithmatic test
 arith    	#.b	18
