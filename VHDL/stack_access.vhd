@@ -26,7 +26,8 @@ architecture RTL of stack_access is
 signal addr_i : std_logic_vector(7 downto 0);					-- local address bus
 signal dataout_i : STD_LOGIC_VECTOR (31 downto 0);
 signal ESdatain_m : STD_LOGIC_VECTOR (255 downto 0);
-	
+signal ESwSignal_m, SSwSignal_m : std_logic;
+
 begin
 
 	-- Read logic
@@ -93,25 +94,26 @@ begin
 	end process;
 	
 	-- Write logic
-	with ESwSignal select 
-		SSdataout <= 	datain & datain & datain & datain & datain & datain & datain & datain &
-							datain & datain & datain & datain & datain & datain & datain & datain when '0',
-							(others=>'0') when others;		-- zero local variables when subroutine stack advances
-							
 	process
 	begin
 		wait until rising_edge(clk);
 		ESdatain_m <= ESdatain;
-	end process;
+		SSwSignal_m <= SSwSignal;
+		ESwSignal_m <= ESwSignal;
+	end process;	
 	
-	with SSwSignal select 				 
+	with SSwSignal_m select 
+		SSdataout <= 	datain & datain & datain & datain & datain & datain & datain & datain &
+							datain & datain & datain & datain & datain & datain & datain & datain when '0',
+							(others=>'0') when others;		-- zero local variables when subroutine stack advances
+							
+	with ESwSignal_m select 				 
 		ESdataout <= 	datain & datain & datain & datain & datain & datain & datain & datain when '0',
 							ESdatain_m when others;			-- "copy down" environment variables when exception stack advances
 
-	process		
+	process	--(SSwSignal, ESwSignal, en, wrq, addr_i)
 	begin																
-		wait until rising_edge(clk);	
-		
+		wait until rising_edge(clk);
 		SSw <= (others=>'0');
 		ESw <= (others=>'0');
 		

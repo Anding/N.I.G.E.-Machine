@@ -1,6 +1,8 @@
 ;	N.I.G.E. Machine test suite
 ;	30us test time
 ;
+sub0		equ	hex 03D000
+env0		equ	hex 03D080
 sevenseg	equ	hex 03F830
 		ds.l	2		; BLOCK RAM simulator bug
 		#.b	0	
@@ -27,7 +29,8 @@ l3		jsl	loadliteral	; run test suite
 		jsl	pushpop
 		jsl	dbl
 		jsl	adjacent
-;
+		jsl	envstack
+		jsl	substack
 		jsl	arith
 		jsl	others
 		#.b	255
@@ -358,6 +361,54 @@ adjacent	#.b	15
 		>R
 		R>
 		rts
+;
+envstack	#.b	16
+		jsl	announce
+		#.l	hex FFEEDDCC
+		#.l	env0
+		store.l			; set env variable at this level
+		#.l	envt2
+		catch
+		zero
+		#.l	env0
+		fetch.l
+		#.l	hex FFEEDDCC
+		=
+		jsl	assert			; check retention of env0
+		rts
+;
+envt2		#.l	env0
+		fetch.l
+		#.l	hex FFEEDDCC
+		=				; check copy down
+		jsl	assert
+		#.l	hex AABBCCDD
+		#.l	env0
+		store.l			; re-write env variable	
+		#.b	1
+		throw	
+;
+substack	#.b	17
+		jsl	announce
+		#.l	hex FFEEDDCC
+		#.l	sub0
+		store.l			; set sub variable at this level
+		#.l	subt3
+		jsr
+		#.l	sub0
+		fetch.l
+		#.l	hex FFEEDDCC
+		=
+		jsl	assert			; check retention of sub0
+		rts
+;
+subt3		#.l	sub0
+		fetch.l
+		jsl	assert
+		#.l	hex AABBCCDD
+		#.l	sub0
+		store.l			; re-write sub variable	
+		rts	
 ;
 ; arithmatic test
 arith    	#.b	18
