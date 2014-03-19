@@ -3539,10 +3539,11 @@ QUIT.NF	dc.b	4 128 +
 QUIT.SF	dc.w	QUIT.Z QUIT.CF del
 QUIT.CF	zero
 		jsl	TIMEOUT.CF				; clear any timeouts
-		zero 						; zero stack pointers
-		RSP!
-		zero 
-		PSP!
+		RESETSP
+;		zero 						; zero stack pointers
+;		RSP!
+;		zero 
+;		PSP!
 		zero						; set state to interpreting
 		#.w	STATE_
 		store.l
@@ -3752,14 +3753,28 @@ DEPTH.NF	dc.b	5 128 +
 DEPTH.SF	dc.w	1
 DEPTH.CF	PSP@,rts
 ;
-RDEPTH.LF	dc.l	DEPTH.NF
-RDEPTH.NF	dc.b	6 128 +
-		dc.b	char H char T char P char E char D char R
-RDEPTH.SF	dc.w	2
-RDEPTH.CF	RSP@
-		rts				; separate RST since it changes the return stack size
+CATCH.LF	dc.l	DEPTH.NF
+CATCH.NF	dc.b	5 128 +
+		dc.s	CATCH
+CATCH.SF	dc.w	2 MUSTINLINE +
+CATCH.CF	catch
+		zero,rts			; zero required following catch for FORTH behaviour
 ;
-+.LF		dc.l	RDEPTH.NF
+THROW.LF	dc.l	CATCH.NF
+THROW.NF	dc.b	5 128 +
+		dc.s	THROW
+THROW.SF	dc.w	2 MUSTINLINE +
+THROW.CF	throw
+		rts
+;
+;RDEPTH.LF	dc.l	DEPTH.NF
+;RDEPTH.NF	dc.b	6 128 +
+;		dc.b	char H char T char P char E char D char R
+;RDEPTH.SF	dc.w	2
+;RDEPTH.CF	RSP@
+;		rts				; separate RST since it changes the return stack size
+;
++.LF		dc.l	THROW.NF
 +.NF		dc.b	1 128 +
 		dc.b 	char +
 +.SF		dc.w	1
