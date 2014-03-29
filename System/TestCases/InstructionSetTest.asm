@@ -373,14 +373,14 @@ envstack	#.b	16
 		#.l	env0
 		fetch.l
 		#.l	hex FFEEDDCC
-		=
+		-
 		jsl	assert			; check retention of env0
 		rts
 ;
 envt2		#.l	env0
 		fetch.l
 		#.l	hex FFEEDDCC
-		=				; check copy down
+		-				; check copy down
 		jsl	assert
 		#.l	hex AABBCCDD
 		#.l	env0
@@ -398,7 +398,7 @@ substack	#.b	17
 		#.l	sub0
 		fetch.l
 		#.l	hex FFEEDDCC
-		=
+		-
 		jsl	assert			; check retention of sub0
 		rts
 ;

@@ -27,6 +27,7 @@ signal addr_i : std_logic_vector(7 downto 0);					-- local address bus
 signal dataout_i : STD_LOGIC_VECTOR (31 downto 0);
 signal ESdatain_m : STD_LOGIC_VECTOR (255 downto 0);
 signal ESwSignal_m, SSwSignal_m : std_logic;
+signal datain_m : STD_LOGIC_VECTOR (31 downto 0);	
 
 begin
 
@@ -100,15 +101,16 @@ begin
 		ESdatain_m <= ESdatain;
 		SSwSignal_m <= SSwSignal;
 		ESwSignal_m <= ESwSignal;
+		datain_m <= datain;
 	end process;	
 	
 	with SSwSignal_m select 
-		SSdataout <= 	datain & datain & datain & datain & datain & datain & datain & datain &
-							datain & datain & datain & datain & datain & datain & datain & datain when '0',
+		SSdataout <= 	datain_m & datain_m & datain_m & datain_m & datain_m & datain_m & datain_m & datain_m &
+							datain_m & datain_m & datain_m & datain_m & datain_m & datain_m & datain_m & datain_m when '0',
 							(others=>'0') when others;		-- zero local variables when subroutine stack advances
 							
 	with ESwSignal_m select 				 
-		ESdataout <= 	datain & datain & datain & datain & datain & datain & datain & datain when '0',
+		ESdataout <= 	datain_m & datain_m & datain_m & datain_m & datain_m & datain_m & datain_m & datain_m when '0',
 							ESdatain_m when others;			-- "copy down" environment variables when exception stack advances
 
 	process	--(SSwSignal, ESwSignal, en, wrq, addr_i)
