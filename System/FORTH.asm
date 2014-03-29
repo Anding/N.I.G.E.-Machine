@@ -4879,7 +4879,7 @@ IMMEDIATE.Z	store.b,rts
 ;
 ; ['] , compile a reference to the next word so that at run time its XT will be placed on the stack
 ['].LF		dc.l	IMMEDIATE.NF	
-['].NF		dc.b	3 128 + 
+['].NF		dc.b	3 128 + IMMED + 
 		dc.b	93 39 91
 ['].SF		dc.w	['].Z ['].CF del
 ['].CF		jsl	TICK.CF
