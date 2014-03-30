@@ -205,13 +205,16 @@ MSIRQ		#.w	MS.TIMEOUT
 			store.l
 			0=
 			IF
-				#.b	5
-				#.w	ERROR.CF
-				>R		; return to ERROR after completing interrupt
+				#.l	MS.ERR
+				THROW
+;				#.w	ERROR.CF
+;				>R		; return to ERROR after completing interrupt
 			THEN
 		THEN
 		rti
 MS.TIMEOUT	dc.l	hex 00
+MS.ERR		dc.b	15
+		dc.s	Timeout expired
 ;
 ; -----------------------------------------------------------------------------------------------
 ; Boot code (within branch distance from 0)
@@ -1731,8 +1734,8 @@ SD.read-sector.CF	#.w	1000
 		jsl 	sd.get-R1 
 		0<> 
 		IF					; check response OK
-			#.w	1005 
-			jsl	ERROR.CF
+			#.l	SD.read-sector.ERR
+			THROW
 		THEN
 		BEGIN					; wait for data token
 			jsl	spi.get
@@ -1759,7 +1762,9 @@ SD.read-sector.CF	#.w	1000
 		jsl	spi.put			; DESELECT
 		zero 
 		jsl	timeout.CF
-SD.read-sector.Z		rts
+SD.read-sector.Z	rts
+SD.read-sector.ERR	dc.b	21
+			dc.s	SD.read-sector failed
 ;
 ; SD.verify-sector ( addr n --, verify 512 bytes from sector n of the SD card with a buffer at addr)
 SD.verify-sector.LF	dc.l	SD.read-sector.NF
@@ -1777,8 +1782,8 @@ SD.verify-sector.CF	#.w	1000
 		jsl 	sd.get-R1 
 		0<> 
 		IF					; check response OK
-			#.w	1005 
-			jsl	ERROR.CF
+			#.l	SD.verify-sector.ERR
+			THROW
 		THEN
 		BEGIN					; wait for data token
 			jsl	spi.get
@@ -1796,8 +1801,8 @@ SD.verify-sector.CF	#.w	1000
 			=
 			not
 			IF
-				#.w	1007
-				jsl	ERROR.CF
+				#.l	SD.verify-sector.ERR
+				THROW
 			THEN
 		LOOP	
 		#.b	3 
@@ -1812,6 +1817,9 @@ SD.verify-sector.CF	#.w	1000
 		zero 
 		jsl	timeout.CF
 SD.verify-sector.Z		rts
+SD.verify-sector.ERR	dc.b	23
+			dc.s	SD.verify-sector failed
+;
 ; SD.write-sector ( addr n --, write 512 byte to sector n of the SD card from addr)
 SD.write-sector.LF	dc.l	SD.verify-sector.NF
 SD.write-sector.NF	dc.b	15 128 +
@@ -1828,8 +1836,8 @@ SD.write-sector.CF	#.w	10000
 		jsl	sd.get-R1 
 		0<> 
 		IF					; check response OK
-			#.w	1010 
-			jsl	ERROR.CF
+			#.l	SD.write-sector.ERR 
+			THROW
 		THEN
 		#.b	255 
 		jsl	spi.put			; space
@@ -1856,8 +1864,8 @@ SD.write-sector.CF	#.w	10000
 		#.b	5 
 		<> 
 		IF					; check data response
-			#.w	1011 
-			jsl	ERROR.CF		; write error
+			#.l	SD.write-sector.ERR 
+			THROW
 		THEN	
 		jsl	SPI.CS-hi 
 		#.b	255 
@@ -1865,6 +1873,8 @@ SD.write-sector.CF	#.w	10000
 		zero 
 		jsl	timeout.cf
 SD.write-sector.Z		rts
+SD.write-sector.ERR	dc.b	22
+			dc.s	SD.write-sector failed
 ;
 ; FAT.read-long ( addr n -- x, get a little endian longword from the buffer)
 FAT.read-long.LF	dc.l	SD.write-sector.NF
@@ -1994,8 +2004,8 @@ MOUNT.CF	jsl	sd.init.cf
 			jsl	checkFAT32
 			not
 			IF	
-				#.w	2001 
-				jsl	error.cf
+				#.l	MOUNT.ERR
+				THROW
 			THEN
 		THEN
 		R@			
@@ -2044,8 +2054,8 @@ MOUNT.CF	jsl	sd.init.cf
 		#.l	hex 41615252 
 		<> 
 		IF					; confirm valid FSInfo sector
-			#.w	2002 
-			jsl	error.cf					
+			#.l	MOUNT.ERR
+			THROW					
 		THEN
 		R>
 		#.w	492 
@@ -2063,6 +2073,8 @@ MOUNT.CF	jsl	sd.init.cf
 		zero 
 		#.w	FAT.FATinBuf 
 MOUNT.Z	store.l,rts				; FAT buffer initialized
+MOUNT.ERR	dc.b	24
+		dc.s	Not a valid FAT32 volume
 ;
 ; checkFAT32  ( -- flag) examine the current sector to see if it is a FAT32 boot sector
 checkFAT32	#.l	_fat.buf
@@ -2503,10 +2515,12 @@ include.CF	#.b	32
 			R> 
 			jsl	evaluate.cf 			( )
 		ELSE
-			#.b	4 
-			jsl	ERROR.CF
+			#.l	include.ERR 
+			THROW
 		THEN
 include.Z		rts
+include.ERR	dc.b	14
+		dc.s	File not found
 ;
 ; FAT variables
 FAT.RsvdSecCnt		dc.l	0		; number of reserved sectors
@@ -3487,8 +3501,8 @@ INTERPRET.1	dc.b 	 char - char K char O  32
 						jsl	CR.CF
 						jsl 	COUNT.CF			; echo the input string
 						jsl	TYPE.CF
-						#.b	1				; ERROR#
-						jsl	ERROR.CF					
+						#.l	{INTERPRET}.ERR
+						THROW				
 					THEN	
 					nip			( n)
 					#.w	STATE_
@@ -3502,27 +3516,28 @@ INTERPRET.1	dc.b 	 char - char K char O  32
 			THEN
 		REPEAT
 {INTERPRET}.Z	rts
-;	
+{INTERPRET}.ERR	dc.b	27
+			dc.s	Not recognized by INTERPRET
+;
+; ERROR ( c --) display a counted string for an error message	
 ERROR.LF	dc.l 	INTERPRET.NF
 ERROR.NF	dc.b	5 128 +
 		dc.b	char R char O char R char R char E
 ERROR.SF	dc.w	ERROR.Z ERROR.CF del
-ERROR.CF	R@			; indicate calling address on the display
-		#.l	sevenseg
-		store.w
-		#.w 	PALETTE 2 +
+ERROR.CF	#.w 	PALETTE 2 +		; error colour code (usually red)
 		fetch.b
 		#.w	INK
 		store.b
-		#.w	ERROR.0	; TYPE ERROR CR
+		jsl	CR.CF
+		#.w	ERROR.0		; TYPE ERROR:
 		#.b	7
+		jsl	TYPE.CF		
+		jsl	COUNT.CF
 		jsl	TYPE.CF
-		jsl	DOT.CF
 		#.b	EOL
-		jsl	EMIT.CF
-		jsl	QUIT.CF	
+		jsl	EMIT.CF	
 ERROR.Z	rts
-ERROR.0	dc.b 	32 char R char O char R char R char E EOL
+ERROR.0	dc.s 	ERROR: 
 ;
 ;ABORT
 ABORT.LF	dc.l 	ERROR.NF
@@ -3537,13 +3552,20 @@ QUIT.LF	dc.l	ABORT.NF
 QUIT.NF	dc.b	4 128 +
 		dc.b 	char T char I char U char Q
 QUIT.SF	dc.w	QUIT.Z QUIT.CF del
-QUIT.CF	zero
+QUIT.CF	BEGIN
+			RESETSP			; zero stack pointers
+			#.l	{QUIT}.CF
+			CATCH
+			zero				; ALWAYS code catch followed by zero in N.I.G.E. assembler
+			?dup				; non-zero throw code is a counted string
+			IF
+				jsl	error.cf	; report the error
+			THEN
+		AGAIN
+QUIT.Z		rts					; never reached
+;			
+{QUIT}.CF	zero
 		jsl	TIMEOUT.CF				; clear any timeouts
-		RESETSP
-;		zero 						; zero stack pointers
-;		RSP!
-;		zero 
-;		PSP!
 		zero						; set state to interpreting
 		#.w	STATE_
 		store.l
@@ -3553,7 +3575,7 @@ QUIT.CF	zero
 		#.l	_input_size
 		#.w	input_size			
 		store.l
-		BEGIN
+		BEGIN					; MAIN SYSTEM LOOP
 			#.w	PALETTE 0 +			; set input colour
 			fetch.b
 			#.w	INK
@@ -3574,7 +3596,7 @@ QUIT.CF	zero
 			store.b
 			jsl	INTERPRET.CF			; INTERPRET the line		
 		AGAIN
-QUIT.Z		rts		; never reached
+		rts					; never reached
 ;
 ; SOURCE ( -- c-addr len , return the address and length of the input buffer)
 SOURCE.LF	dc.l	QUIT.NF
@@ -4803,9 +4825,11 @@ TICK.CF	#.b	32
 				rts		( XT)
 			THEN
 		THEN
-		#.b	2					; ERROR#
-		jsl	ERROR.CF
+		#.l	TICK.ERR
+		THROW
 TICK.Z		rts
+TICK.ERR	dc.b	14
+		dc.s	Word not found
 ;
 ; LITERAL ( n -- , compile a LITERAL)
 LITERAL.LF	dc.l	TICK.NF
@@ -5566,10 +5590,11 @@ DEFER.CF	jsl	COLON.CF					; prepare the word
 DEFER.Z	rts
 ;
 ; DEFER.RUN is the default behaviour for an uninitialized vector
-DEFER.RUN	#.b	3
-		#.w	ERROR.CF
-		jmp
+DEFER.RUN	#.l	DEFER.ERR
+		THROW
 ;
+DEFER.ERR	dc.b	20
+		dc.s	Uninitialized vector
 ; IS <name> ( XT --), implement a vector in a defer word
 IS.LF		dc.l	DEFER.NF
 IS.NF		dc.b	2 128 +

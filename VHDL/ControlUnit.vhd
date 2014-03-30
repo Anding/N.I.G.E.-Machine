@@ -451,8 +451,8 @@ begin
 			
 			-- Interrupt logic
 			irq_n <= '0';
-			if opcode = ops_RTI then
-				rti <= '1';
+			if opcode = ops_RTI or (opcode = ops_THROW and equalzero = '0') then
+				rti <= '1';												-- THROW from interrupt will also cancel interrupt state
 			else
 				rti <= '0';
 			end if;

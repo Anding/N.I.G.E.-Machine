@@ -247,11 +247,11 @@ begin
 	end process;
 	 
 	with MEMaddr(17 downto 11) select
-		bank_n <= Stack_access when "1111010",
+		bank_n <= Char when "1111010",
 					 Color when "1111011",
 					 Pstack when "1111100",
 					 Rstack when "1111101",
-					 Char when "1111110",
+					 Stack_access when "1111110",
 					 Reg when "1111111",
 					 Sys when others;
 	 

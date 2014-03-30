@@ -13,8 +13,6 @@ entity VGA is
 			  mode		: in STD_LOGIC_VECTOR (4 downto 0);		-- (4) VGA/SVGA	(3) interlace off/on (2) bitmapped off/on, 
 																				-- (1) 16&16/0&256 char color mode, (0) character mapped off/on
 			  background : in STD_LOGIC_VECTOR (15 downto 0);	-- background color for 0&256 char color mode
---			  data_VGA : in STD_LOGIC_VECTOR (7 downto 0);		-- bitmapped memory
---			  addr_VGA : out STD_LOGIC_VECTOR (8 downto 0);
 			  data_Text : in STD_LOGIC_VECTOR (15 downto 0);	-- text memory
 			  addr_Text : out STD_LOGIC_VECTOR (6 downto 0);	-- refers to the column 0 - 79
 			  data_Char : in STD_LOGIC_VECTOR (7 downto 0);		-- character memory
@@ -35,7 +33,6 @@ architecture Behavioral of VGA is
 signal Vcount : std_logic_vector(10 downto 0) := CONV_STD_LOGIC_VECTOR(0,11); 					--  Vertical pixel count  := CONV_STD_LOGIC_VECTOR(664,11);
 signal tVcount, height : std_logic_vector(3 downto 0) := (others=>'0'); 		-- text Vertical count
 signal Hcount : std_logic_vector(10 downto 0) := (others=>'0'); 					-- Horizontal pixel count
---signal addressPixel : std_logic_vector(8 downto 0):= (others=>'0');  			-- On screen address of current pixel
 signal addressText : std_logic_vector(6 downto 0):= (others=>'0');		  		-- On screen address of current character
 signal addressChar : std_logic_vector(10 downto 0):= (others=>'0');		  		-- Char RAM lookup of current character
 signal addressColor : std_logic_vector(7 downto 0):= (others=>'0');	
@@ -51,6 +48,7 @@ signal Va, Vb, Vc, Vd, Ve : std_logic_vector(10 downto 0);
 signal COLUMNS : std_logic_vector(6 downto 0);
 signal Hsync_i, Vsync_i : std_logic;
 signal RGB_i :  STD_LOGIC_VECTOR (11 downto 0);
+signal mode_r: STD_LOGIC_VECTOR (4 downto 0);
 
 
 begin
@@ -64,19 +62,18 @@ begin
 		VSync <= VSync_i;
 	--end process;
 
---	addr_VGA <= addressPixel;
 	addr_Text <= addressText;
 	addr_Char <= addressChar;
 	addr_Color <= addressColor;
 	VBLANK <= vblk1m_i;
 	VGA_COLUMNS <= COLUMNS;
 	
-	with mode(4) select 											-- select the interlace mode
+	with mode_r(4) select 											-- select the interlace mode
 		height <= "1001" when '1',
 					 "0111" when others;
-	PROCESS (mode)
+	PROCESS (mode_r)
 	begin
-		if mode(2 downto 0) = "011" then						-- XGA mode 1024*768
+		if mode_r(2 downto 0) = "011" then						-- XGA mode 1024*768
 			Ha <= CONV_STD_LOGIC_VECTOR(1327,11);
 			Hb <= CONV_STD_LOGIC_VECTOR(1053,11);
 			Hc <= CONV_STD_LOGIC_VECTOR(1189,11);
@@ -87,7 +84,7 @@ begin
 			Vd <= CONV_STD_LOGIC_VECTOR(766,11);
 			Ve <= CONV_STD_LOGIC_VECTOR(805,11);
 			COLUMNS <= CONV_STD_LOGIC_VECTOR(127,7);			 
-		elsif mode(2 downto 0) = "010" then					-- SVGA mode 800*600
+		elsif mode_r(2 downto 0) = "010" then					-- SVGA mode 800*600
 			Ha <= CONV_STD_LOGIC_VECTOR(1039,11);
 			Hb <= CONV_STD_LOGIC_VECTOR(861,11);
 			Hc <= CONV_STD_LOGIC_VECTOR(981,11);
@@ -111,11 +108,14 @@ begin
 			COLUMNS <= CONV_STD_LOGIC_VECTOR(79,7);		
 		end if;
 	end process;
-							
+						
 	PROCESS
 	variable text_f, text_b : std_logic_vector(11 downto 0);			-- text background and forground colors	
 	begin
 		wait until rising_edge(clk_VGA);	
+		
+		-- Register inputs
+		mode_r <= mode;
 	
 		-- Horizontal pixel clock		
 		if Hcount = Ha then 					-- last horizontal pixel: VGA 799, SVGA 1039
@@ -185,7 +185,7 @@ begin
 		end if;
 		
 		-- TEXTbuffer VGA active
-		if Vcount = Va and mode(2 downto 0) /= "000" then
+		if Vcount = Va and mode_r(2 downto 0) /= "000" then
 			VGA_active <= '1';
 		elsif Vcount = Vd then
 			VGA_active <= '0';
@@ -207,7 +207,7 @@ begin
 		-- Read text memory and set char and color memory address
 		addressChar(10 downto 3)<= data_Text(15 downto 8); 		-- char contents of Text RAM
 		addressChar(2 downto 0) <= tVcount(2 downto 0);				-- Vcount(2 downto 0) or (3 downto 1) for 8 or 16 bit char width	
-		if mode(3) = '1' then												-- 256/0 color mode
+		if mode_r(3) = '1' then												-- 256/0 color mode
 			addressColor <= data_TEXT(7 downto 0);
 		else																		-- 16/16 color mode
 			addressColor <= "0000" & data_TEXT(3 downto 0);
@@ -245,7 +245,7 @@ begin
 			text_b := background(11 downto 0);
 		else
 			text_f := char_color;
-			if mode(3) = '1' then 					-- 16&16 color mode
+			if mode_r(3) = '1' then 					-- 16&16 color mode
 				text_b := background(11 downto 0);	
 			else											-- 256&0 color mode
 				text_b := back_color;
@@ -253,7 +253,7 @@ begin
 		end if;
 		
 		-- Drive pixel to output
-		if reset = '0' and Hblk4 = '0' and Vblk0 = '0' and mode(2 downto 0) /= "000" then	-- Hblk4 for synchronization
+		if reset = '0' and Hblk4 = '0' and Vblk0 = '0' and mode_r(2 downto 0) /= "000" then	-- Hblk4 for synchronization
 			if char_pixels(7) = '1' then		
 				RGB_i <= text_f;
 			else

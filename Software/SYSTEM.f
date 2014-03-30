@@ -559,7 +559,7 @@ FILE.LIST LIST.INIT
 			?dup 0= IF FAT.RootClus @ THEN					\ subdirectories reference root at 0
 			FAT.CurrentDirectory !
 		ELSE
-			3001 error
+			c" Filepath not valid" THROW
 		THEN
 	ELSE
 		3000 error
@@ -569,7 +569,7 @@ FILE.LIST LIST.INIT
 : DELETE ( "FILEPATH" --, delete a file)
 	32 word count DELETE-FILE
 	IF
-		3000 error
+		c" DELETE-FILE failed" THROW
 	THEN
 ;
 
