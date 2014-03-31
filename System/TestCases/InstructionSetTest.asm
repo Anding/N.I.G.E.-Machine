@@ -1,8 +1,8 @@
 ;	N.I.G.E. Machine test suite
 ;	30us test time
 ;
-sub0		equ	hex 03D000
-env0		equ	hex 03D080
+sub0		equ	hex 03F000
+env0		equ	hex 03F080
 sevenseg	equ	hex 03F830
 		ds.l	2		; BLOCK RAM simulator bug
 		#.b	0	
@@ -29,6 +29,7 @@ l3		jsl	loadliteral	; run test suite
 		jsl	pushpop
 		jsl	dbl
 		jsl	adjacent
+		jsl	pstack
 		jsl	envstack
 		jsl	substack
 		jsl	arith
@@ -362,7 +363,18 @@ adjacent	#.b	15
 		R>
 		rts
 ;
-envstack	#.b	16
+pstack		#.b	16
+		jsl	announce
+		#.b	1
+		#.b	2
+		#.b	3
+		+
+		+
+		#.b	6
+		-
+		jsl	assert			
+		rts		
+envstack	#.b	17
 		jsl	announce
 		#.l	hex FFEEDDCC
 		#.l	env0
@@ -388,7 +400,7 @@ envt2		#.l	env0
 		#.b	1
 		throw	
 ;
-substack	#.b	17
+substack	#.b	18
 		jsl	announce
 		#.l	hex FFEEDDCC
 		#.l	sub0
@@ -411,7 +423,7 @@ subt3		#.l	sub0
 		rts	
 ;
 ; arithmatic test
-arith    	#.b	18
+arith    	#.b	19
 		jsl 	announce
 		#.l	hex	12345678
 		#.l	hex	aaaa0000
@@ -484,7 +496,7 @@ D-sub		>R		( h2 l2 h1 R: l1)
 		SUBX,rts	( h3 l3)
 ;
 ; others	
-others		#.b	19
+others		#.b	20
 		jsl 	announce
 		#.w	-1	
 		xword

@@ -161,16 +161,6 @@ begin
 		end if;
 	end process;
 	
-	PSP_m1 <= PSP - 1;							-- available for incrementing and decrementing stack pointers
-	PSP_p1 <= PSP + 1;
-	PSaddr <= PSP_n; 								-- parameter stack address	
-	PSdataout_i <= NOS_i;						-- for pushing NOS into memory	
-	PSdataout <= PSdataout_i;	
-	PSw <= PSw_i;	
-	TOS <= TOS_n;									-- output TOS to control unit, once cycle ahead of registered value	IS THIS ESSENTIAL?	
-	TOS_r <= TOS_i;								-- the registered value of TOS
-	NOS <= NOS_n;									-- output NOS to control unit, once cycle ahead of regsitered value	
-
 	-- Return stack
 		--	Rstack_RAM must be configured as write first!
 	
@@ -288,10 +278,23 @@ begin
 	ESdataout <=  SSP & (ReturnAddress(22 downto 0) + 1) & "0000000" & PSP ;
 	
 	-- Parameter stack
+			--	Pstack_RAM must be configured as write first!
 	
-	PSdatain_i <= PwBuff when PSw_m1 = "1"	-- because of 1 cycle memory latency, need to use the buffered value for a stack memory read
-														--   if the stack memory was written just one cycle before (as memory update will not yet have occured)			
-				else PSdatain;		
+--	PSdatain_i <= PwBuff when PSw_m1 = "1"	-- because of 1 cycle memory latency, need to use the buffered value for a stack memory read
+--														--   if the stack memory was written just one cycle before (as memory update will not yet have occured)			
+--				else PSdatain;
+
+	PSP_m1 <= PSP - 1;							-- available for incrementing and decrementing stack pointers
+	PSP_p1 <= PSP + 1;
+	PSaddr <= PSP_n; 								-- parameter stack address	
+	PSdatain_i <= 	PSdatain;
+	PSdataout_i <= NOS_i;						-- for pushing NOS into memory	
+	PSdataout <= PSdataout_i;	
+	PSw <= PSw_i;	
+	TOS <= TOS_n;									-- output TOS to control unit, once cycle ahead of registered value	
+	TOS_r <= TOS_i;								-- the registered value of TOS
+	NOS <= NOS_n;									-- output NOS to control unit, once cycle ahead of registered value	
+	
 			
 	with AuxControl (1 downto 1) select					-- immediate value for loading into TOS (one cycle delay to coincide with microcode)
 		DATA <= 	MEMdatain_X when "0",						-- SRAM fetch or load literal

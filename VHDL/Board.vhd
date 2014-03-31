@@ -345,6 +345,7 @@ begin
 		 doutb => MEMdata_Char
 	  );		
 	
+		-- Pstack_RAM must be configured as WRITE FIRST
 	  	inst_Pstack_RAM : entity work.Pstack_RAM
 	  PORT MAP (
 		 clka => clk_system,
@@ -360,6 +361,7 @@ begin
 		 doutb => MEMdata_Pstack
 	  );
 	  
+	  -- Rstack_RAM must be configured as WRITE FIRST
 	  inst_Rstack_RAM : entity work.Rstack_RAM
 	  PORT MAP (
 		 clka => clk_system,
@@ -373,8 +375,9 @@ begin
 		 addrb => MEMaddr(10 downto 2),
 		 dinb => MEMdataout_X,
 		 doutb => MEMdata_Rstack
-	  );	
+	  );
 	  
+		-- Sstack_RAM must be configured as WRITE FIRST
 		inst_Sstack_RAM : entity work.Sstack_RAM
 		PORT MAP (
 		clka => clk_system,
@@ -384,6 +387,7 @@ begin
 		douta => SSdataIN
 		);
 		
+		-- Estack_RAM must be configured as WRITE FIRST
 		inst_Estack_RAM : entity work.Estack_RAM
 		PORT MAP (
 		clka => clk_system,
