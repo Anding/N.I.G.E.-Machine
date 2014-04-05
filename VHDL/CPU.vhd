@@ -20,6 +20,14 @@ entity CPU is
 				RSdatain : IN std_logic_vector(31 downto 0);
 				RSdataout : OUT std_logic_vector(31 downto 0);
 				RSw : OUT std_logic_vector(0 downto 0);
+				SSaddr : out STD_LOGIC_VECTOR (8 downto 0);			-- Subroutine stack memory
+			   SSdatain : in STD_LOGIC_VECTOR (543 downto 512);	
+			   SSdataout : out STD_LOGIC_VECTOR (543 downto 512);
+			   SSw : out STD_LOGIC_VECTOR (67 downto 64);
+			   ESaddr : out STD_LOGIC_VECTOR (8 downto 0);			-- Exception stack memory
+			   ESdatain : in STD_LOGIC_VECTOR (303 downto 256);	
+			   ESdataout : out STD_LOGIC_VECTOR (303 downto 256);
+			   ESw : out STD_LOGIC_VECTOR (37 downto 32);
 				-- 32 bit wide SRAM databus				
 				MEMaddr : out STD_LOGIC_VECTOR (31 downto 0);			
 			   MEMdatain_X : in STD_LOGIC_VECTOR (31 downto 0);			-- data at ADDR	
@@ -62,13 +70,14 @@ architecture Structural of CPU is
 		clk : IN std_logic;
 		MEMdatain_X : in STD_LOGIC_VECTOR (31 downto 0);	
 		Accumulator : IN std_logic_vector(31 downto 0);
-		MicroControl : IN std_logic_vector(13 downto 0);
+		MicroControl : IN std_logic_vector(20 downto 0);
 		AuxControl : IN std_logic_vector(1 downto 0);
 		ReturnAddress : IN std_logic_vector(31 downto 0);          
 		TOS : OUT std_logic_vector(31 downto 0);					-- unregistered, one cycle ahead of registered
 		TOS_r : OUT STD_LOGIC_VECTOR (31 downto 0);				-- registered			
 		NOS : OUT std_logic_vector(31 downto 0);
 		TORS : OUT std_logic_vector(31 downto 0);
+		ExceptionAddress : OUT STD_LOGIC_VECTOR (31 downto 0);
 		equalzero: OUT std_logic;
 		chip_RAM: OUT std_logic;
 		PSaddr : OUT std_logic_vector(8 downto 0);
@@ -78,7 +87,15 @@ architecture Structural of CPU is
 		RSaddr : OUT std_logic_vector(8 downto 0);
 		RSdatain : IN std_logic_vector(31 downto 0);
 		RSdataout : OUT std_logic_vector(31 downto 0);
-		RSw : OUT std_logic_vector (0 downto 0)
+		RSw : OUT std_logic_vector (0 downto 0);
+		SSaddr : out STD_LOGIC_VECTOR (8 downto 0);			-- Subroutine stack memory
+		SSdatain : in STD_LOGIC_VECTOR (543 downto 512);	
+		SSdataout : out STD_LOGIC_VECTOR (543 downto 512);
+		SSw : out STD_LOGIC_VECTOR (67 downto 64);
+		ESaddr : out STD_LOGIC_VECTOR (8 downto 0);			-- Exception stack memory
+		ESdatain : in STD_LOGIC_VECTOR (303 downto 256);	
+		ESdataout : out STD_LOGIC_VECTOR (303 downto 256);
+		ESw : out STD_LOGIC_VECTOR (37 downto 32)
 		);
 	END COMPONENT;
 
@@ -93,9 +110,10 @@ architecture Structural of CPU is
 		TOS_r : in STD_LOGIC_VECTOR (31 downto 0);					
 		NOS : IN std_logic_vector(31 downto 0);
 		TORS : IN std_logic_vector(31 downto 0);
+		ExceptionAddress : in STD_LOGIC_VECTOR (31 downto 0);
 		equalzero : IN std_logic;
 		chip_RAM : IN std_logic;
-		MicroControl : OUT std_logic_vector(13 downto 0);
+		MicroControl : OUT std_logic_vector(20 downto 0);
 		AuxControl : OUT std_logic_vector(1 downto 0);
 		Accumulator : OUT std_logic_vector(31 downto 0);
 		ReturnAddress : OUT std_logic_vector(31 downto 0);
@@ -131,12 +149,13 @@ architecture Structural of CPU is
 	END COMPONENT;
 
 	signal	Accumulator : std_logic_vector(31 downto 0);
-	signal	MicroControl :  std_logic_vector(13 downto 0);
+	signal	MicroControl :  std_logic_vector(20 downto 0);
 	signal	AuxControl :  std_logic_vector(1 downto 0);
 	signal	ReturnAddress :  std_logic_vector(31 downto 0);          
 	signal	TOS, TOS_r :  std_logic_vector(31 downto 0);
 	signal	NOS :  std_logic_vector(31 downto 0);
 	signal	TORS :  std_logic_vector(31 downto 0);
+	signal 	ExceptionAddress : STD_LOGIC_VECTOR (31 downto 0);
 	signal	equalzero : std_logic;
 	signal	chip_RAM : std_logic;
 
@@ -154,6 +173,7 @@ begin
 		TOS_r => TOS_r,
 		NOS => NOS,
 		TORS => TORS,
+		ExceptionAddress => ExceptionAddress,
 		equalzero => equalzero,
 		chip_RAM => chip_RAM,
 		PSaddr => PSaddr,
@@ -163,7 +183,15 @@ begin
 		RSaddr => RSaddr,
 		RSdatain => RSdatain,
 		RSdataout => RSdataout,
-		RSw => RSw
+		RSw => RSw,
+		SSaddr => SSaddr,
+		SSdatain => SSdatain,	
+		SSdataout => SSdataout,
+		SSw => SSw,
+		ESaddr => ESaddr,
+		ESdatain => ESdatain,
+		ESdataout => ESdataout,
+		ESw => ESw
 	);
 	
 	Inst_ControlUnit: ControlUnit PORT MAP(
@@ -176,6 +204,7 @@ begin
 		TOS_r => TOS_r,
 		NOS => NOS,
 		TORS => TORS,
+		ExceptionAddress => ExceptionAddress,
 		equalzero=> equalzero,
 		chip_RAM => chip_RAM,
 		MicroControl => MicroControl,

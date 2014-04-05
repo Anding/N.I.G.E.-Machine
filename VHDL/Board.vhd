@@ -46,7 +46,7 @@ end Board_Nexys4;
 
 architecture RTL of Board_Nexys4 is
 
-type bank_t is (Sys, Char, Color, Pstack, Rstack, Reg);
+type bank_t is (Sys, Char, Color, Pstack, Rstack, Reg, Stack_access);
 signal SD_WP : std_logic;
 signal bank, bank_n : bank_t;	
 signal counter_clk, counter_ms : std_logic_vector(31 downto 0) := (others =>'0');
@@ -61,7 +61,7 @@ signal RSdatain :  std_logic_vector(31 downto 0);
 signal MEMdatain_Xi :  std_logic_vector(31 downto 0);
 signal MEMdata_Char :  std_logic_vector(7 downto 0);
 signal MEMdata_Color :  std_logic_vector(15 downto 0);
-signal MEMdata_Pstack, MEMdata_Rstack, MEMdata_Reg : std_logic_vector(31 downto 0);          
+signal MEMdata_Pstack, MEMdata_Rstack, MEMdata_Reg, MEMdata_stack_access : std_logic_vector(31 downto 0);          
 signal PSaddr :  std_logic_vector(8 downto 0);
 signal PSdataout :  std_logic_vector(31 downto 0);
 signal PSw :  std_logic_vector(0 to 0);
@@ -72,7 +72,7 @@ signal MEMaddr :  std_logic_vector(31 downto 0);
 signal MEMdataout_X :  std_logic_vector(31 downto 0);
 signal MEM_WRQ_X :  std_logic;
 signal MEM_WRQ_XX : std_logic_vector(0 downto 0);
-signal Sys_EN, Pstack_EN, Rstack_EN, Char_EN, Reg_EN, Color_EN : std_logic;
+signal Sys_EN, Pstack_EN, Rstack_EN, Char_EN, Reg_EN, Color_EN, stack_access_EN : std_logic;
 signal txt_zero : std_logic_vector(23 downto 0);
 signal DATA_OUT_VGA : std_logic_vector(7 downto 0) := (others=>'0');
 signal ADDR_VGA : std_logic_vector(8 downto 0);
@@ -159,6 +159,15 @@ signal clk_MEM : std_logic;
 signal debug : std_logic_vector(31 downto 0);
 signal debug_CPU : std_logic_vector(7 downto 0);
 signal debug_DMAcontroller : std_logic_vector(7 downto 0);
+signal SSdataOUT : std_logic_vector(543 downto 0);
+signal SSdataIN : std_logic_vector(543 downto 0);
+signal SSw : std_logic_vector(67 downto 0);
+signal SSaddr : std_logic_vector(8 downto 0);
+signal ESdataOUT : std_logic_vector(303 downto 0);
+signal ESdataIN : std_logic_vector(303 downto 0);
+signal ESw : std_logic_vector(37 downto 0);
+signal ESaddr : std_logic_vector(8 downto 0);
+
 
 	component CLOCKMANAGER
 	port
@@ -238,13 +247,15 @@ begin
 	end process;
 	 
 	with MEMaddr(17 downto 11) select
-		bank_n <= Color when "1111011",
+		bank_n <= Char when "1111010",
+					 Color when "1111011",
 					 Pstack when "1111100",
 					 Rstack when "1111101",
-					 Char when "1111110",
+					 Stack_access when "1111110",
 					 Reg when "1111111",
 					 Sys when others;
 	 
+	 Stack_access_EN <= '1' when bank_n = Stack_access else '0';
 	 Color_EN <= '1' when bank_n = Color else '0';
 	 Pstack_EN <= '1' when bank_n = Pstack else '0';
 	 Rstack_EN <= '1' when bank_n = Rstack else '0';
@@ -259,6 +270,7 @@ begin
 							"000000000000000000000000" & MEMdata_Char when Char,
 							"0000000000000000" & MEMdata_Color when Color,
 							MEMdata_Reg when Reg,
+							Memdata_stack_access when stack_access,
 							MEMdata_Sys when others;
 							
 	-- splice IOExpansion data ahead of the SRAM
@@ -333,6 +345,7 @@ begin
 		 doutb => MEMdata_Char
 	  );		
 	
+		-- Pstack_RAM must be configured as WRITE FIRST
 	  	inst_Pstack_RAM : entity work.Pstack_RAM
 	  PORT MAP (
 		 clka => clk_system,
@@ -348,6 +361,7 @@ begin
 		 doutb => MEMdata_Pstack
 	  );
 	  
+	  -- Rstack_RAM must be configured as WRITE FIRST
 	  inst_Rstack_RAM : entity work.Rstack_RAM
 	  PORT MAP (
 		 clka => clk_system,
@@ -361,7 +375,27 @@ begin
 		 addrb => MEMaddr(10 downto 2),
 		 dinb => MEMdataout_X,
 		 doutb => MEMdata_Rstack
-	  );	
+	  );
+	  
+		-- Sstack_RAM must be configured as WRITE FIRST
+		inst_Sstack_RAM : entity work.Sstack_RAM
+		PORT MAP (
+		clka => clk_system,
+		wea => SSw,
+		addra => SSaddr,
+		dina => SSdataOUT,
+		douta => SSdataIN
+		);
+		
+		-- Estack_RAM must be configured as WRITE FIRST
+		inst_Estack_RAM : entity work.Estack_RAM
+		PORT MAP (
+		clka => clk_system,
+		wea => ESw,
+		addra => ESaddr,
+		dina => ESdataOUT,
+		douta => ESdataIN
+		);
 	  
 	  inst_Color_RAM : entity work.Color_RAM
 	  PORT MAP (
@@ -387,7 +421,7 @@ begin
 		mode => mode,
 		background => background,
 		en => reg_en,
-		addr => MEMaddr(10 downto 0) ,
+		addr => MEMaddr(10 downto 0),
 		datain => MEMdataout_X,
 		dataout => MEMdata_Reg,
 		wrq => MEM_WRQ_XX,
@@ -411,6 +445,25 @@ begin
 		VBLANK => VBLANK
 	);
 	
+		Inst_stack_access: entity work.stack_access PORT MAP(
+		clk => CLK_SYSTEM,
+		rst => reset,
+		SSdatain => SSdatain(511 downto 0),
+		SSdataout => SSdataout(511 downto 0),
+		SSw => SSw(63 downto 0),
+		SSwSignal => SSw(64),
+		ESdatain => ESdatain(255 downto 0),
+		ESdataout => ESdataout(255 downto 0),
+		ESw => ESw(31 downto 0),
+		ESwSignal => ESw(32),
+		en => stack_access_en,
+		addr => MEMaddr(10 downto 0),
+		datain => MEMdataout_X,
+		dataout => MEMdata_stack_access,
+		wrq => MEM_WRQ_XX
+	);
+	
+	
 		inst_CPU: entity work.CPU PORT MAP(
 		rst => reset,
 		clk => CLK_SYSTEM,
@@ -425,6 +478,14 @@ begin
 		RSdatain => RSdatain,
 		RSdataout => RSdataout,
 		RSw => RSw,
+		SSaddr => SSaddr,
+		SSdatain => SSdatain(543 downto 512),	
+		SSdataout => SSdataout(543 downto 512),
+		SSw => SSw(67 downto 64),
+		ESaddr => ESaddr(8 downto 0),
+		ESdatain => ESdatain(303 downto 256),
+		ESdataout => ESdataout(303 downto 256),
+		ESw => ESw(37 downto 32),
 		MEMaddr => MEMaddr,
 		MEMdatain_X => MEMdatain_Xi,
 		MEMdatain_X_quick => MEMdata_Sys_quick,

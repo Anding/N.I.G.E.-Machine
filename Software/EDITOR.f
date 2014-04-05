@@ -58,10 +58,10 @@ constant ED.SCREENBASE
 	0 >R							( last-node R:linenum)
 	BEGIN							( last-node R:linenum)
 		144 allocate 					( last-node addr ior R:linenum)
-		IF ." ALLOCATE error" ABORT THEN		
+		IF c" ALLOCATE failed" THROW THEN		
 		dup ED.linetxt				( last-node addr text-addr R:linenum)
 		128 ED.fileid @ READ-LINE 			( last-node addr u2 flag ior R:linenum)
-		IF ." READ-LINE error" ABORT THEN		
+		IF c" READ-LINE failed" THROW THEN		
 	WHILE
 		over ED.linelen !			\ store the length u2, excluding delimiters
 		R> 1+ dup >R					( last-node addr newlinenum R:newlinenum)
@@ -134,7 +134,7 @@ constant ED.SCREENBASE
 \ Implement a carriage return press
 : ED.carriage-return
 	\ create a new line and after the old line
-	144 allocate IF ." MEM ERROR" ABORT THEN	( addr)
+	144 allocate IF c" Allocate failed" THROW THEN	( addr)
 	ED.cursorline @ over over LIST.ins		( new-line old-line)
 	\ copy the characters following the cursor to the new line
 	dup ED.linelen @ ED.cursorcol @ - >R	( new-line old-line R:count)
@@ -507,7 +507,7 @@ constant ED.SCREENBASE
 \ Open an existing file and commence editing
 : EDIT ( "filename"  --)  
 	32 WORD COUNT		( c-addr n)
-	R/W OPEN-FILE IF ." OPEN-FILE error" ABORT THEN
+	R/W OPEN-FILE IF c" OPEN-FILE failed" THROW THEN
 	ED.fileid !
 	ED.load ED.mainloop
 ;
@@ -515,7 +515,7 @@ constant ED.SCREENBASE
 \ Open a new file and commence editing
 : EDITNEW ( "filename" --)
 	32 WORD COUNT		( c-addr n)
-	R/W CREATE-FILE IF ." CREATE-FILE error" ABORT THEN
+	R/W CREATE-FILE IF c" CREATE-FILE failed" THROW THEN
 	ED.fileid !
 	ED.load ED.mainloop
 ;	

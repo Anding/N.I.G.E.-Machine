@@ -190,7 +190,7 @@ TEMP CONSTANT FLAGS
 : QUICK  ( f l)   DEPTH >R   BEGIN  Hoarify DEPTH R@ <
       UNTIL  R> DROP ;
 
-: SORT  ( a n)   DUP 0= IF ." Nothing to sort"  ABORT THEN
+: SORT  ( a n)   DUP 0= IF c" Nothing to sort"  THROW THEN
     1- CELLS  OVER +  QUICK ;
 
 : pointers ( n -- a)
@@ -294,7 +294,7 @@ TEMP CONSTANT LIST
 
 : VERIFY-LIST ( -- )
   LIST ELEMENTS 1- CELLS MYBOUNDS DO
-    I 2@ > IF ." BUBBLE-SORT: NOT SORTED" ABORT THEN
+    I 2@ > IF c" BUBBLE-SORT: NOT SORTED" THROW THEN
   CELL +LOOP
 ;
 

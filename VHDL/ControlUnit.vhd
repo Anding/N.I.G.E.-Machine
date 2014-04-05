@@ -16,10 +16,11 @@ entity ControlUnit is
 			  TOS : in STD_LOGIC_VECTOR (31 downto 0);					-- Top Of Stack (TOS_n from datapath, one cycle ahead of registered value)
 			  TOS_r : in STD_LOGIC_VECTOR (31 downto 0);					-- Top Of Stack (TOS from datapath, the registered value)
 			  NOS : in STD_LOGIC_VECTOR (31 downto 0);					-- Next On Stack
-			  TORS : in STD_LOGIC_VECTOR (31 downto 0);	  				-- Top Of Return Stack
+			  TORS : in STD_LOGIC_VECTOR (31 downto 0);	  				-- Subroutine return address
+			  ExceptionAddress : in STD_LOGIC_VECTOR (31 downto 0);	-- Exception return address
 			  equalzero : in STD_LOGIC;										-- flag '1' when TOS is zero
 			  chip_RAM : in STD_LOGIC;											-- flag used to identify SRAM vs. PSDRAM memory access
-			  MicroControl : out STD_LOGIC_VECTOR (13 downto 0);		-- ouput control logic
+			  MicroControl : out STD_LOGIC_VECTOR (20 downto 0);		-- ouput control logic
 			  AuxControl : out STD_LOGIC_VECTOR (1 downto 0);			-- output control logic
 			  Accumulator : out STD_LOGIC_VECTOR (31 downto 0);		-- literal value captured from memory for writing to TOS
 			  ReturnAddress : out STD_LOGIC_VECTOR (31 downto 0);		-- return address on interrupt, BSR or JSR for writing to TORS
@@ -60,13 +61,19 @@ COMPONENT Microcode_ROM															-- storage of microcode in BLOCK RAM
   PORT (
     clka : IN STD_LOGIC;
     addra : IN STD_LOGIC_VECTOR(5 DOWNTO 0);
-    douta : OUT STD_LOGIC_VECTOR(13 DOWNTO 0)
+    douta : OUT STD_LOGIC_VECTOR(20 DOWNTO 0)
   );
 END COMPONENT;
 
 -- opcodes (bits 5 downto 0) of the instructions
 constant ops_NOP : std_logic_vector(5 downto 0):= "000000";
 constant ops_DROP : std_logic_vector(5 downto 0) := "000001";
+-- @2D RETURN STACK
+constant ops_toR : std_logic_vector(5 downto 0) := "000111";
+constant ops_Rfrom : std_logic_vector(5 downto 0) := "001001";
+constant ops_CATCH : std_logic_vector(5 downto 0) := "001011";
+constant ops_THROW : std_logic_vector(5 downto 0) := "001101";
+--
 constant ops_IFDUP : std_logic_vector(5 downto 0) := "110011";
 constant ops_INC : std_logic_vector(5 downto 0) := "010001";
 constant ops_SMULT : std_logic_vector(5 downto 0) := "101001";
@@ -92,7 +99,8 @@ constant ops_RTI : std_logic_vector(5 downto 0) := "111100";
 -- internal opcodes used for microcode
 constant ops_PUSH : std_logic_vector(5 downto 0) :=  "111101";
 constant ops_REPLACE  : std_logic_vector(5 downto 0) := "111110";
-constant ops_JSI : std_logic_vector(5 downto 0) := "111000";      -- replace with ops_JSL
+--constant ops_JSI : std_logic_vector(5 downto 0) := "111000"; 
+constant ops_THROW2 : std_logic_vector(5 downto 0) := "111101"; 
 
 -- branch codes (bits 7 downto 6) of the instructions
 constant bps_RTS : std_logic_vector(1 downto 0) := "01";
@@ -108,7 +116,7 @@ type state_T is (common, ifdup, smult, umult, sdivmod, udivmod, sdivmod_load, ud
 						Sfetch_long, Sfetch_word, Sfetch_byte,
 						Dfetch_long, Dfetch_long2, Dfetch_word, Dfetch_byte, Dfetch_word2, Dfetch_byte2,
 						Dstore_long, Dstore_word, Dstore_byte, Dstore2,
-						skip1) ;					
+						throw, throw2, skip1) ;					
 						
 signal state, state_n  : state_T;										-- state machine
 signal PC, PC_n, PC_plus, PC_jsl, PC_branch, PC_m1, PC_skipbranch : std_logic_vector (19 downto 0);		-- program counter logic
@@ -223,7 +231,7 @@ begin
 	process (state, state_n, PC, PC_n, PC_plus, PC_jsl, PC_branch, PC_skipbranch, PC_m1, PC_addr, delta, PC_plus_two, PC_plus_three, PC_plus_four,
 				ucode, equalzero,branch, opcode, chip_RAM, MEMdatain_X, retrap,
 				s_axi_awready, s_axi_wready, s_axi_arready, s_axi_rvalid, s_axi_rdata, axiaddr, 
-				TOS, TOS_r, NOS, TORS, int_trig, int_vector_ext, int_vector_ext_i, branch, opcode, delayed_RTS)
+				TOS, TOS_r, NOS, TORS, int_trig, int_vector_ext, int_vector_ext_i, branch, opcode, delayed_RTS, ExceptionAddress)
 	begin																					-- combinational section of state machine
 		case state is
 
@@ -234,9 +242,12 @@ begin
 	
 			if int_trig = '1' or retrap(0) = '1' or branch = bps_BRA or branch = bps_BEQ 
 				or opcode = ops_JSL  or opcode = ops_JSR or opcode = ops_JMP or opcode = ops_TRAP or opcode = ops_RETRAP or
-				opcode = ops_byte or opcode = ops_word or opcode = ops_long or 
-				(opcode = ops_ifdup and equalzero = '0') 
-				then state_n <= skip1;														
+				opcode = ops_byte or opcode = ops_word or opcode = ops_long or opcode = ops_catch or 
+				(opcode = ops_ifdup and equalzero = '0') or
+				((opcode = ops_toR or opcode = ops_Rfrom) and MEMdatain_X(23 downto 22) = "01")  -- 2D return stack
+				then state_n <= skip1;		
+			elsif opcode = ops_throw and equalzero = '0' then
+				state_n <= throw;
 			elsif opcode = ops_lfetch then
 				if chip_RAM = '1' then
 					state_n <= Sfetch_long;	
@@ -333,6 +344,14 @@ begin
 								PC_n <= TOS(19 downto 0);		
 							when ops_JMP =>
 								PC_n <= TOS(19 downto 0);	
+							when ops_CATCH =>
+								PC_n <= TOS(19 downto 0);
+							when ops_THROW =>
+								if equalzero = '0' then
+									PC_n <= ExceptionAddress(19 downto 0);
+								else
+									PC_n <= PC_plus;
+								end if;
 							when ops_word =>
 								PC_n <= PC_plus_two;
 							when ops_long =>
@@ -358,7 +377,20 @@ begin
 							when ops_UMULT =>
 								PC_n <= PC;		
 							when ops_IFDUP =>
-								PC_n <= PC;										
+								PC_n <= PC;	
+		-- 2D Return stack
+							when ops_toR =>
+								if MEMdatain_X(23 downto 22) = "01" then
+									PC_n <= PC;
+								else
+									PC_n <= PC_plus;
+								end if;
+							when ops_Rfrom =>
+								if MEMdatain_X(23 downto 22) = "01" then
+									PC_n <= PC;
+								else
+									PC_n <= PC_plus;
+								end if;								
 							when others =>
 								PC_n <= PC_plus;
 							end case;
@@ -367,7 +399,7 @@ begin
 				
 			-- Microcode logic
 			if int_trig = '1' or retrap(0) = '1' then
-				ucode <= ops_JSI;												-- interrupt microcode 
+				ucode <= ops_JSL;												-- interrupt microcode 
 			else
 				case branch is
 					when bps_BRA =>
@@ -383,7 +415,13 @@ begin
 --							when ops_RTI =>						-- these instructions have no microcode but overlap with internal microcode
 --								ucode <= ops_NOP;
 --							when ops_TRAP =>	
---								ucode <= ops_NOP;									
+--								ucode <= ops_NOP;	
+							when ops_THROW =>
+								if equalzero = '0' then
+									ucode <= opcode;
+								else
+									ucode <= ops_drop;
+								end if;
 						   when others =>
 								ucode <= opcode;
 						end case;
@@ -413,8 +451,8 @@ begin
 			
 			-- Interrupt logic
 			irq_n <= '0';
-			if opcode = ops_RTI then
-				rti <= '1';
+			if opcode = ops_RTI or (opcode = ops_THROW and equalzero = '0') then
+				rti <= '1';												-- THROW from interrupt will also cancel interrupt state
 			else
 				rti <= '0';
 			end if;
@@ -1127,7 +1165,32 @@ begin
 			s_axi_arvalid <= '0';
 			s_axi_rready <= '0';	
 			debug_i <= x"18";	
-		
+			
+		when throw =>									
+			state_n <= common;							-- after changing PC, this wait state allows a memory read before execution of next instruction
+			timer <= 0;
+			PC_n <= PC_plus;
+			ucode <= ops_THROW2;																			
+			accumulator <= (others=>'0');
+			MEMaddr_i <= PC_addr;				
+			MEM_WRQ_X_i <= '0';
+			MEMsize_X_n <= "11";
+			MEMdataout_X <= NOS;	
+			AuxControl_n(0 downto 0) <= "0";
+			AuxControl_n(1 downto 1) <= "0";
+			ReturnAddress_n <= PC_addr;
+			irq_n <= int_trig;
+			rti <= '0';
+			retrap_n <= retrap;
+			delayed_RTS_n <= delayed_RTS;
+			s_axi_awvalid <= '0';
+			s_axi_wdata <= NOS;
+			s_axi_wstrb <= "1111";
+			s_axi_wvalid <= '0';
+			s_axi_arvalid <= '0';
+			s_axi_rready <= '0';	
+			debug_i <= x"19";
+			
 		when others =>										-- skip1, but use default case for speed optimization
 			state_n <= common;							-- after changing PC, this wait state allows a memory read before execution of next instruction
 			timer <= 0;
