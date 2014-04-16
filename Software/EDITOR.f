@@ -353,20 +353,20 @@ constant ED.SCREENBASE
 : ED.drawcursor
 	ED.cursoraddr
 	dup w@
-	255 and 10 16 * 3 + 256 * or				\ cursorcolor: background = 10, textcolor = 3
+	255 and 10 16 * 2 + 256 * or				\ cursorcolor: background = 10, textcolor = 2
 	swap w!
 ;
 
 : ED.undrawcursor
 	ED.cursoraddr
 	dup w@
-	255 and 3 256 * or						\ textcolor = 3
+	255 and 2 256 * or						\ textcolor = 2
 	swap w!
 ;
 
 \ paste a character into the buffer and prepare for the next
 : ED.refreshchar ( addr c - next-addr)
-	3 256 * or							\ textcolor = 3
+	2 256 * or							\ textcolor = 2
 	over w!
 	1+ 1+
 ;
@@ -388,7 +388,7 @@ constant ED.SCREENBASE
 			swap 1+					( dest char col')		
 			dup COLS C@ 1- < IF				( dest char col' )			\ within the line
 				swap rot over				( col' char dest char)
-				3 256 * or				( col' char dest char+color)	\ textcolor = 3
+				2 256 * or				( col' char dest char+color)	\ textcolor = 2
 				over w!				( col' char dest)
 				1+ 1+					( col' char dest')
 				-rot					( dest' col' char)
@@ -519,3 +519,41 @@ constant ED.SCREENBASE
 	ED.fileid !
 	ED.load ED.mainloop
 ;	
+
+variable printfile.ID
+128 buffer: printfile.buf
+
+: {print-file} ( -- inner routine for print-file)
+	CR
+	2 ink c!
+	0			\ line count
+	BEGIN
+		printfile.buf dup 128 printfile.ID @ read-line
+		IF c" read-line failed" THROW THEN
+	WHILE
+		type CR
+		1+				\ update the line count
+		dup rows c@ /mod drop
+		0= IF key drop THEN	\ screenfull - wait for a keypress to continue	
+	REPEAT
+	drop drop		\ drop address and length
+	. ." lines"
+;
+
+\ Display the contents of a file
+: print-file ( c-addr u -- display the contents of a file)
+	R/W open-file 
+	IF c" open-file failed" THROW THEN
+	printfile.ID !
+	
+	['] {print-file} catch 		\ clean-up in success or fail case
+	printfile.ID @ close-file drop 
+	6 ink c!		\ reset ink color
+	IF THROW THEN
+;
+
+\ Display the contents of a file
+: printout ( "FILENAME" -- display the contents of a file)
+	32 WORD COUNT
+	print-file 
+;

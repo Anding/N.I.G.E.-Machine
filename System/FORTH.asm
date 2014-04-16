@@ -1241,6 +1241,8 @@ VTYPE.CF	?dup
 				fetch.b
 				jsl	VEMIT.CF
 			LOOP
+		ELSE				\ null length
+			drop			\ drop address
 		THEN
 VTYPE.Z	rts
 ;				
@@ -1374,7 +1376,7 @@ TAB.NF		dc.b	3 128 +
 TAB.SF		dc.w	4
 TAB.CF		#.w	TAB
 		rts
-TAB		dc.l	3
+TAB		dc.l	7			; default to 7 spaces
 ;
 ROWS.LF	dc.l	TAB.NF
 ROWS.NF	dc.b	4 128 +
