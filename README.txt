@@ -9,7 +9,7 @@ Short video introduction to the system:
 Demonstration of an example application with a light sensor:
 <http://www.youtube.com/watch?v=0Kj5EMdnkMk>
 
-Refereed papers describing the design presented at EuroFORTH 2012 and 2013: 
+Refereed papers about the system as presented at EuroFORTH 2012 and 2013: 
 http://www.complang.tuwien.ac.at/anton/euroforth/ef12/papers/
 http://www.complang.tuwien.ac.at/anton/euroforth/ef13/papers/
 
@@ -30,13 +30,13 @@ The N.I.G.E Machine is distributed in the hope that it will be useful, but WITHO
 Reference manual
 ================
 
-A 50 page reference manual is available that covers getting started through to system customization, with detailed appendices.  Please see the file \Resources\Nige Machine Manual.pdf
+A 50 page reference manual is available that covers getting started through to system customization, with detailed appendices.  Please see the file \Resources\Nige Machine Manual.pdf (in branch v3.0)
 
 
 Respoistory structure
 =====================
 
-\Resources contains documentation and other reference materials
+\Resources contains documentation and other reference materials (please go to branch v3.0 to find the reference manual)
 
 \VHDL contains all of the logic design (VHDL files) for the N.I.G.E. Machine
 
@@ -67,8 +67,8 @@ Suggested experience
 Hardware
 --------
 
-The system currently runs on a Digilent Nexys 2 or Nexys 4 development board.  Please note that there are two versions of the Nexys 2, 1200k gates and 500k gates.  The design has been developed and tested with the 1200k gate board.  A port to the 500k gate board would likely be quite feasible but has not been tested.  If acquiring a new board then the Nexys 4 is is recommended.
-<http://www.digilentinc.com/Products/Detail.cfm?NavPath=2,400,789&Prod=NEXYS2>
+The system currently runs on a Digilent Nexys 2 or Nexys 4 development board.  Please note that there are two versions of the Nexys 2, 1200k gates and 500k gates.  The design has been developed and tested with the 1200k gate board.  A port to the 500k gate board would likely be quite feasible but has not been tested.  If acquiring a new board then the Nexys 4 is recommended.
+http://www.digilentinc.com/Products/Detail.cfm?NavPath=2,400,789&Prod=NEXYS2
 https://digilentinc.com/Products/Detail.cfm?NavPath=2,400,1184&Prod=NEXYS4
 
 
@@ -92,6 +92,15 @@ Set Tools/Options/General/Defaults "Tab Width" to 7
 
 * VFX Forth from MicroProcessor Engineering
 <http://www.mpeforth.com/>
+
+
+Versions
+========
+There are several versions in this repository 
+v3.0 is applicable to the Nexys4 board.  It is being actively developed with bug fixes and new features.
+v2.0 is applicable to the Nexys2 board (1200K gate).  It has been thoroughly tested but some small bugs likely remain.  It is not currently being further developed
+(There is also an experimental branch of v2.0 applicable to the v2.0 Nexys2 board (500K gate))
+v1.0 is the original version that was presented at EuroFORTH 2012
 
 
 Possible next steps
