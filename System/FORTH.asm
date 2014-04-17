@@ -45,7 +45,7 @@ VBLANK		equ	hex f848
 ;
 ; **** MEMORY MAP ****
 ;
-SRAMSIZE	equ	48128			; Amount of SRAM
+SRAMSIZE	equ	27648			; Amount of SRAM
 RSrxBUF	equ	hex 010000		; RS232 buffer (256 bytes)	
 PSBUF		equ	hex 010100		; PS/2 keyboard buffer (256 bytes)
 _input_buff	equ	hex 010200		; default input buffer location (used by ACCEPT)
@@ -345,6 +345,8 @@ STYPE.CF	?dup				( c-addr n true | c-addr false)
 				store.l		( )
 				zero			( dummy)
 			THEN
+		ELSE
+			drop
 		THEN
 STYPE.Z	drop,rts		( )
 ;	
@@ -1216,6 +1218,8 @@ VTYPE.CF	?dup
 				fetch.b
 				jsl	VEMIT.CF
 			LOOP
+		ELSE
+			drop
 		THEN
 VTYPE.Z	rts
 ;				
@@ -1383,7 +1387,7 @@ TAB.NF		dc.b	3 128 +
 TAB.SF		dc.w	4
 TAB.CF		#.w	TAB
 		rts
-TAB		dc.l	3
+TAB		dc.l	7
 ;
 ROWS.LF	dc.l	TAB.NF
 ROWS.NF	dc.b	4 128 +

@@ -5,7 +5,7 @@ use IEEE.STD_LOGIC_UNSIGNED.ALL;
 Library UNISIM;
 use UNISIM.vcomponents.all;
 
-entity Board_Nexys2_1200 is
+entity Board_Nexys2_500 is
     Port ( CLK_IN : in  STD_LOGIC;
 			  RGB : out  STD_LOGIC_VECTOR (7 downto 0);
            HSync : out  STD_LOGIC;
@@ -43,9 +43,9 @@ entity Board_Nexys2_1200 is
 			  EppDB  : inout std_logic_vector(7 downto 0); 
 			  EppWait: out std_logic
 			  );
-end Board_Nexys2_1200;
+end Board_Nexys2_500;
 
-architecture RTL of Board_Nexys2_1200 is
+architecture RTL of Board_Nexys2_500 is
 type bank_t is (Sys, Char, Pstack, Rstack, Reg);
 signal bank, bank_n : bank_t;	
 signal counter_clk, counter_ms : std_logic_vector(31 downto 0) := (others =>'0');
@@ -298,13 +298,13 @@ begin
 		 clka => clk_system,
 		 ena => ram_en,
 		 wea => wea_sysram,
-		 addra => addra_sysram (15 downto 2),					-- write depth 12032, 15downto2
+		 addra => addra_sysram (14 downto 2),					-- write depth 6912, 14downto2
 		 dina => dina_sysram,
 		 douta => douta_sysram,
 		 clkb => clk_system,
 		 enb => ram_en,
 		 web => web_sysram,
-		 addrb => addrb_sysram (15 downto 2),
+		 addrb => addrb_sysram (14 downto 2),
 		 dinb => dinb_sysram,
 		 doutb => doutb_sysram
 	  );

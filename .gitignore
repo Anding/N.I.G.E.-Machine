@@ -1,2 +1,6 @@
 Xilinx*/
 t.*
+impact*
+webtalk*
+~*
+usage_statistics*

@@ -1,0 +1,125 @@
+NET "CLK_IN" LOC="B8";
+NET "HSync" LOC= "T4";
+NET "VSync" LOC= "U3";
+NET "RGB<0>" LOC= "R9";
+NET "RGB<1>" LOC= "T8";
+NET "RGB<2>" LOC= "R8";
+NET "RGB<3>" LOC= "N8";
+NET "RGB<4>" LOC= "P8";
+NET "RGB<5>" LOC= "P6";
+NET "RGB<6>" LOC= "U5";
+NET "RGB<7>" LOC= "U4";
+NET "OE_SDRAM"   LOC = "T2";
+NET "WE_SDRAM" 	LOC = "N7";
+NET "ADV_SDRAM" 	LOC = "J4";
+NET "CLK_SDRAM"	LOC = "H5";
+NET "UB_SDRAM" 	LOC = "K4";
+NET "LB_SDRAM"		LOC = "K5";
+NET "CE_SDRAM"		LOC = "R6";
+NET "CRE_SDRAM"	LOC = "P7";
+NET "WAIT_SDRAM"	LOC = "F5";
+NET "ADDR_SDRAM<23>" LOC = "K6";
+NET "ADDR_SDRAM<22>" LOC = "D1";
+NET "ADDR_SDRAM<21>" LOC = "K3";
+NET "ADDR_SDRAM<20>" LOC = "D2";
+NET "ADDR_SDRAM<19>" LOC = "C1";
+NET "ADDR_SDRAM<18>" LOC = "C2";
+NET "ADDR_SDRAM<17>" LOC = "E2";
+NET "ADDR_SDRAM<16>" LOC = "M5";
+NET "ADDR_SDRAM<15>" LOC = "E1";
+NET "ADDR_SDRAM<14>" LOC = "F2";
+NET "ADDR_SDRAM<13>" LOC = "G4";
+NET "ADDR_SDRAM<12>" LOC = "G5";
+NET "ADDR_SDRAM<11>" LOC = "G6";
+NET "ADDR_SDRAM<10>" LOC = "G3";
+NET "ADDR_SDRAM<9>"	LOC = "F1";
+NET "ADDR_SDRAM<8>" 	LOC = "H6";
+NET "ADDR_SDRAM<7>" 	LOC = "H3";
+NET "ADDR_SDRAM<6>" 	LOC = "J5";
+NET "ADDR_SDRAM<5>" 	LOC = "H2";
+NET "ADDR_SDRAM<4>" 	LOC = "H1";
+NET "ADDR_SDRAM<3>"	LOC = "H4";
+NET "ADDR_SDRAM<2>" 	LOC = "J2";
+NET "ADDR_SDRAM<1>"	LOC = "J1";
+NET "DATA_SDRAM<15>" LOC = "T1";
+NET "DATA_SDRAM<14>" LOC = "R3";
+NET "DATA_SDRAM<13>" LOC = "N4";
+NET "DATA_SDRAM<12>" LOC = "L2";
+NET "DATA_SDRAM<11>" LOC = "M6";
+NET "DATA_SDRAM<10>" LOC = "M3";
+NET "DATA_SDRAM<9>" 	LOC = "L5";
+NET "DATA_SDRAM<8>" 	LOC = "L3";
+NET "DATA_SDRAM<7>"	LOC = "R2";
+NET "DATA_SDRAM<6>"	LOC = "P2";
+NET "DATA_SDRAM<5>" 	LOC = "P1";
+NET "DATA_SDRAM<4>"	LOC = "N5";
+NET "DATA_SDRAM<3>" 	LOC = "M4";
+NET "DATA_SDRAM<2>" 	LOC = "L6";
+NET "DATA_SDRAM<1>" 	LOC = "L4";
+NET "DATA_SDRAM<0>"	LOC = "L1";
+NET "RXD_S0" LOC="U6";
+NET "TXD_S0" LOC="P9";
+NET "PS2C" CLOCK_DEDICATED_ROUTE = FALSE;
+NET "PS2C" LOC = "R12";
+NET "PS2D" LOC = "P11";
+NET "EppAstb"   LOC = "V14"; # Bank = 2, Pin name = IP_L23P_2, Type = INPUT, Sch name = U-FLAGA
+NET "EppAstb"   CLOCK_DEDICATED_ROUTE = FALSE;
+NET "EppDstb"   LOC = "U14"; # Bank = 2, Pin name = IP_L23N_2, Type = INPUT, Sch name = U-FLAGB
+NET "EppDstb"	 CLOCK_DEDICATED_ROUTE = FALSE;
+NET "EppWr"   	 LOC = "V16"; # Bank = 2, Pin name = IP, Type = INPUT, Sch name = U-FLAGC
+NET "EppWait"   LOC = "N9"; # Bank = 2, Pin name = IO_L12P_2/D7/GCLK12, Type = DUAL/GCLK, Sch name = U-SLRD
+NET "EppDB<0>"  LOC = "R14"; # Bank = 2, Pin name = IO_L24N_2/A20, Type = DUAL, Sch name = U-FD0
+NET "EppDB<1>"  LOC = "R13"; # Bank = 2, Pin name = IO_L22N_2/A22, Type = DUAL, Sch name = U-FD1
+NET "EppDB<2>"  LOC = "P13"; # Bank = 2, Pin name = IO_L22P_2/A23, Type = DUAL, Sch name = U-FD2
+NET "EppDB<3>"  LOC = "T12"; # Bank = 2, Pin name = IO_L20P_2, Type = I/O, Sch name = U-FD3
+NET "EppDB<4>"  LOC = "N11"; # Bank = 2, Pin name = IO_L18N_2, Type = I/O, Sch name = U-FD4
+NET "EppDB<5>"  LOC = "R11"; # Bank = 2, Pin name = IO, Type = I/O, Sch name = U-FD5
+NET "EppDB<6>"  LOC = "P10"; # Bank = 2, Pin name = IO_L15N_2/D1/GCLK3, Type = DUAL/GCLK, Sch name = U-FD6
+NET "EppDB<7>"  LOC = "R10"; # Bank = 2, Pin name = IO_L15P_2/D2/GCLK2, Type = DUAL/GCLK, Sch name = U-FD7
+NET "SW<0>" LOC = "G18";
+NET "SW<1>" LOC = "H18";
+NET "SW<2>" LOC = "K18";
+NET "SW<3>" LOC = "K17";
+NET "SW<4>" LOC = "L14";
+NET "SW<5>" LOC = "L13";
+NET "SW<6>" LOC = "N17";
+NET "SW<7>" LOC = "R17";
+NET "anode<0>" LOC = "F17";
+NET "anode<1>" LOC = "H17";
+NET "anode<2>" LOC = "C18";
+NET "anode<3>" LOC = "F15";
+NET "sevenseg<0>" LOC = "L18";
+NET "sevenseg<1>" LOC = "F18";
+NET "sevenseg<2>" LOC = "D17";
+NET "sevenseg<3>" LOC = "D16";
+NET "sevenseg<4>" LOC = "G14";
+NET "sevenseg<5>" LOC = "J17";
+NET "sevenseg<6>" LOC = "H14";
+#NET "BTN<0>"  LOC = "B18"  ;
+#NET "BTN<1>"  LOC = "D18"  ;
+#NET "BTN<2>"  LOC = "E18"  ;
+#NET "BTN<3>"  LOC = "H13"  ;
+# RS232 on PORT D
+#NET "RXD_S1" LOC="P18";
+#NET "TXD_S1" LOC="N18";
+# SD card in PORT A
+NET "SD_CS" LOC="L15";
+NET "MOSI" LOC="K12";
+NET "MISO" LOC="L17";
+NET "SCK" LOC="M15";
+NET "SD_CD" LOC="M14";
+NET "SD_WP" LOC="M16";
+#Created by Constraints Editor (xc3s1200e-fg320-4) - 2013/06/04
+NET "CLK_IN" TNM_NET = CLK_IN;
+TIMESPEC TS_CLK_IN = PERIOD "CLK_IN" 20 ns HIGH 50% ; #INPUT_JITTER 200 ps;
+#SYSTEM_JITTER = 300 ps;
+OFFSET = IN 20 ns VALID 20 ns BEFORE "CLK_IN" RISING;
+OFFSET = OUT 20 ns AFTER "CLK_IN";
+NET "clk_system" TNM_NET = CLK_SYSTEM;
+#NET "clk_2xsys" TNM_NET = CLK_2XSYS;
+NET "clk_vga" TNM_NET = CLK_VGA;
+#TIMESPEC TS_CROSS_CLOCK_DOMAIN_1 = FROM "CLK_SYSTEM" TO "CLK_2XSYS" 20 ns;
+#TIMESPEC TS_CROSS_CLOCK_DOMAIN_2 = FROM "CLK_2XSYS" TO "CLK_SYSTEM" 10 ns;
+TIMESPEC TS_CROSS_CLOCK_DOMAIN_3 = FROM "CLK_VGA" TO "CLK_SYSTEM" 20 ns;
+TIMESPEC TS_CROSS_CLOCK_DOMAIN_4 = FROM "CLK_SYSTEM" TO "CLK_VGA" 20 ns;
+TIMESPEC TS_RAM_INPUTS = TO "RAMS" 20 ns;
