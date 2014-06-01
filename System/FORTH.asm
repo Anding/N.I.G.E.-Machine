@@ -46,6 +46,13 @@ VBLANK		equ	hex 03f848
 ; **** MEMORY MAP ****
 ;
 PSTACK		equ	hex 03e000		; Parameter stack
+SSTACK		equ	hex 03f000		; Subroutine stack
+ESTACK		equ	hex 03f080		; Exception stack
+BASE_		equ	hex 03f080		; BASE is located on the exception stack
+TYPE_VECTOR	equ	hex 03f084		; input and output vectors also located on the exception stack
+EMIT_VECTOR	equ	hex 03f088
+KEY_VECTOR	equ	hex 03f08c
+KEY?_VECTOR	equ	hex 03f090
 SRAMSIZE	equ	128 1024 *		; Amount of SRAM in bytes
 SCREENWORDS	equ	hex 006000		; number of words in the screen buffer (96 rows * 128 cols * 2 screens)
 RSrxBUF	equ	hex 040000		; RS232 buffer (256 bytes)	
@@ -58,7 +65,8 @@ _TEXT_ZERO	equ	hex 040600		; default text memory location
 _TEXT_END	equ	hex 04C600		; one byte beyond the text memory location
 _FAT.buf	equ	hex 04C600		; FAT 512 byte storage space location 017B30
 _FAT.buffat	equ	hex 04C800		; FAT 512 byte storage space location for file allocation table 017D30
-_END		equ	hex 04CA00		; HEAP location 017F30
+_LOCAL.buf	equ	hex 04CA00		; 512 byte storage location for local variable names
+_END		equ	hex 04CC00		; HEAP location
 ;
 ; **** FORTH LANGUAGE CONSTANTS ****
 ;
@@ -87,6 +95,8 @@ opRTS		equ	64
 opOVER=	equ	4 256 * 22 +
 opBEQ		equ	128 256 *
 opBRA		equ	192 256 *
+opFETCH.L	equ	45
+opSTORE.L	equ	46
 ;
 ; ----------------------------------------------------------------------------------------------
 ; Interrupt vectors
@@ -220,12 +230,30 @@ MS.ERR		dc.b	15
 ; Boot code (within branch distance from 0)
 ; -----------------------------------------------------------------------------------------------
 ;
-START.CF	jsl	SCRSET.CF
+; set the exception stack variables
+START.CF	#.b	10		
+		#.l	BASE_
+		store.l
+		#.w	VTYPE.CF
+		#.l	TYPE_VECTOR
+		store.l
+		#.w	VEMIT.CF
+		#.l	EMIT_VECTOR
+		store.l
+		#.w	KKEY.CF
+		#.l	KEY_VECTOR
+		store.l
+		#.w	KKEY?.CF
+		#.l	KEY?_VECTOR
+		store.l
+; configure the screen
+		jsl	SCRSET.CF
 		jsl	CLS.CF
 		#.b	6
 		#.w	INK
 		store.b
-		#.w	START.0	; First part of power-on message
+; Power-on message
+		#.w	START.0	
 		#.b	52
 		jsl	TYPE.CF
 		jsl	UNUSED.CF	; Show free bytes
@@ -1399,10 +1427,10 @@ COLS		dc.b	100
 		dc.b	char E char T char O char M char E char R char >
 >REMOTE.SF	dc.w	>REMOTE.Z >REMOTE.CF del
 >REMOTE.CF	#.w	SEMIT.CF
-		#.w	EMIT_VECTOR
+		#.l	EMIT_VECTOR
 		store.l
 		#.w	STYPE.CF
-		#.w	TYPE_VECTOR
+		#.l	TYPE_VECTOR
 >REMOTE.Z	store.l,rts	
 ;
 >LOCAL.LF	dc.l	>REMOTE.NF
@@ -1410,10 +1438,10 @@ COLS		dc.b	100
 		dc.b	char L char A char C char O char L char >
 >LOCAL.SF	dc.w	>LOCAL.Z >LOCAL.CF del
 >LOCAL.CF	#.w	VEMIT.CF
-		#.w	EMIT_VECTOR
+		#.l	EMIT_VECTOR
 		store.l
 		#.w	VTYPE.CF
-		#.w	TYPE_VECTOR
+		#.l	TYPE_VECTOR
 >LOCAL.Z	store.l,rts	
 ;	
 <LOCAL.LF	dc.l	>LOCAL.NF
@@ -1421,10 +1449,10 @@ COLS		dc.b	100
 		dc.b	char L char A char C char O char L char <
 <LOCAL.SF	dc.w	<LOCAL.Z <LOCAL.CF del
 <LOCAL.CF	#.w	KKEY.CF
-		#.w	KEY_VECTOR
+		#.l	KEY_VECTOR
 		store.l
 		#.w	KKEY?.CF
-		#.w	KEY?_VECTOR
+		#.l	KEY?_VECTOR
 <LOCAL.Z	store.l,rts
 ;
 <REMOTE.LF	dc.l	<LOCAL.NF
@@ -1432,10 +1460,10 @@ COLS		dc.b	100
 		dc.b	char E char T char O char M char E char R char <
 <REMOTE.SF	dc.w	<REMOTE.Z <REMOTE.CF del
 <REMOTE.CF	#.w	SKEY.CF
-		#.w	KEY_VECTOR
+		#.l	KEY_VECTOR
 		store.l
 		#.w	SKEY?.CF
-		#.w	KEY?_VECTOR
+		#.l	KEY?_VECTOR
 <REMOTE.Z	store.l,rts
 ;
 ; **** SPI, SD & FAT FILE SYSTEM ****
@@ -2602,9 +2630,6 @@ RESET.CF	#.w	END
 		#.w	LAST.NF
 		#.w	LAST-NF
 		store.l
-		#.b	10
-		#.w 	BASE_
-		store.l
 		jsl	START.CF
 RESET.Z	rts
 ;
@@ -2731,7 +2756,7 @@ DIGIT.CF	jsl	UPPER.CF	( CHAR)	; convert char lower to upper
 		#.b char 0 			( char n '0')
 		-				( char n)
 		dup 				( char n n)
-		#.w BASE_ 	
+		#.l BASE_ 	
 		fetch.l			( char n n base)
 		<
 ; check validity
@@ -2835,13 +2860,13 @@ D-.Z		store.l,rts
 		>R  				( ud1lo ud1hi n R: u c-addr)
 ; multiply ud1hi * base
 		swap  				( ud1lo n ud1hi)
-		#.w BASE_ 
+		#.l BASE_ 
 		fetch.l			( ud1lo n ud1hi base)
 		multu
 		drop 				( ud1lo n ud1hi*baselo)	; discard bits 39 - 32
 ; multiply ud1lo * base
 		rot  				( n ud1hi*baselo ud1lo)
-		#.w BASE_
+		#.l BASE_
 		fetch.l			( n ud1hi*baselo ud1lo base)
 		multu				( n ud1hi*baselo ud1lo*basello ud1lo*baselhi )
 ; add in one step the two hi parts of the multiplicaton, and n with the lo part of the multiplciation
@@ -2952,7 +2977,7 @@ U#.LF		dc.l	SIGN.NF
 U#.NF		dc.b	2 128 +
 		dc.b	char # char U
 U#.SF		dc.w	U#.Z U#.CF del
-U#.CF		#.w BASE_ 	
+U#.CF		#.l BASE_ 	
 		fetch.l		( n base)
 		divu			( u-rem u-quot)
 		swap
@@ -3231,7 +3256,9 @@ FIND.NF	dc.b	4 128 +
 		dc.b 	char D char N char I char F
 FIND.SF	dc.w	FIND.Z FIND.CF del NOINLINE +
 FIND.CF	dup			( addr addr)
-		jsl	COUNT.CF	( addr c-addr1 n1)				
+		jsl	COUNT.CF	( addr c-addr1 n1)
+		?dup
+		IF			( addr c-addr1 n1)
 ; top of dictonary
 		#.w	LAST-NF	( addr c-addr1 n1 &LAST-NF)
 		fetch.l		( addr c-addr1 n1 NF)
@@ -3295,6 +3322,11 @@ FIND.CF	dup			( addr addr)
 		drop		( addr c-addr1)
 		drop		( addr )
 FIND.Z		zero,rts	( addr 0)
+		ELSE				; zero length string was passed
+			drop
+			drop
+		THEN
+		rts
 ;
 WORDS.LF	dc.l 	FIND.NF
 WORDS.NF	dc.b	5 128 +
@@ -3474,52 +3506,86 @@ INTERPRET.1	dc.b 	 char - char K char O  32
 			> 		( flag)		; confirm that input_buff has characters waiting to be processes
 		WHILE
 			#.b	32 
-			jsl	WORD.CF	( char -- addr)	; scan input_buff from >IN, skip leading blanks			
-			dup			( addr addr)
+			jsl	WORD.CF	( addr)	; scan input_buff from >IN, skip leading blanks	
+			dup
 			fetch.b		( addr n)
-			IF						; confirm some characters were parsed
-				jsl	FIND.CF	( addr -- xt n | addr 0)  	; lookup the word		
-				?dup
-				IF					; valid execution token
-					0<			( xt flag)
-					IF					; not IMMEDIATE 
-						#.w	STATE_
-						fetch.l	( xt STATE)
-						IF				; compile is set
-							#.w COMPILE,.CF
+			IF					; confirm some characters were parsed
+				#.w	STATE_
+				fetch.l	
+				IF				; compile mode
+					dup		
+					jsl LOCAL.recog 	; recognize locals first
+					IF					; it is a local
+						nip				; drop the word address - we won't need it again
+						jsl	LOCAL.ref		; get the address of this local
+						jsl	LITERAL.CF		; compile the address as a literal
+						#.b	opFETCH.L
+						jsl	C,.CF			; compile a fetch.l instruction
+					ELSE			
+						dup
+						jsl	FIND.CF		; lookup the word in the dictionary		
+						?dup
+						IF				; valid execution token
+							0<
+							IF					; not IMMEDIATE, compile
+								nip
+								jsl COMPILE,.CF
+							ELSE					; IMMEDIATE, execute
+								nip
+								jsr				
+							THEN
+						ELSE				
+							jsl	COUNT.CF	( addr c-addr n)		
+							jsl	NUMBER?.CF	( addr, 0 | n 1)			
+							IF			; valid number
+								nip
+								jsl	LITERAL.CF
+							ELSE			; not recognized in compile mode
+								#.w 	PALETTE 2 +
+								fetch.b
+								#.w	INK
+								store.b
+								jsl	CR.CF
+								jsl 	COUNT.CF	; echo the input string
+								jsl	TYPE.CF
+								#.l	{INTERPRET}.ERR1
+								THROW		
+							THEN
 						THEN
 					THEN
-					jsr					; either execute or compile
-				ELSE					; not an XT
-					dup			( addr addr)
-					jsl	COUNT.CF	( addr c-addr n)		
-					jsl	NUMBER?.CF	( addr, 0 | n 1)			
-					0=
-					IF						; ERROR if not a valid number
-						#.w 	PALETTE 2 +
-						fetch.b
-						#.w	INK
-						store.b
-						jsl	CR.CF
-						jsl 	COUNT.CF			; echo the input string
-						jsl	TYPE.CF
-						#.l	{INTERPRET}.ERR
-						THROW				
-					THEN	
-					nip			( n)
-					#.w	STATE_
-					fetch.l
-					IF	; compile is set
-						jsl	LITERAL.CF
+				ELSE			; interpret mode
+					dup
+					jsl	FIND.CF			; lookup the word		
+					IF					; valid execution token, execute
+						nip
+						jsr				
+					ELSE
+						jsl	COUNT.CF	( addr c-addr n)		
+						jsl	NUMBER?.CF	( addr 0 | n 1)
+						IF				; valid number
+							nip				; drop the word address - we won't need it again
+						ELSE				; not recognized in interpret mode
+							#.w 	PALETTE 2 +
+							fetch.b
+							#.w	INK
+							store.b
+							jsl	CR.CF
+							jsl 	COUNT.CF		; echo the input string
+							jsl	TYPE.CF
+							#.l	{INTERPRET}.ERR
+							THROW		
+						THEN
 					THEN
 				THEN
-			ELSE
-				drop					; drop unneeded address of parse buffer
+			ELSE	( addr)
+				drop
 			THEN
 		REPEAT
 {INTERPRET}.Z	rts
 {INTERPRET}.ERR	dc.b	27
 			dc.s	Not recognized by INTERPRET
+{INTERPRET}.ERR1	dc.b	25
+			dc.s	Not recognized by COMPILE			
 ;
 ; ERROR ( c --) display a counted string for an error message	
 ERROR.LF	dc.l 	INTERPRET.NF
@@ -3556,6 +3622,7 @@ QUIT.NF	dc.b	4 128 +
 QUIT.SF	dc.w	QUIT.Z QUIT.CF del
 QUIT.CF	BEGIN
 			RESETSP			; zero stack pointers
+; access inner QUIT loop with catch			
 			#.l	{QUIT}.CF
 			CATCH
 			zero				; ALWAYS code catch followed by zero in N.I.G.E. assembler
@@ -4191,7 +4258,7 @@ DECIMAL.NF	dc.b	7 128 +
 		dc.b	char L char A char M char I char C char E char D
 DECIMAL.SF	dc.w	DECIMAL.Z DECIMAL.CF del
 DECIMAL.CF	#.b	10
-		#.w	BASE_
+		#.l	BASE_
 DECIMAL.Z	store.l,rts		
 ;
 HEX.LF		dc.l	DECIMAL.NF
@@ -4199,7 +4266,7 @@ HEX.NF		dc.b	3 128 +
 		dc.b	char X char E char H
 HEX.SF		dc.w	HEX.Z HEX.CF del
 HEX.CF		#.b	16
-		#.w	BASE_
+		#.l	BASE_
 HEX.Z		store.l,rts
 ;
 BINARY.LF	dc.l	HEX.NF
@@ -4207,7 +4274,7 @@ BINARY.NF	dc.b	6 128 +
 		dc.b	char Y char R char A char N char I char B
 BINARY.SF	dc.w	BINARY.Z BINARY.CF del
 BINARY.CF	#.b	2
-		#.w	BASE_
+		#.l	BASE_
 BINARY.Z	store.l,rts	
 ;	
 CHAR.LF	dc.l	BINARY.NF
@@ -4698,6 +4765,9 @@ COLON.1	#.w	LAST-CF	( CF &LAST-CF)
 		zero			( 0)			; set compilation state
 		0=			( true)		
 		#.w	STATE_		( true &STATE)	
+		store.l		
+		zero						; set local.count to zero
+		#.l	LOCAL.count	
 COLON.Z	store.l,rts			
 ;
 ; SEMICOLON
@@ -5623,7 +5693,7 @@ KEY?.LF	dc.l	?.NF
 KEY?.NF	dc.b	4 128 +
 		dc.b	char ? char Y char E char K
 KEY?.SF	dc.w	KEY?.Z KEY?.CF del
-KEY?.CF	#.w	KEY?_VECTOR
+KEY?.CF	#.l	KEY?_VECTOR
 		fetch.l
 		jsr
 KEY?.Z		rts
@@ -5632,7 +5702,7 @@ KEY.LF		dc.l	KEY?.NF
 KEY.NF		dc.b	3 128 +
 		dc.b	char Y char E char K
 KEY.SF		dc.w	KEY.Z KEY.CF del
-KEY.CF		#.w	KEY_VECTOR
+KEY.CF		#.l	KEY_VECTOR
 		fetch.l
 		jsr
 KEY.Z		rts
@@ -5641,7 +5711,7 @@ EMIT.LF	dc.l	KEY.NF
 EMIT.NF	dc.b	4 128 +
 		dc.b	char T char I char M char E
 EMIT.SF	dc.w	EMIT.Z EMIT.CF del
-EMIT.CF	#.w	EMIT_VECTOR
+EMIT.CF	#.l	EMIT_VECTOR
 		fetch.l
 		jsr
 EMIT.Z		rts
@@ -5650,7 +5720,7 @@ TYPE.LF	dc.l	EMIT.NF
 TYPE.NF	dc.b	4 128 +
 		dc.b	char E char P char Y char T
 TYPE.SF	dc.w	TYPE.Z TYPE.CF del
-TYPE.CF	#.w	TYPE_VECTOR
+TYPE.CF	#.l	TYPE_VECTOR
 		fetch.l
 		jsr
 TYPE.Z		rts
@@ -5694,9 +5764,9 @@ BASE.LF	dc.l	INLINESIZE.NF
 BASE.NF	dc.b	4 128 +
 		dc.b	char E char S char A char B
 BASE.SF	dc.w	4
-BASE.CF	#.w	BASE_
+BASE.CF	#.l	BASE_
 		rts
-BASE_		dc.l 	10
+;BASE_		dc.l	10
 ;
 STATE.LF	dc.l	BASE.NF
 STATE.NF	dc.b	5 128 +
@@ -5714,8 +5784,209 @@ STATE_		dc.l	0
 		rts
 >IN_		dc.l	0
 ;
+; LOCAL.CREATE ( addr --, copy the counted string at addr to the local buffer at the poistion of local.count and increment local.count)
+LOCAL.CREATE	#.l	_LOCAL.BUF
+		#.l	LOCAL.COUNT
+		fetch.l
+		?dup
+		IF
+			zero
+			DO			; step through each occupied slot in the local buffer
+				dup
+				fetch.b
+				+
+				1+
+			LOOP
+		THEN				( addr1 addr2)
+		over
+		fetch.b
+		1+				( addr1 addr2 u)
+		jsl 	move.cf		; copy the counted string into the local buffer
+		#.b	1			; increment LOCAL.COUNT
+		#.l	LOCAL.COUNT
+		jsl	+!.cf
+		rts
+;	
+; LOCAL.RECOG	 ( addr -- n true | false, attempt to recognize the counted string at addr as a local, if found return the local number and true)
+LOCAL.RECOG	#.l	_LOCAL.BUF
+		#.l	LOCAL.COUNT
+		fetch.l				( addr1 addr2 local.count)
+		?dup
+		IF
+			zero
+			DO				; step through each occupied slot in the local buffer
+				over
+				over			( addr1 addr2 addr1 addr2)
+				jsl	count.cf	( addr1 addr2 addr1 c-addr2 u2)
+				rot			( addr1 addr2 c-addr2 u2 addr1)
+				jsl 	count.cf	( addr1 addr2 c-addr2 u2 c-addr1 u1)
+				jsl	$=.cf		( addr1 addr2 flag)
+				IF			; match found
+					drop
+					drop
+					R@
+					zero
+					not		( n true)
+					rts
+				THEN
+				dup
+				fetch.b
+				+
+				1+
+			LOOP
+		THEN					( addr1 addr2)
+		drop
+		drop
+		zero,rts				(false)
+;
+; TO <local> ( x --, store x in local)
+TO.LF		dc.l	>IN.NF		
+TO.NF		dc.b	2 128 + IMMED + 
+		dc.s	TO
+TO.SF		dc.w	TO.Z TO.CF del
+TO.CF		#.b	32
+		jsl 	word.cf
+		jsl	local.recog
+		IF
+			jsl	LOCAL.ref	; fixed address on the subroutine stack
+			jsl	literal.cf	; compile the address
+			#.b	opSTORE.L	
+			jsl	C,.CF		; compile a STORE.L instruction
+		ELSE
+			#.l	TO.1
+			THROW
+		THEN
+TO.Z		rts
+TO.1		dc.b	29
+		dc.s	Local variable not recognized
+;
+;  -> <local> ( x --, store x in local)
+->.LF		dc.l	TO.NF		
+->.NF		dc.b	2 128 + IMMED + 
+		dc.s	->
+->.SF		dc.w	->.Z ->.CF del
+->.CF		jsl	TO.CF
+->.Z		rts
+;		
+; {, start the local variable definition list (pre-ANSI 200x notation)
+{.LF		dc.l	->.NF		
+{.NF		dc.b	1 128 + IMMED + 
+		dc.s	{
+{.SF		dc.w	{.z {.cf del
+{.CF		jsl	{:.cf
+{.Z		rts
+;
+; {:, start local variable definition list (ANSI 200x notation)
+{:.LF		dc.l	{.NF		
+{:.NF		dc.b	2 128 + IMMED + 
+		dc.s	{:
+{:.SF		dc.w	{:.z {:.cf del
+{:.CF		#.l	local.count
+		fetch.l			; this marks the last of the currently set locals
+		zero				; flag to indicate whether | has been passed	
+		BEGIN
+			#.b	32
+			jsl	word.cf
+			dup
+			jsl 	count.cf
+			#.l	{:.1
+			#.b	2
+			jsl	$=.cf
+			IF				; --
+				drop
+				not
+				IF				; | wasn't used, named inputs finish here
+					#.l	local.count
+					fetch.l
+				THEN
+				zero
+				not			; stop parsing
+				#.b	125		; gather up everything until end of stack comments
+				jsl	parse.cf	; use parse to avoid skipping a leading }
+				drop
+				drop
+			ELSE
+				dup
+				jsl	count.cf
+				#.l	{:.2
+				#.b	2
+				jsl	$=.cf
+				over
+				jsl	count.cf
+				#.l	{:.3
+				#.b	1
+				jsl	$=.cf	
+				or
+				IF			; :} or }
+					drop
+					not
+					IF			; | wasn't used, named inputs finish here
+						#.l	local.count
+						fetch.l
+					THEN
+					zero
+					not			; stop parsing
+				ELSE
+					dup 
+					jsl	count.cf
+					#.l	{:.4
+					#.b	1
+					jsl	$=.cf	
+					IF			; |
+						drop
+						drop
+						#.l	local.count
+						fetch.l
+						zero
+						not			; | has been passed, named inputs finish here
+						false			; continue parsing
+					ELSE			; a local variable
+						jsl	local.create
+						#.l	local.count
+						fetch.l
+						#.b	16
+						>			
+						IF			; exceeded available local varaible storage
+							#.l	{:.5
+							THROW
+						ELSE
+							false			; continue parsing
+						THEN
+					THEN
+				THEN
+			THEN
+		UNTIL			( first-local last-local)
+		BEGIN
+			over
+			over
+			=
+			not
+		WHILE				; there are named locals to be compliled
+			1-			; n'th local is variable number n-1
+			dup
+			jsl	LOCAL.ref	; fixed address on the subroutine stack
+			jsl	literal.cf	; compile the address
+			#.b	opSTORE.L	
+			jsl	C,.CF		; compile a STORE.L instruction
+		REPEAT
+		drop
+{:.z		drop,rts
+{:.1		dc.s	--		
+{:.2		dc.s	:}
+{:.3		dc.s	}
+{:.4		dc.s	|
+{:.5		dc.b	24
+		dc.s	Too many local variables
+;
+; LOCAL.ref	( n -- addr, return the address of local variable number n)
+LOCAL.ref	2*
+		2*
+		#.l	SSTACK
+		+
+		rts
+;
 ; LAST returns the address of a variable pointing to the last name field in the dictionary
-LAST.LF	dc.l	>IN.NF
+LAST.LF	dc.l	{:.NF
 LAST.NF	dc.b	4 128 +
 		dc.b	char T char S char A char L
 LAST.SF	dc.w	4
@@ -5738,10 +6009,11 @@ input_buff_a		dc.l	0		; used by SAVE-INPUT and RESTORE-INPUT
 input_size		dc.l	_input_size	; length of input buffer (returned by SOURCE)
 input_size_a		dc.l	0		; used by SAVE-INPUT and RESTORE-INPUT
 COMPILEstackP		dc.l	_PAD		; pointer for the compiler stack
-TYPE_VECTOR		dc.l	VTYPE.CF	; VTYPE.CF
-EMIT_VECTOR		dc.l	VEMIT.CF	; VEMIT.CF
-KEY_VECTOR		dc.l	KKEY.CF	; KKEY.CF
-KEY?_VECTOR		dc.l	KKEY?.CF	; KKEY?.CF
+;TYPE_VECTOR		dc.l	VTYPE.CF	; VTYPE.CF
+;EMIT_VECTOR		dc.l	VEMIT.CF	; VEMIT.CF
+;KEY_VECTOR		dc.l	KKEY.CF	; KKEY.CF
+;KEY?_VECTOR		dc.l	KKEY?.CF	; KKEY?.CF
+LOCAL.COUNT		dc.l	0		; used in the creation of the local variable buffer
 ;
 ; marker for initializing HERE
 END			dc.l	0
