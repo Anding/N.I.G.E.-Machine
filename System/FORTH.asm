@@ -229,23 +229,23 @@ MS.ERR		dc.b	15
 ; -----------------------------------------------------------------------------------------------
 ; Boot code (within branch distance from 0)
 ; -----------------------------------------------------------------------------------------------
-;
-; set the exception stack variables
-START.CF	#.b	10		
-		#.l	BASE_
-		store.l
-		#.w	VTYPE.CF
-		#.l	TYPE_VECTOR
-		store.l
-		#.w	VEMIT.CF
-		#.l	EMIT_VECTOR
-		store.l
-		#.w	KKEY.CF
-		#.l	KEY_VECTOR
-		store.l
-		#.w	KKEY?.CF
-		#.l	KEY?_VECTOR
-		store.l
+;	
+START.CF	jsl	ESTACKINIT.CF
+;		#.b	10		
+;		#.l	BASE_
+;		store.l
+;		#.w	VTYPE.CF
+;		#.l	TYPE_VECTOR
+;		store.l
+;		#.w	VEMIT.CF
+;		#.l	EMIT_VECTOR
+;		store.l
+;		#.w	KKEY.CF
+;		#.l	KEY_VECTOR
+;		store.l
+;		#.w	KKEY?.CF
+;		#.l	KEY?_VECTOR
+;		store.l
 ; configure the screen
 		jsl	SCRSET.CF
 		jsl	CLS.CF
@@ -5645,23 +5645,31 @@ SBUFFER:.Z	rts
 ;
 DEFER.LF	dc.l	SBUFFER:.NF
 DEFER.NF	dc.b	5 128 +
-		dc.b	char R char E char F char E char D
+		dc.s	DEFER
 DEFER.SF	dc.w	DEFER.Z DEFER.CF del
 DEFER.CF	jsl	COLON.CF					; prepare the word
-		#.w	DEFER.RUN	( XT)				; push default XT for DEFER	on the stack			
+; 	cannot use LITERAL to store the vector because need to fix size = long
 		#.w	HERE_
-		fetch.l		( XT CF)			; push the CF address of this word on the stack		
-		#.b	op#.l					
-		jsl	C,.CF						; compile #.l
-		#.b	4						
-		jsl	ALLOT.CF					; reserve space for the vector address		
-		jsl	{IS}.CF					; implement the vector			
-		#.b	opJSR
-		jsl	C,.CF						; compile JMP	
+		fetch.l		( CF)
+		#.b	op#.l		( CF opcode)			
+		over			( CF opcode CF)
+		store.b		( CF)				; compile a #.l instruction
+		1+			( CF+1)
+		#.w	DEFER.RUN	( CF XT)			; push default XT for a DEFER word	on the stack
+		over
+		store.l		( CF)				; store the vector	
+		#.b	4		( CF 4)
+		+			( CF+4)
+		#.b	opJSR		( CF opcode)
+		over			( CF opcode CF)
+		store.b		( CF)				; compile a JMP instruction
+		1+			( CF+1)
+		#.w	HERE_
+		store.l						; update HERE for the space used			
 		jsl	SEMICOLON.CF					; terminate the word
 DEFER.Z	rts
 ;
-; DEFER.RUN is the default behaviour for an uninitialized vector
+; DEFER.RUN is the default XT for an uninitialized vector
 DEFER.RUN	#.l	DEFER.ERR
 		THROW
 ;
@@ -5670,15 +5678,46 @@ DEFER.ERR	dc.b	20
 ; IS <name> ( XT --), implement a vector in a defer word
 IS.LF		dc.l	DEFER.NF
 IS.NF		dc.b	2 128 +
-		dc.b	char S char I
+		dc.s	IS
 IS.SF		dc.w	IS.Z IS.CF del
-IS.CF		jsl	TICK.CF
-		jsl	{IS}.CF
+IS.CF		jsl	TICK.CF		( XT word.cf)
+; 	KEY?, KEY, EMIT and TYPE hold their indirection vectors on the exception stack
+		dup			
+		#.l	KEY?.CF		
+		=
+		IF				( XT word.cf)
+			drop
+			#.l 	KEY?_VECTOR	( XT vector)
+			ELSE			( XT word.cf)
+			dup
+			#.l	KEY.CF
+			=
+			IF				( XT word.cf)
+				drop
+				#.l 	KEY_VECTOR	( XT vector)
+				ELSE
+				dup
+				#.l	EMIT.CF
+				=
+				IF				( XT word.cf)
+					drop
+					#.l 	EMIT_VECTOR	( XT vector)
+					ELSE	
+					dup
+					#.l	TYPE.CF
+					=
+					IF				( XT word.cf)
+						drop
+						#.l 	TYPE_VECTOR	( XT vector)
+; 	other DEFER words hold their indirection vectors in the dictionary entry				
+						ELSE	
+							1+			( XT vector)
+					THEN
+				THEN
+			THEN
+		THEN	( XT vector)
+		store.l			; write the exection token to the vector
 IS.Z		rts
-;
-; {IS} ( XT CF --), implement the vector in a DEFER word, internal word
-{IS}.CF	1+	( XT PF --)					; update the CF to the PF (after the #.l)
-		store.l,rts
 ;
 ; ? ( addr --), output the contents of a memory address
 ?.LF		dc.l	IS.NF
@@ -6014,6 +6053,42 @@ COMPILEstackP		dc.l	_PAD		; pointer for the compiler stack
 ;KEY_VECTOR		dc.l	KKEY.CF	; KKEY.CF
 ;KEY?_VECTOR		dc.l	KKEY?.CF	; KKEY?.CF
 LOCAL.COUNT		dc.l	0		; used in the creation of the local variable buffer
+;
+; ------------------------------------------------------------------------------------------------------------
+; Exception stack variables - this region will be copied to exception stack on initiation
+; ------------------------------------------------------------------------------------------------------------
+BASE_			equ	ESTACK 0 +	; BASE is located on the exception stack
+ESTACK_MAP		dc.l	10
+TYPE_VECTOR		equ	ESTACK 4 +	; input and output vectors also located on the exception stack
+			dc.l	VTYPE.CF
+EMIT_VECTOR		equ	ESTACK 8 +
+			dc.l	VEMIT.CF
+KEY_VECTOR		equ	ESTACK 12 +
+			dc.l	KKEY.CF
+KEY?_VECTOR		equ	ESTACK 16 +
+			dc.l	KKEY?.CF
+			ds.l	8 5 -		; spare slots on the exception stack
+;
+ESTACKINIT.CF		#.l	ESTACK_MAP			; code to initialize the exception stack
+			#.l	ESTACK
+			#.b	8				; 8 exception stack variables
+			zero	( s d 8 0)
+			DO
+				over		( s d s)
+				fetch.l	( s d lw)
+				over		( s d lw d)
+				store.l	( s d)
+				#.b 4		( s d 4)
+				+		( s d+4)
+				swap
+				#.b 4		( d+4 s 4)
+				+		( d+4 s+4)
+				swap		( s d)		
+			LOOP
+			drop
+			drop
+			rts					; 	since this area is longword addressable only
+;
 ;
 ; marker for initializing HERE
 END			dc.l	0
