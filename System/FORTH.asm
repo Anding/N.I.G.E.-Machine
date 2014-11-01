@@ -48,6 +48,12 @@ VBLANK		equ	hex 03f848
 USERRAM	equ	hex 03C000		; USER RAM area
 USERRAMSIZE	equ	2048			; Amount of USER RAM in bytes
 STRINGMAX	equ	480			; area within the PAD that can be used for interpret mode strings
+_input_buff	equ	USERRAM 1536 +	; default ACCEPT input buffer location
+_input_size	equ	256			; default ACCEPT input buffer size
+_PAD		equ	USERRAM 1024 +	; PAD location
+_PADEND	equ	_PAD 511 +		; last PAD character - picture numeric output builds downwards from here
+_STRING	equ	_PAD			; buffer for interpret mode string storage (e.g. S")
+;
 PSTACK		equ	hex 03e000		; Parameter stack
 SSTACK		equ	hex 03f000		; Subroutine stack
 ESTACK		equ	hex 03f080		; Exception stack
@@ -60,10 +66,10 @@ SRAMSIZE	equ	128 1024 *		; Amount of SRAM in bytes
 SCREENWORDS	equ	hex 006000		; number of words in the screen buffer (96 rows * 128 cols * 2 screens)
 RSrxBUF	equ	hex 040000		; RS232 buffer (256 bytes)	
 PSBUF		equ	hex 040100		; PS/2 keyboard buffer (256 bytes)
-_input_buff	equ	hex 040200		; default input buffer location (used by ACCEPT)
-_input_size	equ	hex ff			; default input buffer size (used by ACCEPT)
-_PAD		equ	hex 040400		; PAD location (256 bytes below + 256 bytes above here)
-_STRING	equ	hex 040500		; buffer for internal string storage (e.g. S")
+;_input_buff	equ	hex 040200		; default input buffer location (used by ACCEPT)
+;_input_size	equ	hex ff			; default input buffer size (used by ACCEPT)
+;_PAD		equ	hex 040400		; PAD location (256 bytes below + 256 bytes above here)
+;_STRING	equ	hex 040500		; buffer for internal string storage (e.g. S")
 _TEXT_ZERO	equ	hex 040600		; default text memory location
 _TEXT_END	equ	hex 04C600		; one byte beyond the text memory location
 _FAT.buf	equ	hex 04C600		; FAT 512 byte storage space location 017B30
@@ -2948,8 +2954,8 @@ HOLD.Z		store.b,rts
 <#.NF		dc.b	2 128 +
 		dc.b	char # char <
 <#.SF		dc.w	<#.Z <#.CF del
-<#.CF		#.l _pad		( pad)
-		#.l hld_		( pad hld*)
+<#.CF		#.l _padend		( padend)
+		#.l hld_		( padend hld*)
 <#.Z		store.l,rts	
 ;
 ; u#>     ( u -- addr len , finish single precision conversion )
@@ -2960,8 +2966,8 @@ U#>.SF		dc.w	U#>.Z U#>.CF del
 U#>.CF		drop  
 		#.l hld_		( hld*)
 		fetch.l		( hld)
-		#.L _pad  		( hld pad)
-		over 			( hld pad hld)
+		#.L _padend  		( hld padend)
+		over 			( hld padend hld)
 U#>.Z		-,rts			( hld len)
 ;
 ; sign   ( n -- , add '-' if negative )
