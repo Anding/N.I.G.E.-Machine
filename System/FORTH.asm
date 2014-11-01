@@ -46,39 +46,29 @@ VBLANK		equ	hex 03f848
 ; **** MEMORY MAP ****
 ;
 USERRAM	equ	hex 03C000		; USER RAM area
-USERRAMSIZE	equ	2048			; Amount of USER RAM in bytes
-STRINGMAX	equ	480			; area within the PAD that can be used for interpret mode strings
-_input_buff	equ	USERRAM 1536 +	; default ACCEPT input buffer location
-_input_size	equ	256			; default ACCEPT input buffer size
-_PAD		equ	USERRAM 1024 +	; PAD location
-_PADEND	equ	_PAD 511 +		; last PAD character - picture numeric output builds downwards from here
-_STRING	equ	_PAD			; buffer for interpret mode string storage (e.g. S")
-SRAMSIZE	equ	128 1024 * 512 -	; Amount of SRAM in bytes
-RSrxBUF	equ	128 1024 * 512 -	; RS232 buffer (256 bytes) location
-PSBUF		equ	128 1024 * 256 -	; PS/2 keyboard buffer (256 bytes) location
-_LOCAL.buf	equ	_PAD			; buffer for local variable names during compilation
-;
 PSTACK		equ	hex 03e000		; Parameter stack
 SSTACK		equ	hex 03f000		; Subroutine stack
 ESTACK		equ	hex 03f080		; Exception stack
-BASE_		equ	hex 03f080		; BASE is located on the exception stack
-TYPE_VECTOR	equ	hex 03f084		; input and output vectors also located on the exception stack
-EMIT_VECTOR	equ	hex 03f088
-KEY_VECTOR	equ	hex 03f08c
-KEY?_VECTOR	equ	hex 03f090
-;SRAMSIZE	equ	128 1024 *		; Amount of SRAM in bytes
+;
+SRAMSIZE	equ	128 1024 * 512 -	; Amount of SRAM in bytes
+USERRAMSIZE	equ	2048			; Amount of USER RAM in bytes
+;
+RSrxBUF	equ	128 1024 * 512 -	; RS232 buffer (256 bytes) location
+PSBUF		equ	128 1024 * 256 -	; PS/2 keyboard buffer (256 bytes) location
+;
+_PAD		equ	USERRAM 1024 +	; PAD location
+_STRING	equ	_PAD			; buffer for interpret mode string storage (e.g. S")
+_LOCAL.buf	equ	_PAD			; buffer for local variable names during compilation
+_PADEND	equ	_PAD 511 +		; last PAD character - picture numeric output builds downwards from here
+_input_buff	equ	USERRAM 1536 +	; default ACCEPT input buffer location
+_input_size	equ	256			; default ACCEPT input buffer size
+STRINGMAX	equ	480			; area within the PAD that can be used for interpret mode strings		
+;
 SCREENWORDS	equ	hex 006000		; number of words in the screen buffer (96 rows * 128 cols * 2 screens)
-;RSrxBUF	equ	hex 040000		; RS232 buffer (256 bytes)	
-;PSBUF		equ	hex 040100		; PS/2 keyboard buffer (256 bytes)
-;_input_buff	equ	hex 040200		; default input buffer location (used by ACCEPT)
-;_input_size	equ	hex ff			; default input buffer size (used by ACCEPT)
-;_PAD		equ	hex 040400		; PAD location (256 bytes below + 256 bytes above here)
-;_STRING	equ	hex 040500		; buffer for internal string storage (e.g. S")
 _TEXT_ZERO	equ	hex 040000		; default text memory location
 _TEXT_END	equ	hex 04C000		; one byte beyond the text memory location
 _FAT.buf	equ	hex 04C000		; FAT 512 byte storage space location 017B30
 _FAT.buffat	equ	hex 04C200		; FAT 512 byte storage space location for file allocation table 017D30
-;_LOCAL.buf	equ	hex 04CA00		; 512 byte storage location for local variable names
 _END		equ	hex 04C400		; HEAP location
 ;
 ; **** FORTH LANGUAGE CONSTANTS ****
@@ -230,8 +220,6 @@ MSIRQ		#.w	MS.TIMEOUT
 			IF
 				#.l	MS.ERR
 				THROW
-;				#.w	ERROR.CF
-;				>R		; return to ERROR after completing interrupt
 			THEN
 		THEN
 		rti
@@ -245,21 +233,6 @@ MS.ERR		dc.b	15
 ;	
 START.CF	jsl	ESTACKINIT.CF
 		jsl	USERINIT.CF
-;		#.b	10		
-;		#.l	BASE_
-;		store.l
-;		#.w	VTYPE.CF
-;		#.l	TYPE_VECTOR
-;		store.l
-;		#.w	VEMIT.CF
-;		#.l	EMIT_VECTOR
-;		store.l
-;		#.w	KKEY.CF
-;		#.l	KEY_VECTOR
-;		store.l
-;		#.w	KKEY?.CF
-;		#.l	KEY?_VECTOR
-;		store.l
 ; configure the screen
 		jsl	SCRSET.CF
 		jsl	CLS.CF
@@ -4383,7 +4356,7 @@ DUMP.CF	over	( addr n addr)
 			jsl	EMIT.CF
 			dup		( addr addr)			
 			#.b	8	( addr 8)
-			jsl	TYPERAW.CF				; print the literals							
+			jsl	TYPERAW.CF				; print the literals						
 			#.b	32
 			jsl	EMIT.CF
 			#.b	8
@@ -4559,6 +4532,7 @@ HEAD.CF	#.w	HERE_
 		store.l,rts		(CF)
 ;
 ; MOVE ( addr-s addr-d n, memory copy)
+; byte-by-byte, not optimized (TBD)
 MOVE.LF	dc.l	DOES>.NF
 MOVE.NF	dc.b	4 128 +
 		dc.b 	char E char V char O char M
@@ -5264,21 +5238,7 @@ pushCONTROL.CF #.w	COMPILEstackP	( n &P)
 		store.l		( P R:&P)
 		R>			( P' &P)
 		store.l,rts
-;		
-;pushHERE, place HERE on COMPILEstack  - internal word
-;pushHERE.CF	#.w	COMPILEstackP	( &P)			; save HERE to COMPILE stack
-;		dup	( &P &P)
-;		>R	( &P R:&P)
-;		fetch.l	( P R:&P)
-;		#.w	HERE_	( P &HERE R:&P)	
-;		fetch.l	( P HERE R:&P)		
-;		over		( P HERE P R:&P)
-;		store.l	( P R:&P)
-;		#.b	4
-;		+		( P' R:&P)
-;		R>		( P' &P)			; increment COMPILEstack pointer
-;		store.l,rts	
-;		
+;				
 ; CASE, mark the start of a CASE...OF..ENDOF...ENDCASE structure
 CASE.LF	dc.l	LEAVE.NF
 CASE.NF	dc.b	4 128 + IMMED +
@@ -6112,7 +6072,8 @@ ESTACKINIT.CF		#.l	ESTACK_MAP			; code to initialize the exception stack
 			#.l	ESTACK
 			#.b	8				; 8 exception stack variables
 			zero	( s d 8 0)
-			DO
+			DO					; MOVE not used since this area is longword addressable only
+;
 				over		( s d s)
 				fetch.l	( s d lw)
 				over		( s d lw d)
@@ -6126,9 +6087,7 @@ ESTACKINIT.CF		#.l	ESTACK_MAP			; code to initialize the exception stack
 			LOOP
 			drop
 			drop
-			rts					; 	since this area is longword addressable only
-;
-;
+			rts					
 ; marker for initializing HERE
 END			dc.l	0
 ;
