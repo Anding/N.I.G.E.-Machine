@@ -45,6 +45,8 @@ VBLANK		equ	hex 03f848
 ;
 ; **** MEMORY MAP ****
 ;
+USERRAM	equ	hex 03C000		; USER RAM area
+USERRAMSIZE	equ	2048			; Amount of USER RAM in bytes
 PSTACK		equ	hex 03e000		; Parameter stack
 SSTACK		equ	hex 03f000		; Subroutine stack
 ESTACK		equ	hex 03f080		; Exception stack
@@ -231,6 +233,7 @@ MS.ERR		dc.b	15
 ; -----------------------------------------------------------------------------------------------
 ;	
 START.CF	jsl	ESTACKINIT.CF
+		jsl	USERINIT.CF
 ;		#.b	10		
 ;		#.l	BASE_
 ;		store.l
@@ -2929,7 +2932,7 @@ HOLD.NF	dc.b	4 128 +
 		dc.b	char D char L char O char H
 HOLD.SF	dc.w 	HOLD.Z HOLD.CF del
 ; Decrement hld address
-HOLD.CF	#.w hld_		(char hld*)
+HOLD.CF	#.l hld_		(char hld*)
 		dup			(char hld* hld*)
 		fetch.l		(char hld* hld)
 		1-			(char hld* hld-1)
@@ -2945,7 +2948,7 @@ HOLD.Z		store.b,rts
 		dc.b	char # char <
 <#.SF		dc.w	<#.Z <#.CF del
 <#.CF		#.l _pad		( pad)
-		#.w hld_		( pad hld*)
+		#.l hld_		( pad hld*)
 <#.Z		store.l,rts	
 ;
 ; u#>     ( u -- addr len , finish single precision conversion )
@@ -2954,7 +2957,7 @@ U#>.NF		dc.b	3 128 +
 		dc.b	char > char # char U
 U#>.SF		dc.w	U#>.Z U#>.CF del
 U#>.CF		drop  
-		#.w hld_		( hld*)
+		#.l hld_		( hld*)
 		fetch.l		( hld)
 		#.L _pad  		( hld pad)
 		over 			( hld pad hld)
@@ -3482,7 +3485,7 @@ INTERPRET.NF	dc.b	9 128 +
 		dc.b	char T char E char R char P char R char E char T char N char I
 INTERPRET.SF	dc.w	INTERPRET.Z INTERPRET.CF del
 INTERPRET.CF	jsl	{INTERPRET}.CF			; inner workings of INTERPRET							
-		#.w	STATE_
+		#.l	STATE_
 		fetch.l
 		0=
 		IF	; compile is not set		
@@ -3499,9 +3502,9 @@ INTERPRET.1	dc.b 	 char - char K char O  32
 ;
 ; inner workings of INTERPET
 {INTERPRET}.CF BEGIN
-			#.w	IN_LEN 
+			#.l	IN_LEN 
 			fetch.l	
-			#.w	>IN_ 
+			#.l	>IN_ 
 			fetch.l	( IN_LEN IN)
 			> 		( flag)		; confirm that input_buff has characters waiting to be processes
 		WHILE
@@ -3510,7 +3513,7 @@ INTERPRET.1	dc.b 	 char - char K char O  32
 			dup
 			fetch.b		( addr n)
 			IF					; confirm some characters were parsed
-				#.w	STATE_
+				#.l	STATE_
 				fetch.l	
 				IF				; compile mode
 					dup		
@@ -3636,28 +3639,28 @@ QUIT.Z		rts					; never reached
 {QUIT}.CF	zero
 		jsl	TIMEOUT.CF				; clear any timeouts
 		zero						; set state to interpreting
-		#.w	STATE_
+		#.l	STATE_
 		store.l
 		#.l	_input_buff				; restore default input buffer location and size
-		#.w	input_buff
+		#.l	input_buff
 		store.l	
 		#.l	_input_size
-		#.w	input_size			
+		#.l	input_size			
 		store.l
 		BEGIN					; MAIN SYSTEM LOOP
 			#.w	PALETTE 0 +			; set input colour
 			fetch.b
 			#.w	INK
 			store.b
-			#.w	input_buff
+			#.l	input_buff
 			fetch.l
-			#.w	input_size
+			#.l	input_size
 			fetch.l			( input_buff size)
 			jsl	ACCEPT.CF 		( input_buff size -- len , fill input_buff from the terminal)				
-			#.w	IN_LEN 			; save number of characters in input buffer
+			#.l	IN_LEN 			; save number of characters in input buffer
 			store.l					
 			zero
-			#.w	>IN_ 				; set >IN to zero
+			#.l	>IN_ 				; set >IN to zero
 			store.l		
 			#.w	PALETTE 1 +			; set output color
 			fetch.b
@@ -3672,9 +3675,9 @@ SOURCE.LF	dc.l	QUIT.NF
 SOURCE.NF	dc.b	6 128 +
 		dc.b 	char E char C char R char U char O char S
 SOURCE.SF	dc.w	SOURCE.Z SOURCE.CF del
-SOURCE.CF	#.w	input_buff
+SOURCE.CF	#.l	input_buff
 		fetch.l
-		#.w	input_size
+		#.l	input_size
 SOURCE.Z	fetch.l,rts
 ;	
 ; SAVE_INPUT ( --), save the current input source specificiation
@@ -3682,21 +3685,21 @@ SAVE-INPUT.LF	dc.l	SOURCE.NF
 SAVE-INPUT.NF	dc.b	10 128 +
 		dc.b	char T char U char P char N char I char - char E char V char A char S
 SAVE-INPUT.SF	dc.w	SAVE-INPUT.Z SAVE-INPUT.Z del
-SAVE-INPUT.CF	#.w	input_buff
+SAVE-INPUT.CF	#.l	input_buff
 		fetch.l
-		#.w	input_buff_a
+		#.l	input_buff_a
 		store.l
-		#.w	input_size
+		#.l	input_size
 		fetch.l	
-		#.w	input_size_a
+		#.l	input_size_a
 		store.l
-		#.w	IN_LEN
+		#.l	IN_LEN
 		fetch.l
-		#.w	IN_LEN_a
+		#.l	IN_LEN_a
 		store.l
-		#.w	>IN_
+		#.l	>IN_
 		fetch.l
-		#.w	>IN_a	
+		#.l	>IN_a	
 SAVE-INPUT.Z	store.l,rts
 ;
 ; RESTORE-INPUT ( --), restore the current input source specification
@@ -3704,21 +3707,21 @@ RESTORE-INPUT.LF	dc.l	SAVE-INPUT.NF
 RESTORE-INPUT.NF	dc.b	13 128 +
 			dc.b	char T char U char P char N char I char - char E char R char O char T char S char E char R
 RESTORE-INPUT.SF	dc.w	RESTORE-INPUT.Z RESTORE-INPUT.CF del
-RESTORE-INPUT.CF	#.w	input_buff_a
+RESTORE-INPUT.CF	#.l	input_buff_a
 			fetch.l
-			#.w	input_buff
+			#.l	input_buff
 			store.l
-			#.w	input_size_a
+			#.l	input_size_a
 			fetch.l	
-			#.w	input_size
+			#.l	input_size
 			store.l
-			#.w	IN_LEN_a
+			#.l	IN_LEN_a
 			fetch.l
-			#.w	IN_LEN
+			#.l	IN_LEN
 			store.l
-			#.w	>IN_a
+			#.l	>IN_a
 			fetch.l
-			#.w	>IN_	
+			#.l	>IN_	
 RESTORE-INPUT.Z	store.l,rts
 ;
 ; EVALUATE ( c-addr u --)
@@ -3731,12 +3734,12 @@ EVALUATE.CF	>R
 		jsl	SAVE-INPUT.CF
 		R>
 		R>			( <input-state> c-addr u --)
-		#.w	IN_LEN
+		#.l	IN_LEN
 		store.l
-		#.w	input_buff
+		#.l	input_buff
 		store.l
 		zero
-		#.w	>IN_
+		#.l	>IN_
 		store.l
 		jsl	{INTERPRET}.CF
 		jsl	RESTORE-INPUT.CF
@@ -4764,7 +4767,7 @@ COLON.1	#.w	LAST-CF	( CF &LAST-CF)
 		store.b
 		zero			( 0)			; set compilation state
 		0=			( true)		
-		#.w	STATE_		( true &STATE)	
+		#.l	STATE_		( true &STATE)	
 		store.l		
 		zero						; set local.count to zero
 		#.l	LOCAL.count	
@@ -4794,7 +4797,7 @@ SEMICOLON.CF	#.b	opRTS		( opRTS)
 		swap			( len' NF)
 		store.b
 		zero			( false)		; un-set compilation state
-		#.w	STATE_		( false &STATE)	
+		#.l	STATE_		( false &STATE)	
 SEMICOLON.Z	store.l,rts			
 ;	
 ; COMPILE, ( xt --, compile an execution token)
@@ -5313,7 +5316,7 @@ ENDCASE.Z	rts
 		dc.b	91
 [.SF		dc.w	[.Z [.CF del
 [.CF		zero
-		#.w	STATE_
+		#.l	STATE_
 [.Z		store.l,rts
 ;
 ; ] , enter compilation state
@@ -5323,7 +5326,7 @@ ENDCASE.Z	rts
 ].SF		dc.w	].Z ].CF del
 ].CF		zero			( 0)			
 		0=			( true)		
-		#.w	STATE_		( true &STATE)	
+		#.l	STATE_		( true &STATE)	
 ].Z		store.l,rts
 ;
 ; RECURSE, compile a jsl to the XT of the current word
@@ -5442,7 +5445,7 @@ CLITERAL.Z	rts
 ,".Z		rts
 ;
 ; STRINGlOC	( n -- addr, return a pointer to the next space in the string bufffer -- internal function)
-STRINGLOC.CF	#.w	STRINGP
+STRINGLOC.CF	#.l	STRINGP
 		dup
 		>R
 		fetch.l
@@ -5471,7 +5474,7 @@ S".NF		dc.b	2 128 + IMMED +
 		dc.b	34 char S
 S".SF		dc.w	S".Z S".CF del
 S".CF		jsl	IN$.CF			( addr n)	; string held in parse buffer				
-		#.w	STATE_
+		#.l	STATE_
 		fetch.l
 		IF						; compile mode
 			jsl	SLITERAL.CF				; compile into dictionary				
@@ -5495,7 +5498,7 @@ C".NF		dc.b	2 128 + IMMED +
 		dc.b 	34 char C
 C".SF		dc.w	C".Z C".CF del
 C".CF		jsl	IN$.CF			( addr n)	; string held in parse buffer			
-		#.w	STATE_
+		#.l	STATE_
 		fetch.l
 		IF						; compile mode
 			jsl	CLITERAL.CF			; compile into dictionary						
@@ -5811,7 +5814,7 @@ STATE.LF	dc.l	BASE.NF
 STATE.NF	dc.b	5 128 +
 		dc.b	char E char T char A char T char S
 STATE.SF	dc.w	4
-STATE.CF	#.w	STATE_
+STATE.CF	#.l	STATE_
 		rts
 STATE_		dc.l	0
 ;
@@ -5819,7 +5822,7 @@ STATE_		dc.l	0
 >IN.NF		dc.b	3 128 +
 		dc.b	char N char I 62
 >IN.SF		dc.w	4
->IN.CF		#.w	>IN_
+>IN.CF		#.l	>IN_
 		rts
 >IN_		dc.l	0
 ;
@@ -6033,26 +6036,50 @@ LAST.CF	#.w	LAST-NF
 		rts
 LAST-NF	dc.l 	LAST.NF			; NF of last word created by HEAD, must be initialized
 ; ------------------------------------------------------------------------------------------------------------
-; internal variables	
+; internal FORTH dictionary variables	
 ; ------------------------------------------------------------------------------------------------------------
-;
-IN_LEN			dc.l	0		; number of characters in input buffer (set by QUIT's inner loop)
-IN_LEN_a		dc.l	0		; used by SAVE-INPUT and RESTORE-INPUT
->IN_a			dc.l	0		; used by SAVE-INPUT and RESTORE-INPUT
-HLD_			dc.l 	0		; pointer for number output words (HOLD, etc.)
-STRINGP		dc.l	_STRING	; pointer within the string buffer
+COMPILEstackP		dc.l	USERRAM 1016 + ; pointer for the compiler stack (used for LEAVE)
 LAST-CF		dc.l	0		; CF of last word created by HEAD
 LAST-SF		dc.l	0		; SF of last word created by HEAD
-input_buff		dc.l 	_input_buff	; input buffer location (returned by SOURCE)
-input_buff_a		dc.l	0		; used by SAVE-INPUT and RESTORE-INPUT
-input_size		dc.l	_input_size	; length of input buffer (returned by SOURCE)
-input_size_a		dc.l	0		; used by SAVE-INPUT and RESTORE-INPUT
-COMPILEstackP		dc.l	_PAD		; pointer for the compiler stack
-;TYPE_VECTOR		dc.l	VTYPE.CF	; VTYPE.CF
-;EMIT_VECTOR		dc.l	VEMIT.CF	; VEMIT.CF
-;KEY_VECTOR		dc.l	KKEY.CF	; KKEY.CF
-;KEY?_VECTOR		dc.l	KKEY?.CF	; KKEY?.CF
+USER.NEXT		dc.l	USERRAM 44 +	; next available location for a user variable
 LOCAL.COUNT		dc.l	0		; used in the creation of the local variable buffer
+IN_LEN_a		dc.l	0		; used by SAVE-INPUT and RESTORE-INPUT
+>IN_a			dc.l	0		; used by SAVE-INPUT and RESTORE-INPUT
+input_buff_a		dc.l	0		; used by SAVE-INPUT and RESTORE-INPUT
+input_size_a		dc.l	0		; used by SAVE-INPUT and RESTORE-INPUT
+;
+; ------------------------------------------------------------------------------------------------------------
+; USER variables - this region will be copied to USER memory area on initiation
+; ------------------------------------------------------------------------------------------------------------
+input_buff		equ 	USERRAM 0 +	; address of the input buffer
+USERRAM_MAP		dc.l	_input_buff		
+input_size		equ	USERRAM 4 +	; size capacity of the input buffer
+			dc.l	_input_size
+>IN_			equ	USERRAM 8 +	; offset to current parse area
+			dc.l	0
+IN_LEN			equ	USERRAM 12 +	; number of characters in the input buffer
+			dc.l	0
+HLD_			equ 	USERRAM 16 +	; pointer for number output words (HOLD, etc.)
+			dc.l	0
+STRINGP		equ	USERRAM 20 +	; pointer within the string buffer
+			dc.l	_PAD
+STATE_			equ 	USERRAM 24 +	; compile=1 / interpret=0 flag 
+			dc.l	0	
+WID.COMPILE		equ	USERRAM 28 +	; current compilation wordlist
+			dc.b	0
+WID.COUNT		equ	USERRAM 29 +	; number of WID's in the search list
+			dc.b	1
+WID.ORDER		equ	USERRAM 30 +	; current WID search order, first to last
+			ds.b	14		; space for 14 wordlists
+;			#.l	USERRAM 			; zero the user memory area
+;			#.w	USERRAMSIZE			; 	excluded by default to increase performance
+;			zero					; 	of new task launch
+;			jsl	FILL.CF				
+USERINIT.CF		#.l	USERRAM_MAP			; code to initialize the user memory area		
+			#.l	USERRAM
+			#.w	44					; number of USER variable bytes to initialize
+			jsl	MOVE.CF				; copy the map to the user memory area
+			rts
 ;
 ; ------------------------------------------------------------------------------------------------------------
 ; Exception stack variables - this region will be copied to exception stack on initiation
