@@ -53,6 +53,9 @@ _input_size	equ	256			; default ACCEPT input buffer size
 _PAD		equ	USERRAM 1024 +	; PAD location
 _PADEND	equ	_PAD 511 +		; last PAD character - picture numeric output builds downwards from here
 _STRING	equ	_PAD			; buffer for interpret mode string storage (e.g. S")
+SRAMSIZE	equ	128 1024 * 512 -	; Amount of SRAM in bytes
+RSrxBUF	equ	128 1024 * 512 -	; RS232 buffer (256 bytes) location
+PSBUF		equ	128 1024 * 256 -	; PS/2 keyboard buffer (256 bytes) location
 ;
 PSTACK		equ	hex 03e000		; Parameter stack
 SSTACK		equ	hex 03f000		; Subroutine stack
@@ -62,10 +65,10 @@ TYPE_VECTOR	equ	hex 03f084		; input and output vectors also located on the excep
 EMIT_VECTOR	equ	hex 03f088
 KEY_VECTOR	equ	hex 03f08c
 KEY?_VECTOR	equ	hex 03f090
-SRAMSIZE	equ	128 1024 *		; Amount of SRAM in bytes
+;SRAMSIZE	equ	128 1024 *		; Amount of SRAM in bytes
 SCREENWORDS	equ	hex 006000		; number of words in the screen buffer (96 rows * 128 cols * 2 screens)
-RSrxBUF	equ	hex 040000		; RS232 buffer (256 bytes)	
-PSBUF		equ	hex 040100		; PS/2 keyboard buffer (256 bytes)
+;RSrxBUF	equ	hex 040000		; RS232 buffer (256 bytes)	
+;PSBUF		equ	hex 040100		; PS/2 keyboard buffer (256 bytes)
 ;_input_buff	equ	hex 040200		; default input buffer location (used by ACCEPT)
 ;_input_size	equ	hex ff			; default input buffer size (used by ACCEPT)
 ;_PAD		equ	hex 040400		; PAD location (256 bytes below + 256 bytes above here)
