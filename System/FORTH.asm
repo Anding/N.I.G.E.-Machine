@@ -47,6 +47,7 @@ VBLANK		equ	hex 03f848
 ;
 USERRAM	equ	hex 03C000		; USER RAM area
 USERRAMSIZE	equ	2048			; Amount of USER RAM in bytes
+STRINGMAX	equ	480			; area within the PAD that can be used for interpret mode strings
 PSTACK		equ	hex 03e000		; Parameter stack
 SSTACK		equ	hex 03f000		; Subroutine stack
 ESTACK		equ	hex 03f080		; Exception stack
@@ -5444,29 +5445,30 @@ CLITERAL.Z	rts
 		jsl	$,.CF					; compile the string					
 ,".Z		rts
 ;
-; STRINGlOC	( n -- addr, return a pointer to the next space in the string bufffer -- internal function)
+; STRINGlOC	( n -- addr, return a pointer to the next space in the string buffer -- internal function)
+; n is the length of the string to be saved in the buffer.  STRINGLOC will check for potential buffer overrun and wrap
 STRINGLOC.CF	#.l	STRINGP
-		dup
-		>R
-		fetch.l
-		#.l	_STRING
-		-
+		dup				( n STRINGP STRINGP)
+		>R				( n STRINGP R:STRINGP)
+		fetch.l			( n next R:STRINGP)		; next is the current position in the buffer
+		#.l	_STRING		( n next bottom R:STRINGP)	; bottom is the bottom of the buffer
+		-				( n offset R:STRINGP)
 		over
-		+
-		#.w	256
-		>
-		IF
+		+				( n offset+n R:STRINGP)
+		#.w	STRINGMAX		; length of the string buffer
+		>				( n flag R:STRINGP)
+		IF				; offset+n lies beyond the end of the allocated buffer
 			#.l	_STRING
-			R@
-			store.l
+			R@			( n bottom STRINGP)
+			store.l		; revert to the bottom of the buffer
 		THEN
-		R@
-		fetch.l
-		dup
-		rot
-		+
-		R>
-STRINGLOC.Z	store.l,rts	
+		R@				( n STRINGP R:STRINGP)
+		fetch.l			( n next R:STRINGP)
+		dup				( n next next R:STRINGP)
+		rot				( next next n R:STRINGP)
+		+				( next new-next R:STRINGP)
+		R>				
+STRINGLOC.Z	store.l,rts			( next)	; save new-next
 ;	
 ; S" <string> ( - addr u), mode dependant string function
 S".LF		dc.l	,".NF
@@ -5479,10 +5481,10 @@ S".CF		jsl	IN$.CF			( addr n)	; string held in parse buffer
 		IF						; compile mode
 			jsl	SLITERAL.CF				; compile into dictionary				
 		ELSE						; interpret mode
-			dup						; copy to the pad and return to user
+			dup						; copy to the buffer and return to user
 			>R			( addr n R:n)
 			dup
-			jsl	STRINGLOC.CF	( addr n str R:n)				
+			jsl	STRINGLOC.CF	( addr n str R:n)    ; str is the next free buffer location
 			dup		
 			>R			( addr n str R:n str)
 			swap			( addr str n R:n str)
@@ -5501,19 +5503,19 @@ C".CF		jsl	IN$.CF			( addr n)	; string held in parse buffer
 		#.l	STATE_
 		fetch.l
 		IF						; compile mode
-			jsl	CLITERAL.CF			; compile into dictionary						
+			jsl	CLITERAL.CF			; compile into dictionary				
 		ELSE						; interpret mode	
 			dup
-			jsl	STRINGLOC.CF						
-			dup			( addr n pad pad)
-			>R			( addr n pad R:pad)
-			over			( addr n pad n R:pad)
-			over			( addr n pad n pad R:pad)
-			store.b		( addr n pad R:pad)	; copy the length byte to the PAD
-			1+			( addr n pad+1 R:pad)
-			swap			( addr pad+1 n R:pad)
-			jsl	MOVE.CF	( R:pad)		; copy the string to the PAD's second byte			
-			R>			( pad)		
+			jsl	STRINGLOC.CF  ( addr n str str)	; str is the next free buffer location		
+			dup			( addr n str str)
+			>R			( addr n str R:str)
+			over			( addr n str n R:str)
+			over			( addr n str n str R:str)
+			store.b		( addr n str R:str)	; copy the length byte to the buffer
+			1+			( addr n str+1 R:str)
+			swap			( addr str+1 n R:str)
+			jsl	MOVE.CF	( R:str)		; copy the string to the buffer's second byte
+			R>			( str)		
 		THEN
 C".Z		rts
 ;
