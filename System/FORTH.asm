@@ -56,6 +56,7 @@ _STRING	equ	_PAD			; buffer for interpret mode string storage (e.g. S")
 SRAMSIZE	equ	128 1024 * 512 -	; Amount of SRAM in bytes
 RSrxBUF	equ	128 1024 * 512 -	; RS232 buffer (256 bytes) location
 PSBUF		equ	128 1024 * 256 -	; PS/2 keyboard buffer (256 bytes) location
+_LOCAL.buf	equ	_PAD			; buffer for local variable names during compilation
 ;
 PSTACK		equ	hex 03e000		; Parameter stack
 SSTACK		equ	hex 03f000		; Subroutine stack
@@ -77,7 +78,7 @@ _TEXT_ZERO	equ	hex 040600		; default text memory location
 _TEXT_END	equ	hex 04C600		; one byte beyond the text memory location
 _FAT.buf	equ	hex 04C600		; FAT 512 byte storage space location 017B30
 _FAT.buffat	equ	hex 04C800		; FAT 512 byte storage space location for file allocation table 017D30
-_LOCAL.buf	equ	hex 04CA00		; 512 byte storage location for local variable names
+;_LOCAL.buf	equ	hex 04CA00		; 512 byte storage location for local variable names
 _END		equ	hex 04CC00		; HEAP location
 ;
 ; **** FORTH LANGUAGE CONSTANTS ****
