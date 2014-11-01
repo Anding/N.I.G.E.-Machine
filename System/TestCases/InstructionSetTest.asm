@@ -1,9 +1,11 @@
 ;	N.I.G.E. Machine test suite
 ;	30us test time
-;
 sub0		equ	hex 03F000
 env0		equ	hex 03F080
 sevenseg	equ	hex 03F830
+PSDRAM		equ	hex 040000
+SRAM		equ	hex 001000
+USERRAM	equ	hex 03C000
 		ds.l	2		; BLOCK RAM simulator bug
 		#.b	0	
 		jsl	announce	; test subroutine call
@@ -34,6 +36,8 @@ l3		jsl	loadliteral	; run test suite
 		jsl	substack
 		jsl	arith
 		jsl	others
+		jsl	throw0
+		jsl	fasu
 		#.b	255
 		jsl	announce
 l1		bra	l1
@@ -68,13 +72,13 @@ llsub3		#.l,rts hex ffff438a
 ; fetch and store
 fas		#.b	4
 		jsl	announce
-		#.w	0
+		#.l	hex SRAM
 		jsl	fssub1
-		#.w	1
+		#.l	hex SRAM 1 +
 		jsl	fssub1		
-		#.w	2
+		#.l	hex SRAM 2 +
 		jsl	fssub1
-		#.w	3
+		#.l	hex SRAM 3 +
 		jsl	fssub1
 		+
 		+
@@ -105,13 +109,13 @@ fssub1		#.l	hex	ffffffff
 ; fetch and store PSDRAM
 fasd		#.b	5
 		jsl	announce
-		#.w	65536
+		#.l	PSDRAM 
 		jsl	fssub1
-		#.w	65537
+		#.l	PSDRAM 4 +
 		jsl	fssub1		
-		#.w	65538
+		#.l	PSDRAM 8 +
 		jsl	fssub1
-		#.w	65539
+		#.l	PSDRAM 12 +
 		jsl	fssub1
 		+
 		+
@@ -119,6 +123,23 @@ fasd		#.b	5
 		#.w	assert
 		jmp	
 ;		
+; fetch and store USERRAM
+fasu		#.b	22
+		jsl	announce
+		#.l	USERRAM 
+		jsl	fssub1
+		#.l	USERRAM 1 +
+		jsl	fssub1		
+		#.l	USERRAM 2 +
+		jsl	fssub1
+		#.l	USERRAM 3 +
+		jsl	fssub1
+		+
+		+
+		+
+		#.w	assert
+		jmp	
+;
 ; fetch store,rts	
 frts		#.b	6
 		jsl	announce
@@ -131,41 +152,42 @@ frts		#.b	6
 		#.w	assert
 		jmp
 fsrsub1	#.l	hex	ffffffff
-		zero
+		#.l	SRAM
 		store.l,rts
 fsrsub2	jsl	fsrsub1
 		#.w	hex	eeee
-		zero
+		#.l	SRAM
 		store.w,rts
 fsrsub3	jsl	fsrsub2
 		#.b	hex	cc
-		zero
+		#.l	SRAM
 		store.b,rts
-fsrsub4	zero
+fsrsub4	#.l	SRAM
 		fetch.l,rts		
 fsrsub5	jsl	fsrsub4
-		zero
+		#.l	SRAM
 		fetch.w,rts
 fsrsub6	jsl	fsrsub5
-		zero
+		#.l	SRAM
 		fetch.b,rts
 ;
 ; ifdup
 ifdup		#.b	7
 		jsl	announce
+		zero
 		#.l	hex 7fffffff
 		jsl	ifdups1
 		+
 		1+
-		1+
+		1+			
+		jsl	assert
 		#.l	hex ffffffff
 		zero
 		jsl	ifdups1
 		drop
 		1+
-		+
-		#.w	assert
-		jmp
+		jsl	assert
+		rts
 ifdups1	?dup,rts
 ;
 ; multipy
@@ -517,6 +539,16 @@ others		#.b	20
 		+
 		#.w	assert
 		jmp
+; THROW 0
+THROW0		#.b	21
+		jsl 	announce
+		#.w	THROW0a		
+		catch
+		rts			;  subroutine stack return address
+l1		bra	l1		;  exception stack return address
+THROW0a	zero
+		throw
+		rts
 ;
 ; Announce a test
 announce	#.l	sevenseg

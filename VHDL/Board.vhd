@@ -46,7 +46,7 @@ end Board_Nexys4;
 
 architecture RTL of Board_Nexys4 is
 
-type bank_t is (Sys, Char, Color, Pstack, Rstack, Reg, Stack_access);
+type bank_t is (Sys, Char, Color, Pstack, Rstack, Reg, Stack_access, User);
 signal SD_WP : std_logic;
 signal bank, bank_n : bank_t;	
 signal counter_clk, counter_ms : std_logic_vector(31 downto 0) := (others =>'0');
@@ -61,7 +61,8 @@ signal RSdatain :  std_logic_vector(31 downto 0);
 signal MEMdatain_Xi :  std_logic_vector(31 downto 0);
 signal MEMdata_Char :  std_logic_vector(7 downto 0);
 signal MEMdata_Color :  std_logic_vector(15 downto 0);
-signal MEMdata_Pstack, MEMdata_Rstack, MEMdata_Reg, MEMdata_stack_access : std_logic_vector(31 downto 0);          
+signal MEMdata_Pstack, MEMdata_Rstack, MEMdata_Reg, MEMdata_stack_access : std_logic_vector(31 downto 0);   
+signal MEMdata_User :  std_logic_vector(31 downto 0);      
 signal PSaddr :  std_logic_vector(8 downto 0);
 signal PSdataout :  std_logic_vector(31 downto 0);
 signal PSw :  std_logic_vector(0 to 0);
@@ -72,7 +73,7 @@ signal MEMaddr :  std_logic_vector(31 downto 0);
 signal MEMdataout_X :  std_logic_vector(31 downto 0);
 signal MEM_WRQ_X :  std_logic;
 signal MEM_WRQ_XX : std_logic_vector(0 downto 0);
-signal Sys_EN, Pstack_EN, Rstack_EN, Char_EN, Reg_EN, Color_EN, stack_access_EN : std_logic;
+signal Sys_EN, Pstack_EN, Rstack_EN, Char_EN, Reg_EN, Color_EN, stack_access_EN, User_EN : std_logic;
 signal txt_zero : std_logic_vector(23 downto 0);
 signal DATA_OUT_VGA : std_logic_vector(7 downto 0) := (others=>'0');
 signal ADDR_VGA : std_logic_vector(8 downto 0);
@@ -106,15 +107,29 @@ signal douta_sysram_r : std_logic_vector(31 downto 0);
 signal doutb_sysram_r : std_logic_vector(31 downto 0); 
 signal douta_sysram_i : std_logic_vector(31 downto 0);
 signal doutb_sysram_i : std_logic_vector(31 downto 0);         
-signal wea_sysram : std_logic_vector(0 to 0);
-signal wea_sysram_s : std_logic_vector(0 to 0);
+signal wea_sysram : std_logic_vector(3 downto 0);
+signal wea_sysram_s : std_logic_vector(3 downto 0);
 signal addra_sysram : std_logic_vector(31 downto 2);
 signal addra_sysram_s : std_logic_vector(31 downto 2);
 signal dina_sysram : std_logic_vector(31 downto 0);
 signal dina_sysram_s : std_logic_vector(31 downto 0);
-signal web_sysram : std_logic_vector(0 to 0);
+signal web_sysram : std_logic_vector(3 downto 0);
 signal addrb_sysram : std_logic_vector(31 downto 2);
 signal dinb_sysram : std_logic_vector(31 downto 0);
+signal ena_sysram, enb_sysram : std_logic;
+
+signal addra_userram : std_logic_vector(31 downto 2);
+signal douta_userram : std_logic_vector(31 downto 0);
+signal doutb_userram : std_logic_vector(31 downto 0);          
+signal wea_userram : std_logic_vector(3 downto 0);
+signal addrb_userram : std_logic_vector(31 downto 2);
+signal dina_userram : std_logic_vector(31 downto 0);
+signal dinb_userram : std_logic_vector(31 downto 0);
+signal web_userram : std_logic_vector(3 downto 0);
+signal ena_userram, enb_userram : std_logic;
+signal addra_userram_all : std_logic_vector(31 downto 2);
+signal addrb_userram_all : std_logic_vector(31 downto 2);
+
 signal MEMdata_Sys, MEMdata_Sys_plus : std_logic_vector(31 downto 0);
 signal MEMdata_Sys_quick : std_logic_vector(31 downto 0);
 signal MEMsize_X, MEMsize_Xp : std_logic_vector(1 downto 0);
@@ -167,6 +182,7 @@ signal ESdataOUT : std_logic_vector(303 downto 0);
 signal ESdataIN : std_logic_vector(303 downto 0);
 signal ESw : std_logic_vector(37 downto 0);
 signal ESaddr : std_logic_vector(8 downto 0);
+signal VMID : std_logic_vector(4 downto 0);
 
 
 	component CLOCKMANAGER
@@ -247,14 +263,17 @@ begin
 	end process;
 	 
 	with MEMaddr(17 downto 11) select
-		bank_n <= Char when "1111010",
-					 Color when "1111011",
-					 Pstack when "1111100",
-					 Rstack when "1111101",
-					 Stack_access when "1111110",
-					 Reg when "1111111",
-					 Sys when others;
-	 
+		bank_n <= User 			when "1111000",
+					 User 			when "1111001",
+					 Char 			when "1111010",
+					 Color 			when "1111011",
+					 Pstack 			when "1111100",
+					 Rstack 			when "1111101",
+					 Stack_access 	when "1111110",
+					 Reg 				when "1111111",
+					 Sys 				when others;
+					 
+	 User_EN <= '1' when bank_n = User else '0';
 	 Stack_access_EN <= '1' when bank_n = Stack_access else '0';
 	 Color_EN <= '1' when bank_n = Color else '0';
 	 Pstack_EN <= '1' when bank_n = Pstack else '0';
@@ -262,7 +281,6 @@ begin
 	 Char_EN <= '1' when bank_n = Char else '0';
 	 Reg_EN <= '1' when bank_n = Reg else '0';
 	 Sys_EN <= '1' when bank_n = Sys else '0'; 
-	 ram_EN <= '1';
 	 
 	 with bank select														-- one cycle delayed to switch output
 		MEMdatain_Xi <= MEMdata_Pstack when Pstack,
@@ -271,12 +289,14 @@ begin
 							"0000000000000000" & MEMdata_Color when Color,
 							MEMdata_Reg when Reg,
 							Memdata_stack_access when stack_access,
+							MEMdata_User when user,
 							MEMdata_Sys when others;
 							
 	-- splice IOExpansion data ahead of the SRAM
-	 wea_sysram <= wea_sysram_s when Boot_we = "0" else boot_we;
+	 wea_sysram <= wea_sysram_s when Boot_we = "0" else "1111";
 	 dina_sysram <= dina_sysram_s when Boot_we = "0" else boot_data;
 	 addra_sysram <= addra_sysram_s when Boot_we = "0" else boot_addr;	
+	 ram_en <= ena_sysram or reset;
 
 	  inst_SYS_RAM : entity work.Sys_RAM
 	  PORT MAP (
@@ -287,7 +307,7 @@ begin
 		 dina => dina_sysram,
 		 douta => douta_sysram,
 		 clkb => clk_system,
-		 enb => ram_en,
+		 enb => enb_sysram,
 		 web => web_sysram,
 		 addrb => addrb_sysram (16 downto 2),
 		 dinb => dinb_sysram,
@@ -297,8 +317,10 @@ begin
 --	Inst_RAM_for_Testbench: entity work.RAM_for_Testbench PORT MAP(
 --		rst => reset,
 --		clk => clk_system,
---		weA => wea_sysram(0),
---		weB => web_sysram(0),
+--		enA => ena_sysram,
+--		enB => enb_sysram,
+--		weA => wea_sysram,
+--		weB => web_sysram,
 --		addressA => addra_sysram (16 downto 2),
 --		data_inA => dina_sysram,
 --		data_outA => douta_sysram,
@@ -327,8 +349,51 @@ begin
 		web => web_sysram,
 		addrb => addrb_sysram,
 		dinb => dinb_sysram,
-		doutb => doutb_sysram_i
+		doutb => doutb_sysram_i,
+		en_a => ena_sysram,
+		en_b => enb_sysram
 	);
+	
+		Inst_SRAM_controller_USER: entity work.SRAM_controller PORT MAP(
+		RST => reset,
+		CLK => clk_system,
+		en => USER_EN,
+		ADDR => MEMaddr,
+		size => MEMsize_X,
+		WE => MEM_WRQ_XX,
+		DATA_in => MEMdataout_X,
+		DATA_out => MEMdata_User,
+		DATA_out_quick => open,
+		wea => wea_userram,
+		addra => addra_userram,
+		dina => dina_userram,
+		douta => douta_userram,
+		web => web_userram,
+		addrb => addrb_userram,
+		dinb => dinb_userram,
+		doutb => doutb_userram,
+		en_a => ena_userram,
+		en_b => enb_userram
+	);
+	
+		addra_userram_all(15 downto 2) <= VMID & addra_userram(10 downto 2);
+		addrb_userram_all(15 downto 2) <= VMID & addrb_userram(10 downto 2);		
+	
+	 inst_USER_RAM : entity work.USER_RAM
+	  PORT MAP (
+		 clka => clk_system,
+		 ena => ena_userram,
+		 wea => wea_userram,
+		 addra => addra_userram_all(15 downto 2),
+		 dina => dina_userram,
+		 douta => douta_userram,
+		 clkb => clk_system,
+		 enb => enb_userram,
+		 web => web_userram,
+		 addrb => addrb_userram_all(15 downto 2),
+		 dinb => dinb_userram,
+		 doutb => doutb_userram
+	  );
 	
 	  inst_Char_RAM : entity work.Char_RAM
 	  PORT MAP (
@@ -442,7 +507,8 @@ begin
 		SD_control => SD_control,
 		SD_wr => SD_wr,
 		SD_divide => SD_divide,
-		VBLANK => VBLANK
+		VBLANK => VBLANK,
+		VMID => VMID
 	);
 	
 		Inst_stack_access: entity work.stack_access PORT MAP(

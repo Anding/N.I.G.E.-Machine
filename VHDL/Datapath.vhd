@@ -15,9 +15,11 @@ entity Datapath is
 			  AuxControl : in STD_LOGIC_VECTOR (1 downto 0);		-- control lines 
 			  ReturnAddress : in STD_LOGIC_VECTOR (31 downto 0);	-- Return Address for JSR, BSR instructions
 			  TOS : out STD_LOGIC_VECTOR (31 downto 0);				-- Top Of Stack (TOS_n, one cycle ahead of registered value)
-			  TOS_r : out STD_LOGIC_VECTOR (31 downto 0);			-- Top Of Stack (Tthe registered value)			  
-			  NOS : out STD_LOGIC_VECTOR (31 downto 0);				-- Next On Stack (NOS_n)
-			  equalzero : out STD_LOGIC;									-- flag '1' when TOS is zero
+			  TOS_r : out STD_LOGIC_VECTOR (31 downto 0);			-- Top Of Stack (the registered value)			  
+--			  NOS : out STD_LOGIC_VECTOR (31 downto 0);				-- Next On Stack (NOS_n)
+			  NOS_r : out STD_LOGIC_VECTOR (31 downto 0);			-- Next On Stack (the registered value)
+			  equalzero : out STD_LOGIC;									-- flag '1' when TOS (unregistered) is zero
+			  equalzero_r : out STD_LOGIC;								-- flag '1' when TOS (registered) is zero			  
 			  chip_RAM : out STD_LOGIC;									-- flag used to identify SRAM vs. PSDRAM memory access
 			  TORS : out STD_LOGIC_VECTOR (31 downto 0);			   -- Top Of Return Stack
 			  ExceptionAddress : OUT STD_LOGIC_VECTOR (31 downto 0);
@@ -181,17 +183,7 @@ begin
 	ESP_m1 <= ESP - 1;							-- available for incrementing and decrementing stack pointers
 	ESP_p1 <= ESP + 1;	
 	ESaddr <= ESP_n;	
-	
---	with AuxControl (0 downto 0) select					-- instruction RTS requires decrement of return stack pointer
---		RSP_n1 <= RSP_m1 when "1",
---					 RSP_n when others;	
---					 
---	with MicroControl(12 downto 11) select				-- multiplexer for setting return stack pointer
---		RSP_n <= RSP_m1 when "01",
---					RSP_p1 when "10",
---					TOS_i(8 downto 0) when "11",
---					RSP when others;	
-									
+								
 	-- Return stack 				
 	process (AuxControl, MicroControl, RSP_m1, RSP_p1, TOS_i)	
 	begin
@@ -279,10 +271,6 @@ begin
 	
 	-- Parameter stack
 			--	Pstack_RAM must be configured as write first!
-	
---	PSdatain_i <= PwBuff when PSw_m1 = "1"	-- because of 1 cycle memory latency, need to use the buffered value for a stack memory read
---														--   if the stack memory was written just one cycle before (as memory update will not yet have occured)			
---				else PSdatain;
 
 	PSP_m1 <= PSP - 1;							-- available for incrementing and decrementing stack pointers
 	PSP_p1 <= PSP + 1;
@@ -293,7 +281,8 @@ begin
 	PSw <= PSw_i;	
 	TOS <= TOS_n;									-- output TOS to control unit, once cycle ahead of registered value	
 	TOS_r <= TOS_i;								-- the registered value of TOS
-	NOS <= NOS_n;									-- output NOS to control unit, once cycle ahead of registered value	
+--	NOS <= NOS_n;									-- output NOS to control unit, once cycle ahead of registered value	
+	NOS_r <= NOS_i;
 	
 			
 	with AuxControl (1 downto 1) select					-- immediate value for loading into TOS (one cycle delay to coincide with microcode)
@@ -337,6 +326,7 @@ begin
 	-- signals for control unit
 	
 	equalzero <= '1' when TOS_n = 0 else '0'; 
+	equalzero_r <= '1' when TOS_i = 0 else '0'; 	
 	chip_RAM <= '1' when TOS_n(23 downto 18) = 0 else '0';		-- flag used to identify SRAM vs. PSDRAM memory access
 
 	Inst_Adder: Adder 

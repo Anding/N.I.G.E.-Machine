@@ -36,6 +36,9 @@ entity HW_Registers is
 			  ssData	: out std_logic_vector(31 downto 0);			-- data for seven segment display
 			  SW	: in std_logic_vector(15 downto 0);					-- switches onboard Nexys2
 			  VBLANK : in std_logic;										-- VGA vertical blank
+			  -- Virtualization
+			  VMID : out std_logic_vector(4 downto 0);					-- currently executing virtual machine
+			  
 			  -- CPU system memory channel
 			  en : in STD_LOGIC;													-- Enable is set by board level logic depending on higher bit of 
 																											-- the address to enable this piece of memory when it is addressed	  
@@ -58,8 +61,12 @@ architecture Behavioral of HW_Registers is
 	signal background_r : std_logic_vector(15 downto 0);
 	signal mode_r : std_logic_vector(4 downto 0);
 	signal ssData_r : std_logic_vector(31 downto 0);
+	signal VMID_r : std_logic_vector(4 downto 0);	
+	
 	signal addr_i : std_logic_vector(7 downto 0);					-- local address bus
 	signal clk_i : std_logic;												-- local slow clock for debounce
+
+	
 	-- pipeline registers for hardware write
 	signal en_r : std_logic :='0';
 	signal addr_r : std_logic_vector(7 downto 0) :=(others=>'0');
@@ -94,6 +101,7 @@ begin
 	addr_i <= addr(7 downto 0);
 	clk_i <= counter_clk(13);
 	irq_mask <= irq_mask_r;
+	VMID <= VMID_r;
 	
 	-- update writable registers
 	
@@ -152,6 +160,9 @@ begin
 		
 					when x"44" =>										-- SD clock divide
 						SD_divide_r <= datain_r(7 downto 0);
+						
+					when x"FF" =>										-- VM number
+						VMID_r <= datain_r(4 downto 0);	
 					
 					when others =>
 						null;	
@@ -195,7 +206,7 @@ begin
 		dataout <= dataout_i;
 	
 	--process (en, addr, txt_zero_r, gfx_zero_r, background_r, mode_r, RS232_rx_S0_r, RS232_TBE_S0_r, RS232_RDA_S0_r, PS2_data_r, counter_clk,
-	--			counter_ms, IRQ_mask_r, SW_r, SD_datain_r, SD_control_r, SD_status_r)
+	--			counter_ms, IRQ_mask_r, SW_r, SD_datain_r, SD_control_r, SD_status_r, VMID_r)
 	process			
 	begin																
 		wait until rising_edge(clk);		-- register all outputs to reduce multiplexer delays
@@ -242,6 +253,9 @@ begin
 					
 				when x"48"	=>										-- VGA vertical blank
 					dataout_i	<= blank3 & "0000000" & VBLANK_r;
+					
+				when x"FF" =>										-- VMID
+					dataout_i	<= blank3 & "000" & VMID_r;
 
 				when others =>
 					dataout_i <= (others=>'0');

@@ -1,4 +1,7 @@
-sevenseg	equ	hex F830
+sevenseg	equ	hex 03f830
+;memloc	equ	hex 040000	; 040000 first word of PSDRAM
+;memloc	equ	hex 01FFFC	; 01FFFC is last word of SRAM
+memloc		equ	hex 03C000	; 03C000 first word of USER RAM
 		nop
 		nop
 		nop
@@ -16,9 +19,9 @@ l1		bra	l1
 writeLreadL	#.b	01
 		jsl	announce
 		#.l	hex 89ABCDEF
-		#.l	65536		
+		#.l	memloc	
 		store.l
-		#.l	65536
+		#.l	memloc
 		fetch.l
 ;
 ;		jsl announce
@@ -33,12 +36,12 @@ writeLreadL	#.b	01
 writeWreadL	#.b	02
 		jsl	announce
 		#.w	hex 89AB
-		#.l	65536
+		#.l	memloc
 		store.w	
 		#.w	hex CDEF
-		#.l	65538
+		#.l	memloc 2 +
 		store.w	
-		#.l	65536
+		#.l	memloc
 		fetch.l
 		#.l	hex 89ABCDEF
 		-
@@ -48,18 +51,18 @@ writeWreadL	#.b	02
 writeBreadL	#.b	03
 		jsl	announce
 		#.b	hex 89
-		#.l	65536
+		#.l	memloc
 		store.b	
 		#.b	hex AB
-		#.l	65537
+		#.l	memloc 1 +
 		store.b
 		#.b	hex 0CD
-		#.l	65538
+		#.l	memloc 2 +
 		store.b	
 		#.b	hex EF
-		#.l	65539
+		#.l	memloc 3 +
 		store.b
-		#.l	65536
+		#.l	memloc
 		fetch.l
 		#.l	hex 89ABCDEF
 		-
@@ -68,13 +71,13 @@ writeBreadL	#.b	03
 writeLreadW	#.b	04
 		jsl	announce
 		#.l	hex 89ABCDEF
-		#.l	65536
+		#.l	memloc
 		store.l
-		#.l	65536
+		#.l	memloc
 		fetch.w
 		#.w	hex 89AB
 		-				; flag1
-		#.l	65538
+		#.l	memloc 2 +
 		fetch.w
 		#.w	hex CDEF
 		-				; flag2
@@ -84,21 +87,21 @@ writeLreadW	#.b	04
 writeLreadB	#.b	05
 		jsl	announce
 		#.l	hex 89ABCDEF
-		#.l	65536
+		#.l	memloc
 		store.l
-		#.l	65536
+		#.l	memloc
 		fetch.b
 		#.w	hex 89
 		-				; flag1
-		#.l	65537
+		#.l	memloc 1 +
 		fetch.b
 		#.w	hex 0AB
 		-				; flag2
-		#.l	65538
+		#.l	memloc 2 +
 		fetch.b
 		#.w	hex 0CD
 		-				; flag1
-		#.l	65539
+		#.l	memloc 3 +
 		fetch.b
 		#.w	hex 0EF
 		-
@@ -111,30 +114,30 @@ writeLreadB	#.b	05
 fourwrites	#.b	06
 		jsl	announce
 		#.l	hex 89ABCDEF
-		#.l	hex 010000		
+		#.l	memloc		
 		store.l
 		#.l	hex 12345678
-		#.l	hex 010004
+		#.l	memloc 4 +
 		store.l
 		#.l	hex 13579BDF
-		#.l	hex 010008
+		#.l	memloc 8 +
 		store.l
 		#.l	hex 02468ACE
-		#.l	hex 01000C
+		#.l	hex memloc C +
 		store.l
-		#.l	hex 010000
+		#.l	memloc
 		fetch.l
 		#.l	hex 89ABCDEF
 		-
-		#.l	hex 010004
+		#.l	memloc 4 +
 		fetch.l
 		#.l	hex 12345678
 		-
-		#.l	hex 010008
+		#.l	memloc 8 +
 		fetch.l
 		#.l	hex 13579BDF
 		-
-		#.l	hex 01000C
+		#.l	hex memloc C +
 		fetch.l
 		#.l	hex 02468ACE
 		-
@@ -145,7 +148,7 @@ fourwrites	#.b	06
 		jmp	
 ;	
 ; Announce a test
-announce	#.w	sevenseg
+announce	#.l	sevenseg
 		store.l
 		rts
 ;
