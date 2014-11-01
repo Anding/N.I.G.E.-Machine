@@ -74,12 +74,12 @@ SCREENWORDS	equ	hex 006000		; number of words in the screen buffer (96 rows * 12
 ;_input_size	equ	hex ff			; default input buffer size (used by ACCEPT)
 ;_PAD		equ	hex 040400		; PAD location (256 bytes below + 256 bytes above here)
 ;_STRING	equ	hex 040500		; buffer for internal string storage (e.g. S")
-_TEXT_ZERO	equ	hex 040600		; default text memory location
-_TEXT_END	equ	hex 04C600		; one byte beyond the text memory location
-_FAT.buf	equ	hex 04C600		; FAT 512 byte storage space location 017B30
-_FAT.buffat	equ	hex 04C800		; FAT 512 byte storage space location for file allocation table 017D30
+_TEXT_ZERO	equ	hex 040000		; default text memory location
+_TEXT_END	equ	hex 04C000		; one byte beyond the text memory location
+_FAT.buf	equ	hex 04C000		; FAT 512 byte storage space location 017B30
+_FAT.buffat	equ	hex 04C200		; FAT 512 byte storage space location for file allocation table 017D30
 ;_LOCAL.buf	equ	hex 04CA00		; 512 byte storage location for local variable names
-_END		equ	hex 04CC00		; HEAP location
+_END		equ	hex 04C400		; HEAP location
 ;
 ; **** FORTH LANGUAGE CONSTANTS ****
 ;
