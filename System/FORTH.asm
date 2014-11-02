@@ -4713,7 +4713,7 @@ ALLOT.CF	#.w	HERE_	( n HERE)
 		jsl	+!.CF
 ALLOT.Z	rts
 ;
-; VARIABLE ( -- create a variable)
+; VARIABLE ( <name> -- , create a variable)
 VARIABLE.LF	dc.l	ALLOT.NF
 VARIABLE.NF	dc.b	8 128 +
 		dc.b	char E char L char B char A char I char R char A char V
@@ -4730,8 +4730,33 @@ VARIABLE.CF	jsl	COLON.CF				; initiate the word
 		+				( HERE')
 		#.w  	HERE_			( HERE' &HERE)						
 VARIABLE.Z	store.l,rts
+; USER ( n <name> --, create a user variable at offset n characters from the start of the user area)
+USER.LF	dc.l	VARIABLE.NF
+USER.NF	dc.b	4 128 +
+		dc.s	USER
+USER.SF 	dc.w	USER.Z USER.CF del
+USER.CF	jsl	COLON.CF
+		#.l	USERRAM
+		+
+		jsl	LITERAL.CF
+		jsl	SEMICOLON.CF
+USER.Z		rts
+; +USER ( n <name> --, create a user variable of size n characters at the next available slot)
++USER.LF	dc.l	USER.NF
++USER.NF	dc.b	5 128 +
+		dc.s	+USER
++USER.SF	dc.w	+USER.Z +USER.CF del
++USER.CF	jsl	COLON.CF
+		#.l	USERNEXT_
+		fetch.l
+		dup
+		jsl	LITERAL.CF
+		jsl	SEMICOLON.CF
+		+
+		#.l	USERNEXT_
++USER.Z	store.l,rts
 ; COLON
-COLON.LF	dc.l	VARIABLE.NF
+COLON.LF	dc.l	+USER.NF
 COLON.NF	dc.b	1 128 +
 		dc.b	char :
 COLON.SF	dc.w	COLON.Z COLON.CF del
@@ -6013,7 +6038,7 @@ LAST-NF	dc.l 	LAST.NF			; NF of last word created by HEAD, must be initialized
 COMPILEstackP		dc.l	USERRAM 1016 + ; pointer for the compiler stack (used for LEAVE)
 LAST-CF		dc.l	0		; CF of last word created by HEAD
 LAST-SF		dc.l	0		; SF of last word created by HEAD
-USER.NEXT		dc.l	USERRAM 44 +	; next available location for a user variable
+USERNEXT_		dc.l	USERRAM 44 +	; next available location for a user variable
 LOCAL.COUNT		dc.l	0		; used in the creation of the local variable buffer
 IN_LEN_a		dc.l	0		; used by SAVE-INPUT and RESTORE-INPUT
 >IN_a			dc.l	0		; used by SAVE-INPUT and RESTORE-INPUT
