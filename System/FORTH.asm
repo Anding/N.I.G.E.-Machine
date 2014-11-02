@@ -2614,7 +2614,7 @@ RESET.CF	#.w	END
 		#.w	_END
 		#.w	HERE1
 		store.l
-		#.w	LAST.NF
+		#.w	GET-ENTRY.NF
 		jsl	SET-ENTRY.CF
 		jsl	START.CF
 RESET.Z	rts
@@ -6022,13 +6022,6 @@ LOCAL.ref	2*
 		+
 		rts
 ;
-;GET-ENTRY.CF	( -- get the entry point (name field) of the wordlist)
-GET-ENTRY.CF	#.l	LAST-NF
-		fetch.l,rts
-;
-;SET-ENTRY.CF	( NF -- set the entry point of the wordlist to the name field NF)
-SET-ENTRY.CF	#.l	LAST-NF
-		store.l,rts
 ;
 ;NF>LF.CF	( NF -- LF, return the link field of the word given its name field)
 NF>LF.CF	#.b	4
@@ -6051,14 +6044,19 @@ NF>CF.CF	dup
 		#.b	3
 		+,rts
 ;
-; LAST returns the address of a variable pointing to the last name field in the dictionary
-LAST.LF	dc.l	{:.NF
-LAST.NF	dc.b	4 128 +
-		dc.b	char T char S char A char L
-LAST.SF	dc.w	4
-LAST-NF.CF	#.l	LAST-NF
-		rts
-LAST-NF	dc.l 	LAST.NF			; NF of last word created by HEAD, must be initialized
+;SET-ENTRY.CF	( NF -- set the entry point of the wordlist to the name field NF)
+SET-ENTRY.CF	#.l	LAST-NF
+		store.l,rts
+;
+;GET-ENTRY	( -- get the entry point (name field) of the wordlist)
+GET-ENTRY.LF	dc.l	{:.NF
+GET-ENTRY.NF	dc.b	9 128 +
+		dc.s	GET-ENTRY
+GET-ENTRY.SF	dc.w	6
+GET-ENTRY.CF	#.l	LAST-NF
+		fetch.l,rts
+LAST-NF	dc.l 	GET-ENTRY.NF		; NF of last word created by HEAD, must be initialized		
+;
 ; ------------------------------------------------------------------------------------------------------------
 ; internal FORTH dictionary variables	
 ; ------------------------------------------------------------------------------------------------------------
