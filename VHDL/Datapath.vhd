@@ -136,6 +136,7 @@ signal SSP, ESP, SSP_n, ESP_n, SSP_n1, ESP_m1, ESP_p1, SSP_m1, SSP_p1 : std_logi
 signal PSdataout_i, PSdatain_i : std_logic_vector (31 downto 0);
 signal PSw_i, PSw_m1 : std_logic_vector (0 downto 0);
 signal data : std_logic_vector (31 downto 0);
+signal equalzero_i, equalzero_n : std_logic;
 
 begin
 
@@ -151,6 +152,7 @@ begin
 			SSP <= SSP_n;
 			PwBuff <= PSdataOUT_i;				-- buffer for last written paramter stack value
 			PSw_m1 <= PSw_i;
+			equalzero_i <= equalzero_n;
 		else
 			TOS_i <= (others=>'0');
 			NOS_i <= (others=>'0');
@@ -160,6 +162,7 @@ begin
 			SSP <= (others=>'0');			
 			PwBuff <= (others=>'0');	
 			PSw_m1 <= (others=>'0');
+			equalzero_i <= '0';
 		end if;
 	end process;
 	
@@ -325,8 +328,9 @@ begin
 	
 	-- signals for control unit
 	
-	equalzero <= '1' when TOS_n = 0 else '0'; 
-	equalzero_r <= '1' when TOS_i = 0 else '0'; 	
+	equalzero_n <= '1' when TOS_n = 0 else '0'; 
+	equalzero <= equalzero_n;
+	equalzero_r <= equalzero_i; --'1' when TOS_i = 0 else '0'; 	
 	chip_RAM <= '1' when TOS_n(23 downto 18) = 0 else '0';		-- flag used to identify SRAM vs. PSDRAM memory access
 
 	Inst_Adder: Adder 
