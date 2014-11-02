@@ -275,7 +275,11 @@ LAST-NF	dc.l	GET-ENTRY.NF		; must be initialize to the NF of the last word in th
 		dc.l	STUB.NF
 		dc.l	STUB.NF
 		dc.l	STUB.NF
-		dc.l	STUB.NF		; 14 wordlists are available		
+		dc.l	STUB.NF		; 14 wordlists are available
+HERE_		dc.l	END			; storage location of the variable HERE
+HERE1		dc.l	_END			; HERE1 tracks PSDRAM space allocated by BUFFER:
+;
+; Preceeding 64 byte area is saved by MARKER at compile time and restored by MARKER at run time		
 ;
 ; ----------------------------------------------------------------------------------------------
 ; Start of FORTH dictionary
@@ -2635,16 +2639,10 @@ FAT.buf.CF			#.l	_FAT.buf
 ; RESET ( --)
 RESET.LF	dc.l	FAT.buf.NF
 RESET.NF	dc.b	5 128 +
-		dc.b	char T char E char S char E char R
+		dc.s	RESET
 RESET.SF	dc.w	RESET.Z RESET.CF del
-RESET.CF	#.w	END
-		#.w	HERE_
-		store.l
-		#.w	_END
-		#.w	HERE1
-		store.l
-		#.w	GET-ENTRY.NF
-		jsl	SET-COMP-ENTRY.CF
+RESET.CF	zero					; reset the compilation wordlist to FORTH
+		jsl	SET-CURRENT.CF
 		jsl	START.CF
 RESET.Z	rts
 ;
@@ -5676,31 +5674,35 @@ ALIGNED.CF	#.b	3
 ALIGNED.Z	lsl,rts
 ;
 ; MARKER (--, create a deletion boundary)
+; 	Marker does not restore search orders as these are private to individual user areas
+; 	however all wordlists are initialized with a stub and can be safely searched when empty
 MARKER.LF	dc.l	ALIGNED.NF
-MARKER.NF	dc.b	6 128 +
-		dc.b	char R char E char K char R char A char M
+MARKER.NF	dc.b	6 128 NOINLINE + +
+		dc.s	MARKER
 MARKER.SF	dc.w	MARKER.Z MARKER.CF del
-MARKER.CF	#.w	HERE_						; current HERE will be the LF of the MARKER word
-		fetch.l
-		#.w	HERE1						; current SDRAM POINTER
-		fetch.l		
-		jsl	COLON.CF					; create the word (*after* placing HERE on the stack)	
-		jsl	LITERAL.CF			; compile the SDRAM pointer as a literal to be pushed onto the stack at runtime			
-		jsl	LITERAL.CF					; compile the LF as a literal to be pushed onto the stack at runtime	
+MARKER.CF	#.w	LAST-NF	( s)				; start of the wordlist table
+		#.w	HERE_						; current space in the dictionary
+		fetch.l		( s d)
+		>R			( s R:d)
+		R@			( s d R:d)
+		#.b	64		( s d n R:d)			; size of the wordlist table, including the HERE and HERE1 variable locations
+		jsl	MOVE.CF					; copy the table to the dictionary
+		#.b	64		( 64 R:d)
+		jsl	ALLOT.CF	( R:d)				; advance the dictionary pointer over the table just created
+		jsl	COLON.CF	( R:d)				; start the word definition
+		R>			( d)
+		jsl	LITERAL.CF					; compile as a literal the address of wordlist table copy just made in the dictionary
 		#.w	MARKER.RUN					
 		jsl	LITERAL.CF					; compile address of the MARKER runtime code
 		#.b	opJMP						
-		jsl	C,.CF						; compile a jump to the MARKET runtime code
+		jsl	C,.CF						; compile a jump
 		jsl	SEMICOLON.CF					; finish the word
 MARKER.Z	rts
 ; runtime code for MARKER
-MARKER.RUN	dup				( SD LF LF)		; SD is the SDRAM pointer, LF is the LF of the word
-		fetch.l			( SD LF NF')		; NF' is the NF of the prior word
-		jsl	GET-COMP-ENTRY.CF		( SD LF)		; store the NF of the previous word in the last word variable (used by HEAD for linking)	
-		#.w	HERE_						; point HERE at the address of the work
-		store.l			( SD)			
-		#.w	HERE1						; reset the SDRAM pointer too
-		store.l,rts
+MARKER.RUN	#.w	LAST-NF		( s d)			; the address of the dictionary copy will already be on the stack
+		#.b	64			( s d n)
+		jsl	MOVE.CF					; restore the wordlist table from the dictionary copy
+		rts
 ;	
 ; BUFFER: ( n --), create a storate table in PSDRAM (definition replaced in dynamic memory allocation wordset)
 BUFFER:.LF	dc.l	MARKER.NF
@@ -5873,7 +5875,6 @@ HERE.NF	dc.b	4 128 +
 HERE.SF	dc.w	4
 HERE.CF	#.w	HERE_
 		fetch.l,rts
-HERE_		dc.l	END
 ;	
 ; HERE for the SDRAM space
 HERE1.LF	dc.l	HERE.NF
@@ -5882,7 +5883,6 @@ HERE1.NF	dc.b	5 128 +
 HERE1.SF	dc.w	4
 HERE1.CF	#.w	HERE1
 		fetch.l,rts
-HERE1		dc.l	_END
 ;
 ; maximum word length for inline compilation 
 ; do not reduce below 9 since some control structures
@@ -6142,7 +6142,16 @@ NF>CF.CF	dup
 		#.b	3
 		+,rts
 ;
-WORDLIST.LF		dc.l	{:.NF
+DEFINITIONS.LF	dc.l	{:.NF
+DEFINITIONS.NF	dc.b	11 128 +
+			dc.s	DEFINITIONS
+DEFINITIONS.SF	dc.w	DEFINITIONS.NF DEFINITIONS.CF del
+DEFINITIONS.CF	#.l	WID.ORDER
+			fetch.b
+			#.l	WID.COMPILE
+DEFINITIONS.Z		store.b,rts
+;
+WORDLIST.LF		dc.l	DEFINITIONS.NF
 WORDLIST.NF		dc.b	8 128 +
 			dc.s	WORDLIST
 WORDLIST.SF		dc.w	WORDLIST.Z WORDLIST.CF del
@@ -6195,7 +6204,7 @@ FORTH-WORDLIST.NF	dc.b	14 128 +
 FORTH-WORDLIST.SF	dc.w	1
 FORTH-WORDLIST.CF	zero,rts
 ;
-;GET-COMP-ENTRY	( -- NF, get the entry point (name field) of the compilation wordlist)
+;GET-COMP-ENTRY.CF	( -- NF, get the entry point (name field) of the compilation wordlist)
 GET-COMP-ENTRY.CF	#.l	WID.COMPILE
 			fetch.b		( WID)
 			jsl	GET-ENTRY.CF	( NF)
