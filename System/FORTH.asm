@@ -259,13 +259,42 @@ START.1	dc.s	bytes free
 		dc.b	EOL EOL
 ;
 ; ----------------------------------------------------------------------------------------------
+; WORLDLIST table
+; ----------------------------------------------------------------------------------------------
+;
+LAST-NF	dc.l	GET-ENTRY.NF		; must be initialize to the NF of the last word in the dictionary
+		dc.l	STUB.NF		; all other worldlists are initialized to the stub word
+		dc.l	STUB.NF
+		dc.l	STUB.NF
+		dc.l	STUB.NF
+		dc.l	STUB.NF
+		dc.l	STUB.NF
+		dc.l	STUB.NF
+		dc.l	STUB.NF
+		dc.l	STUB.NF
+		dc.l	STUB.NF
+		dc.l	STUB.NF
+		dc.l	STUB.NF
+		dc.l	STUB.NF		; 14 wordlists are available		
+;
+; ----------------------------------------------------------------------------------------------
+; Start of FORTH dictionary
+; ----------------------------------------------------------------------------------------------
+;
+; stub word to mark the end of the dictionary
+		dc.l	0
+STUB.NF	dc.b	0
+		dc.w	1
+		rts
+;
+; ----------------------------------------------------------------------------------------------
 ; Low level hardware control
 ; ----------------------------------------------------------------------------------------------
 ;
 ; **** MILLISECOND TIMER ****
 ;
 ; TIMEOUT ( n --, set a reset timer for n milliseconds)
-TIMEOUT.LF	dc.l	0
+TIMEOUT.LF	dc.l	STUB.NF
 TIMEOUT.NF	dc.b	7 128 +
 		dc.b	char T char U char O char E char M char I char T
 TIMEOUT.SF	dc.w	TIMEOUT.Z TIMEOUT.CF del
@@ -2615,7 +2644,7 @@ RESET.CF	#.w	END
 		#.w	HERE1
 		store.l
 		#.w	GET-ENTRY.NF
-		jsl	SET-ENTRY.CF
+		jsl	SET-COMP-ENTRY.CF
 		jsl	START.CF
 RESET.Z	rts
 ;
@@ -3239,38 +3268,82 @@ COUNT.Z	fetch.b,rts	( c-addr n)
 ;
 FIND.LF	dc.l	COUNT.NF
 FIND.NF	dc.b	4 128 + 
-		dc.b 	char D char N char I char F
+		dc.s 	FIND
 FIND.SF	dc.w	FIND.Z FIND.CF del NOINLINE +
-FIND.CF	dup			( addr addr)
-		jsl	COUNT.CF	( addr c-addr1 n1)
+FIND.CF	#.l	WID.COUNT
+		fetch.b		( addr count)
+		?dup								; check count of the search order is not zero
+		IF			( addr count)	
+			#.l	WID.ORDER	( addr count &WID)
+			dup			( addr count &WID &WID)
+			rot			( addr &WID &WID count)
+			+			( addr &WID &END)
+			swap			( addr &END &WID)
+			DO			( addr )			; search each world list in turn
+				R@			( addr &WID)
+				fetch.b		( addr WID)
+				jsl	{FIND}.CF	( addr 0 | xt 1 | xt -1)
+				?dup						; check the results of FIND within that wordlist
+				IF		
+					UNLOOP			( xt 1 | xt -1)
+					rts
+				THEN			( addr)			
+			LOOP							; all world lists searched with no result
+		THEN			( addr)
+		zero
+FIND.Z		rts
+;
+;  {FIND} (addr WID -- addr 0 | xt 1 | xt -1, takes a counted string)
+{FIND}.CF	over				( addr WID addr)
+		>R				( addr WID R:addr)
+		swap				( WID addr R:addr)
+		jsl	COUNT.CF		( WID c-addr n R:addr)
+		rot				( c-addr n WID R:addr)
+		jsl	SEARCH-WORDLIST.CF	(0 | xt 1 | xt -1 R:addr)
+		dup
+		IF
+			R>				( xt 1 addr | xt -1 addr)
+			drop				( xt 1 | xt -1)
+		ELSE
+			R>				( 0 addr)
+			swap				( addr 0)
+		THEN
+		rts
+;
+; SEARCH-WORDLIST (c-addr n WID -- 0 | xt 1 | xt -1, takes a string length pair and a WID)
+SEARCH-WORDLIST.LF	dc.l	FIND.NF
+SEARCH-WORDLIST.NF	dc.b	128 15 +
+			dc.s	SEARCH-WORDLIST
+SEARCH-WORDLIST.WF	dc.w	SEARCH-WORDLIST.CF SEARCH-WORDLIST.CF del
+SEARCH-WORDLIST.CF	>R		( c-addr1 n1 R:WID)
 		?dup
-		IF			( addr c-addr1 n1)
+		IF			( c-addr1 n1 R:WID)
 ; top of dictonary
-		jsl	GET-ENTRY.CF	( addr c-addr1 n1 NF)
-		BEGIN			( addr c-addr1 n1 NF)
+		R>			( c-addr1 n1 WID)
+		jsl	GET-ENTRY.CF	( c-addr1 n1 NF)
+		BEGIN			( c-addr1 n1 NF)
 ; check smudge bit not set
-			dup			( addr c-addr1 n1 NF NF)
-			>R			( addr c-addr1 n1 NF R: NF)	
-			fetch.b		( addr c-addr1 n1 n' R: NF)
-			#.b	32		( addr c-addr1 n1 n' 32 R: NF)
-			and			( addr c-addr1 n1 flag R: NF)			
-			0=			( addr c-addr1 n1 flag' R: NF)
+			dup			( c-addr1 n1 NF NF)
+			>R			( c-addr1 n1 NF R: NF)	
+			fetch.b		( c-addr1 n1 n' R: NF)
+			#.b	32		( c-addr1 n1 n' 32 R: NF)
+			and			( c-addr1 n1 flag R: NF)			
+			0=			( c-addr1 n1 flag' R: NF)
 			IF
 ; prepare and perform string equality test
-				over			( addr c-addr1 n1 c-addr1 R: NF)
-				over			( addr c-addr1 n1 c-addr1 n1 R: NF)
-				R@			( addr c-addr1 n1 c-addr1 n1 NF R: NF)
-				dup			( addr c-addr1 n1 c-addr1 n1 NF NF R: NF)
-				1+			( addr c-addr1 n1 c-addr1 n1 NF c-addr2 R: NF)
-				swap			( addr c-addr1 n1 c-addr1 n1 c-addr2 NF R: NF)
-				fetch.b		( addr c-addr1 n1 c-addr1 n1 c-addr2 n2' R: NF)
-				#.b 	31		( addr c-addr1 n1 c-addr1 n1 c-addr2 n2' 31 R: NF)
-				and			( addr c-addr1 n1 c-addr1 n1 c-addr2 n2 R: NF)
-				jsl	$=.CF		( addr c-addr1 n1 flag R: NF)		
-				IF			( addr c-addr1 n1 R: NF)
+				over			( c-addr1 n1 c-addr1 R: NF)
+				over			( c-addr1 n1 c-addr1 n1 R: NF)
+				R@			( c-addr1 n1 c-addr1 n1 NF R: NF)
+				dup			( c-addr1 n1 c-addr1 n1 NF NF R: NF)
+				1+			( c-addr1 n1 c-addr1 n1 NF c-addr2 R: NF)
+				swap			( c-addr1 n1 c-addr1 n1 c-addr2 NF R: NF)
+				fetch.b		( c-addr1 n1 c-addr1 n1 c-addr2 n2' R: NF)
+				#.b 	31		( c-addr1 n1 c-addr1 n1 c-addr2 n2' 31 R: NF)
+				and			( c-addr1 n1 c-addr1 n1 c-addr2 n2 R: NF)
+				jsl	$=.CF		( c-addr1 n1 flag R: NF)		
+				IF			( c-addr1 n1 R: NF)
 ; match found
-					drop			( addr c-addr1)
-					drop			( addr)
+					drop			( c-addr1)
 					drop			( )
 					R>			( NF)
 					dup			( NF NF)
@@ -3297,52 +3370,77 @@ FIND.CF	dup			( addr addr)
 				THEN
 			THEN		
 ; not matched. get next word
-			R>		( addr c-addr1 n1 NF1)
-			#.b	4	( addr c-addr1 n1 NF1 4)
-			-		( addr c-addr1 n1 LF)
-			fetch.l	( addr c-addr1 n1 NF2)
-			?dup		( addr c-addr1 n1, false | NF2 true)
-			0=		( addr c-addr1 n1, true  | NF2 false)
-		UNTIL		( addr c-addr1 n1 | addr c-addr1 n1 NF2)
-		drop		( addr c-addr1)
-		drop		( addr )
-FIND.Z		zero,rts	( addr 0)
+			R>		( c-addr1 n1 NF1)
+			#.b	4	( c-addr1 n1 NF1 4)
+			-		( c-addr1 n1 LF)
+			fetch.l	( c-addr1 n1 NF2)
+			?dup		( c-addr1 n1, false | NF2 true)
+			0=		( c-addr1 n1, true  | NF2 false)
+		UNTIL		( c-addr1 n1 | c-addr1 n1 NF2)
+		drop		( c-addr1)
+		drop		( )
+		zero,rts	( 0)
 		ELSE				; zero length string was passed
+			R>
 			drop
 			drop
+			drop
+			zero
 		THEN
-		rts
+SEARCH-WORDLIST.Z		rts
 ;
-WORDS.LF	dc.l 	FIND.NF
+WORDS.LF	dc.l 	SEARCH-WORDLIST.NF
 WORDS.NF	dc.b	5 128 +
 		dc.b	char S char D char R char O char W
 WORDS.SF	dc.w	WORDS.Z WORDS.CF del
 WORDS.CF	jsl	CR.CF
-		#.w	TAB		( &tab)
+		#.w	TAB		( &tab)			; change tab setting for optimal display
 		dup			( &tab &tab)
 		fetch.l		( &tab tab)
 		swap			( tab &tab) 
 		#.b	10		( tab &tab 20)
 		over			( tab &tab 20 &tab)
-		store.l		( tab &tab)
-		jsl	GET-ENTRY.CF	( tab &tab NF)
+		store.l		( tab &tab)			; ( ignore tab &tab comment from here to end)
+		#.l	WID.COUNT	
+		fetch.b		( count)
+		?dup								; check count of the search order is not zero
+		IF			( count)	
+			#.l	WID.ORDER	( count &WID)
+			dup			( count &WID &WID)
+			rot			( &WID &WID count)
+			+			( &WID &END)
+			swap			( &END &WID)
+			DO			( )				; review each world list in turn
+				R@			( &WID)
+				fetch.b		( WID)
+				jsl	{WORDS}.CF	( )			
+			LOOP	
+		THEN
+WORDS.Z	store.l,rts						; restore original tab setting		
+;		
+; {WORDS} ( WID --, display the words in this wordlist)
+{WORDS}.CF	jsl	GET-ENTRY.CF	( NF)
 		BEGIN
 			?dup
 		WHILE
-			dup		( NF NF)
-			1+		( NF NF+1)
-			over		( NF NF+1 NF)
-			fetch.b	( NF NF+1 n')
-			#.b	31	( NF NF+1 n' 31)
-			and		( NF NF+1 n)
-			jsl	TYPE.CF ( NF)		
-			#.b	09
-			jsl	EMIT.CF
-			#.b	4
-			-		( LF)
-			fetch.l	( NF)
+			dup			( NF NF)
+			1+			( NF NF+1)
+			over			( NF NF+1 NF)
+			fetch.b		( NF NF+1 n')
+			#.b	31		( NF NF+1 n' 31)
+			and			( NF NF+1 n)
+			?dup
+			IF
+				jsl	TYPE.CF 	( NF)		
+				#.b	09
+				jsl	EMIT.CF
+			ELSE
+				drop			( NF)
+			THEN			( NF)
+			jsl	NF>LF.CF	( LF)
+			fetch.l		( NF)
 		REPEAT
-WORDS.Z	store.l,rts			; save original tab setting
+		rts
 ;
 ; PARSE ( char -- c-addr n, parse the input buffer into the parse buffer)
 PARSE.LF	dc.l	WORDS.NF
@@ -4475,7 +4573,7 @@ DOES>.LF	dc.l	CREATE.NF
 DOES>.NF	dc.b	5 128 + 
 		dc.b	char > char S char E char O char D
 DOES>.SF	dc.w	DOES>.Z DOES>.CF del
-DOES>.CF	jsl	GET-ENTRY.CF	( NF)
+DOES>.CF	jsl	GET-COMP-ENTRY.CF	( NF)
 		jsl	NF>SF.CF	( SF)			; find SF in create word
 ;		#.w	LAST-SF				
 ;		fetch.l		( SF)
@@ -4501,14 +4599,14 @@ HEAD.CF	#.w	HERE_
 		fetch.l		( addr LF)
 		dup
 		>R			( addr LF R:LF)
-		jsl	GET-ENTRY.CF	( addr LF NF R:LF)
+		jsl	GET-COMP-ENTRY.CF	( addr LF NF R:LF)
 		swap			( addr NF LF R:LF)	
 		store.l		( addr R:LF)		; link the new word (link field) to the prior WID entry point (name field)
 		R>			( addr LF)
 		#.b	4
 		+			( addr NF)	
 		dup			( addr NF NF)
-		jsl 	SET-ENTRY.CF	( addr NF )		; update WID entry point with Name Field	
+		jsl 	SET-COMP-ENTRY.CF	( addr NF )		; update WID entry point with Name Field	
 		dup			( NF NF)
 		fetch.b		( NF len)
 		dup		
@@ -4766,7 +4864,7 @@ COLON.CF	jsl	CHECKMEM.CF
 		drop
 ;		#.w	LAST-CF	( CF &LAST-CF)
 ;		store.l					; update LAST-CF		
-COLON.1	jsl	GET-ENTRY.CF	( NF)			; SMUDGE the word	
+COLON.1	jsl	GET-COMP-ENTRY.CF	( NF)			; SMUDGE the word	
 		dup			( NF NF)
 		fetch.b		( NF size)
 		#.b	SMDGE
@@ -4790,7 +4888,7 @@ SEMICOLON.CF	#.b	opRTS		( opRTS)
 		jsl 	C,.CF					; compile RTS					
 		#.w	HERE_
 		fetch.l		( HERE)
-		jsl	GET-ENTRY.CF	( HERE NF)
+		jsl	GET-COMP-ENTRY.CF	( HERE NF)
 		>R			( HERE R:NF)
 		R@			( HERE NF R:NF)
 		jsl	NF>CF.CF	( HERE CF R:NF)
@@ -4975,7 +5073,7 @@ IMMEDIATE.LF	dc.l	CONSTANT.NF
 IMMEDIATE.NF	dc.b	9 128 +
 		dc.b 	char E char T char A char I char D char E char M char M char I
 IMMEDIATE.SF	dc.w	IMMEDIATE.Z IMMEDIATE.CF del
-IMMEDIATE.CF	jsl	GET-ENTRY.CF	( NF)	
+IMMEDIATE.CF	jsl	GET-COMP-ENTRY.CF	( NF)	
 		dup		( NF NF)
 		fetch.b	( NF nf)
 		#.B	IMMED
@@ -5327,7 +5425,7 @@ RECURSE.LF	dc.l	].NF
 RECURSE.NF	dc.b	7 128 + IMMED +
 		dc.b	char E char S char R char U char C char E char R
 RECURSE.SF	dc.w	RECURSE.Z RECURSE.CF del
-RECURSE.CF	jsl	GET-ENTRY.CF	( NF)
+RECURSE.CF	jsl	GET-COMP-ENTRY.CF	( NF)
 		jsl	NF>CF.CF	( XT)
 ;		#.w	LAST-CF
 ;		fetch.l		( xt)
@@ -5598,7 +5696,7 @@ MARKER.Z	rts
 ; runtime code for MARKER
 MARKER.RUN	dup				( SD LF LF)		; SD is the SDRAM pointer, LF is the LF of the word
 		fetch.l			( SD LF NF')		; NF' is the NF of the prior word
-		jsl	GET-ENTRY.CF		( SD LF)		; store the NF of the previous word in the last word variable (used by HEAD for linking)	
+		jsl	GET-COMP-ENTRY.CF		( SD LF)		; store the NF of the previous word in the last word variable (used by HEAD for linking)	
 		#.w	HERE_						; point HERE at the address of the work
 		store.l			( SD)			
 		#.w	HERE1						; reset the SDRAM pointer too
@@ -6044,18 +6142,82 @@ NF>CF.CF	dup
 		#.b	3
 		+,rts
 ;
-;SET-ENTRY.CF	( NF -- set the entry point of the wordlist to the name field NF)
-SET-ENTRY.CF	#.l	LAST-NF
-		store.l,rts
+WORDLIST.LF		dc.l	{:.NF
+WORDLIST.NF		dc.b	8 128 +
+			dc.s	WORDLIST
+WORDLIST.SF		dc.w	WORDLIST.Z WORDLIST.CF del
+WORDLIST.CF		#.l	WID.COUNT
+			>R			( R:&count)
+			R@			( &count R:&count)
+			fetch.b		( count R:&count)
+			1+			( count+1 R:&count)
+			dup			( count+1 count+1 R:&count)
+			R>			( count+1 count+1 &count)
+WORDLIST.Z		store.b,rts		( count+1)
+			
+;			
+; SET-ORDER ( WIDn...WID1 n --, WID1 is searched first)
+SET-ORDER.LF		dc.l	WORDLIST.NF
+SET-ORDER.NF		dc.b	9 128 +
+			dc.s	SET-ORDER
+SET-ORDER.SF		dc.w	SET-ORDER.Z SET-ORDER.CF del
+SET-ORDER.CF		dup			( WIDn...WID1 n n)
+			#.l	WID.COUNT
+			store.b		( WIDn...WID1 n)
+			#.l	WID.ORDER	( WIDn...WID1 n &WID)
+			dup			( WIDn...WID1 n &WID &WID)
+			rot			( WIDn...WID1 &WID &WID n)
+			+			( WIDn...WID1 &WID &END)
+			swap			( WIDn...WID1 &END &WID)	
+			DO
+					R@	( WIDn...WID1 &WIDi)
+					store.b
+			LOOP
+SET-ORDER.Z		rts
 ;
-;GET-ENTRY	( -- get the entry point (name field) of the wordlist)
-GET-ENTRY.LF	dc.l	{:.NF
-GET-ENTRY.NF	dc.b	9 128 +
-		dc.s	GET-ENTRY
-GET-ENTRY.SF	dc.w	6
-GET-ENTRY.CF	#.l	LAST-NF
-		fetch.l,rts
-LAST-NF	dc.l 	GET-ENTRY.NF		; NF of last word created by HEAD, must be initialized		
+SET-CURRENT.LF	dc.l	SET-ORDER.NF
+SET-CURRENT.NF	dc.b	11 128 +
+			dc.s	SET-CURRENT
+SET-CURRENT.SF	dc.w	6
+SET-CURRENT.CF	#.l 	WID.COMPILE
+			store.b,rts
+;
+GET-CURRENT.LF	dc.l	SET-CURRENT.NF
+GET-CURRENT.NF	dc.b	11 128 +
+			dc.s	GET-CURRENT
+GET-CURRENT.SF	dc.w	6
+GET-CURRENT.CF	#.l 	WID.COMPILE
+			fetch.b,rts
+;
+FORTH-WORDLIST.LF	dc.l	GET-CURRENT.NF
+FORTH-WORDLIST.NF	dc.b	14 128 +
+			dc.s	FORTH-WORDLIST
+FORTH-WORDLIST.SF	dc.w	1
+FORTH-WORDLIST.CF	zero,rts
+;
+;GET-COMP-ENTRY	( -- NF, get the entry point (name field) of the compilation wordlist)
+GET-COMP-ENTRY.CF	#.l	WID.COMPILE
+			fetch.b		( WID)
+			jsl	GET-ENTRY.CF	( NF)
+			rts
+;
+;SET-COMP-ENTRY.CF	( NF -- set the entry point of the compilation wordlist to the name field NF)
+SET-COMP-ENTRY.CF	#.l	WID.COMPILE
+			fetch.b		( NF WID)
+			jsl	CELLS.CF
+			#.l	LAST-NF
+			+			
+			store.l,rts
+;
+;GET-ENTRY		( WID -- NF, get the entry point (name field) of the wordlist WID)
+GET-ENTRY.LF		dc.l	FORTH-WORDLIST.NF
+GET-ENTRY.NF		dc.b	9 128 +
+			dc.s	GET-ENTRY
+GET-ENTRY.SF		dc.w	GET-ENTRY.Z GET-ENTRY.CF del
+GET-ENTRY.CF		jsl	CELLS.CF
+			#.l	LAST-NF
+			+
+GET-ENTRY.Z		fetch.l,rts	
 ;
 ; ------------------------------------------------------------------------------------------------------------
 ; internal FORTH dictionary variables	
@@ -6087,7 +6249,7 @@ STRINGP		equ	USERRAM 20 +	; pointer within the string buffer
 			dc.l	_PAD
 STATE_			equ 	USERRAM 24 +	; compile=1 / interpret=0 flag 
 			dc.l	0	
-WID.COMPILE		equ	USERRAM 28 +	; current compilation wordlist
+WID.COMPILE		equ	USERRAM 28 +	; current compilation wordlist (WID=0 is the FORTH wordlist)
 			dc.b	0
 WID.COUNT		equ	USERRAM 29 +	; number of WID's in the search list
 			dc.b	1
