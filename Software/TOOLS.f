@@ -2,7 +2,7 @@
 
 \ .' ( addr -- c-addr n true | false) if addr points to the executable of a forth word, provide the name of the word and return true.  Otherwise return false
 : .'
-	GET-ENTRY 		( addr NF)
+	0 GET-ENTRY 		( addr NF)		\ only the FORTH worldlist will be searched
 	BEGIN
 		over over U<
 	WHILE
