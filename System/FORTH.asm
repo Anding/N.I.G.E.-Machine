@@ -2615,8 +2615,7 @@ RESET.CF	#.w	END
 		#.w	HERE1
 		store.l
 		#.w	LAST.NF
-		#.w	LAST-NF
-		store.l
+		jsl	SET-ENTRY.CF
 		jsl	START.CF
 RESET.Z	rts
 ;
@@ -3247,8 +3246,7 @@ FIND.CF	dup			( addr addr)
 		?dup
 		IF			( addr c-addr1 n1)
 ; top of dictonary
-		#.w	LAST-NF	( addr c-addr1 n1 &LAST-NF)
-		fetch.l		( addr c-addr1 n1 NF)
+		jsl	GET-ENTRY.CF	( addr c-addr1 n1 NF)
 		BEGIN			( addr c-addr1 n1 NF)
 ; check smudge bit not set
 			dup			( addr c-addr1 n1 NF NF)
@@ -3327,9 +3325,8 @@ WORDS.CF	jsl	CR.CF
 		#.b	10		( tab &tab 20)
 		over			( tab &tab 20 &tab)
 		store.l		( tab &tab)
-		#.w	LAST-NF	( tab &tab LF)
+		jsl	GET-ENTRY.CF	( tab &tab NF)
 		BEGIN
-			fetch.l
 			?dup
 		WHILE
 			dup		( NF NF)
@@ -3343,6 +3340,7 @@ WORDS.CF	jsl	CR.CF
 			jsl	EMIT.CF
 			#.b	4
 			-		( LF)
+			fetch.l	( NF)
 		REPEAT
 WORDS.Z	store.l,rts			; save original tab setting
 ;
@@ -4477,8 +4475,10 @@ DOES>.LF	dc.l	CREATE.NF
 DOES>.NF	dc.b	5 128 + 
 		dc.b	char > char S char E char O char D
 DOES>.SF	dc.w	DOES>.Z DOES>.CF del
-DOES>.CF	#.w	LAST-SF				; find SF in create word
-		fetch.l		( SF)
+DOES>.CF	jsl	GET-ENTRY.CF	( NF)
+		jsl	NF>SF.CF	( SF)			; find SF in create word
+;		#.w	LAST-SF				
+;		fetch.l		( SF)
 		#.b	10
 		over			( SF 10 SF)
 		store.w					; update SF: for create does> runtime code size (6 - 1 + 5)
@@ -4500,17 +4500,15 @@ DOES>.Z	store.b,rts					; compile RTS  (need to use a JSL/RTS pair rather than J
 HEAD.CF	#.w	HERE_
 		fetch.l		( addr LF)
 		dup
-		>R			( addr LF R: LF)
-		#.w	LAST-NF	
-		fetch.l		( addr LF LAST-NF R:LF)		
-		swap
-		store.l		( addr R:LF)		; set Link Field
+		>R			( addr LF R:LF)
+		jsl	GET-ENTRY.CF	( addr LF NF R:LF)
+		swap			( addr NF LF R:LF)	
+		store.l		( addr R:LF)		; link the new word (link field) to the prior WID entry point (name field)
 		R>			( addr LF)
 		#.b	4
 		+			( addr NF)	
 		dup			( addr NF NF)
-		#.w 	LAST-NF	( addr NF NF &LAST-NF)
-		store.l		( addr NF)		; save Name Field in LAST-NF
+		jsl 	SET-ENTRY.CF	( addr NF )		; update WID entry point with Name Field	
 		dup			( NF NF)
 		fetch.b		( NF len)
 		dup		
@@ -4522,14 +4520,14 @@ HEAD.CF	#.w	HERE_
 		R>			( NF len)
 		+
 		1+			( SF)			; add len+1 to move from NF to SF
-		dup			( SF SF)
-		#.w	LAST-SF	( SF LAST-SF)	
-		store.l		( SF)			; save Size Field
-		#.b	2
+;		dup			( SF SF)	
+;		#.w	LAST-SF	( SF LAST-SF)	
+;		store.l		( SF)			; save Size Field
+		#.b	2		( SF 2)
 		+			( CF)
 		dup			( CF CF)
 		#.w	HERE_					; update HERE
-		store.l,rts		(CF)
+		store.l,rts		( CF)
 ;
 ; MOVE ( addr-s addr-d n, memory copy)
 ; byte-by-byte, not optimized (TBD)
@@ -4764,11 +4762,11 @@ COLON.CF	jsl	CHECKMEM.CF
 		#.b	32
 		jsl	WORD.CF	( addr)		; parse next word					
 		drop 						; HEAD assumes that the name field is already complete
-		jsl	HEAD.CF	( CF)			; create header		
-COLON.1	#.w	LAST-CF	( CF &LAST-CF)
-		store.l					; update LAST-CF		
-		#.w	LAST-NF	( &LAST-NF)		; SMUDGE the word
-		fetch.l		( NF)			
+		jsl	HEAD.CF	( CF)			; create header	
+		drop
+;		#.w	LAST-CF	( CF &LAST-CF)
+;		store.l					; update LAST-CF		
+COLON.1	jsl	GET-ENTRY.CF	( NF)			; SMUDGE the word	
 		dup			( NF NF)
 		fetch.b		( NF size)
 		#.b	SMDGE
@@ -4792,19 +4790,19 @@ SEMICOLON.CF	#.b	opRTS		( opRTS)
 		jsl 	C,.CF					; compile RTS					
 		#.w	HERE_
 		fetch.l		( HERE)
-		#.w	LAST-CF
-		fetch.l		( HERE LAST-CF)
-		-			( size)
-		#.w	LAST-SF
-		fetch.l		( size LAST-CF)
-		store.w					; update size field
-		#.w	LAST-NF				; un-SMUDGE the word
-		fetch.l		( NF)
-		dup			( NF NF)
-		fetch.b		( NF len)
-		#.b	SMDGE invert
-		and			( NF len')		
-		swap			( len' NF)
+		jsl	GET-ENTRY.CF	( HERE NF)
+		>R			( HERE R:NF)
+		R@			( HERE NF R:NF)
+		jsl	NF>CF.CF	( HERE CF R:NF)
+		-			( size R:NF)
+		R@			( size NF R:NF)
+		jsl	NF>SF.CF	( size SF R:NF)
+		store.w		( R:NF)		; update size field
+		R@			( NF R:NF)		; un-SMUDGE the word
+		fetch.b		( c R:NF)
+		#.b	SMDGE invert	( c no-smudge R:NF)
+		and			( c' R:NF)	
+		R>			( c' NF)
 		store.b
 		zero			( false)		; un-set compilation state
 		#.l	STATE_		( false &STATE)	
@@ -4977,8 +4975,7 @@ IMMEDIATE.LF	dc.l	CONSTANT.NF
 IMMEDIATE.NF	dc.b	9 128 +
 		dc.b 	char E char T char A char I char D char E char M char M char I
 IMMEDIATE.SF	dc.w	IMMEDIATE.Z IMMEDIATE.CF del
-IMMEDIATE.CF	#.w	LAST-NF
-		fetch.l	( NF)	
+IMMEDIATE.CF	jsl	GET-ENTRY.CF	( NF)	
 		dup		( NF NF)
 		fetch.b	( NF nf)
 		#.B	IMMED
@@ -5330,8 +5327,10 @@ RECURSE.LF	dc.l	].NF
 RECURSE.NF	dc.b	7 128 + IMMED +
 		dc.b	char E char S char R char U char C char E char R
 RECURSE.SF	dc.w	RECURSE.Z RECURSE.CF del
-RECURSE.CF	#.w	LAST-CF
-		fetch.l		( xt)
+RECURSE.CF	jsl	GET-ENTRY.CF	( NF)
+		jsl	NF>CF.CF	( XT)
+;		#.w	LAST-CF
+;		fetch.l		( xt)
 		#.w	HERE_
 		dup
 		>R
@@ -5599,8 +5598,7 @@ MARKER.Z	rts
 ; runtime code for MARKER
 MARKER.RUN	dup				( SD LF LF)		; SD is the SDRAM pointer, LF is the LF of the word
 		fetch.l			( SD LF NF')		; NF' is the NF of the prior word
-		#.w	LAST-NF
-		store.l			( SD LF)	; store the NF of the previous word in the last word variable (used by HEAD for linking)
+		jsl	GET-ENTRY.CF		( SD LF)		; store the NF of the previous word in the last word variable (used by HEAD for linking)	
 		#.w	HERE_						; point HERE at the address of the work
 		store.l			( SD)			
 		#.w	HERE1						; reset the SDRAM pointer too
@@ -6024,12 +6022,41 @@ LOCAL.ref	2*
 		+
 		rts
 ;
+;GET-ENTRY.CF	( -- get the entry point (name field) of the wordlist)
+GET-ENTRY.CF	#.l	LAST-NF
+		fetch.l,rts
+;
+;SET-ENTRY.CF	( NF -- set the entry point of the wordlist to the name field NF)
+SET-ENTRY.CF	#.l	LAST-NF
+		store.l,rts
+;
+;NF>LF.CF	( NF -- LF, return the link field of the word given its name field)
+NF>LF.CF	#.b	4
+		-,rts
+;
+;NF>SF.CF	( NF -- LF, return the size field of the word given its name field)
+NF>SF.CF	dup
+		fetch.b
+		#.b	31
+		and
+		+
+		1+,rts
+;
+;NF>CF.CF	( NF -- LF, return the code field (XT) of a word given its name field)
+NF>CF.CF	dup
+		fetch.b
+		#.b	31
+		and
+		+
+		#.b	3
+		+,rts
+;
 ; LAST returns the address of a variable pointing to the last name field in the dictionary
 LAST.LF	dc.l	{:.NF
 LAST.NF	dc.b	4 128 +
 		dc.b	char T char S char A char L
 LAST.SF	dc.w	4
-LAST.CF	#.w	LAST-NF
+LAST-NF.CF	#.l	LAST-NF
 		rts
 LAST-NF	dc.l 	LAST.NF			; NF of last word created by HEAD, must be initialized
 ; ------------------------------------------------------------------------------------------------------------
