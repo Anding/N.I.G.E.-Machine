@@ -6,6 +6,14 @@ Library UNISIM;
 use UNISIM.vcomponents.all;
 
 entity Board_Nexys4 is
+
+	 Generic (	vmp_w : integer := 2;
+					psp_w : integer := 7;
+					rsp_w : integer := 7;
+					ssp_w : integer := 7;
+					esp_w : integer := 7
+					);
+					
     Port ( CLK_IN : in  STD_LOGIC;
 			  RGB : out  STD_LOGIC_VECTOR (11 downto 0);
            HSync : out  STD_LOGIC;
@@ -63,10 +71,10 @@ signal MEMdata_Char :  std_logic_vector(7 downto 0);
 signal MEMdata_Color :  std_logic_vector(15 downto 0);
 signal MEMdata_Pstack, MEMdata_Rstack, MEMdata_Reg, MEMdata_stack_access : std_logic_vector(31 downto 0);   
 signal MEMdata_User :  std_logic_vector(31 downto 0);      
-signal PSaddr :  std_logic_vector(8 downto 0);
+signal PSaddr :  std_logic_vector(vmp_w + psp_w -1 downto 0);
 signal PSdataout :  std_logic_vector(31 downto 0);
 signal PSw :  std_logic_vector(0 to 0);
-signal RSaddr :  std_logic_vector(8 downto 0);
+signal RSaddr :  std_logic_vector(vmp_w + rsp_w -1 downto 0);
 signal RSdataout :  std_logic_vector(31 downto 0);
 signal RSw :  std_logic_vector(0 to 0);
 signal MEMaddr :  std_logic_vector(31 downto 0);
@@ -177,11 +185,11 @@ signal debug_DMAcontroller : std_logic_vector(7 downto 0);
 signal SSdataOUT : std_logic_vector(543 downto 0);
 signal SSdataIN : std_logic_vector(543 downto 0);
 signal SSw : std_logic_vector(67 downto 0);
-signal SSaddr : std_logic_vector(8 downto 0);
+signal SSaddr : std_logic_vector(vmp_w + ssp_w -1 downto 0);
 signal ESdataOUT : std_logic_vector(303 downto 0);
 signal ESdataIN : std_logic_vector(303 downto 0);
 signal ESw : std_logic_vector(37 downto 0);
-signal ESaddr : std_logic_vector(8 downto 0);
+signal ESaddr : std_logic_vector(vmp_w + esp_w -1 downto 0);
 signal VMID : std_logic_vector(4 downto 0);
 
 
@@ -298,36 +306,36 @@ begin
 	 addra_sysram <= addra_sysram_s when Boot_we = "0" else boot_addr;	
 	 ram_en <= ena_sysram or reset;
 
-	  inst_SYS_RAM : entity work.Sys_RAM
-	  PORT MAP (
-		 clka => clk_system,
-		 ena => ram_en,
-		 wea => wea_sysram,
-		 addra => addra_sysram (16 downto 2),					-- 64K write depth 16384, 15downto2. 128K write depth 32768, 16 downto 2. 256K write depth 62976, 17downto2
-		 dina => dina_sysram,
-		 douta => douta_sysram,
-		 clkb => clk_system,
-		 enb => enb_sysram,
-		 web => web_sysram,
-		 addrb => addrb_sysram (16 downto 2),
-		 dinb => dinb_sysram,
-		 doutb => doutb_sysram
-	  );
+--	  inst_SYS_RAM : entity work.Sys_RAM
+--	  PORT MAP (
+--		 clka => clk_system,
+--		 ena => ram_en,
+--		 wea => wea_sysram,
+--		 addra => addra_sysram (16 downto 2),					-- 64K write depth 16384, 15downto2. 128K write depth 32768, 16 downto 2. 256K write depth 62976, 17downto2
+--		 dina => dina_sysram,
+--		 douta => douta_sysram,
+--		 clkb => clk_system,
+--		 enb => enb_sysram,
+--		 web => web_sysram,
+--		 addrb => addrb_sysram (16 downto 2),
+--		 dinb => dinb_sysram,
+--		 doutb => doutb_sysram
+--	  );
 	  
---	Inst_RAM_for_Testbench: entity work.RAM_for_Testbench PORT MAP(
---		rst => reset,
---		clk => clk_system,
---		enA => ena_sysram,
---		enB => enb_sysram,
---		weA => wea_sysram,
---		weB => web_sysram,
---		addressA => addra_sysram (16 downto 2),
---		data_inA => dina_sysram,
---		data_outA => douta_sysram,
---		addressB => addrb_sysram (16 downto 2),
---		data_inB => dinb_sysram,
---		data_outB => doutb_sysram
---	);
+	Inst_RAM_for_Testbench: entity work.RAM_for_Testbench PORT MAP(
+		rst => reset,
+		clk => clk_system,
+		enA => ena_sysram,
+		enB => enb_sysram,
+		weA => wea_sysram,
+		weB => web_sysram,
+		addressA => addra_sysram (16 downto 2),
+		data_inA => dina_sysram,
+		data_outA => douta_sysram,
+		addressB => addrb_sysram (16 downto 2),
+		data_inB => dinb_sysram,
+		data_outB => doutb_sysram
+	);
 
 	  douta_sysram_i <= douta_sysram;
 	  doutb_sysram_i <= doutb_sysram;
@@ -530,7 +538,15 @@ begin
 	);
 	
 	
-		inst_CPU: entity work.CPU PORT MAP(
+		inst_CPU: entity work.CPU 
+		GENERIC MAP(
+		vmp_w => vmp_w,
+		psp_w => psp_w,
+		rsp_w => rsp_w,
+		ssp_w => ssp_w,
+		esp_w => esp_w
+		)
+		PORT MAP(
 		rst => reset,
 		clk => CLK_SYSTEM,
 		irq => irq,
