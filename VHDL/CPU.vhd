@@ -159,7 +159,7 @@ architecture Structural of CPU is
 --	END COMPONENT;
 
 	signal	Accumulator : std_logic_vector(31 downto 0);
-	signal	MicroControl :  std_logic_vector(20 downto 0);
+	signal	MicroControl :  std_logic_vector(22 downto 0);
 	signal	AuxControl :  std_logic_vector(1 downto 0);
 	signal	ReturnAddress :  std_logic_vector(31 downto 0);          
 	signal	TOS, TOS_r :  std_logic_vector(31 downto 0);

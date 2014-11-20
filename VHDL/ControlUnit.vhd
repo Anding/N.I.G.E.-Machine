@@ -22,7 +22,7 @@ entity ControlUnit is
 			  equalzero : in STD_LOGIC;										-- flag '1' when TOS is zero
 			  equalzero_r : in STD_LOGIC;										-- flag '1' when TOS (registered) is zero			  
 			  chip_RAM : in STD_LOGIC;											-- flag used to identify SRAM vs. PSDRAM memory access
-			  MicroControl : out STD_LOGIC_VECTOR (20 downto 0);		-- ouput control logic
+			  MicroControl : out STD_LOGIC_VECTOR (22 downto 0);		-- ouput control logic
 			  AuxControl : out STD_LOGIC_VECTOR (1 downto 0);			-- output control logic
 			  Accumulator : out STD_LOGIC_VECTOR (31 downto 0);		-- literal value captured from memory for writing to TOS
 			  ReturnAddress : out STD_LOGIC_VECTOR (31 downto 0);		-- return address on interrupt, BSR or JSR for writing to TORS
@@ -59,49 +59,47 @@ end ControlUnit;
 
 architecture RTL of ControlUnit is
 
-COMPONENT Microcode_ROM															-- storage of microcode in BLOCK RAM
-  PORT (
-    clka : IN STD_LOGIC;
-    addra : IN STD_LOGIC_VECTOR(5 DOWNTO 0);
-    douta : OUT STD_LOGIC_VECTOR(20 DOWNTO 0)
-  );
-END COMPONENT;
+--COMPONENT Microcode_ROM															-- storage of microcode in BLOCK RAM
+--  PORT (
+--    clka : IN STD_LOGIC;
+--    addra : IN STD_LOGIC_VECTOR(5 DOWNTO 0);
+--    douta : OUT STD_LOGIC_VECTOR(20 DOWNTO 0)
+--  );
+--END COMPONENT;
 
--- opcodes (bits 5 downto 0) of the instructions
-constant ops_NOP : std_logic_vector(5 downto 0):= "000000";
-constant ops_DROP : std_logic_vector(5 downto 0) := "000001";
-constant ops_toR : std_logic_vector(5 downto 0) := "000111";
-constant ops_Rfrom : std_logic_vector(5 downto 0) := "001001";
-constant ops_CATCH : std_logic_vector(5 downto 0) := "001011";
-constant ops_THROW : std_logic_vector(5 downto 0) := "001101";
+-- opcodes (bits 6 downto 0) of the instructions
+constant ops_NOP : std_logic_vector(6 downto 0):= "0000000";
+constant ops_DROP : std_logic_vector(6 downto 0) := "0000001";
+constant ops_toR : std_logic_vector(6 downto 0) := "0000111";
+constant ops_Rfrom : std_logic_vector(6 downto 0) := "0001001";
+constant ops_CATCH : std_logic_vector(6 downto 0) := "0001011";
+constant ops_THROW : std_logic_vector(6 downto 0) := "0001101";
 --
-constant ops_IFDUP : std_logic_vector(5 downto 0) := "110011";
-constant ops_INC : std_logic_vector(5 downto 0) := "010001";
-constant ops_SMULT : std_logic_vector(5 downto 0) := "101001";
-constant ops_UMULT : std_logic_vector(5 downto 0) := "101010";
-constant ops_SDIVMOD : std_logic_vector(5 downto 0) := "101011";
-constant ops_UDIVMOD : std_logic_vector(5 downto 0) := "101100";
-constant ops_LFETCH : std_logic_vector(5 downto 0) := "101101";
-constant ops_LSTORE : std_logic_vector(5 downto 0) := "101110";
-constant ops_WFETCH : std_logic_vector(5 downto 0) := "101111";
-constant ops_WSTORE : std_logic_vector(5 downto 0) := "110000";
-constant ops_CFETCH : std_logic_vector(5 downto 0) := "110001";
-constant ops_CSTORE : std_logic_vector(5 downto 0) := "110010";
-constant ops_BYTE : std_logic_vector(5 downto 0) := "110100";
-constant ops_WORD : std_logic_vector(5 downto 0) := "110101";
-constant ops_LONG : std_logic_vector(5 downto 0) := "110110";
-constant ops_JMP : std_logic_vector(5 downto 0) := "110111";
-constant ops_JSL : std_logic_vector(5 downto 0) := "111000";
-constant ops_JSR : std_logic_vector(5 downto 0) := "111001";
-constant ops_TRAP : std_logic_vector(5 downto 0) := "111010";
-constant ops_RETRAP : std_logic_vector(5 downto 0) := "111011";
-constant ops_RTI : std_logic_vector(5 downto 0) := "111100";
+constant ops_IFDUP : std_logic_vector(6 downto 0) := "0110011";
+constant ops_INC : std_logic_vector(6 downto 0) := "0010001";
+constant ops_SMULT : std_logic_vector(6 downto 0) := "0101001";
+constant ops_UMULT : std_logic_vector(6 downto 0) := "0101010";
+constant ops_SDIVMOD : std_logic_vector(6 downto 0) := "0101011";
+constant ops_UDIVMOD : std_logic_vector(6 downto 0) := "0101100";
+constant ops_LFETCH : std_logic_vector(6 downto 0) := "0101101";
+constant ops_LSTORE : std_logic_vector(6 downto 0) := "0101110";
+constant ops_WFETCH : std_logic_vector(6 downto 0) := "0101111";
+constant ops_WSTORE : std_logic_vector(6 downto 0) := "0110000";
+constant ops_CFETCH : std_logic_vector(6 downto 0) := "0110001";
+constant ops_CSTORE : std_logic_vector(6 downto 0) := "0110010";
+constant ops_BYTE : std_logic_vector(6 downto 0) := "0110100";
+constant ops_WORD : std_logic_vector(6 downto 0) := "0110101";
+constant ops_LONG : std_logic_vector(6 downto 0) := "0110110";
+constant ops_JMP : std_logic_vector(6 downto 0) := "0110111";
+constant ops_JSL : std_logic_vector(6 downto 0) := "0111000";
+constant ops_JSR : std_logic_vector(6 downto 0) := "0111001";
+constant ops_TRAP : std_logic_vector(6 downto 0) := "0111010";
+constant ops_RETRAP : std_logic_vector(6 downto 0) := "0111011";
+constant ops_RTI : std_logic_vector(6 downto 0) := "0111100";
 
 -- internal opcodes used for microcode
-constant ops_PUSH : std_logic_vector(5 downto 0) :=  "111101";
-constant ops_REPLACE  : std_logic_vector(5 downto 0) := "111110";
---constant ops_JSI : std_logic_vector(5 downto 0) := "111000"; 
-constant ops_THROW2 : std_logic_vector(5 downto 0) := "111101"; 
+constant ops_THROW2 : std_logic_vector(6 downto 0) := "1000001"; 
+constant ops_REPLACE  : std_logic_vector(6 downto 0) := "1000010";
 
 -- branch codes (bits 7 downto 6) of the instructions
 constant bps_RTS : std_logic_vector(1 downto 0) := "01";
@@ -126,7 +124,7 @@ signal delta :std_logic_vector (19 downto 0);
 signal ReturnAddress_n, ReturnAddressJSL, PC_addr : std_logic_vector (31 downto 0);
 signal int_vector_ext : std_logic_vector (19 downto 0);
 signal int_vector_ext_i : std_logic_vector (7 downto 0);
-signal ucode : std_logic_vector (5 downto 0);					-- address driver for microcode BLOCK RAM
+signal ucode : std_logic_vector (6 downto 0);					-- address driver for microcode BLOCK RAM
 signal timer : integer range 0 to 63;								-- timer/counter for state machine
 signal count : integer range 0 to 63;								-- Pedroni, "Circuit Design and Simulation with VHDL" p298
 signal int_trig : std_logic;
@@ -134,7 +132,7 @@ signal irq_m1, irq_n : std_logic;
 signal irv_i : std_logic_vector (7 downto 0);
 signal retrap, retrap_n : std_logic_vector(1 downto 0);
 signal AuxControl_i, AuxControl_n : std_logic_vector(1 downto 0);
-signal opcode, next_opcode : std_logic_vector(5 downto 0);					-- opcode of current and next instructions
+signal opcode, next_opcode : std_logic_vector(6 downto 0);					-- opcode of current and next instructions
 signal branch, next_branch : std_logic_vector(1 downto 0);					-- branch codes of current and next instructions
 signal MEMsize_X_n : STD_LOGIC_VECTOR (1 downto 0);	
 --signal delayed_RTS, delayed_RTS_n : STD_LOGIC;
@@ -147,14 +145,14 @@ alias signbit is MEMdatain_X(29);
 
 begin
 
-	inst_Microcode_ROM : Microcode_ROM										-- microcode BLOCK RAM
+	inst_Microcode_ROM : entity work.Microcode_ROM										-- microcode BLOCK RAM
 	PORT MAP (
 	 clka => clk,
 	 addra => ucode,
 	 douta => MicroControl
 	);
 
-	opcode <= MEMdatain_X(29 downto 24); 
+	opcode <= "0" & MEMdatain_X(29 downto 24); 
 	branch <= MEMdatain_X(31 downto 30); 
 
 	AuxControl <= AuxControl_i;			  

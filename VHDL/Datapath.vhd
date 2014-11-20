@@ -17,7 +17,7 @@ entity Datapath is
            clk : in  STD_LOGIC;	 										-- clock
 			  MEMdatain_X : in STD_LOGIC_VECTOR (31 downto 0);	
 			  Accumulator : in STD_LOGIC_VECTOR (31 downto 0);		-- Immediate value read from memory by control unit for writing to TOS
-			  MicroControl : in  STD_LOGIC_VECTOR (20 downto 0);	-- control lines
+			  MicroControl : in  STD_LOGIC_VECTOR (22 downto 0);	-- control lines
 			  AuxControl : in STD_LOGIC_VECTOR (1 downto 0);		-- control lines 
 			  ReturnAddress : in STD_LOGIC_VECTOR (31 downto 0);	-- Return Address for JSR, BSR instructions
 			  TOS : out STD_LOGIC_VECTOR (31 downto 0);				-- Top Of Stack (TOS_n, one cycle ahead of registered value)
@@ -202,7 +202,7 @@ begin
 		if AuxControl (0 downto 0) = "1" then				-- instruction RTS requires reset of return stack pointer
 			RSP_n1 <= SSdatain(535 + rsp_w -1 downto 535);
 		else
-			case MicroControl(14 downto 12) is				-- multiplexer for setting return stack pointer
+			case MicroControl(15 downto 13) is				-- multiplexer for setting return stack pointer
 				when "001" =>
 					RSP_n1 <= RSP_m1;
 				when "010" =>
@@ -219,11 +219,11 @@ begin
 		end if;
 	end process;
 					 
-	with MicroControl(15 downto 15) select				-- multiplexer for selecting value to write to TORS
+	with MicroControl(16 downto 16) select				-- multiplexer for selecting value to write to TORS
 		RSdataout <= ReturnAddress when "1",
 						 TOS_i 	when others;	
 					 
-	with MicroControl(14 downto 12) select				-- write enable on return stack memory follows increment of return stack pointer
+	with MicroControl(15 downto 13) select				-- write enable on return stack memory follows increment of return stack pointer
 		RSw	 <= "1" when "010",
 					 "0" when others;		
 
@@ -232,10 +232,10 @@ begin
 	begin
 		if AuxControl (0 downto 0) = "1" then				-- instruction RTS requires decrement subroutine stack pointer
 			SSP_n <= SSP_m1;
-		elsif (RSP_n1 = SSdatain(535 + rsp_w -1 downto 535)) and (RSP_n1 = RSP_m1) and (SSP /= "000000000") then
+		elsif (RSP_n1 = SSdatain(535 + rsp_w -1 downto 535)) and (RSP_n1 = RSP_m1) and (SSP /= 0) then
 			SSP_n <= SSP_m1;										-- pop of return stack below the baseline requires decrement subroutine stack pointer
 		else
-			case MicroControl(18 downto 16) is				-- multiplexer for setting subroutine stack pointer
+			case MicroControl(19 downto 17) is				-- multiplexer for setting subroutine stack pointer
 				when "001" =>
 					SSP_n <= SSP_m1;
 				when "010" =>
@@ -250,7 +250,7 @@ begin
 		end if;
 	end process;
 
-	with MicroControl(18 downto 16) select				-- write enable on subroutine stack memory follows increment of subroutine stack pointer
+	with MicroControl(19 downto 17) select				-- write enable on subroutine stack memory follows increment of subroutine stack pointer
 		SSw	 <= "1111" when "010",
 					 "0000" when others;		
 	
@@ -259,15 +259,15 @@ begin
 	-- Exception stack
 	process (AuxControl, MicroControl, ESP_m1, ESP_p1, ESdatain, SSP_n, SSP_m1, ESP)	
 	begin
-		if SSP_n = ESdatain(295 + ssp_w -1 downto 295) and (SSP_n = SSP_m1)  and (ESP /= "000000000") then
+		if SSP_n = ESdatain(295 + ssp_w -1 downto 295) and (SSP_n = SSP_m1)  and (ESP /= 0) then
 			ESP_n <= ESP_m1;										-- pop of subroutine stack below the baseline requires decrement subroutine stack pointer
 		else
-			case MicroControl(20 downto 19) is				-- multiplexer for setting subroutine stack pointer
-				when "01" =>
+			case MicroControl(22 downto 20) is				-- multiplexer for setting subroutine stack pointer
+				when "001" =>
 					ESP_n <= ESP_m1;
-				when "10" =>
+				when "010" =>
 					ESP_n <= ESP_p1;
-				when "11" =>
+				when "011" =>
 					ESP_n <= (others=>'0');
 				when others =>
 					ESP_n <= ESP;
@@ -275,8 +275,8 @@ begin
 		end if;
 	end process;
 
-	with MicroControl(20 downto 19) select				-- write enable on subroutine stack memory follows increment of subroutine stack pointer
-		ESw	 <= "111111" when "10",
+	with MicroControl(22 downto 20) select				-- write enable on subroutine stack memory follows increment of subroutine stack pointer
+		ESw	 <= "111111" when "010",
 					 "000000" when others;		
 	
 	ESdataout <=  Blank(9 - ssp_w -1 downto 0) & SSP & (ReturnAddress(22 downto 0) + 1) & "0000000" & Blank(9 - psp_w -1 downto 0) & PSP ;
@@ -301,7 +301,7 @@ begin
 		DATA <= 	MEMdatain_X when "0",						-- SRAM fetch or load literal
 					accumulator when others;					-- PSDRAM control unit mediated fetch via accumulator
 		
-	with MicroControl(11 downto 9) select				-- multiplexer for parameter stack pointer
+	with MicroControl(12 downto 10) select				-- multiplexer for parameter stack pointer
 		PSP_n <= PSP_m1 when "001",
 					PSP_p1 when "010",
 					TOS_i(psp_w -1 downto 0) when "011",
@@ -309,13 +309,13 @@ begin
 					Blank (psp_w -1 downto 0) when "101",
 					PSP when others;
 	
-	PSw_i <= "1" when MicroControl(11 downto 9) = "010" or MicroControl = "000000000000010100001"	-- microcode for a ROT instruction
+	PSw_i <= "1" when MicroControl(12 downto 10) = "010" or MicroControl = "00000000000000010100001"	-- microcode for a ROT instruction
 					else "0";										-- write enable on paramater stack memory either when incrementing stack pointer or on a ROT instruction
 																	
-	with MicroControl(8 downto 7) select				-- multiplexer for NOS register 
-		NOS_n <= TOS_i 	when "01",
-					PSdataIN_i when "10",
-					NOS_alu when "11",
+	with MicroControl(9 downto 7) select				-- multiplexer for NOS register 
+		NOS_n <= TOS_i 	when "001",
+					PSdataIN_i when "010",
+					NOS_alu when "011",
 					NOS_i 	when others;	
 					
 	with MicroControl(6 downto 4) select				-- multiplexer for TOS register
