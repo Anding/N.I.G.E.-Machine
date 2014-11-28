@@ -63,100 +63,16 @@ entity CPU is
 				s_axi_rresp : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
 				s_axi_rvalid : IN STD_LOGIC;
 				s_axi_rready : OUT STD_LOGIC;
+				-- virtualization control
+				VM : OUT STD_LOGIC_VECTOR (vmp_w -1 downto 0);
+				vir_EN : IN STD_LOGIC;
+				MEMdata_vir : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
 				-- debug
 				debug : OUT STD_LOGIC_VECTOR(7 DOWNTO 0)
 				);
 end CPU;
 
 architecture Structural of CPU is
-
---	COMPONENT Datapath
---	PORT(
---		rst : IN std_logic;
---		clk : IN std_logic;
---		MEMdatain_X : in STD_LOGIC_VECTOR (31 downto 0);	
---		Accumulator : IN std_logic_vector(31 downto 0);
---		MicroControl : IN std_logic_vector(20 downto 0);
---		AuxControl : IN std_logic_vector(1 downto 0);
---		ReturnAddress : IN std_logic_vector(31 downto 0);          
---		TOS : OUT std_logic_vector(31 downto 0);					-- unregistered, one cycle ahead of registered
---		TOS_r : OUT STD_LOGIC_VECTOR (31 downto 0);				-- registered			
-----		NOS : OUT std_logic_vector(31 downto 0);					-- unregistered, one cycle ahead of registered
---		NOS_r : OUT std_logic_vector(31 downto 0);				-- registered	
---		TORS : OUT std_logic_vector(31 downto 0);
---		ExceptionAddress : OUT STD_LOGIC_VECTOR (31 downto 0);
---		equalzero: OUT std_logic;										-- test unregistered TOS
---		equalzero_r : OUT std_logic;									-- test registered TOS
---		chip_RAM: OUT std_logic;
---		PSaddr : OUT std_logic_vector(8 downto 0);
---		PSdatain : IN std_logic_vector(31 downto 0);
---		PSdataout : OUT std_logic_vector(31 downto 0);
---		PSw : OUT std_logic_vector (0 downto 0);
---		RSaddr : OUT std_logic_vector(8 downto 0);
---		RSdatain : IN std_logic_vector(31 downto 0);
---		RSdataout : OUT std_logic_vector(31 downto 0);
---		RSw : OUT std_logic_vector (0 downto 0);
---		SSaddr : out STD_LOGIC_VECTOR (8 downto 0);			-- Subroutine stack memory
---		SSdatain : in STD_LOGIC_VECTOR (543 downto 512);	
---		SSdataout : out STD_LOGIC_VECTOR (543 downto 512);
---		SSw : out STD_LOGIC_VECTOR (67 downto 64);
---		ESaddr : out STD_LOGIC_VECTOR (8 downto 0);			-- Exception stack memory
---		ESdatain : in STD_LOGIC_VECTOR (303 downto 256);	
---		ESdataout : out STD_LOGIC_VECTOR (303 downto 256);
---		ESw : out STD_LOGIC_VECTOR (37 downto 32)
---		);
---	END COMPONENT;
-
---	COMPONENT ControlUnit
---	PORT(
---		rst : IN std_logic;
---		clk : IN std_logic;
---		irq : IN std_logic;
---		irv : in std_logic_vector(3 downto 0);
---		rti : out std_logic;
---		TOS : IN std_logic_vector(31 downto 0);
---		TOS_r : IN STD_LOGIC_VECTOR (31 downto 0);					
-----		NOS : IN std_logic_vector(31 downto 0);
---		NOS_r : IN std_logic_vector(31 downto 0);				-- registered	
---		TORS : IN std_logic_vector(31 downto 0);
---		ExceptionAddress : in STD_LOGIC_VECTOR (31 downto 0);
---		equalzero : IN std_logic;
---		equalzero_r : IN std_logic;
---		chip_RAM : IN std_logic;
---		MicroControl : OUT std_logic_vector(20 downto 0);
---		AuxControl : OUT std_logic_vector(1 downto 0);
---		Accumulator : OUT std_logic_vector(31 downto 0);
---		ReturnAddress : OUT std_logic_vector(31 downto 0);
---		MEMaddr : out STD_LOGIC_VECTOR (31 downto 0);			
---		MEMdatain_X : in STD_LOGIC_VECTOR (31 downto 0);
---		MEMdataout_X : out STD_LOGIC_VECTOR (31 downto 0);
---		MEMsize_X : out STD_LOGIC_VECTOR (1 downto 0);	
---		MEM_WRQ_X : out STD_LOGIC;							  		  	
---		s_axi_awaddr : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
---		s_axi_awvalid : OUT STD_LOGIC;
---		s_axi_awready : IN STD_LOGIC;
---		-- write
---		s_axi_wdata : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
---		s_axi_wstrb : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);
---		s_axi_wvalid : OUT STD_LOGIC;
---		s_axi_wready : IN STD_LOGIC;
---		-- write response
---		s_axi_bresp : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
---		s_axi_bvalid : IN STD_LOGIC;
---		s_axi_bready : OUT STD_LOGIC;
---		-- address read
---		s_axi_araddr : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
---		s_axi_arvalid : OUT STD_LOGIC;
---		s_axi_arready : IN STD_LOGIC;
---		-- read
---		s_axi_rdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
---		s_axi_rresp : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
---		s_axi_rvalid : IN STD_LOGIC;
---		s_axi_rready : OUT STD_LOGIC;
---		-- debug
---		debug : OUT STD_LOGIC_VECTOR(7 DOWNTO 0)
---		);
---	END COMPONENT;
 
 	signal	Accumulator : std_logic_vector(31 downto 0);
 	signal	MicroControl :  std_logic_vector(22 downto 0);
@@ -168,8 +84,15 @@ architecture Structural of CPU is
 	signal 	ExceptionAddress : STD_LOGIC_VECTOR (31 downto 0);
 	signal	equalzero, equalzero_r : std_logic;
 	signal	chip_RAM : std_logic;
+	signal	MEMdataout_X_i : STD_LOGIC_VECTOR (31 downto 0);
+	signal	MEM_WRQ_X_i : STD_LOGIC;
+	signal 	MEMaddr_i : STD_LOGIC_VECTOR (31 downto 0);	
 
 begin
+
+	MEMaddr <= MEMaddr_i;
+	MEMdataout_X <= MEMdataout_X_i;
+	MEM_WRQ_X <= MEM_WRQ_X_i;
 
 	Inst_Datapath: entity work.Datapath 
 	
@@ -237,10 +160,10 @@ begin
 		AuxControl => AuxControl,
 		Accumulator => Accumulator,
 		ReturnAddress => ReturnAddress,
-		MEMaddr => MEMaddr,
+		MEMaddr => MEMaddr_i,
 		MEMdatain_X => MEMdatain_X_quick,
-		MEMdataout_X => MEMdataout_X,
-		MEM_WRQ_X => MEM_WRQ_X,
+		MEMdataout_X => MEMdataout_X_i,
+		MEM_WRQ_X => MEM_WRQ_X_i,
 		MEMsize_X => MEMsize_X,
 		s_axi_awaddr => s_axi_awaddr,
 		s_axi_awvalid => s_axi_awvalid,
@@ -260,6 +183,29 @@ begin
 		s_axi_rvalid => s_axi_rvalid,
 		s_axi_rready => s_axi_rready,
 		debug => debug
+	);
+	
+	Inst_VirtualizationUnit: entity work.VirtualizationUnit 
+	
+	GENERIC MAP(
+		vmp_w => vmp_w)
+	
+	PORT MAP(
+		clk => clk,
+		rst => rst,
+		pause => '0',
+		SingleMulti => open,
+		VM => VM,
+		PCfreeze => (others=>'0'),
+		PCthaw => open,
+		VirtualInterrupt => open,
+		DatapathFreeze => (others=>'0'),
+		DatapathThaw => open,
+		en => vir_EN,
+		addr => MEMaddr_i(10 downto 0),
+		datain => MEMdataout_X_i,
+		dataout => MEMdata_vir,
+		wrq => MEM_WRQ_X_i
 	);
 
 end Structural;

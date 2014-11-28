@@ -159,8 +159,8 @@ begin
 			RSP <= RSP_n1;
 			ESP <= ESP_n;
 			SSP <= SSP_n;
-			PwBuff <= PSdataOUT_i;				-- buffer for last written paramter stack value
-			PSw_m1 <= PSw_i;
+--			PwBuff <= PSdataOUT_i;				-- buffer for last written paramter stack value
+--			PSw_m1 <= PSw_i;
 			equalzero_i <= equalzero_n;
 		else
 			TOS_i <= (others=>'0');
@@ -169,8 +169,8 @@ begin
 			RSP <= (others=>'0');
 			ESP <= (others=>'0');
 			SSP <= (others=>'0');			
-			PwBuff <= (others=>'0');	
-			PSw_m1 <= (others=>'0');
+	--		PwBuff <= (others=>'0');	
+	--		PSw_m1 <= (others=>'0');
 			equalzero_i <= '0';
 		end if;
 	end process;

@@ -54,7 +54,8 @@ end Board_Nexys4;
 
 architecture RTL of Board_Nexys4 is
 
-type bank_t is (Sys, Char, Color, Pstack, Rstack, Reg, Stack_access, User);
+type bank_t is (Sys, Char, Color, Pstack, Rstack, Reg, Stack_access, User, Vir);
+constant blank : std_logic_vector(31 downto 0) := (others =>'0');
 signal SD_WP : std_logic;
 signal bank, bank_n : bank_t;	
 signal counter_clk, counter_ms : std_logic_vector(31 downto 0) := (others =>'0');
@@ -190,7 +191,9 @@ signal ESdataOUT : std_logic_vector(303 downto 0);
 signal ESdataIN : std_logic_vector(303 downto 0);
 signal ESw : std_logic_vector(37 downto 0);
 signal ESaddr : std_logic_vector(vmp_w + esp_w -1 downto 0);
-signal VMID : std_logic_vector(4 downto 0);
+signal VM : std_logic_vector(vmp_w -1 downto 0);
+signal vir_EN : STD_LOGIC;
+signal MEMdata_vir : STD_LOGIC_VECTOR(31 DOWNTO 0);
 
 
 	component CLOCKMANAGER
@@ -271,7 +274,8 @@ begin
 	end process;
 	 
 	with MEMaddr(17 downto 11) select
-		bank_n <= User 			when "1111000",
+		bank_n <= Vir				when "1110111",
+					 User 			when "1111000",
 					 User 			when "1111001",
 					 Char 			when "1111010",
 					 Color 			when "1111011",
@@ -280,7 +284,8 @@ begin
 					 Stack_access 	when "1111110",
 					 Reg 				when "1111111",
 					 Sys 				when others;
-					 
+				
+	 Vir_EN <= '1' when bank_n = Vir else '0';
 	 User_EN <= '1' when bank_n = User else '0';
 	 Stack_access_EN <= '1' when bank_n = Stack_access else '0';
 	 Color_EN <= '1' when bank_n = Color else '0';
@@ -298,6 +303,7 @@ begin
 							MEMdata_Reg when Reg,
 							Memdata_stack_access when stack_access,
 							MEMdata_User when user,
+							MEMdata_Vir when vir,
 							MEMdata_Sys when others;
 							
 	-- splice IOExpansion data ahead of the SRAM
@@ -384,8 +390,8 @@ begin
 		en_b => enb_userram
 	);
 	
-		addra_userram_all(15 downto 2) <= VMID & addra_userram(10 downto 2);
-		addrb_userram_all(15 downto 2) <= VMID & addrb_userram(10 downto 2);		
+		addra_userram_all(15 downto 2) <= blank(4 - vmp_w downto 0) & VM & addra_userram(10 downto 2);
+		addrb_userram_all(15 downto 2) <= blank(4 - vmp_w downto 0) & VM & addrb_userram(10 downto 2);		
 	
 	 inst_USER_RAM : entity work.USER_RAM
 	  PORT MAP (
@@ -516,7 +522,7 @@ begin
 		SD_wr => SD_wr,
 		SD_divide => SD_divide,
 		VBLANK => VBLANK,
-		VMID => VMID
+		VMID => open
 	);
 	
 		Inst_stack_access: entity work.stack_access PORT MAP(
@@ -591,9 +597,13 @@ begin
 		s_axi_rresp => s_axi_rresp,
 		s_axi_rvalid => s_axi_rvalid,
 		s_axi_rready => s_axi_rready,
+		VM => VM,
+		vir_EN => vir_EN,
+		MEMdata_vir => MEMdata_vir,
 		debug => debug_CPU
 	);
 	
+
 	s_aresetn <= not RESET;
 		
 	Inst_DMAcontroller: entity work.DMAcontroller PORT MAP(
