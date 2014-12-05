@@ -22,7 +22,6 @@ entity Datapath is
 			  ReturnAddress : in STD_LOGIC_VECTOR (31 downto 0);	-- Return Address for JSR, BSR instructions
 			  TOS : out STD_LOGIC_VECTOR (31 downto 0);				-- Top Of Stack (TOS_n, one cycle ahead of registered value)
 			  TOS_r : out STD_LOGIC_VECTOR (31 downto 0);			-- Top Of Stack (the registered value)			  
---			  NOS : out STD_LOGIC_VECTOR (31 downto 0);				-- Next On Stack (NOS_n)
 			  NOS_r : out STD_LOGIC_VECTOR (31 downto 0);			-- Next On Stack (the registered value)
 			  equalzero : out STD_LOGIC;									-- flag '1' when TOS (unregistered) is zero
 			  equalzero_r : out STD_LOGIC;								-- flag '1' when TOS (registered) is zero			  
@@ -44,7 +43,10 @@ entity Datapath is
 			  ESaddr : out STD_LOGIC_VECTOR (vmp_w + esp_w -1 downto 0);			-- Exception stack memory
 			  ESdatain : in STD_LOGIC_VECTOR (303 downto 256);	
 			  ESdataout : out STD_LOGIC_VECTOR (303 downto 256);
-			  ESw : out STD_LOGIC_VECTOR (37 downto 32)
+			  ESw : out STD_LOGIC_VECTOR (37 downto 32);
+			  DatapathFreeze : out  STD_LOGIC_VECTOR (95 downto 0);					-- virtualization unit
+			  DatapathThaw : in  STD_LOGIC_VECTOR (95 downto 0);
+			  VM : in STD_LOGIC_VECTOR (vmp_w -1 downto 0)
 			  );
 end Datapath;
 
@@ -70,20 +72,6 @@ PORT(
 	Output : OUT std_logic_vector(31 downto 0)
 	);
 END COMPONENT;
-
---COMPONENT GenMux																-- general multiplexer
---PORT(
---	TOS : IN std_logic_vector(31 downto 0);
---	NOS : IN std_logic_vector(31 downto 0);
---	PSdata : IN std_logic_vector(31 downto 0);
---	RSdata : IN std_logic_vector(31 downto 0);
---	PSP : IN std_logic_vector(8 downto 0);
---	RSP : IN std_logic_vector(8 downto 0);
---	Data : IN std_logic_vector(31 downto 0);
---	Control : IN std_logic_vector(2 downto 0);          
---	Output : OUT std_logic_vector(31 downto 0)
---	);
---END COMPONENT;
 
 COMPONENT Logic
 PORT(
@@ -140,7 +128,7 @@ signal TOS_i, NOS_i, TOS_n, NOS_alu, NOS_n : std_logic_vector (31 downto 0);
 signal PwBuff : std_logic_vector(31 downto 0);
 signal PSP, PSP_n, PSP_m1, PSP_p1 : std_logic_vector (psp_w -1 downto 0);
 signal RSP, RSP_n, RSP_n1, RSP_m1, RSP_p1 : std_logic_vector (rsp_w -1 downto 0);
-signal SSP, SSP_n, SSP_n1, SSP_m1, SSP_p1 : std_logic_vector (ssp_w -1 downto 0);
+signal SSP, SSP_n, SSP_m1, SSP_p1 : std_logic_vector (ssp_w -1 downto 0);
 signal ESP, ESP_n, ESP_m1, ESP_p1 : std_logic_vector (esp_w -1 downto 0);
 signal PSdataout_i, PSdatain_i : std_logic_vector (31 downto 0);
 signal PSw_i, PSw_m1 : std_logic_vector (0 downto 0);
@@ -159,8 +147,6 @@ begin
 			RSP <= RSP_n1;
 			ESP <= ESP_n;
 			SSP <= SSP_n;
---			PwBuff <= PSdataOUT_i;				-- buffer for last written paramter stack value
---			PSw_m1 <= PSw_i;
 			equalzero_i <= equalzero_n;
 		else
 			TOS_i <= (others=>'0');
@@ -169,18 +155,18 @@ begin
 			RSP <= (others=>'0');
 			ESP <= (others=>'0');
 			SSP <= (others=>'0');			
-	--		PwBuff <= (others=>'0');	
-	--		PSw_m1 <= (others=>'0');
 			equalzero_i <= '0';
 		end if;
 	end process;
+	
+	DatapathFreeze <= Blank(7 downto esp_w) & ESP_n & Blank(7 downto ssp_w) & SSP_n & Blank(7 downto rsp_w) & RSP_n1 & Blank(7 downto psp_w) & PSP_n & NOS_n & TOS_n;
 	
 	-- Return stack
 		--	Rstack_RAM must be configured as write first!
 	
 	RSP_m1 <= RSP - 1;							-- available for incrementing and decrementing stack pointers
 	RSP_p1 <= RSP + 1;	
-	RSaddr <= Blank(vmp_w -1 downto 0) & RSP_n1;					-- return stack address  (use the post-auxiliary override value for RSP so that RTS is processed same cycle)
+	RSaddr <= VM(vmp_w -1 downto 0) & RSP_n1;					-- return stack address  (use the post-auxiliary override value for RSP so that RTS is processed same cycle)
 	TORS <= "000000000" & SSdatain(534 downto 512);				-- TORS is directly read from BLOCK RAM
 	ExceptionAddress <= "000000000" & ESdatain(294 downto 272);
 	
@@ -188,13 +174,13 @@ begin
 	
 	SSP_m1 <= SSP - 1;							-- available for incrementing and decrementing stack pointers
 	SSP_p1 <= SSP + 1;	
-	SSaddr <= Blank(vmp_w -1 downto 0) & SSP_n;								
+	SSaddr <= VM(vmp_w -1 downto 0) & SSP_n;								
 	
 	-- Exception stack
 	
 	ESP_m1 <= ESP - 1;							-- available for incrementing and decrementing stack pointers
 	ESP_p1 <= ESP + 1;	
-	ESaddr <= Blank(vmp_w -1 downto 0) & ESP_n;	
+	ESaddr <= VM(vmp_w -1 downto 0) & ESP_n;	
 								
 	-- Return stack 				
 	process (AuxControl, MicroControl, RSP_m1, RSP_p1, TOS_i)	
@@ -212,7 +198,9 @@ begin
 				when "100" =>
 					RSP_n1 <= SSdatain(535 + rsp_w -1 downto 535) + 1;
 				when "101" =>
-					RSP_n1 <= (others=>'0');					
+					RSP_n1 <= (others=>'0');	
+				when "110" =>
+					RSp_n1 <= datapathThaw(72 + rsp_w -1 downto 72);
 				when others =>
 					RSP_n1 <= RSP;
 				end case;
@@ -244,6 +232,8 @@ begin
 					SSP_n <= ESdatain(295 + ssp_w -1 downto 295);
 				when "100" =>
 					SSP_n <= (others=>'0');
+				when "101" =>
+					SSP_n <= datapathThaw(80 + ssp_w -1 downto 80);
 				when others =>
 					SSP_n <= SSP;
 				end case;
@@ -269,6 +259,8 @@ begin
 					ESP_n <= ESP_p1;
 				when "011" =>
 					ESP_n <= (others=>'0');
+				when "100" =>
+					ESP_n <= datapathThaw(88 + esp_w -1 downto 88);
 				when others =>
 					ESP_n <= ESP;
 				end case;
@@ -286,7 +278,7 @@ begin
 
 	PSP_m1 <= PSP - 1;							-- available for incrementing and decrementing stack pointers
 	PSP_p1 <= PSP + 1;
-	PSaddr <= Blank(vmp_w -1 downto 0) & PSP_n; 	-- parameter stack address	
+	PSaddr <= VM(vmp_w -1 downto 0) & PSP_n; 	-- parameter stack address	
 	PSdatain_i <= 	PSdatain;
 	PSdataout_i <= NOS_i;						-- for pushing NOS into memory	
 	PSdataout <= PSdataout_i;	
@@ -306,7 +298,8 @@ begin
 					PSP_p1 when "010",
 					TOS_i(psp_w -1 downto 0) when "011",
 					ESdatain(256 + psp_w -1 downto 256) when "100",
-					Blank (psp_w -1 downto 0) when "101",
+					Blank(psp_w -1 downto 0) when "101",
+					datapathThaw(64 + psp_w -1 downto 64) when "110",
 					PSP when others;
 	
 	PSw_i <= "1" when MicroControl(12 downto 10) = "010" or MicroControl = "00000000000000010100001"	-- microcode for a ROT instruction
@@ -316,6 +309,7 @@ begin
 		NOS_n <= TOS_i 	when "001",
 					PSdataIN_i when "010",
 					NOS_alu when "011",
+					datapathThaw(63 downto 32) when "110",
 					NOS_i 	when others;	
 					
 	with MicroControl(6 downto 4) select				-- multiplexer for TOS register
@@ -370,7 +364,7 @@ begin
 	PSdata => PSdataIN_i,
 	RSdata => RSdatain,
 	PSP => PSP,
-	RSP => RSP,
+	datapathThaw => datapathThaw(31 downto 0),
 	Data => Data,
 	Control => MicroControl(2 downto 0),
 	Output => genmux_out);

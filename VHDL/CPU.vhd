@@ -86,13 +86,20 @@ architecture Structural of CPU is
 	signal	chip_RAM : std_logic;
 	signal	MEMdataout_X_i : STD_LOGIC_VECTOR (31 downto 0);
 	signal	MEM_WRQ_X_i : STD_LOGIC;
-	signal 	MEMaddr_i : STD_LOGIC_VECTOR (31 downto 0);	
+	signal 	MEMaddr_i : STD_LOGIC_VECTOR (31 downto 0);
+	signal 	VM_i : STD_LOGIC_VECTOR (vmp_w -1 downto 0);
+	signal	DatapathFreeze : STD_LOGIC_VECTOR (95 downto 0);					-- virtualization unit
+	signal	DatapathThaw : STD_LOGIC_VECTOR (95 downto 0);
+	signal 	pause : STD_LOGIC;
+	signal 	SingleMulti : STD_LOGIC;
+	signal 	PCfreeze, PCthaw, VirtualInterrupt : STD_LOGIC_VECTOR (19 downto 0);
 
 begin
 
 	MEMaddr <= MEMaddr_i;
 	MEMdataout_X <= MEMdataout_X_i;
 	MEM_WRQ_X <= MEM_WRQ_X_i;
+	VM <= VM_i;
 
 	Inst_Datapath: entity work.Datapath 
 	
@@ -114,7 +121,6 @@ begin
 		ReturnAddress => ReturnAddress,
 		TOS => TOS,
 		TOS_r => TOS_r,
---		NOS => NOS,
 		NOS_r => NOS_r,
 		TORS => TORS,
 		ExceptionAddress => ExceptionAddress,
@@ -136,7 +142,10 @@ begin
 		ESaddr => ESaddr,
 		ESdatain => ESdatain,
 		ESdataout => ESdataout,
-		ESw => ESw
+		ESw => ESw,
+		VM => VM_i,
+		datapathfreeze => datapathfreeze,
+		datapaththaw => datapaththaw
 	);
 	
 	Inst_ControlUnit: entity work.ControlUnit 
@@ -149,7 +158,6 @@ begin
 		irv => irv,
 		TOS => TOS,
 		TOS_r => TOS_r,
---		NOS => NOS,
 		NOS_r => NOS_r,
 		TORS => TORS,
 		ExceptionAddress => ExceptionAddress,
@@ -182,6 +190,11 @@ begin
 		s_axi_rresp => s_axi_rresp,
 		s_axi_rvalid => s_axi_rvalid,
 		s_axi_rready => s_axi_rready,
+		pause => pause,
+		SingleMulti => SingleMulti,
+		PCfreeze => PCfreeze,
+		PCthaw => PCthaw,
+		VirtualInterrupt => VirtualInterrupt,
 		debug => debug
 	);
 	
@@ -193,14 +206,14 @@ begin
 	PORT MAP(
 		clk => clk,
 		rst => rst,
-		pause => '0',
-		SingleMulti => open,
-		VM => VM,
-		PCfreeze => (others=>'0'),
-		PCthaw => open,
-		VirtualInterrupt => open,
-		DatapathFreeze => (others=>'0'),
-		DatapathThaw => open,
+		pause => pause,
+		SingleMulti => SingleMulti,
+		VM => VM_i,
+		PCfreeze => PCfreeze,
+		PCthaw => PCthaw,
+		VirtualInterrupt => VirtualInterrupt,
+		DatapathFreeze => DatapathFreeze,
+		DatapathThaw => DatapathThaw,
 		en => vir_EN,
 		addr => MEMaddr_i(10 downto 0),
 		datain => MEMdataout_X_i,

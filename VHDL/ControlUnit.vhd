@@ -15,7 +15,6 @@ entity ControlUnit is
 			  rti : out std_logic;												-- return from interrupt signal
 			  TOS : in STD_LOGIC_VECTOR (31 downto 0);					-- Top Of Stack (TOS_n from datapath, one cycle ahead of registered value)
 			  TOS_r : in STD_LOGIC_VECTOR (31 downto 0);					-- Top Of Stack (TOS from datapath, the registered value)
---			  NOS : in STD_LOGIC_VECTOR (31 downto 0);					-- Next On Stack (unregistered value from combinational logic)
 			  NOS_r : in STD_LOGIC_VECTOR (31 downto 0);					-- Next On Stack (registered value)		  
 			  TORS : in STD_LOGIC_VECTOR (31 downto 0);	  				-- Subroutine return address
 			  ExceptionAddress : in STD_LOGIC_VECTOR (31 downto 0);	-- Exception return address
@@ -53,7 +52,13 @@ entity ControlUnit is
 				s_axi_rvalid : IN STD_LOGIC;
 				s_axi_rdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 				s_axi_rready : OUT STD_LOGIC;
-				debug : OUT STD_LOGIC_VECTOR(7 DOWNTO 0)
+				-- virtualization
+				PCfreeze : out STD_LOGIC_VECTOR (19 downto 0);
+				PCthaw : in STD_LOGIC_VECTOR (19 downto 0);
+				singleMulti : IN STD_LOGIC;
+				pause : OUT STD_LOGIC;
+				VirtualInterrupt : IN STD_LOGIC_VECTOR (19 downto 0);
+				debug : OUT STD_LOGIC_VECTOR(7 DOWNTO 0)			
            );
 end ControlUnit;
 
@@ -96,6 +101,7 @@ constant ops_JSR : std_logic_vector(6 downto 0) := "0111001";
 constant ops_TRAP : std_logic_vector(6 downto 0) := "0111010";
 constant ops_RETRAP : std_logic_vector(6 downto 0) := "0111011";
 constant ops_RTI : std_logic_vector(6 downto 0) := "0111100";
+constant ops_PAUSE : std_logic_vector(6 downto 0) := "0111101";
 
 -- internal opcodes used for microcode
 constant ops_THROW2 : std_logic_vector(6 downto 0) := "1000001"; 
@@ -115,7 +121,7 @@ type state_T is (common, ifdup, smult, umult, sdivmod, udivmod, sdivmod_load, ud
 						Sfetch_long, Sfetch_word, Sfetch_byte,
 						Dfetch_long, Dfetch_long2, Dfetch_word, Dfetch_byte, Dfetch_word2, Dfetch_byte2,
 						Dstore_long, Dstore_word, Dstore_byte, Dstore2,
-						throw, throw2, skip1) ;					
+						throw, throw2, virtual_interrupt, skip1) ;					
 						
 signal state, state_n  : state_T;										-- state machine
 signal PC, PC_n, PC_plus, PC_jsl, PC_branch, PC_m1, PC_skipbranch : std_logic_vector (19 downto 0);		-- program counter logic
@@ -135,11 +141,11 @@ signal AuxControl_i, AuxControl_n : std_logic_vector(1 downto 0);
 signal opcode, next_opcode : std_logic_vector(6 downto 0);					-- opcode of current and next instructions
 signal branch, next_branch : std_logic_vector(1 downto 0);					-- branch codes of current and next instructions
 signal MEMsize_X_n : STD_LOGIC_VECTOR (1 downto 0);	
---signal delayed_RTS, delayed_RTS_n : STD_LOGIC;
 signal MEMaddr_i : STD_LOGIC_VECTOR (31 downto 0);	
 signal MEM_WRQ_X_i : STD_LOGIC;
 signal AXIaddr : STD_LOGIC_VECTOR (1 downto 0);
 signal debug_i : std_logic_vector(7 downto 0);
+signal PCthaw_m1 : STD_LOGIC_VECTOR (19 downto 0);
 
 alias signbit is MEMdatain_X(29);
 
@@ -178,6 +184,10 @@ begin
 	
 	MEMaddr <= MEMaddr_i;
 	MEM_WRQ_X <= MEM_WRQ_X_i;
+
+	pause <= '1' when (opcode = ops_PAUSE and branch = "00") else '0';	
+					
+	PCfreeze <= PC;
 	
 	-- main control unit state machine
 	
@@ -202,7 +212,7 @@ begin
 			ReturnAddress <= ReturnAddress_n;			
 			retrap <= retrap_n;
 			MEMsize_X <= MEMsize_X_n;	
-			--delayed_RTS <= delayed_RTS_n;
+			PCthaw_m1 <= PCthaw;
 			AuxControl_i <= AuxControl_n;
 			debug <= debug_i;
 			if (count >= timer) then 
@@ -222,7 +232,7 @@ begin
 			ReturnAddress <= (others=>'0');
 			AuxControl_i <= (others=>'0');
 			MEMsize_X <= (others=>'0');
-			--delayed_RTS <= '0';
+			PCthaw_m1 <= (others=>'0');
 			debug <= (others=>'0');
 		end if;
 	end process;
@@ -230,7 +240,7 @@ begin
 	process (state, state_n, PC, PC_n, PC_plus, PC_jsl, PC_branch, PC_skipbranch, PC_m1, PC_addr, delta, PC_plus_two, PC_plus_three, PC_plus_four,
 				ucode, equalzero, equalzero_r, branch, opcode, chip_RAM, MEMdatain_X, retrap,
 				s_axi_awready, s_axi_wready, s_axi_arready, s_axi_rvalid, s_axi_rdata, axiaddr, 
-				TOS, TOS_r, NOS_r, TORS, int_trig, int_vector_ext, int_vector_ext_i, branch, opcode, ExceptionAddress)
+				TOS, TOS_r, NOS_r, TORS, int_trig, int_vector_ext, int_vector_ext_i, branch, opcode, ExceptionAddress, virtualInterrupt, SingleMulti)
 	begin																					-- combinational section of state machine
 		case state is
 
@@ -242,8 +252,11 @@ begin
 			if int_trig = '1' or retrap(0) = '1' or branch = bps_BRA or branch = bps_BEQ 
 				or opcode = ops_JSL  or opcode = ops_JSR or opcode = ops_JMP or opcode = ops_TRAP or opcode = ops_RETRAP or
 				opcode = ops_byte or opcode = ops_word or opcode = ops_long or opcode = ops_catch or 
+				(opcode = ops_PAUSE and virtualInterrupt = 0) or
 				((opcode = ops_toR or opcode = ops_Rfrom) and MEMdatain_X(23 downto 22) = "01")  -- insert one cycle delay between >R or R> and RTS
-				then state_n <= skip1;																				-- to allow the return stack value to be stored in RAM
+				then state_n <= skip1;																				-- 	to allow the return stack value to be stored in RAM
+			elsif opcode = ops_PAUSE then							-- virtual interrupt
+				state_n <= virtual_interrupt;
 			elsif opcode = ops_throw then
 				state_n <= throw;
 			elsif opcode = ops_lfetch then
@@ -387,7 +400,17 @@ begin
 									PC_n <= PC;
 								else
 									PC_n <= PC_plus;
-								end if;								
+								end if;	
+							when ops_PAUSE =>
+								if SingleMulti = '1' then
+									if virtualInterrupt = 0 then
+										PC_n <= PCthaw;
+									else
+										PC_n <= virtualInterrupt;
+									end if;
+								else
+									PC_n <= PC;
+								end if;
 							when others =>
 								PC_n <= PC_plus;
 							end case;
@@ -409,15 +432,17 @@ begin
 								ucode <= ops_NOP;
 							when ops_UDIVMOD =>	
 								ucode <= ops_NOP;	
---							when ops_RTI =>						-- these instructions have no microcode but overlap with internal microcode
---								ucode <= ops_NOP;
---							when ops_TRAP =>	
---								ucode <= ops_NOP;	
 							when ops_THROW =>
 								if equalzero = '0' then
 									ucode <= opcode;
 								else
 									ucode <= ops_drop;
+								end if;
+							when ops_PAUSE =>
+								if SingleMulti = '1' then
+									ucode <= opcode;
+								else
+									ucode <= ops_NOP;
 								end if;
 						   when others =>
 								ucode <= opcode;
@@ -1192,6 +1217,30 @@ begin
 			s_axi_rready <= '0';	
 			debug_i <= x"19";
 			
+		when virtual_interrupt =>	
+			state_n <= skip1;
+			timer <= 0;
+			PC_n <= PC;
+			ucode <= ops_JSL;								-- push the saved PC address onto the return stack																
+			accumulator <= (others=>'0');
+			MEMaddr_i <= PC_addr;				
+			MEM_WRQ_X_i <= '0';
+			MEMsize_X_n <= "11";
+			MEMdataout_X <= NOS_r;	
+			AuxControl_n(0 downto 0) <= "0";
+			AuxControl_n(1 downto 1) <= "0";
+			ReturnAddress_n <= "000000000000" & PCthaw_m1;
+			irq_n <= int_trig;
+			rti <= '0';
+			retrap_n <= retrap;
+			s_axi_awvalid <= '0';
+			s_axi_wdata <= NOS_r;
+			s_axi_wstrb <= "1111";
+			s_axi_wvalid <= '0';
+			s_axi_arvalid <= '0';
+			s_axi_rready <= '0';	
+			debug_i <= x"20";
+			
 		when others =>										-- skip1, but use default case for speed optimization
 			state_n <= common;							-- after changing PC, this wait state allows a memory read before execution of next instruction
 			timer <= 0;
@@ -1208,14 +1257,13 @@ begin
 			irq_n <= int_trig;
 			rti <= '0';
 			retrap_n <= retrap;
-			-- delayed_RTS_n <= delayed_RTS;
 			s_axi_awvalid <= '0';
 			s_axi_wdata <= NOS_r;
 			s_axi_wstrb <= "1111";
 			s_axi_wvalid <= '0';
 			s_axi_arvalid <= '0';
 			s_axi_rready <= '0';	
-			debug_i <= x"20";
+			debug_i <= x"21";
 
 		end case;
 	end process;

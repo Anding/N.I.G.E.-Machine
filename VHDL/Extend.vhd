@@ -24,7 +24,7 @@ entity GenMux is
 			  PSdata : in STD_LOGIC_VECTOR (31 downto 0);
 			  RSdata : in STD_LOGIC_VECTOR (31 downto 0);
 			  PSP : in STD_LOGIC_VECTOR (psp_w -1 downto 0);
-			  RSP : in STD_LOGIC_VECTOR (rsp_w -1 downto 0);
+			  datapathThaw : in STD_LOGIC_VECTOR (31 downto 0);
 			  Data : in STD_LOGIC_VECTOR (31 downto 0);
            Control : in  STD_LOGIC_VECTOR (2 downto 0);
            Output : out  STD_LOGIC_VECTOR (31 downto 0));
@@ -41,7 +41,7 @@ begin
 		<= PSdata when "001",
 			RSdata when "010",
 			blank (31 - psp_w downto 0) & PSP when "011",
-			blank (31 - psp_w downto 0) & RSP when "100",
+			datapathThaw when "100",
 			sc & sc & sc & sc & sc & sc & sc & sc & sc & sc & sc & sc & sc & sc & sc & sc & sc & sc & sc & sc & sc & sc & sc & sc & TOS(7 downto 0) when "101",
 			sw & sw & sw & sw & sw & sw & sw & sw & sw & sw & sw & sw & sw & sw & sw & sw & TOS(15 downto 0) when "110",
 			Data when "111",
