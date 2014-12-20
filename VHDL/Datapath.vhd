@@ -309,7 +309,7 @@ begin
 		NOS_n <= TOS_i 	when "001",
 					PSdataIN_i when "010",
 					NOS_alu when "011",
-					datapathThaw(63 downto 32) when "110",
+					datapathThaw(63 downto 32) when "100",
 					NOS_i 	when others;	
 					
 	with MicroControl(6 downto 4) select				-- multiplexer for TOS register

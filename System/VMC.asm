@@ -3,12 +3,60 @@ CurrentVM	equ	243716
 TaskControl	equ	244224
 PCoverride 	equ	244736
 VirtualInt	equ	245248
+sevenseg	equ	hex 03F830
 VMcount	equ	2				; count of available virtual machines
 ;
 		nop
 		nop
 		nop
 		nop
+		jsl	INIT-MULTI.CF
+		jsl	MULTI.CF
+		#.b	1
+		#.b	2
+		#.b	3
+		#.b	3
+		#.l	l1
+		jsl	run.cf
+;		#.b	2
+;		#.b	0
+;		DO
+;			R@
+;			jsl	showTC
+;		LOOP
+l0		pause
+		bra l0
+;
+showTC		2*
+		2*
+		#.l	TaskControl
+		+
+		fetch.l
+		#.l	sevenseg
+		store.l,rts		
+;
+; LSHIFT (x1 u -- x2)
+LSHIFT.CF	BEGIN
+			?dup	( x1 u true -- x1 false)
+		WHILE
+			1-	( x1 u')
+			swap	( u' x1)
+			lsl	( u' x2)
+			swap	( x2 u')
+		REPEAT
+LSHIFT.Z	rts
+;
+; RSHIFT (x1 u -- x2)
+RSHIFT.CF	BEGIN
+			?dup	( x1 u true -- x1 false)
+		WHILE
+			1-	( x1 u')
+			swap	( u' x1)
+			lsr	( u' x2)
+			swap	( x2 u')
+		REPEAT
+RSHIFT.Z	rts
+;
 ; SINGLE ( --, disable multitasking.  PAUSE instructions will be treated as a two-cycle NOP)
 SINGLE.CF	zero
 		#.l	SingleMulti
@@ -55,62 +103,106 @@ INIT-MULTI.CF	#.l	TaskControl			; zero all task control registers
 			store.w			; each task control register is 16 bits wide
 			#.b	4			; each task control register is longword aligned
 		+LOOP		
-		#.w	8000				; indicate that VM 0 is assigned by setting bit 31 = true
+		#.w	hex 8000			; indicate that VM 0 is assigned by setting bit 15 = true
+		swap
 		store.w,rts				
 ;
 ; INIT-TASK ( -- initialize a new task - always the first code executed by a new task)
-INIT-TASK.CF	resetsp
-;		copy in initial stack parameters from shared memory
-;		initialize user variable area
-		rts
-;
-; RUN ( p1 p2 … pn XT -- VM# true | false, find and initialize a new VM to take n stack paramaters and execute task XT. Return VM# true if successful, or false otherwise)
-;						 note that XT must be an infinite loop or must contain code to self-abort the task
-RUN.CF		#.l	TaskControl
-		#.l	TaskControl VMcount 4 * +
-		>R
-		BEGIN					; find an unassigned VM
-			dup
-			fetch.w
-			#.w	8000			; assigned VM's have bit 31 = true
-			and
+INIT-TASK.CF	resetsp				; reset stack pointers
+		#.l	INIT-TASK.0			; copy initial stack parameters from shared memory
+		fetch.b				( n)
+		1-					( n~)
+		2*					( 2n)
+		2*					( 4n)
+		#.l	INIT-TASK.1			( 4n addr)
+		+					( addr~)
+		BEGIN
+			dup				( addr~ addr~)
+			#.l	INIT-TASK.1		( addr~ addr~ addr)
+			<				( addr~ flag)
+			NOT				( addr~ flag~)
 		WHILE
-			#.b	4			
-			+				; each task control register is longword aligned
-			dup
-			R@
-			>
-			IF				; failure - all VM's checked and were assigned
-				R>
-				drop
-				drop
-				drop
-; should also drop n stack parameters
-				false
+			dup				( addr~ addr~)
+			fetch.l			( addr~ u)
+			swap				( u addr~)
+			#.b	4
+			-
+		REPEAT
+		drop					( p1 p2 … pn)
+		jsl	USERINIT.CF			; initialize user variable area
+		#.l	INIT-TASK.2			; fetch the XT of this task
+		fetch.l				
+		jmp
+;
+INIT-TASK.0	ds.b	1				; number of stack parameters passed to new task
+INIT-TASK.1	ds.l	16				; storage for stack parameters passed to new task
+INIT-TASK.2	ds.l	1				; XT of new task
+;
+; RUN ( p1 p2 … pn n XT -- VM# true | false, find and initialize a new VM to take n stack paramaters and execute task XT. Return VM# true if successful, or false otherwise)
+;	note that XT must be an infinite loop or must contain code to self-abort the task
+RUN.CF		#.l	INIT-TASK.2			( … pn n n XT addr)
+		store.l							; record the XT of the new task
+		dup					( … pn n n)
+		#.l	INIT-TASK.0
+		store.b				( … pn n)		; record the number of stack parameters to be passed
+		?dup					( … pn n n | 0)
+		IF								; copy stack parameters to a shared memory area
+			2*
+			2*				( … pn 4n)
+			#.l	INIT-TASK.1		( … pn 4n addr)
+			dup				( … pn 4n addr addr)
+			rot				( … pn addr addr 4n)
+			+				( … pn addr addr-end)
+			swap				( … pn addr-end addr)
+			DO
+				R@			( … pi addri)
+				store.l
+				#.b 	4
+			+LOOP				( … pi)
+		THEN
+		#.l	TaskControl			( TC0)			; find an unassigned VM
+		#.l	TaskControl VMcount 4 * +	( TC0 TCn)
+		>R					( TC0 R:TCn)
+		BEGIN								
+			dup				( TC TC R:TCn)
+			fetch.w			( TC raw R:TCn)
+			#.w	hex 8000					; assigned VM's have bit 15 = true
+			and				( TC0 bit15 R:TCn)
+		WHILE
+			#.b	4			( TC 4 R:TCn)
+			+							; each task control register is longword aligned
+			dup				( TC~ TC~ R:TCn)
+			R@				( TC~ TC~ TCn R:TCn)
+			>				( TC~ flag R:TCn)
+			IF							; failure - all VM's checked and were assigned
+				R>			( TC~ TCn)
+				drop			( TC~)
+				drop			( )
+				false			( 0)
 				rts
 			THEN
-		REPEAT	
-		R>
-		drop
-		dup					( p1 p2 … pn XT reg reg)
-		#.w	hex 8000
-		store.l							; set the flag in the VM Task Control register to indicate that it is assigned
-		#.l	TaskControl
-		-
-		2/
-		2/					( p1 p2 … pn XT VM#n); VM#n = number of available virtual machine)
-		dup					( p1 p2 … pn XT VM#n VM#n)
-		jsl	WAKE.cf						; insert the new VM into the task execution list
-		swap
-		over					( p1 p2 … pn VM#n XT VM#n)
-		jsl	VM->PCOREG					
-		store.l				( p1 p2 … pn VM#n)	; the new XT will become the program counter for the new task
-		#.l	INIT-TASK.CF
-		over
-		jsl	VM->VIREG
-		store.l				( p1 p2 … pn VM#n)	; the next task will first execute a virtual interrupt to TASK-INIT.CF
-		zero
-		not,rts				( true)
+		REPEAT					( TC~ R:TCn)
+		R>					( VM#n_TC TCn)
+		drop					( VM#n_TC)
+		dup					( VM#n_TC VM#n_TC)
+		#.w	hex 8000			( VM#n_TC VM#n_TC $8000)
+		swap					( VM#n_TC $8000 VM#n_TC)
+		store.w				( VM#n_TC) 		; set the flag in the VM Task Control register to indicate that it is assigned
+		#.l	TaskControl			( VM#n_TC TC0) 
+		-					( offset) 
+		2/					( offset/2) 
+		2/					( VM#n)		; VM#n = number of available virtual machine)
+		dup					( VM#n VM#n)
+		jsl	WAKE.cf			( VM#n)		; insert the new VM into the task execution list
+		dup					( VM#n VM#n)
+		#.l	INIT-TASK.CF			( VM#n VM#n	init-task)
+		swap					( VM#n init-task VM#n)
+		jsl	VM->PCOREG			( VM#n init-task VM#n_PCO)	
+		store.l				( VM#n)		; the new XT will become the program counter for the new task
+		false					( VM#n false)
+		not					( VM#n true)
+		pause								; switch to task just created
+		rts					( VM#n true)
 ;
 ; MASK@ ( addr mask --, read the data at address u and bitwise though the mask)
 MASK@		swap
@@ -122,7 +214,7 @@ MASK!		>R		( u addr R:mask)
 		dup		( u addr addr R:mask)
 		fetch.l	( u addr data R:mask)
 		R@		( u addr data mask R:mask)
-		not		( u addr data mask~ R:mask)
+		invert		( u addr data mask~ R:mask)
 		and		( u addr data~ R:mask)		; preserve only the write protected bits of the original data 
 		rot		( addr data~ u R:mask)
 		R>		( addr data~ u mask)
@@ -167,6 +259,8 @@ WAKE.CF	#.l	CurrentVM
 		over
 		over					( wake_VM current_VM wake_VM current_VM)
 		jsl	GETNEXTTASK.CF		( wake_VM current_VM wake_VM next_VM)
+		dup
+		>R					( R:next_VM)
 		jsl	SETPRIORTASK.CF		( wake_VM current_VM)				; update backwards link from current next task
 		over
 		over					( wake_VM current_VM wake_VM current_VM)
@@ -175,7 +269,8 @@ WAKE.CF	#.l	CurrentVM
 		over
 		swap					( wake_VM current_VM current_VM wake_VM)
 		jsl	SETPRIORTASK.CF		( wake_VM current_VM)				; update backward link from inserted task
-		jsl	GETNEXTTASK.CF		( wake_VM next_VM)
+		drop
+		R>
 		swap					( next_VM wake_VM)
 		jsl	SETNEXTTASK.CF									; update forward link from inserted task
 		rts
@@ -183,7 +278,8 @@ WAKE.CF	#.l	CurrentVM
 ; SLEEP ( sleep_VM --, put task sleep_VM to sleep by removing it from the list of executing tasks)		
 SLEEP.CF	dup					( sleep_VM sleep_VM)
 		jsl	GETNEXTTASK.CF		( sleep_VM next_VM)
-		swap	GETPRIORTASK.CF		( next_VM prior_VM)
+		swap	
+		jsl	GETPRIORTASK.CF		( next_VM prior_VM)
 		over
 		over					( next_VM prior_VM next_VM prior_VM)
 		jsl	SETNEXTTASK.CF		( next_VM prior_VM)					; update forward link of prior task
@@ -200,10 +296,6 @@ STOP.CF	jsl	VM->TCREG
 		jsl	SLEEP.CF				; remove this task from the list of currently executing tasks
 		rts
 ;
-		
-	
-		
-		
-		
-		
-	
+USERINIT.CF	rts
+l1		pause
+		bra	l1	

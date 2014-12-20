@@ -184,9 +184,7 @@ begin
 	
 	MEMaddr <= MEMaddr_i;
 	MEM_WRQ_X <= MEM_WRQ_X_i;
-
-	pause <= '1' when (opcode = ops_PAUSE and branch = "00") else '0';	
-					
+				
 	PCfreeze <= PC;
 	
 	-- main control unit state machine
@@ -240,7 +238,7 @@ begin
 	process (state, state_n, PC, PC_n, PC_plus, PC_jsl, PC_branch, PC_skipbranch, PC_m1, PC_addr, delta, PC_plus_two, PC_plus_three, PC_plus_four,
 				ucode, equalzero, equalzero_r, branch, opcode, chip_RAM, MEMdatain_X, retrap,
 				s_axi_awready, s_axi_wready, s_axi_arready, s_axi_rvalid, s_axi_rdata, axiaddr, 
-				TOS, TOS_r, NOS_r, TORS, int_trig, int_vector_ext, int_vector_ext_i, branch, opcode, ExceptionAddress, virtualInterrupt, SingleMulti)
+				TOS, TOS_r, NOS_r, TORS, int_trig, int_vector_ext, int_vector_ext_i, branch, opcode, ExceptionAddress, virtualInterrupt, SingleMulti, PCthaw)
 	begin																					-- combinational section of state machine
 		case state is
 
@@ -503,6 +501,13 @@ begin
 			s_axi_wvalid <= '0';
 			s_axi_rready <= '0';	
 			
+			-- pause
+			if	opcode = ops_PAUSE then
+				pause <= '1'; 
+			else
+				pause <= '0';
+			end if;
+			
 			-- debug
 			debug_i <= x"00";
 	
@@ -533,6 +538,7 @@ begin
 			s_axi_wvalid <= '0';
 			s_axi_arvalid <= '0';
 			s_axi_rready <= '0';	
+			pause <= '0';
 			debug_i <= x"01";
 			
 		when smult =>										-- signed multiply
@@ -558,6 +564,7 @@ begin
 			s_axi_wvalid <= '0';
 			s_axi_arvalid <= '0';
 			s_axi_rready <= '0';	
+			pause <= '0';
 			debug_i <= x"02";
 	
 		when umult =>										-- unsigned multiply
@@ -583,6 +590,7 @@ begin
 			s_axi_wvalid <= '0';
 			s_axi_arvalid <= '0';
 			s_axi_rready <= '0';	
+			pause <= '0';
 			debug_i <= x"03";
 	
 		when sdivmod =>										-- signed division
@@ -608,6 +616,7 @@ begin
 			s_axi_wvalid <= '0';
 			s_axi_arvalid <= '0';
 			s_axi_rready <= '0';	
+			pause <= '0';
 			debug_i <= x"04";
 
 		when udivmod =>										-- unsigned division
@@ -633,6 +642,7 @@ begin
 			s_axi_wvalid <= '0';
 			s_axi_arvalid <= '0';
 			s_axi_rready <= '0';	
+			pause <= '0';
 			debug_i <= x"05";
 			
 		when sdivmod_load =>									-- signed division
@@ -658,6 +668,7 @@ begin
 			s_axi_wvalid <= '0';
 			s_axi_arvalid <= '0';
 			s_axi_rready <= '0';	
+			pause <= '0';
 			debug_i <= x"06";
 	
 		when udivmod_load =>									-- unsigned division
@@ -682,6 +693,7 @@ begin
 			s_axi_wstrb <= "1111";
 			s_axi_wvalid <= '0';
 			s_axi_arvalid <= '0';
+			pause <= '0';
 			debug_i <= x"07";
 			
 		when Sfetch_byte =>											
@@ -707,6 +719,7 @@ begin
 			s_axi_wvalid <= '0';
 			s_axi_arvalid <= '0';
 			s_axi_rready <= '0';	
+			pause <= '0';
 			debug_i <= x"08";
 			
 		when Sfetch_word =>											
@@ -732,6 +745,7 @@ begin
 			s_axi_wvalid <= '0';
 			s_axi_arvalid <= '0';
 			s_axi_rready <= '0';	
+			pause <= '0';
 			debug_i <= x"09";
 
 		when Sfetch_long =>											
@@ -757,6 +771,7 @@ begin
 			s_axi_wvalid <= '0';
 			s_axi_arvalid <= '0';
 			s_axi_rready <= '0';	
+			pause <= '0';
 			debug_i <= x"0a";
 			
 		when Sstore_long =>											
@@ -782,6 +797,7 @@ begin
 			s_axi_wvalid <= '0';
 			s_axi_arvalid <= '0';
 			s_axi_rready <= '0';	
+			pause <= '0';
 			debug_i <= x"0b";
 			
 		when Sstore_word =>											
@@ -807,6 +823,7 @@ begin
 			s_axi_wvalid <= '0';
 			s_axi_arvalid <= '0';
 			s_axi_rready <= '0';	
+			pause <= '0';
 			debug_i <= x"0c";
 			
 		when Sstore_byte =>											
@@ -832,6 +849,7 @@ begin
 			s_axi_wvalid <= '0';
 			s_axi_arvalid <= '0';
 			s_axi_rready <= '0';	
+			pause <= '0';
 			debug_i <= x"0d";
 			
 		when SRAM_store =>											
@@ -857,6 +875,7 @@ begin
 			s_axi_wvalid <= '0';
 			s_axi_arvalid <= '0';
 			s_axi_rready <= '0';	
+			pause <= '0';
 			debug_i <= x"0e";
 	
 		when Dfetch_long =>											
@@ -886,6 +905,7 @@ begin
 			s_axi_wvalid <= '0';
 			s_axi_rready <= '0';	
 			s_axi_arvalid <= '1';
+			pause <= '0';
 			debug_i <= x"0f";
 
 		when Dfetch_long2 =>	
@@ -916,6 +936,7 @@ begin
 			s_axi_wvalid <= '0';
 			s_axi_arvalid <= '0';
 			s_axi_rready <= '1';	
+			pause <= '0';
 			debug_i <= x"10";
 	
 		when Dfetch_word =>											
@@ -949,6 +970,7 @@ begin
 			s_axi_wvalid <= '0';
 			s_axi_rready <= '0';	
 			s_axi_arvalid <= '1';
+			pause <= '0';
 			debug_i <= x"11";
 
 		when Dfetch_word2 =>	
@@ -983,6 +1005,7 @@ begin
 			s_axi_wvalid <= '0';
 			s_axi_arvalid <= '0';
 			s_axi_rready <= '1';	
+			pause <= '0';
 			debug_i <= x"12";
 				
 		when Dfetch_byte =>											
@@ -1020,6 +1043,7 @@ begin
 			s_axi_wvalid <= '0';
 			s_axi_rready <= '0';	
 			s_axi_arvalid <= '1';
+			pause <= '0';
 			debug_i <= x"13";
 
 		when Dfetch_byte2 =>	
@@ -1058,6 +1082,7 @@ begin
 			s_axi_wvalid <= '0';
 			s_axi_arvalid <= '0';
 			s_axi_rready <= '1';	
+			pause <= '0';
 			debug_i <= x"14";			
 				
 		when Dstore_long =>										
@@ -1088,6 +1113,7 @@ begin
 			s_axi_wvalid <= '1';
 			s_axi_arvalid <= '0';
 			s_axi_rready <= '0';	
+			pause <= '0';
 			debug_i <= x"15";					
 			
 		when Dstore_word =>										
@@ -1122,6 +1148,7 @@ begin
 			s_axi_wvalid <= '1';
 			s_axi_arvalid <= '0';
 			s_axi_rready <= '0';	
+			pause <= '0';
 			debug_i <= x"16";	
 
 		when Dstore_byte =>										
@@ -1160,6 +1187,7 @@ begin
 			s_axi_wvalid <= '1';
 			s_axi_arvalid <= '0';
 			s_axi_rready <= '0';	
+			pause <= '0';
 			debug_i <= x"17";	
 
 		when Dstore2 =>										
@@ -1185,6 +1213,7 @@ begin
 			s_axi_wvalid <= '0';
 			s_axi_arvalid <= '0';
 			s_axi_rready <= '0';	
+			pause <= '0';
 			debug_i <= x"18";	
 			
 		when throw =>									
@@ -1215,13 +1244,18 @@ begin
 			s_axi_wvalid <= '0';
 			s_axi_arvalid <= '0';
 			s_axi_rready <= '0';	
+			pause <= '0';
 			debug_i <= x"19";
 			
 		when virtual_interrupt =>	
 			state_n <= skip1;
 			timer <= 0;
 			PC_n <= PC;
-			ucode <= ops_JSL;								-- push the saved PC address onto the return stack																
+			if SingleMulti = '1' then
+				ucode <= ops_JSL;								-- push the saved PC address onto the return stack		
+			else
+				ucode <= ops_NOP;
+			end if;
 			accumulator <= (others=>'0');
 			MEMaddr_i <= PC_addr;				
 			MEM_WRQ_X_i <= '0';
@@ -1239,6 +1273,7 @@ begin
 			s_axi_wvalid <= '0';
 			s_axi_arvalid <= '0';
 			s_axi_rready <= '0';	
+			pause <= '0';
 			debug_i <= x"20";
 			
 		when others =>										-- skip1, but use default case for speed optimization
@@ -1263,6 +1298,7 @@ begin
 			s_axi_wvalid <= '0';
 			s_axi_arvalid <= '0';
 			s_axi_rready <= '0';	
+			pause <= '0';
 			debug_i <= x"21";
 
 		end case;

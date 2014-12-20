@@ -7,11 +7,11 @@ use UNISIM.vcomponents.all;
 
 entity Board_Nexys4 is
 
-	 Generic (	vmp_w : integer := 2;
-					psp_w : integer := 7;
-					rsp_w : integer := 7;
-					ssp_w : integer := 7;
-					esp_w : integer := 7
+	 Generic (	vmp_w : integer := 3;
+					psp_w : integer := 6;
+					rsp_w : integer := 6;
+					ssp_w : integer := 6;
+					esp_w : integer := 6
 					);
 					
     Port ( CLK_IN : in  STD_LOGIC;
