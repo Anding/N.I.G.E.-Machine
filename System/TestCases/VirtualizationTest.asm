@@ -10,19 +10,22 @@ VirtualInt	equ	245248
 	#.b	1			; enable multitasking
 	#.l	SingleMulti
 	store.b
-	#.b	1			; task 0 switches to task 1
-	#.l	TaskControl
-	store.w
-	#.l	thrd1			; task 1 PCoverride address
-	#.l	PCoverride 4 +	
-	store.l
-	#.l	six			; Virtual Interrupt address
-	#.l	VirtualInt 4 +	
-	store.l
-	#.l	thrd0	
-	catch
-	zero	
-	drop
+	nop
+	nop
+	pause
+;	#.b	1			; task 0 switches to task 1
+;	#.l	TaskControl
+;	store.w
+;	#.l	thrd1			; task 1 PCoverride address
+;	#.l	PCoverride 4 +	
+;	store.l
+;	#.l	six			; Virtual Interrupt address
+;	#.l	VirtualInt 4 +	
+;	store.l
+;	#.l	thrd0	
+;	catch
+;	zero	
+;	drop
 end	bra	end
 ;
 thrd0	pause				; Initialize thread 1
