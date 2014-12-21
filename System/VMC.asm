@@ -4,28 +4,35 @@ TaskControl	equ	244224
 PCoverride 	equ	244736
 VirtualInt	equ	245248
 sevenseg	equ	hex 03F830
-VMcount	equ	2				; count of available virtual machines
+VMcount	equ	8				; count of available virtual machines
 ;
 		nop
 		nop
 		nop
 		nop
 		jsl	INIT-MULTI.CF
-		jsl	MULTI.CF
-		#.b	1
-		#.b	2
-		#.b	3
-		#.b	3
-		#.l	l1
-		jsl	run.cf
-		drop
-		jsl	stop.cf
-;		#.b	2
-;		#.b	0
-;		DO
-;			R@
-;			jsl	showTC
-;		LOOP
+		zero
+		BEGIN
+			zero
+			#.l	l1
+			jsl	run.cf
+		WHILE
+			dup
+			#.l	sevenseg
+			store.l
+		REPEAT
+		nop
+		nop
+		nop
+		nop
+		nop
+		BEGIN
+			dup
+			0<>
+		WHILE
+			jsl	stop.cf
+			pause
+		REPEAT
 l0		pause
 		bra l0
 ;
@@ -59,13 +66,13 @@ RSHIFT.CF	BEGIN
 		REPEAT
 RSHIFT.Z	rts
 ;
-; SINGLE ( --, disable multitasking.  PAUSE instructions will be treated as a two-cycle NOP)
+; SINGLE ( --, disable multitasking.  PAUSE instructions will be treated as a two or three-cycle NOP)
 SINGLE.CF	zero
 		#.l	SingleMulti
 		store.b,rts
 ;
 ; MULTI ( --, enable multitasking)
-MULTI.CF	#.b	1				; enable multitasking
+MULTI.CF	#.b	1
 		#.l	SingleMulti
 		store.b,rts
 ;
@@ -107,10 +114,13 @@ INIT-MULTI.CF	#.l	TaskControl			; zero all task control registers
 		+LOOP		
 		#.w	hex 8000			; indicate that VM 0 is assigned by setting bit 15 = true
 		swap
-		store.w,rts				
+		store.w
+		jsl	MULTI.CF			; initialize multitasking
+		rts				
 ;
 ; INIT-TASK ( -- initialize a new task - always the first code executed by a new task)
-INIT-TASK.CF	resetsp				; reset stack pointers
+INIT-TASK.CF	jsl	single.cf			; suspend multitasking
+		resetsp				; reset stack pointers
 		#.l	INIT-TASK.0			; copy initial stack parameters from shared memory
 		fetch.b				( n)
 		1-					( n~)
@@ -132,17 +142,20 @@ INIT-TASK.CF	resetsp				; reset stack pointers
 		REPEAT
 		drop					( p1 p2 … pn)
 		jsl	USERINIT.CF			; initialize user variable area
-		#.l	INIT-TASK.2			; fetch the XT of this task
+		#.l	INIT-TASK.2			; fetch the XT of this task and place on the stack
 		fetch.l				
-		jmp
+		jsl	multi.cf			; reenable multitasking (all data is now on the local stack)
+		pause					; initialization finished - run XT upon next execution
+		jmp					; jump to the XT
 ;
 INIT-TASK.0	ds.b	1				; number of stack parameters passed to new task
-INIT-TASK.1	ds.l	16				; storage for stack parameters passed to new task
+INIT-TASK.1	ds.l	16				; storage for 16 stack parameters passed to new task
 INIT-TASK.2	ds.l	1				; XT of new task
 ;
 ; RUN ( p1 p2 … pn n XT -- VM# true | false, find and initialize a new VM to take n stack paramaters and execute task XT. Return VM# true if successful, or false otherwise)
 ;	note that XT must be an infinite loop or must contain code to self-abort the task
-RUN.CF		#.l	INIT-TASK.2			( … pn n n XT addr)
+RUN.CF		jsl	single.cf						; suspend multitasking
+		#.l	INIT-TASK.2			( … pn n n XT addr)
 		store.l							; record the XT of the new task
 		dup					( … pn n n)
 		#.l	INIT-TASK.0
@@ -163,7 +176,7 @@ RUN.CF		#.l	INIT-TASK.2			( … pn n n XT addr)
 			+LOOP				( … pi)
 		THEN
 		#.l	TaskControl			( TC0)			; find an unassigned VM
-		#.l	TaskControl VMcount 4 * +	( TC0 TCn)
+		#.l	TaskControl VMcount 1- 4 * + ( TC0 TCn)
 		>R					( TC0 R:TCn)
 		BEGIN								
 			dup				( TC TC R:TCn)
@@ -181,6 +194,7 @@ RUN.CF		#.l	INIT-TASK.2			( … pn n n XT addr)
 				drop			( TC~)
 				drop			( )
 				false			( 0)
+				jsl	multi.cf				; re-enable multitasking
 				rts
 			THEN
 		REPEAT					( TC~ R:TCn)
@@ -201,9 +215,10 @@ RUN.CF		#.l	INIT-TASK.2			( … pn n n XT addr)
 		swap					( VM#n init-task VM#n)
 		jsl	VM->PCOREG			( VM#n init-task VM#n_PCO)	
 		store.l				( VM#n)		; the new XT will become the program counter for the new task
-		false					( VM#n false)
+		false					( VM#n false)		; minimum 2 cycles MUST now be allowed before pause (update nextVM, update CPUthaw)
 		not					( VM#n true)
-		pause								; switch to task just created
+		jsl	multi.cf						; re-enable multitasking
+		pause								; switch now to task just created since RUN is not reentrant
 		rts					( VM#n true)
 ;
 ; MASK@ ( addr mask --, read the data at address u and bitwise though the mask)
@@ -256,7 +271,8 @@ SETPRIORTASK.CF	swap
 			rts
 ;		
 ; WAKE	( wake_VM --, wake task wake_VM by inserting it into the list of executing tasks after the current task)
-WAKE.CF	#.l	CurrentVM
+WAKE.CF	jsl	single.cf				; suspend multitasking
+		#.l	CurrentVM
 		fetch.b				( wake_VM current_VM)
 		over
 		over					( wake_VM current_VM wake_VM current_VM)
@@ -275,10 +291,12 @@ WAKE.CF	#.l	CurrentVM
 		R>
 		swap					( next_VM wake_VM)
 		jsl	SETNEXTTASK.CF									; update forward link from inserted task
+		jsl	multi.cf				; re-enable multitasking
 		rts
 ;	
 ; SLEEP ( sleep_VM --, put task sleep_VM to sleep by removing it from the list of executing tasks)		
-SLEEP.CF	dup					( sleep_VM sleep_VM)
+SLEEP.CF	jsl	single.cf				; suspend multitasking
+		dup					( sleep_VM sleep_VM)
 		jsl	GETNEXTTASK.CF		( sleep_VM next_VM)
 		swap	
 		jsl	GETPRIORTASK.CF		( next_VM prior_VM)
@@ -287,18 +305,46 @@ SLEEP.CF	dup					( sleep_VM sleep_VM)
 		jsl	SETNEXTTASK.CF		( next_VM prior_VM)					; update forward link of prior task
 		swap					( prior_VM next_VM)	
 		jsl	SETPRIORTASK.CF									; update backward link of next task
+		jsl	multi.cf				; re-enable multitasking		
 		rts
 ;
 ; STOP ( VM# --, deallocate task VM# and remove it from the list of currently executing tasks)
-STOP.CF	dup
+STOP.CF	jsl	single.cf				; suspend multitasking	
+		dup
 		jsl	SLEEP.CF				; remove this task from the list of currently executing tasks
 		jsl	VM->TCREG
 		zero
 		swap
 		#.w	hex 8000				; deallocate this task but do not disturb the next-task pointer, in case VM# is the current task
 		jsl	MASK!
+		jsl	multi.cf				; re-enable multitasking		
 		rts
 ;
+; THIS-SLEEP ( --, put the current task to sleep and switch to the next task)
+THIS-SLEEP.CF	#.l	CurrentVM
+		fetch.b
+		jsl	SLEEP.cf
+		pause						; current task must sleep to preserve intregity of next task list
+		rts
+; 
+; THIS-STOP ( --, stop the current task and switch to the next task)
+THIS-STOP.CF	#.l	CurrentVM
+		fetch.b
+		jsl	STOP.cf
+		pause						; current task must sleep to preserve intregity of next task list
+		rts
+;
+; THIS-VM ( -- VM#, return the number of the current virtual machine)
+THIS-VM.CF	#.l	CurrentVM
+		fetch.b,rts
+;	
 USERINIT.CF	rts
-l1		pause
+l1		nop
+		nop
+		nop
+		nop
+		nop
+		nop
+		nop
+		pause
 		bra	l1	

@@ -180,6 +180,8 @@ Inst_TaskControl_RAM : entity work.TaskControl_RAM					-- dual port RAM, depth 3
 	case addr(5 downto 2) is
 		when X"0" =>
 			dataoutRegisters <= blank(31 downto 1) & reg_SingleMulti;
+		when X"1" =>
+			dataoutRegisters <= blank(31 downto vmp_w) & CurrentVM;
 		when others =>
 			dataoutRegisters <= blank;
 		end case;
