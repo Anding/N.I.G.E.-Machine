@@ -18,6 +18,8 @@ VMcount	equ	2				; count of available virtual machines
 		#.b	3
 		#.l	l1
 		jsl	run.cf
+		drop
+		jsl	stop.cf
 ;		#.b	2
 ;		#.b	0
 ;		DO
@@ -288,12 +290,13 @@ SLEEP.CF	dup					( sleep_VM sleep_VM)
 		rts
 ;
 ; STOP ( VM# --, deallocate task VM# and remove it from the list of currently executing tasks)
-STOP.CF	jsl	VM->TCREG
+STOP.CF	dup
+		jsl	SLEEP.CF				; remove this task from the list of currently executing tasks
+		jsl	VM->TCREG
 		zero
-		over
+		swap
 		#.w	hex 8000				; deallocate this task but do not disturb the next-task pointer, in case VM# is the current task
 		jsl	MASK!
-		jsl	SLEEP.CF				; remove this task from the list of currently executing tasks
 		rts
 ;
 USERINIT.CF	rts
