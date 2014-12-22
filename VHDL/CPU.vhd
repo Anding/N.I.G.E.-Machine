@@ -18,19 +18,19 @@ entity CPU is
 				irv : in std_logic_vector(3 downto 0);
 				rti : out std_logic; 
 				-- Paramater and return stack storage
-				PSaddr : OUT std_logic_vector(8 downto 0);
+				PSaddr : OUT std_logic_vector(vmp_w + psp_w -1 downto 0);
 				PSdatain : IN std_logic_vector(31 downto 0);
 				PSdataout : OUT std_logic_vector(31 downto 0);
 				PSw : OUT std_logic_vector(0 downto 0);
-				RSaddr : OUT std_logic_vector(8 downto 0);
+				RSaddr : OUT std_logic_vector(vmp_w + rsp_w -1  downto 0);
 				RSdatain : IN std_logic_vector(31 downto 0);
 				RSdataout : OUT std_logic_vector(31 downto 0);
 				RSw : OUT std_logic_vector(0 downto 0);
-				SSaddr : out STD_LOGIC_VECTOR (8 downto 0);			-- Subroutine stack memory
+				SSaddr : out STD_LOGIC_VECTOR (vmp_w + ssp_w -1 downto 0);			-- Subroutine stack memory
 			   SSdatain : in STD_LOGIC_VECTOR (543 downto 512);	
 			   SSdataout : out STD_LOGIC_VECTOR (543 downto 512);
 			   SSw : out STD_LOGIC_VECTOR (67 downto 64);
-			   ESaddr : out STD_LOGIC_VECTOR (8 downto 0);			-- Exception stack memory
+			   ESaddr : out STD_LOGIC_VECTOR (vmp_w + esp_w -1  downto 0);			-- Exception stack memory
 			   ESdatain : in STD_LOGIC_VECTOR (303 downto 256);	
 			   ESdataout : out STD_LOGIC_VECTOR (303 downto 256);
 			   ESw : out STD_LOGIC_VECTOR (37 downto 32);

@@ -7,11 +7,11 @@ use UNISIM.vcomponents.all;
 
 entity Board_Nexys4 is
 
-	 Generic (	vmp_w : integer := 3;
-					psp_w : integer := 6;
-					rsp_w : integer := 6;
-					ssp_w : integer := 6;
-					esp_w : integer := 6
+	 Generic (	vmp_w : integer := 5;
+					psp_w : integer := 8;
+					rsp_w : integer := 7;
+					ssp_w : integer := 7;
+					esp_w : integer := 4
 					);
 					
     Port ( CLK_IN : in  STD_LOGIC;
@@ -390,8 +390,8 @@ begin
 		en_b => enb_userram
 	);
 	
-		addra_userram_all(15 downto 2) <= blank(4 - vmp_w downto 0) & VM & addra_userram(10 downto 2);
-		addrb_userram_all(15 downto 2) <= blank(4 - vmp_w downto 0) & VM & addrb_userram(10 downto 2);		
+		addra_userram_all(15 downto 2) <= VM & addra_userram(10 downto 2);  -- blank(4 - vmp_w downto 0) & 
+		addrb_userram_all(15 downto 2) <= VM & addrb_userram(10 downto 2);  -- blank(4 - vmp_w downto 0) & 	
 	
 	 inst_USER_RAM : entity work.USER_RAM
 	  PORT MAP (
@@ -435,7 +435,7 @@ begin
 		 clkb => clk_system,
 		 enb => Pstack_EN,
 		 web => MEM_WRQ_XX,
-		 addrb => MEMaddr(10 downto 2),
+		 addrb => MEMaddr(14 downto 2),
 		 dinb => MEMdataout_X,
 		 doutb => MEMdata_Pstack
 	  );
@@ -451,7 +451,7 @@ begin
 		 clkb => clk_system,
 		 enb => Rstack_EN,
 		 web => MEM_WRQ_XX,
-		 addrb => MEMaddr(10 downto 2),
+		 addrb => MEMaddr(13 downto 2),
 		 dinb => MEMdataout_X,
 		 doutb => MEMdata_Rstack
 	  );

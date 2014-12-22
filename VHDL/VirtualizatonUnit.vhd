@@ -32,7 +32,7 @@ end VirtualizationUnit;
 architecture RTL of VirtualizationUnit is
 
 constant blank : STD_LOGIC_VECTOR(31 downto 0) := (others=>'0');
-signal currentVM, nextVM : STD_LOGIC_VECTOR (vmp_w -1 downto 0);
+signal currentVM, nextVM : STD_LOGIC_VECTOR (vmp_w - 1 downto 0);
 signal TaskControl, dataoutTaskControl : STD_LOGIC_VECTOR (15 downto 0);
 signal PCoverride, dataoutPCoverride : STD_LOGIC_VECTOR(19 downto 0);
 signal dataoutVirtualInterrupt : STD_LOGIC_VECTOR(19 downto 0);
@@ -42,7 +42,7 @@ signal wrq_i : STD_LOGIC_VECTOR(3 downto 0);
 signal addr_m : STD_LOGIC_VECTOR(10 downto 9);
 signal reg_SingleMulti : STD_LOGIC;
 signal wrq_VirtualInterrupt, wrq_PCoverride : STD_LOGIC;
-signal addr_local : STD_LOGIC_VECTOR(vmp_w +3 downto 2);
+signal addr_local : STD_LOGIC_VECTOR(vmp_w -1 +2 downto 2);
 signal datain_local : STD_LOGIC_VECTOR(19 downto 0);
 signal task_switch : STD_LOGIC;
 signal trueSwitch : STD_LOGIC;
@@ -107,8 +107,8 @@ with addr_m	select
  --	these values will serve one time only
  
  with task_switch select
-	addr_local <= "00" & nextVM when '1',
-	addr(vmp_w +3 downto 2) when others;
+	addr_local <= nextVM when '1',
+	addr(vmp_w +1 downto 2) when others;
 	
  with task_switch select
 	wrq_PCoverride <= '1' when '1',
@@ -126,9 +126,9 @@ with addr_m	select
 
 Inst_Freezer_RAM : entity work.Freezer_RAM
   PORT MAP (
-    a => "0" & currentVM,
+    a => currentVM,
     d => CPUfreeze,
-    dpra => "0" & nextVM,
+    dpra => nextVM,
     clk => clk,
     we => pause,
     qdpo => CPUthaw
@@ -141,7 +141,7 @@ Inst_TaskControl_RAM : entity work.TaskControl_RAM					-- dual port RAM, depth 3
     d => datain(15 downto 0),
     we => wrq_i(1),	
     qspo => dataoutTaskControl,	 
-    dpra => "00" & currentVM,
+    dpra => currentVM,
     qdpo => TaskControl	 
   );
 
@@ -153,7 +153,7 @@ Inst_TaskControl_RAM : entity work.TaskControl_RAM					-- dual port RAM, depth 3
     d => datain_local,
     we => wrq_PCoverride,	 
     qspo => dataoutPCoverride,	 
-    dpra => "00" & nextVM,
+    dpra => nextVM,
     qdpo => PCOverride
   );
 
@@ -164,7 +164,7 @@ Inst_TaskControl_RAM : entity work.TaskControl_RAM					-- dual port RAM, depth 3
     d => datain_local,
     we => wrq_VirtualInterrupt,	 
     qspo => dataoutVirtualInterrupt,	 
-    dpra => "00" & nextVM,
+    dpra => nextVM,
     qdpo => VirtualInterrupt
   );
   
