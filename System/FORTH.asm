@@ -28,6 +28,7 @@ CurrentVM	equ	hex 03b804 ;243716
 TaskControl	equ	hex 03ba00 ;244224
 PCoverride 	equ	hex 03bc00 ;244736
 VirtualInt	equ	hex 03be00 ;245248
+VMcount	equ	32		; count of available virtual machines
 ;
 ; **** HARDWARE REGISTERS ****
 ;
@@ -56,6 +57,10 @@ VBLANK		equ	hex 03f848
 USERRAM	equ	hex 03C000		; USER RAM area
 PSTACK		equ	hex 03e000		; Parameter stack
 SSTACK		equ	hex 03f000		; Subroutine stack
+local0		equ	SSTACK			; local variables on the subroutine stack
+local1		equ	SSTACK 4 +
+local2		equ	SSTACK 8 +
+local3		equ	SSTACK 12 +
 ESTACK		equ	hex 03f080		; Exception stack
 ;
 SRAMSIZE	equ	128 1024 * 512 -	; Amount of SRAM in bytes
@@ -119,7 +124,8 @@ V.TRAP		RTI
 V.RDA		BRA	RDA					; RS232 RDA
 V.TBE		BRA	TBE					; RS232 TBE
 V.PS2		BRA	PS2					; PS2
-V.MS		BRA	MSIRQ					; MS
+V.MS		RTI						; MS (formerly used for timeout)
+		NOP
 		RTI
 		NOP
 		RTI
@@ -216,32 +222,32 @@ PS2		#.l 	PS2rx
 PSWPOS		dc.b	hex ff
 PSRPOS		dc.b	hex ff
 ;
-MSIRQ		#.w	MS.TIMEOUT
-		fetch.l
-		?dup
-		IF
-			1-
-			dup
-			#.w MS.TIMEOUT
-			store.l
-			0=
-			IF
-				#.l	MS.ERR
-				THROW
-			THEN
-		THEN
-		rti
-MS.TIMEOUT	dc.l	hex 00
-MS.ERR		dc.b	15
-		dc.s	Timeout expired
+;MSIRQ		#.w	MS.TIMEOUT
+;		fetch.l
+;		?dup
+;		IF
+;			1-
+;			dup
+;			#.w MS.TIMEOUT
+;			store.l
+;			0=
+;			IF
+;				#.l	MS.ERR
+;				THROW
+;			THEN
+;		THEN
+;		rti
+;MS.TIMEOUT	dc.l	hex 00
+;MS.ERR		dc.b	15
+;		dc.s	Timeout expired
 ;
 ; -----------------------------------------------------------------------------------------------
 ; Boot code (within branch distance from 0)
 ; -----------------------------------------------------------------------------------------------
 ;	
-START.CF	jsl	INIT-MULTI.CF
-		jsl	ESTACKINIT.CF
+START.CF	jsl	ESTACKINIT.CF
 		jsl	USERINIT.CF
+		jsl	INIT-MULTI.CF
 ; configure the screen
 		jsl	SCRSET.CF
 		jsl	CLS.CF
@@ -299,7 +305,6 @@ HERE1		dc.l	_END			; HERE1 tracks PSDRAM space allocated by BUFFER:
 STUB.NF	dc.b	0
 		dc.w	1
 		rts
-;
 ; ----------------------------------------------------------------------------------------------
 ; Virtual Machine Monitor
 ; ----------------------------------------------------------------------------------------------
@@ -625,6 +630,13 @@ THIS-VM.SF	dc.w	THIS-VM.Z THIS-VM.CF del
 THIS-VM.CF	#.l	CurrentVM
 THIS-VM.Z	fetch.b,rts
 ;
+; PAUSE ( --, suspend this task and transfer execution to the next task)
+PAUSE.LF	dc.l	THIS-VM.NF
+PAUSE.NF	dc.b	5 128 +
+		dc.s	PAUSE
+PAUSE.SF	dc.w	1 MUSTINLINE +
+PAUSE.CF	pause,rts
+;
 ; ----------------------------------------------------------------------------------------------
 ; Low level hardware control
 ; ----------------------------------------------------------------------------------------------
@@ -632,42 +644,47 @@ THIS-VM.Z	fetch.b,rts
 ; **** MILLISECOND TIMER ****
 ;
 ; TIMEOUT ( n --, set a reset timer for n milliseconds)
-TIMEOUT.LF	dc.l	THIS-VM.NF
-TIMEOUT.NF	dc.b	7 128 +
-		dc.b	char T char U char O char E char M char I char T
-TIMEOUT.SF	dc.w	TIMEOUT.Z TIMEOUT.CF del
-TIMEOUT.CF	?dup
-		IF
-			#.w	MS.TIMEOUT
-			store.l
-			#.l	intmask
-			fetch.l
-			#.b	intmask_MS
-			or
-		ELSE
-			#.l	intmask
-			fetch.l
-			#.b	intmask_MS
-			invert
-			and
-		THEN
-		#.l	intmask
-TIMEOUT.Z	store.l,rts	
+;TIMEOUT.LF	dc.l	PAUSE.NF
+;TIMEOUT.NF	dc.b	7 128 +
+;		dc.b	char T char U char O char E char M char I char T
+;TIMEOUT.SF	dc.w	TIMEOUT.Z TIMEOUT.CF del
+;TIMEOUT.CF	?dup
+;		IF
+;			#.w	MS.TIMEOUT
+;			store.l
+;			#.l	intmask
+;			fetch.l
+;			#.b	intmask_MS
+;			or
+;		ELSE
+;			#.l	intmask
+;			fetch.l
+;			#.b	intmask_MS
+;			invert
+;			and
+;		THEN
+;		#.l	intmask
+;TIMEOUT.Z	store.l,rts	
 ;		
 ; MS ( n --, wait for n ms)
-MS.LF		dc.l	TIMEOUT.NF
+MS.LF		dc.l	PAUSE.NF
 MS.NF		dc.b	2 128 +
-		dc.b	char S char M
+		dc.s	MS
 MS.SF		dc.w	MS.Z MS.CF del
-MS.CF		#.l	MScounter
-		fetch.l		( n ms)
-		+			( end)
-			begin
-				#.l	MScounter
-				fetch.l		( end now)
-				over			( end now end)
-				=
-			until
+MS.CF		>R			( R:n)
+		#.l	MScounter
+		fetch.l		( start R:n)
+			BEGIN		
+				pause
+				#.l	MScounter	
+				fetch.l		( start now R:n)
+				over			( start now start R:n)
+				-			( start m R:n)
+				R@			( start m n R:n)
+				U>			( start R:n)
+			UNTIL
+		R>
+		drop
 MS.Z		drop,rts
 ;
 ; COUNTER ( n --, current count of the rolling 32 bit MS counter)
@@ -784,7 +801,8 @@ KKEY?.LF	dc.l 	BAUD.NF
 KKEY?.NF	dc.b	5 128 +
 		dc.b 	char ? char Y char E char K char K
 KKEY?.SF	dc.w	KKEY?.Z KKEY?.CF del
-KKEY?.CF	#.w 	PSWPOS	
+KKEY?.CF	pause
+		#.w 	PSWPOS	
 		fetch.b
 		#.w 	PSRPOS
 		fetch.b
@@ -1894,9 +1912,15 @@ SD.cmd		#.b	6
 		rts
 ;
 ; SD.get-rsp ( -- n, get first byte of response from the sd-card)
-SD.get-rsp	zero
+SD.get-rsp	#.w	1024			; 1024 try limit
+		#.l	local0
+		store.w
+		zero
 		BEGIN
-			drop
+			#.l	SD.get-rsp.0	; inline function call countout
+			#.l	countout.cf
+			jmp		
+SD.get-rsp.0		drop
 			jsl	SPI.get
 			dup 
 			#.b	255 
@@ -1912,14 +1936,32 @@ SD.get-R1	jsl	SD.get-rsp
 ;SD.ver			; xxxxx [block/byte] [v2/v1];
 SD.ver		dc.l	0	
 ;
+; countout ( return-address --, decrement the counter in local0, jump back to return address if >0, or else throw an exception)
+; must be called via JMP since local0 is a subroutine local
+countout.cf		#.l	local0 ( r-addr local0)
+			dup		( r-addr local0 local0)
+			fetch.l	( r-addr local0 n)
+			dup		( r-addr local0 n n)
+			1-		( r-addr local0 n n-1)
+			rot		( r-addr n n-1 local0)
+			store.l	( r-addr n)
+			IF
+				jmp
+			THEN
+			#.l	countout.err
+			THROW
+;		
+countout.err	dc.b	22
+		dc.s	SD-card not responding
+;
 ; SD.init ( --, SD card reset, version check and initialize)
 SD.init.LF	dc.l	<REMOTE.NF
 SD.init.NF	dc.b	7 128 +
 		dc.s	SD.init
 SD.init.SF	dc.w	SD.init.Z SD.init.CF del
-SD.init.CF	#.w	5000 
-		jsl	timeout.cf
-		jsl	spi.slow 
+;		#.w	5000 
+;		jsl	timeout.cf
+SD.init.CF	jsl	spi.slow 
 		jsl	spi.cs-hi 		; power sequence dummy clock
 		#.b	80 
 		zero
@@ -1927,7 +1969,10 @@ SD.init.CF	#.w	5000
 			#.b	255 
 			jsl	spi.put 
 		LOOP
-		jsl	spi.cs-lo 	
+		jsl	spi.cs-lo
+		#.b	10			; limit of 10 tries
+		#.l	local0
+		store.b
 		BEGIN				; CMD0 repeated until good
 			#.b	149 
 			zero
@@ -1939,10 +1984,13 @@ SD.init.CF	#.w	5000
 			jsl	sd.get-R1 
 			#.b	1 
 			<>
-		WHILE				
-			#.b	100 		; 100 ms delay
+		WHILE	
+			#.l	SD.init.0	; inline function call countout
+			#.l	countout.cf
+			jmp			
+SD.init.0		#.b	100 		; 100 ms delay
 			jsl	ms.cf
-		REPEAT
+	REPEAT
 		#.b	135 			; CMD8	
 		#.b	170 
 		#.b	1 
@@ -2022,8 +2070,8 @@ SD.init.CF	#.w	5000
 			THEN
 			jsl	spi.fast		; V2.0 supports high speed
 		ELSE					; 01xAA mismatch
-			#.w	1001 
-			jsl	ERROR
+			#.l	SD.init.err
+			THROW
 		THEN
 	ELSE						; CMD8 rejected, initialize card
 		BEGIN
@@ -2062,9 +2110,11 @@ SD.init.CF	#.w	5000
 		jsl 	SPI.CS-hi 			; DESELECT
 		#.b	255 
 		jsl	spi.put			
-		zero	
-		jsl	timeout.cf
+;		zero	
+;		jsl	timeout.cf
 SD.init.Z	rts
+SD.init.err	#.b	29
+		dc.s	SD card initialization failed
 ;
 ; SD.sector-code ( n -- b4 b3 b2 b1, scale and split sector address)
 SD.sector-code 	#.w	sd.ver 			
@@ -2095,21 +2145,41 @@ SD.sector-code 	#.w	sd.ver
 ;
 ; SD.select&check ( --, select and wait for SD card)
 SD.select&check 	jsl spi.cs-lo		; SELECT
+		#.w	1024			; limit of 1024 tries
+		#.l	local0
+		store.w				
 		BEGIN				
-			jsl spi.get 
+			#.l	SD.select&check.0	; inline function call to countout
+			#.l	countout.cf
+			jmp
+SD.select&check.0	jsl spi.get 
 			#.b	255 
-			=				; if CS is asserted while card is busy then card will set D0 low
+			=				; if CS is asserted while card is busy then card will set D0 low			
 		UNTIL
 		rts
+;
+; SD.wait-token ( --, wait for an SD-card data token)
+SD.wait-token.CF	#.w	1024			; limit of 1024 tries
+			#.l	local0
+			store.w
+			BEGIN	
+				#.l	SD.wait-token.0	; inline function call to countout
+				#.l	countout.cf
+				jmp
+SD.wait-token.0		jsl	spi.get
+				#.b	254 
+				=
+			UNTIL
+			rts
 ;
 ; SD.read-sector ( addr n --, read 512 bytes from sector n of the SD card into a buffer at addr)
 SD.read-sector.LF	dc.l	SD.init.NF
 SD.read-sector.NF	dc.b	14 128 +
 			dc.b	char R char O char T char C char E char S char - char D char A char E char R char . char D char S
 SD.read-sector.SF	dc.w	SD.read-sector.Z SD.read-sector.CF del
-SD.read-sector.CF	#.w	1000 
-		jsl 	timeout.cf
-		jsl 	sd.select&check
+;			#.w	1000 
+;			jsl 	timeout.cf
+SD.read-sector.CF		jsl 	sd.select&check
 		#.b	1 				; checksum
 		swap					
 		jsl 	sd.sector-code		; encode sector number
@@ -2121,11 +2191,12 @@ SD.read-sector.CF	#.w	1000
 			#.l	SD.read-sector.ERR
 			THROW
 		THEN
-		BEGIN					; wait for data token
-			jsl	spi.get
-			#.b	254 
-			=
-		UNTIL
+		jsl	SD.wait-token.CF
+;		BEGIN					; wait for data token
+;			jsl	spi.get
+;			#.b	254 
+;			=
+;		UNTIL
 		dup 
 		#.w	512 
 		+ 
@@ -2144,8 +2215,8 @@ SD.read-sector.CF	#.w	1000
 		jsl 	SPI.CS-hi 
 		#.b	255 
 		jsl	spi.put			; DESELECT
-		zero 
-		jsl	timeout.CF
+;		zero 
+;		jsl	timeout.CF
 SD.read-sector.Z	rts
 SD.read-sector.ERR	dc.b	21
 			dc.s	SD.read-sector failed
@@ -2155,9 +2226,9 @@ SD.verify-sector.LF	dc.l	SD.read-sector.NF
 SD.verify-sector.NF	dc.b	16 128 +
 			dc.s	SD.VERIFY-SECTOR
 SD.verify-sector.SF	dc.w	SD.verify-sector.Z SD.verify-sector.CF del
-SD.verify-sector.CF	#.w	1000 
-		jsl 	timeout.cf
-		jsl 	sd.select&check
+;		#.w	1000 
+;		jsl 	timeout.cf
+SD.verify-sector.CF		jsl 	sd.select&check
 		#.b	1 				; checksum
 		swap					
 		jsl 	sd.sector-code		; encode sector number
@@ -2169,11 +2240,12 @@ SD.verify-sector.CF	#.w	1000
 			#.l	SD.verify-sector.ERR
 			THROW
 		THEN
-		BEGIN					; wait for data token
-			jsl	spi.get
-			#.b	254 
-			=
-		UNTIL
+		jsl	SD.wait-token.CF
+;		BEGIN					; wait for data token
+;			jsl	spi.get
+;			#.b	254 
+;			=
+;		UNTIL
 		dup 
 		#.w	512 
 		+ 
@@ -2198,8 +2270,8 @@ SD.verify-sector.CF	#.w	1000
 		jsl 	SPI.CS-hi 
 		#.b	255 
 		jsl	spi.put			; DESELECT
-		zero 
-		jsl	timeout.CF
+;		zero 
+;		jsl	timeout.CF
 SD.verify-sector.Z		rts
 SD.verify-sector.ERR	dc.b	23
 			dc.s	SD.verify-sector failed
@@ -2209,9 +2281,9 @@ SD.write-sector.LF	dc.l	SD.verify-sector.NF
 SD.write-sector.NF	dc.b	15 128 +
 			dc.b	char R char O char T char C char E char S char - char E char T char I char R char W char . char D char S
 SD.write-sector.SF	dc.w	SD.write-sector.Z SD.write-sector.CF del
-SD.write-sector.CF	#.w	10000
-		jsl	timeout.CF
-		jsl	sd.select&check	
+;		#.w	10000
+;		jsl	timeout.CF
+SD.write-sector.CF		jsl	sd.select&check	
 		#.b	1 				; checksum
 		swap					
 		jsl	sd.sector-code		; encode sector number
@@ -2254,8 +2326,8 @@ SD.write-sector.CF	#.w	10000
 		jsl	SPI.CS-hi 
 		#.b	255 
 		jsl	spi.put			; DESELECT
-		zero 
-		jsl	timeout.cf
+;		zero 
+;		jsl	timeout.cf
 SD.write-sector.Z		rts
 SD.write-sector.ERR	dc.b	22
 			dc.s	SD.write-sector failed
@@ -3658,7 +3730,7 @@ SEARCH-WORDLIST.CF	>R		( c-addr1 n1 R:WID)
 			dup			( c-addr1 n1 NF NF)
 			>R			( c-addr1 n1 NF R: NF)	
 			fetch.b		( c-addr1 n1 n' R: NF)
-			#.b	32		( c-addr1 n1 n' 32 R: NF)
+			#.b	SMDGE		( c-addr1 n1 n' 32 R: NF)
 			and			( c-addr1 n1 flag R: NF)			
 			0=			( c-addr1 n1 flag' R: NF)
 			IF
@@ -3682,7 +3754,7 @@ SEARCH-WORDLIST.CF	>R		( c-addr1 n1 R:WID)
 					fetch.b		( NF n')
 					dup			( NF n' n')
 ; check immediate bit 
-					#.b	64		( NF n' n' 64)
+					#.b	IMMED		( NF n' n' 64)
 					and			( NF n' I)
 					IF
 						#.b 1			( NF n' 1)
@@ -4048,9 +4120,9 @@ QUIT.CF	BEGIN
 		AGAIN
 QUIT.Z		rts					; never reached
 ;			
-{QUIT}.CF	zero
-		jsl	TIMEOUT.CF				; clear any timeouts
-		zero						; set state to interpreting
+;		zero
+;		jsl	TIMEOUT.CF				; clear any timeouts
+{QUIT}.CF	zero						; set state to interpreting
 		#.l	STATE_
 		store.l
 		#.l	_input_buff				; restore default input buffer location and size
@@ -4608,8 +4680,32 @@ XWORD.CF	xword,rts
 		+	
 2!.Z		store.l,rts
 ;
+;@-- ( addr -- n, return the value at addr and decrement the value in memory)
+@--.LF		dc.l	2!.NF
+@--.NF		dc.b	3 128 +
+		dc.s	@--
+@--.SF		dc.w 	@--.Z @--.CF del
+@--.CF		dup		( addr addr)
+		fetch.l	( addr n)
+		dup		( addr n n)
+		1-		( addr n n-1)
+		rot		( n n-1 addr)
+@--.Z		store.l,rts	( n)
+;
+;@++ ( addr -- n, return the value at addr and increment the value in memory)
+@++.LF		dc.l	@--.NF
+@++.NF		dc.b	3 128 +
+		dc.s	@++
+@++.SF		dc.w 	@++.Z @++.CF del
+@++.CF		dup		( addr addr)
+		fetch.l	( addr n)
+		dup		( addr n n)
+		1+		( addr n n+1)
+		rot		( n n+1 addr)
+@++.Z		store.l,rts	( n)
+;
 ; +! ( n addr --)
-+!.LF		dc.l	2!.NF
++!.LF		dc.l	@++.NF
 +!.NF		dc.b	2 128 +
 		dc.b 	char ! char +
 +!.SF		dc.w 	+!.Z +!.CF del
@@ -6011,9 +6107,9 @@ ALIGNED.Z	lsl,rts
 ; 	Marker does not restore search orders as these are private to individual user areas
 ; 	however all wordlists are initialized with a stub and can be safely searched when empty
 MARKER.LF	dc.l	ALIGNED.NF
-MARKER.NF	dc.b	6 128 NOINLINE + +
+MARKER.NF	dc.b	6 128 +
 		dc.s	MARKER
-MARKER.SF	dc.w	MARKER.Z MARKER.CF del
+MARKER.SF	dc.w	MARKER.Z MARKER.CF del NOINLINE +
 MARKER.CF	#.w	LAST-NF	( s)				; start of the wordlist table
 		#.w	HERE_						; current space in the dictionary
 		fetch.l		( s d)

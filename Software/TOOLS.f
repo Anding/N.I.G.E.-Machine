@@ -98,7 +98,7 @@ STRINGTABLE DASM.lookup-ops
 ," TRAP"
 ," RETRAP"
 ," RTI"
-," --"
+," PAUSE"
 ," --"
 ," --"
 

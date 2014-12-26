@@ -326,7 +326,7 @@ begin
 															
 			MEMaddr_i <= PC_addr;											
 					
-			-- Program counter logic
+			-- Program counter logic					-- This logic is a timing constraint!  Maybe flatten into a less hierachical structure.
 			if int_trig = '1' then
 				PC_n <= int_vector_ext;												-- PC from external interrupt vector
 			elsif retrap(0) = '1' then
@@ -502,7 +502,7 @@ begin
 			s_axi_rready <= '0';	
 			
 			-- pause
-			if	opcode = ops_PAUSE then
+			if	int_trig = '0' and opcode = ops_PAUSE then
 				pause <= '1'; 
 			else
 				pause <= '0';

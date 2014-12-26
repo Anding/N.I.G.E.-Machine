@@ -125,7 +125,7 @@ begin
 			irq_mask_r <= "000000000000111";						-- "000000000000111";
 			txt_zero_r <= X"040600";									
 			background_r <= X"0000";
-			mode_r <= "11011";										-- 11011
+			mode_r <= "11010";										-- 11010
 			RS232_tx_r_S0 <= (others=>'0');	
 			ssData_r <= (others=>'0');
 			

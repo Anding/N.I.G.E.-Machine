@@ -4,7 +4,7 @@ TaskControl	equ	244224
 PCoverride 	equ	244736
 VirtualInt	equ	245248
 sevenseg	equ	hex 03F830
-VMcount	equ	8				; count of available virtual machines
+VMcount	equ	32				; count of available virtual machines
 ;
 		nop
 		nop
@@ -31,6 +31,9 @@ VMcount	equ	8				; count of available virtual machines
 			0<>
 		WHILE
 			jsl	stop.cf
+			dup
+			#.l	sevenseg
+			store.l
 			pause
 		REPEAT
 l0		pause

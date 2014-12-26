@@ -289,8 +289,8 @@ begin
 	 User_EN <= '1' when bank_n = User else '0';
 	 Stack_access_EN <= '1' when bank_n = Stack_access else '0';
 	 Color_EN <= '1' when bank_n = Color else '0';
-	 Pstack_EN <= '1' when bank_n = Pstack else '0';
-	 Rstack_EN <= '1' when bank_n = Rstack else '0';
+	 --Pstack_EN <= '1' when bank_n = Pstack else '0';
+	 --Rstack_EN <= '1' when bank_n = Rstack else '0';
 	 Char_EN <= '1' when bank_n = Char else '0';
 	 Reg_EN <= '1' when bank_n = Reg else '0';
 	 Sys_EN <= '1' when bank_n = Sys else '0'; 
@@ -431,13 +431,13 @@ begin
 		 wea => PSw,
 		 addra => PSaddr,
 		 dina => PSdataOUT,
-		 douta => PSdataIN,
-		 clkb => clk_system,
-		 enb => Pstack_EN,
-		 web => MEM_WRQ_XX,
-		 addrb => MEMaddr(14 downto 2),
-		 dinb => MEMdataout_X,
-		 doutb => MEMdata_Pstack
+		 douta => PSdataIN --,
+		 --clkb => clk_system,
+		 --enb => '0', --Pstack_EN,
+		 --web => "0", --MEM_WRQ_XX,
+		 --addrb => (others=>'0'), --MEMaddr(14 downto 2),
+		 --dinb => (others=>'0'), --MEMdataout_X,
+		 --doutb => open --MEMdata_Pstack
 	  );
 	  
 	  -- Rstack_RAM must be configured as WRITE FIRST
@@ -447,13 +447,13 @@ begin
 		 wea => RSw,
 		 addra => RSaddr,
 		 dina => RSdataOUT,
-		 douta => RSdataIN,
-		 clkb => clk_system,
-		 enb => Rstack_EN,
-		 web => MEM_WRQ_XX,
-		 addrb => MEMaddr(13 downto 2),
-		 dinb => MEMdataout_X,
-		 doutb => MEMdata_Rstack
+		 douta => RSdataIN --,
+		 --clkb => clk_system,
+		 --enb => '0', --Rstack_EN,
+		 --web => "0", --MEM_WRQ_XX,
+		 --addrb => (others=>'0'), --MEMaddr(13 downto 2),
+		 --dinb => (others=>'0'), --MEMdataout_X,
+		 --doutb => open --MEMdata_Rstack
 	  );
 	  
 		-- Sstack_RAM must be configured as WRITE FIRST
