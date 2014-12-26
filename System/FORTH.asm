@@ -1970,7 +1970,7 @@ SD.init.CF	jsl	spi.slow
 			jsl	spi.put 
 		LOOP
 		jsl	spi.cs-lo
-		#.b	10			; limit of 10 tries
+		#.b	25			; limit of 25 tries
 		#.l	local0
 		store.b
 		BEGIN				; CMD0 repeated until good
@@ -4850,17 +4850,50 @@ PICK.LF	dc.l	2SWAP.NF
 PICK.NF	dc.b	4 128 +
 		dc.b	char K char C char I char P
 PICK.SF	dc.w	PICK.Z PICK.CF del
-PICK.CF	psp@		( n depth)
-		swap		( depth n)
-		-
-		#.b	4
-		multu		( offsetLO offsetHI)
-		drop		( offset)
-		#.l	PSTACK
-		#.b	4
-		+
-		+		( addr)
-PICK.Z		fetch.l,rts	( n)
+PICK.CF	?dup	( xn ... x1 x0 n n | xn ... x1 x0 0)
+		IF	( xn ... x1 x0 n)				; n > 0
+			dup		( xn ... x1 x0 n n)
+			#.l	local0					; save a copy of n in local0
+			store.l	( xn ... x1 x0 n)				
+			BEGIN		
+				dup	( xn ... x1 n n R:x0)
+			WHILE
+				swap	( xn ... n x1 : R:x0)
+				>R	( xn ... n R:x0 x1)
+				1-
+			REPEAT
+			drop
+			dup		( xn xn)
+			#.l	local1					; save xn in local1
+			store.l	( xn)
+			#.l	local0
+			fetch.l	( xn n)
+			BEGIN		
+				dup	( xn ... n n R:x0 x1)
+			WHILE
+				R>	( xn ... n x1 R:x0)			
+				swap	( xn ... n : R:x0)
+				1-
+			REPEAT
+			drop
+			#.l	local1					; place xn on the top of stack
+			fetch.l	( xn ... x2 x1 xn)
+		ELSE	( xn ... x1 x0)
+			dup						; 0 PICK = DUP
+		THEN
+PICK.Z		rts
+;		
+;PICK.CF	psp@		( n depth)
+;		swap		( depth n)
+;		-
+;		#.b	4
+;		multu		( offsetLO offsetHI)
+;		drop		( offset)
+;		#.l	PSTACK
+;		#.b	4
+;		+
+;		+		( addr)
+;PICK.Z		fetch.l,rts	( n)
 ;	
 ; DUMP ( addr n --, display memory)
 DUMP.LF	dc.l	PICK.NF
@@ -4910,32 +4943,65 @@ DOTS.LF	dc.l	DUMP.NF
 DOTS.NF	dc.b	2 128 +
 		dc.b	char S char .
 DOTS.SF	dc.w	DOTS.Z DOTS.CF del
-DOTS.CF	psp@			( depth)
-		#.b	4		( depth 4)
-		multu
-		drop			( offset)
-		#.l	PSTACK
-		#.b	8
-		+
-		+			( addr)
-		BEGIN
-			dup		( addr addr)
-			#.l	PSTACK
-			#.b	8
-			+		( addr addr PSTACK+8)
-			>
-		WHILE
-			#.b	EOL
-			jsl	EMIT.CF
-			dup		( addr addr)
-			fetch.l	( addr n)
-			jsl	DOT.CF	
-			#.b	4	( addr 4)
-			-		( addr-4)
-		REPEAT
+DOTS.CF	PSP@		( xn ... x1 x0 n)
+		?dup		( xn ... x1 x0 n n | 0)
+		IF		( xn ... x1 x0 n)
+			dup		( xn ... x1 x0 n n)
+			#.l	local0					; save a copy of n in local0
+			store.l	( xn ... x1 x0 n)				
+			BEGIN		
+				dup	( xn ... x1 n n R:x0)
+			WHILE
+				swap	( xn ... n x1 : R:x0)
+				#.b	EOL
+				jsl	EMIT.CF
+				dup
+				jsl	DOT.CF					
+				>R	( xn ... n R:x0 x1)
+				1-
+			REPEAT
+			drop
+			#.l	local0
+			fetch.l	( xn n)
+			BEGIN		
+				dup	( xn ... n n R:x0 x1)
+			WHILE
+				R>	( xn ... n x1 R:x0)			
+				swap	( xn ... x1 n : R:x0)
+				1-
+			REPEAT
+			drop
+		THEN
 		#.b	EOL
-		jsl	EMIT.CF	
-DOTS.Z		drop,rts
+		jsl	EMIT.CF
+DOTS.Z		rts
+;	
+;DOTS.CF	psp@			( depth)
+;		#.b	4		( depth 4)
+;		multu
+;		drop			( offset)
+;		#.l	PSTACK
+;		#.b	8
+;		+
+;		+			( addr)
+;		BEGIN
+;			dup		( addr addr)
+;			#.l	PSTACK
+;			#.b	8
+;			+		( addr addr PSTACK+8)
+;			>
+;		WHILE
+;			#.b	EOL
+;			jsl	EMIT.CF
+;			dup		( addr addr)
+;			fetch.l	( addr n)
+;			jsl	DOT.CF	
+;			#.b	4	( addr 4)
+;			-		( addr-4)
+;		REPEAT
+;		#.b	EOL
+;		jsl	EMIT.CF	
+;DOTS.Z		drop,rts
 ;
 ; UNUSED ( -- n, number of unused bytes in dataspace)
 UNUSED.LF	dc.l	DOTS.NF
