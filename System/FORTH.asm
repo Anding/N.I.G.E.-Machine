@@ -55,7 +55,7 @@ VBLANK		equ	hex 03f848
 ; **** MEMORY MAP ****
 ;
 USERRAM	equ	hex 03C000		; USER RAM area
-PSTACK		equ	hex 03e000		; Parameter stack
+;PSTACK		equ	hex 03e000	; Parameter stack
 SSTACK		equ	hex 03f000		; Subroutine stack
 local0		equ	SSTACK			; local variables on the subroutine stack
 local1		equ	SSTACK 4 +
@@ -326,6 +326,14 @@ MULTI.SF	dc.w	MULTI.Z MULTI.CF del
 MULTI.CF	#.b	1
 		#.l	SingleMulti
 MULTI.Z	store.b,rts
+;
+;CHECKSUSPEND ( -- v, get the multitasking status then suspend multitasking)
+CHECKSUSPEND	#.l	SingleMulti
+		dup				( reg reg)
+		fetch.b			( reg v)
+		zero				( reg v 0)
+		rot				( v 0 reg)
+		store.b,rts			( v)
 ;
 ; VM->TCREG ( n -- addr, convert a virtual machine number to the respective Task Control register)
 VM->TCREG 	2*					; TaskControl registers are 16 bits wide but longword aligned
@@ -637,6 +645,59 @@ PAUSE.NF	dc.b	5 128 +
 PAUSE.SF	dc.w	1 MUSTINLINE +
 PAUSE.CF	pause,rts
 ;
+; ACQUIRE ( addr --, acquire the binary semaphore at addr or wait in a busy loop until it becomes free
+ACQUIRE.LF	dc.l	PAUSE.NF
+ACQUIRE.NF	dc.b	7 128 +
+		dc.s	ACQUIRE
+ACQUIRE.SF	dc.w	ACQUIRE.Z ACQUIRE.CF del
+ACQUIRE.CF	BEGIN			( addr)
+			jsl	CHECKSUSPEND	( addr v)		; suspend multitasking
+			swap			( v addr)				
+			dup			( v addr addr)
+			jsl	free.cf	( v addr flag)
+			0=			( v addr flag~)
+		WHILE			( v addr)		
+			swap			( addr v)
+			#.l	SingleMulti				; re-enable multitasking to its prior state
+			store.b			
+			pause			( addr)		
+		REPEAT			( v addr)
+		#.l	CurrentVM
+		fetch.b		( v addr VM)
+		swap			( v VM addr)
+		store.b		( v)
+		#.l	SingleMulti				; re-enable multitasking to its prior state
+ACQUIRE.Z	store.b,rts		
+;
+; RELEASE ( addr --, release the binary semaphore at addr)
+RELEASE.LF	dc.l	ACQUIRE.NF
+RELEASE.NF	dc.b	7 128 +
+		dc.s	RELEASE
+RELEASE.SF	dc.w	RELEASE.Z RELEASE.CF del
+RELEASE.CF	jsl	CHECKSUSPEND	( v)			; suspend multitasking
+		swap			( v addr)				
+		dup
+		jsl	free		( v addr flag)
+		IF			( v addr)		; either this task has the semaphore or it is already free
+			zero			( v addr 0)
+			swap			( v 0 addr)
+			store.b		( v)
+		ELSE						; this task has not acquired the semaphore
+			drop			( v)
+		THEN
+		#.l	SingleMulti				; re-enable multitasking to its prior state
+RELEASE.Z	store.b,rts
+;
+; FREE ( addr -- flag, check if the binary semaphore at addr is available to this task and return true, or otherwise return false)
+FREE.CF	fetch.b		( v) 			;binary semaphores are byte variables
+		dup			( v v)
+		0=			( v flag0)		; no task has the semaphore
+		swap			( flag0 v)
+		#.l	CurrentVM
+		fetch.b		( flag0 v VM)
+		=			( flag0 flag=)	; this task already has the semaphore
+		or,rts			( flag)
+; 
 ; ----------------------------------------------------------------------------------------------
 ; Low level hardware control
 ; ----------------------------------------------------------------------------------------------
@@ -667,7 +728,7 @@ PAUSE.CF	pause,rts
 ;TIMEOUT.Z	store.l,rts	
 ;		
 ; MS ( n --, wait for n ms)
-MS.LF		dc.l	PAUSE.NF
+MS.LF		dc.l	RELEASE.NF
 MS.NF		dc.b	2 128 +
 		dc.s	MS
 MS.SF		dc.w	MS.Z MS.CF del
@@ -6658,11 +6719,36 @@ WORDLIST.CF		#.l	WID.COUNT
 			1+			( count+1 R:&count)
 			dup			( count+1 count+1 R:&count)
 			R>			( count+1 count+1 &count)
-WORDLIST.Z		store.b,rts		( count+1)
-			
-;			
+WORDLIST.Z		store.b,rts		( count+1)	
+;		
+; GET-ORDER	( -- WIDn...WID1 n, return the number and set of wordlists.  WID1 is the first searched)
+GET-ORDER.LF		dc.l	WORDLIST.NF
+GET-ORDER.NF		dc.b	9 128 +
+			dc.s	GET-ORDER
+GET-ORDER.SF		dc.w	GET-ORDER.Z GET-ORDER.CF del
+GET-ORDER.CF		#.l	WID.COUNT
+			fetch.b		( n)
+			dup			( n)			; save count in local 0
+			#.l	local0				
+			store.b		( n)
+			#.l	WID.order	( n addr-gnd)
+			+			( addr-top)
+			1+			( addr-top+1)
+			BEGIN
+				1-			( addr~)
+				dup			( addr addr)
+				fetch.b		( addr WIDx)
+				swap			( WIDx addr)
+				dup			( WIDx addr addr)
+				#.l	WID.order	( WIDx addr addr addr-gnd)
+				=			( WIDx addr flag)
+			UNTIL			( WIDn..WID1 addr)
+			drop			( WIDn..WID1)
+			#.l	local0
+GET-ORDER.Z		fetch.b,rts		( WIDn..WID1 n)
+;	
 ; SET-ORDER ( WIDn...WID1 n --, WID1 is searched first)
-SET-ORDER.LF		dc.l	WORDLIST.NF
+SET-ORDER.LF		dc.l	GET-ORDER.NF
 SET-ORDER.NF		dc.b	9 128 +
 			dc.s	SET-ORDER
 SET-ORDER.SF		dc.w	SET-ORDER.Z SET-ORDER.CF del
@@ -6727,11 +6813,12 @@ GET-ENTRY.Z		fetch.l,rts
 ; ------------------------------------------------------------------------------------------------------------
 ; internal FORTH dictionary variables	
 ; ------------------------------------------------------------------------------------------------------------
-COMPILEstackP		dc.l	USERRAM 1016 + ; pointer for the compiler stack (used for LEAVE)
-LAST-CF		dc.l	0		; CF of last word created by HEAD
-LAST-SF		dc.l	0		; SF of last word created by HEAD
+COMPILEstackP		dc.l	USERRAM 1016 + ; pointer for the compiler stack (used by LEAVE)
+;LAST-CF		dc.l	0		; CF of last word created by HEAD
+;LAST-SF		dc.l	0		; SF of last word created by HEAD
 USERNEXT_		dc.l	USERRAM 44 +	; next available location for a user variable
 LOCAL.COUNT		dc.l	0		; used in the creation of the local variable buffer
+SD-CARD		dc.b	0		; binary semaphore for SD-CARD access
 IN_LEN_a		dc.l	0		; used by SAVE-INPUT and RESTORE-INPUT
 >IN_a			dc.l	0		; used by SAVE-INPUT and RESTORE-INPUT
 input_buff_a		dc.l	0		; used by SAVE-INPUT and RESTORE-INPUT
