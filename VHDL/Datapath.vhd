@@ -183,7 +183,7 @@ begin
 	ESaddr <= VM(vmp_w -1 downto 0) & ESP_n;	
 								
 	-- Return stack 				
-	process (AuxControl, MicroControl, RSP_m1, RSP_p1, TOS_i)	
+	process (AuxControl, MicroControl, RSP_m1, RSP_p1, TOS_i, SSdatain, DatapathThaw, RSP)	
 	begin
 		if AuxControl (0 downto 0) = "1" then				-- instruction RTS requires reset of return stack pointer
 			RSP_n1 <= SSdatain(535 + rsp_w -1 downto 535);
@@ -216,7 +216,7 @@ begin
 					 "0" when others;		
 
 	-- Subroutine stack
-	process (AuxControl, MicroControl, SSP_m1, SSP_p1, SSdatain, RSP_n1, RSP_m1, ESdatain, SSP)	
+	process (AuxControl, MicroControl, SSP_m1, SSP_p1, SSdatain, RSP_n1, RSP_m1, ESdatain, SSP, DatapathThaw)	
 	begin
 		if AuxControl (0 downto 0) = "1" then				-- instruction RTS requires decrement subroutine stack pointer
 			SSP_n <= SSP_m1;
@@ -247,7 +247,7 @@ begin
 	SSdataout <= Blank(9 - rsp_w - 1 downto 0) & RSP & ReturnAddress(22 downto 0);
 
 	-- Exception stack
-	process (AuxControl, MicroControl, ESP_m1, ESP_p1, ESdatain, SSP_n, SSP_m1, ESP)	
+	process (AuxControl, MicroControl, ESP_m1, ESP_p1, ESdatain, SSP_n, SSP_m1, ESP, DatapathThaw)	
 	begin
 		if SSP_n = ESdatain(295 + ssp_w -1 downto 295) and (SSP_n = SSP_m1)  and (ESP /= 0) then
 			ESP_n <= ESP_m1;										-- pop of subroutine stack below the baseline requires decrement subroutine stack pointer

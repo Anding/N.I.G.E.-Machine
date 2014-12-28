@@ -677,7 +677,7 @@ RELEASE.SF	dc.w	RELEASE.Z RELEASE.CF del
 RELEASE.CF	jsl	CHECKSUSPEND	( v)			; suspend multitasking
 		swap			( v addr)				
 		dup
-		jsl	free		( v addr flag)
+		jsl	free.cf	( v addr flag)
 		IF			( v addr)		; either this task has the semaphore or it is already free
 			zero			( v addr 0)
 			swap			( v 0 addr)
