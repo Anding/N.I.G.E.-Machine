@@ -1251,11 +1251,7 @@ begin
 			state_n <= skip1;
 			timer <= 0;
 			PC_n <= PC;
-			if SingleMulti = '1' then
-				ucode <= ops_JSL;								-- push the saved PC address onto the return stack		
-			else
-				ucode <= ops_NOP;
-			end if;
+			ucode <= ops_JSL;								-- push the saved PC address onto the return stack		
 			accumulator <= (others=>'0');
 			MEMaddr_i <= PC_addr;				
 			MEM_WRQ_X_i <= '0';

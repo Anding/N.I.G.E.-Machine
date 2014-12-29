@@ -297,7 +297,7 @@ begin
 	 
 	 with bank select														-- one cycle delayed to switch output
 		MEMdatain_Xi <= MEMdata_Pstack when Pstack,
-							MEMdata_Rstack when Rstack,
+							MEMdata_Rstack when Rstack,				-- trial #2
 							"000000000000000000000000" & MEMdata_Char when Char,
 							"0000000000000000" & MEMdata_Color when Color,
 							MEMdata_Reg when Reg,

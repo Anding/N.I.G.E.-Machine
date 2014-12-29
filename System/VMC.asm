@@ -12,30 +12,18 @@ VMcount	equ	32				; count of available virtual machines
 		nop
 		jsl	INIT-MULTI.CF
 		zero
-		BEGIN
-			zero
-			#.l	l1
-			jsl	run.cf
-		WHILE
-			dup
-			#.l	sevenseg
-			store.l
-		REPEAT
-		nop
-		nop
-		nop
-		nop
-		nop
-		BEGIN
-			dup
-			0<>
-		WHILE
-			jsl	stop.cf
-			dup
-			#.l	sevenseg
-			store.l
+		#.l	TEST
+		jsl	run.cf
+		drop
+		drop
+		#.b	20
+		zero
+		DO
 			pause
-		REPEAT
+		LOOP
+		#.l	double
+		#.b	1
+		jsl	virq.cf
 l0		pause
 		bra l0
 ;
@@ -144,7 +132,7 @@ INIT-TASK.CF	jsl	single.cf			; suspend multitasking
 			-
 		REPEAT
 		drop					( p1 p2 … pn)
-		jsl	USERINIT.CF			; initialize user variable area
+;		jsl	USERINIT.CF			; initialize user variable area
 		#.l	INIT-TASK.2			; fetch the XT of this task and place on the stack
 		fetch.l				
 		jsl	multi.cf			; reenable multitasking (all data is now on the local stack)
@@ -341,13 +329,26 @@ THIS-STOP.CF	#.l	CurrentVM
 THIS-VM.CF	#.l	CurrentVM
 		fetch.b,rts
 ;	
-USERINIT.CF	rts
-l1		nop
-		nop
-		nop
-		nop
-		nop
-		nop
-		nop
-		pause
-		bra	l1	
+TEST		#.b	1
+		BEGIN
+			dup
+			#.l 	sevenseg
+			store.l
+			1+
+			nop
+			nop
+			nop
+			nop
+			nop
+			nop
+			nop
+			nop
+			nop
+			pause
+		AGAIN
+reset		drop
+		#.b 10
+		rts
+double		2*
+		rts
+		
