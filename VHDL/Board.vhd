@@ -54,7 +54,7 @@ end Board_Nexys4;
 
 architecture RTL of Board_Nexys4 is
 
-type bank_t is (Sys, Char, Color, Pstack, Rstack, Reg, Stack_access, User, Vir);
+type bank_t is (Sys, Char, Color, Reg, Stack_access, User, Vir);--, Pstack, Rstack);
 constant blank : std_logic_vector(31 downto 0) := (others =>'0');
 signal SD_WP : std_logic;
 signal bank, bank_n : bank_t;	
@@ -279,8 +279,8 @@ begin
 					 User 			when "1111001",
 					 Char 			when "1111010",
 					 Color 			when "1111011",
-					 Pstack 			when "1111100",
-					 Rstack 			when "1111101",
+	--				 Pstack 			when "1111100",
+	--				 Rstack 			when "1111101",
 					 Stack_access 	when "1111110",
 					 Reg 				when "1111111",
 					 Sys 				when others;
@@ -289,15 +289,15 @@ begin
 	 User_EN <= '1' when bank_n = User else '0';
 	 Stack_access_EN <= '1' when bank_n = Stack_access else '0';
 	 Color_EN <= '1' when bank_n = Color else '0';
-	 Pstack_EN <= '1' when bank_n = Pstack else '0';
-	 Rstack_EN <= '1' when bank_n = Rstack else '0';
+--	 Pstack_EN <= '1' when bank_n = Pstack else '0';
+--	 Rstack_EN <= '1' when bank_n = Rstack else '0';
 	 Char_EN <= '1' when bank_n = Char else '0';
 	 Reg_EN <= '1' when bank_n = Reg else '0';
 	 Sys_EN <= '1' when bank_n = Sys else '0'; 
 	 
 	 with bank select														-- one cycle delayed to switch output
-		MEMdatain_Xi <= MEMdata_Pstack when Pstack,
-							MEMdata_Rstack when Rstack,				-- trial #2
+		MEMdatain_Xi <= --MEMdata_Pstack when Pstack,
+							--MEMdata_Rstack when Rstack,				-- trial #2
 							"000000000000000000000000" & MEMdata_Char when Char,
 							"0000000000000000" & MEMdata_Color when Color,
 							MEMdata_Reg when Reg,

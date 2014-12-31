@@ -2206,7 +2206,7 @@ SD.sector-code 	#.w	sd.ver
 ;
 ; SD.select&check ( --, select and wait for SD card)
 SD.select&check 	jsl spi.cs-lo		; SELECT
-		#.w	1024			; limit of 1024 tries
+		#.w	32768			; limit of tries
 		#.l	local0
 		store.w				
 		BEGIN				
@@ -2220,7 +2220,7 @@ SD.select&check.0	jsl spi.get
 		rts
 ;
 ; SD.wait-token ( --, wait for an SD-card data token)
-SD.wait-token.CF	#.w	1024			; limit of 1024 tries
+SD.wait-token.CF	#.w	32768			; limit of tries
 			#.l	local0
 			store.w
 			BEGIN	
