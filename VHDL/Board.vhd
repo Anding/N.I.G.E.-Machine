@@ -390,21 +390,21 @@ begin
 		en_b => enb_userram
 	);
 	
-		addra_userram_all(15 downto 2) <= VM & addra_userram(10 downto 2);  -- blank(4 - vmp_w downto 0) & 
-		addrb_userram_all(15 downto 2) <= VM & addrb_userram(10 downto 2);  -- blank(4 - vmp_w downto 0) & 	
+		addra_userram_all(vmp_w + 10 downto 2) <= VM & addra_userram(10 downto 2);  -- blank(4 - vmp_w downto 0) & 
+		addrb_userram_all(vmp_w + 10 downto 2) <= VM & addrb_userram(10 downto 2);  -- blank(4 - vmp_w downto 0) & 	
 	
 	 inst_USER_RAM : entity work.USER_RAM
 	  PORT MAP (
 		 clka => clk_system,
 		 ena => ena_userram,
 		 wea => wea_userram,
-		 addra => addra_userram_all(15 downto 2),
+		 addra => addra_userram_all(vmp_w + 10 downto 2),
 		 dina => dina_userram,
 		 douta => douta_userram,
 		 clkb => clk_system,
 		 enb => enb_userram,
 		 web => web_userram,
-		 addrb => addrb_userram_all(15 downto 2),
+		 addrb => addrb_userram_all(vmp_w + 10 downto 2),
 		 dinb => dinb_userram,
 		 doutb => doutb_userram
 	  );
@@ -570,7 +570,7 @@ begin
 		SSdatain => SSdatain(543 downto 512),	
 		SSdataout => SSdataout(543 downto 512),
 		SSw => SSw(67 downto 64),
-		ESaddr => ESaddr(8 downto 0),
+		ESaddr => ESaddr,
 		ESdatain => ESdatain(303 downto 256),
 		ESdataout => ESdataout(303 downto 256),
 		ESw => ESw(37 downto 32),
