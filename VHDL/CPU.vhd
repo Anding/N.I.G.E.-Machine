@@ -17,6 +17,7 @@ entity CPU is
 				irq : in STD_LOGIC;
 				irv : in std_logic_vector(3 downto 0);
 				rti : out std_logic; 
+				blocked : in std_logic;
 				-- Paramater and return stack storage
 				PSaddr : OUT std_logic_vector(vmp_w + psp_w -1 downto 0);
 				PSdatain : IN std_logic_vector(31 downto 0);
@@ -93,6 +94,7 @@ architecture Structural of CPU is
 	signal 	pause : STD_LOGIC;
 	signal 	SingleMulti : STD_LOGIC;
 	signal 	PCfreeze, PCthaw, VirtualInterrupt : STD_LOGIC_VECTOR (19 downto 0);
+	signal	interval : STD_LOGIC_VECTOR (15 downto 0);
 
 begin
 
@@ -156,6 +158,7 @@ begin
 		irq => irq,
 		rti => rti,
 		irv => irv,
+		blocked => blocked,
 		TOS => TOS,
 		TOS_r => TOS_r,
 		NOS_r => NOS_r,
@@ -195,6 +198,7 @@ begin
 		PCfreeze => PCfreeze,
 		PCthaw => PCthaw,
 		VirtualInterrupt => VirtualInterrupt,
+		Interval => Interval,
 		debug => debug
 	);
 	
@@ -208,6 +212,7 @@ begin
 		rst => rst,
 		pause => pause,
 		SingleMulti => SingleMulti,
+		Interval => Interval,
 		VM => VM_i,
 		PCfreeze => PCfreeze,
 		PCthaw => PCthaw,

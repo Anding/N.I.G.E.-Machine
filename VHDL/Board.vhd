@@ -194,6 +194,7 @@ signal ESaddr : std_logic_vector(vmp_w + esp_w -1 downto 0);
 signal VM : std_logic_vector(vmp_w -1 downto 0);
 signal vir_EN : STD_LOGIC;
 signal MEMdata_vir : STD_LOGIC_VECTOR(31 DOWNTO 0);
+signal blocked : STD_LOGIC;
 
 
 	component CLOCKMANAGER
@@ -312,36 +313,36 @@ begin
 	 addra_sysram <= addra_sysram_s when Boot_we = "0" else boot_addr;	
 	 ram_en <= ena_sysram or reset;
 
-	  inst_SYS_RAM : entity work.Sys_RAM
-	  PORT MAP (
-		 clka => clk_system,
-		 ena => ram_en,
-		 wea => wea_sysram,
-		 addra => addra_sysram (16 downto 2),					-- 64K write depth 16384, 15downto2. 128K write depth 32768, 16 downto 2. 256K write depth 62976, 17downto2
-		 dina => dina_sysram,
-		 douta => douta_sysram,
-		 clkb => clk_system,
-		 enb => enb_sysram,
-		 web => web_sysram,
-		 addrb => addrb_sysram (16 downto 2),
-		 dinb => dinb_sysram,
-		 doutb => doutb_sysram
-	  );
+--	  inst_SYS_RAM : entity work.Sys_RAM
+--	  PORT MAP (
+--		 clka => clk_system,
+--		 ena => ram_en,
+--		 wea => wea_sysram,
+--		 addra => addra_sysram (16 downto 2),					-- 64K write depth 16384, 15downto2. 128K write depth 32768, 16 downto 2. 256K write depth 62976, 17downto2
+--		 dina => dina_sysram,
+--		 douta => douta_sysram,
+--		 clkb => clk_system,
+--		 enb => enb_sysram,
+--		 web => web_sysram,
+--		 addrb => addrb_sysram (16 downto 2),
+--		 dinb => dinb_sysram,
+--		 doutb => doutb_sysram
+--	  );
 	  
---	Inst_RAM_for_Testbench: entity work.RAM_for_Testbench PORT MAP(
---		rst => reset,
---		clk => clk_system,
---		enA => ena_sysram,
---		enB => enb_sysram,
---		weA => wea_sysram,
---		weB => web_sysram,
---		addressA => addra_sysram (16 downto 2),
---		data_inA => dina_sysram,
---		data_outA => douta_sysram,
---		addressB => addrb_sysram (16 downto 2),
---		data_inB => dinb_sysram,
---		data_outB => doutb_sysram
---	);
+	Inst_RAM_for_Testbench: entity work.RAM_for_Testbench PORT MAP(
+		rst => reset,
+		clk => clk_system,
+		enA => ena_sysram,
+		enB => enb_sysram,
+		weA => wea_sysram,
+		weB => web_sysram,
+		addressA => addra_sysram (16 downto 2),
+		data_inA => dina_sysram,
+		data_outA => douta_sysram,
+		addressB => addrb_sysram (16 downto 2),
+		data_inB => dinb_sysram,
+		data_outB => doutb_sysram
+	);
 
 	  douta_sysram_i <= douta_sysram;
 	  doutb_sysram_i <= doutb_sysram;
@@ -600,7 +601,8 @@ begin
 		VM => VM,
 		vir_EN => vir_EN,
 		MEMdata_vir => MEMdata_vir,
-		debug => debug_CPU
+		debug => debug_CPU,
+		blocked => blocked
 	);
 	
 
@@ -711,7 +713,8 @@ begin
 		ms_irq => ms_irq,
 		rti => rti,
 		irq => irq,
-		irv => irv
+		irv => irv,
+		blocked => blocked
 	);
 	
 		Inst_UART: entity work.UART PORT MAP(

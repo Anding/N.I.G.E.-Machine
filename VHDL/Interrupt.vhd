@@ -15,7 +15,8 @@ entity Interrupt is
 			  ms_irq : in STD_LOGIC;
            rti : in  STD_LOGIC;										-- RTI from CPU
            irq : out  STD_LOGIC;										-- IRQ to CPU
-			  irv : out STD_LOGIC_VECTOR(3 downto 0)); 			-- Interrupt number 1 - 15
+			  irv : out STD_LOGIC_VECTOR(3 downto 0); 			-- Interrupt number 1 - 15
+			  blocked : out STD_LOGIC );
 end Interrupt;
 
 architecture Behavioral of Interrupt is
@@ -37,6 +38,7 @@ begin
 
 	ira_output <= (ira_input and not ira_input_m1) or ira_register;
 	irv <= irv_n;
+	with state select blocked <= '1' when int, '0' when others;
 
 	process 
 	begin

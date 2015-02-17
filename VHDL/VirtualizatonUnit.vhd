@@ -12,6 +12,7 @@ entity VirtualizationUnit is
 				-- virtualization control signals
 				pause : in STD_LOGIC;
 				SingleMulti : out STD_LOGIC;
+				interval : out STD_LOGIC_VECTOR (15 downto 0);
 				-- number of the currently executing virtual machine
 				VM : out  STD_LOGIC_VECTOR (vmp_w -1 downto 0);
 				-- freeze the current VM and thaw the next VM
@@ -46,6 +47,8 @@ signal addr_local : STD_LOGIC_VECTOR(vmp_w -1 +2 downto 2);
 signal datain_local : STD_LOGIC_VECTOR(19 downto 0);
 signal task_switch : STD_LOGIC;
 signal trueSwitch : STD_LOGIC;
+signal reg_interval : STD_LOGIC_VECTOR(15 downto 0) := (others=>'0');
+signal pauseDelay : STD_LOGIC_VECTOR(4 downto 0);
 
 begin
 
@@ -55,15 +58,24 @@ trueSwitch <= '0' when (currentVM = nextVM) else '1';				-- avoid a task switch 
 
 nextVM <= TaskControl(vmp_w -1 downto 0);
 VM <= currentVM;
-task_switch <= pause and reg_SingleMulti and trueSwitch;
+interval <= reg_interval;
+task_switch <= pause;
+SingleMulti <= '1' when (reg_SingleMulti = '1' and trueSwitch = '1' and (pauseDelay = "00000")) else '0';
 
 process
 begin
 	wait until rising_edge(clk);
 	if rst = '1' then
 		currentVM <= (others=>'0');
-	elsif task_switch = '1' then
-		currentVM <= nextVM;
+		pauseDelay <= "00000";
+	else
+		if task_switch = '1' then 
+			currentVM <= nextVM;
+			pauseDelay <= "10000";
+		else
+			currentVM <= currentVM;
+			pauseDelay <= '0' & pauseDelay(4 downto 1);
+		end if;
 	end if;
 end process;
 
@@ -170,8 +182,6 @@ Inst_TaskControl_RAM : entity work.TaskControl_RAM					-- dual port RAM, depth 3
   
  -- local registers
  
- SingleMulti <= reg_SingleMulti and trueSwitch;
- 
 	-- read cycle
  process
  begin
@@ -180,8 +190,13 @@ Inst_TaskControl_RAM : entity work.TaskControl_RAM					-- dual port RAM, depth 3
 	case addr(5 downto 2) is
 		when X"0" =>
 			dataoutRegisters <= blank(31 downto 1) & reg_SingleMulti;
+			
 		when X"1" =>
 			dataoutRegisters <= blank(31 downto vmp_w) & CurrentVM;
+			
+		when X"2" =>
+			dataoutRegisters <= blank(31 downto 16) & reg_interval;
+			
 		when others =>
 			dataoutRegisters <= blank;
 		end case;
@@ -200,6 +215,9 @@ begin
 		
 			when X"0" =>
 				reg_SingleMulti <= datain(0);
+				
+			when X"2"=>
+				reg_interval <= datain(15 downto 0);
 				
 			when others =>
 				null;

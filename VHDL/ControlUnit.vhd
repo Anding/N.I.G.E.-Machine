@@ -13,6 +13,7 @@ entity ControlUnit is
 			  irq : in STD_LOGIC;												-- interrupt request
 			  irv : in std_logic_vector(3 downto 0);						-- interrupt request vector  1 - 15
 			  rti : out std_logic;												-- return from interrupt signal
+			  blocked : in std_logic;											-- currently interrupts are blocked
 			  TOS : in STD_LOGIC_VECTOR (31 downto 0);					-- Top Of Stack (TOS_n from datapath, one cycle ahead of registered value)
 			  TOS_r : in STD_LOGIC_VECTOR (31 downto 0);					-- Top Of Stack (TOS from datapath, the registered value)
 			  NOS_r : in STD_LOGIC_VECTOR (31 downto 0);					-- Next On Stack (registered value)		  
@@ -58,6 +59,7 @@ entity ControlUnit is
 				singleMulti : IN STD_LOGIC;
 				pause : OUT STD_LOGIC;
 				VirtualInterrupt : IN STD_LOGIC_VECTOR (19 downto 0);
+				Interval : IN STD_LOGIC_VECTOR (15 downto 0);
 				debug : OUT STD_LOGIC_VECTOR(7 DOWNTO 0)			
            );
 end ControlUnit;
@@ -146,6 +148,8 @@ signal MEM_WRQ_X_i : STD_LOGIC;
 signal AXIaddr : STD_LOGIC_VECTOR (1 downto 0);
 signal debug_i : std_logic_vector(7 downto 0);
 signal PCthaw_m1 : STD_LOGIC_VECTOR (19 downto 0);
+signal preemp_counter, preemp_counter_n : STD_LOGIC_VECTOR (15 downto 0);
+signal preempt : STD_LOGIC;
 
 alias signbit is MEMdatain_X(29);
 
@@ -185,7 +189,7 @@ begin
 	MEMaddr <= MEMaddr_i;
 	MEM_WRQ_X <= MEM_WRQ_X_i;
 				
-	PCfreeze <= PC;
+	preempt <= '1' when (preemp_counter = interval AND interval /=0 AND singleMulti = '1' and blocked = '0') else '0';
 	
 	-- main control unit state machine
 	
@@ -213,6 +217,7 @@ begin
 			PCthaw_m1 <= PCthaw;
 			AuxControl_i <= AuxControl_n;
 			debug <= debug_i;
+			preemp_counter <= preemp_counter_n;
 			if (count >= timer) then 
 				count <= 0;	
 				PC <= PC_n;													-- PC is updated only on the final cycle of multi-cycle opcode states
@@ -232,13 +237,14 @@ begin
 			MEMsize_X <= (others=>'0');
 			PCthaw_m1 <= (others=>'0');
 			debug <= (others=>'0');
+			preemp_counter <= (others=>'0');
 		end if;
 	end process;
 
 	process (state, state_n, PC, PC_n, PC_plus, PC_jsl, PC_branch, PC_skipbranch, PC_m1, PC_addr, delta, PC_plus_two, PC_plus_three, PC_plus_four,
 				ucode, equalzero, equalzero_r, branch, opcode, chip_RAM, MEMdatain_X, retrap,
 				s_axi_awready, s_axi_wready, s_axi_arready, s_axi_rvalid, s_axi_rdata, axiaddr, 
-				TOS, TOS_r, NOS_r, TORS, int_trig, int_vector_ext, int_vector_ext_i, branch, opcode, ExceptionAddress, virtualInterrupt, SingleMulti, PCthaw, PCthaw_m1)
+				TOS, TOS_r, NOS_r, TORS, int_trig, int_vector_ext, int_vector_ext_i, branch, opcode, ExceptionAddress, virtualInterrupt, SingleMulti, PCthaw, PCthaw_m1, preemp_counter, preemp_counter_n)
 	begin																					-- combinational section of state machine
 		case state is
 
@@ -250,10 +256,10 @@ begin
 			if int_trig = '1' or retrap(0) = '1' or branch = bps_BRA or branch = bps_BEQ 
 				or opcode = ops_JSL  or opcode = ops_JSR or opcode = ops_JMP or opcode = ops_TRAP or opcode = ops_RETRAP or
 				opcode = ops_byte or opcode = ops_word or opcode = ops_long or opcode = ops_catch or 
-				(opcode = ops_PAUSE and virtualInterrupt = 0) or
+				(virtualInterrupt = 0 AND (opcode = ops_PAUSE or preempt = '1')) or
 				((opcode = ops_toR or opcode = ops_Rfrom) and MEMdatain_X(23 downto 22) = "01")  -- insert one cycle delay between >R or R> and RTS
 				then state_n <= skip1;																				-- 	to allow the return stack value to be stored in RAM
-			elsif opcode = ops_PAUSE then							-- virtual interrupt
+			elsif (opcode = ops_PAUSE OR preempt = '1') then	-- virtual interrupt
 				state_n <= virtual_interrupt;
 			elsif opcode = ops_throw then
 				state_n <= throw;
@@ -330,7 +336,13 @@ begin
 			if int_trig = '1' then
 				PC_n <= int_vector_ext;												-- PC from external interrupt vector
 			elsif retrap(0) = '1' then
-				PC_n <= int_vector_TRAP;											-- PC from internal interrupt vector			
+				PC_n <= int_vector_TRAP;											-- PC from internal interrupt vector	
+			elsif preempt = '1' then 
+				if virtualInterrupt = 0 then
+					PC_n <= PCthaw;
+				else
+					PC_n <= virtualInterrupt;
+				end if;
 			else
 			   case branch is 
 					when bps_BEQ =>
@@ -418,6 +430,8 @@ begin
 			-- Microcode logic
 			if int_trig = '1' or retrap(0) = '1' then
 				ucode <= ops_JSL;												-- interrupt microcode 
+			elsif preempt = '1' then
+				ucode <= ops_PAUSE;
 			else
 				case branch is
 					when bps_BRA =>
@@ -501,11 +515,25 @@ begin
 			s_axi_wvalid <= '0';
 			s_axi_rready <= '0';	
 			
-			-- pause
-			if	int_trig = '0' and opcode = ops_PAUSE then
-				pause <= '1'; 
+			-- virtualization
+			if	int_trig = '0' and ((singleMulti = '1' and opcode = ops_PAUSE) or preempt = '1') then
+				pause <= '1'; 	
 			else
 				pause <= '0';
+			end if;
+			
+			if singleMulti = '0' or (preemp_counter >= interval) then										
+					preemp_counter_n <= (others => '0');
+			elsif blocked = '0' then
+					preemp_counter_n <= preemp_counter + 1;	
+			else
+					preemp_counter_n <= preemp_counter;										-- don't count instructions within interrupts
+			end if;
+			
+			if preempt = '1' then 
+				PCfreeze <= PC_m1;
+			else
+				PCfreeze <= PC;
 			end if;
 			
 			-- debug
@@ -540,6 +568,8 @@ begin
 			s_axi_rready <= '0';	
 			pause <= '0';
 			debug_i <= x"01";
+			preemp_counter_n <= preemp_counter;
+			PCfreeze <= PC;
 			
 		when smult =>										-- signed multiply
 			state_n <= common;
@@ -566,6 +596,8 @@ begin
 			s_axi_rready <= '0';	
 			pause <= '0';
 			debug_i <= x"02";
+			preemp_counter_n <= preemp_counter;
+			PCfreeze <= PC;
 	
 		when umult =>										-- unsigned multiply
 			state_n <= common;
@@ -592,6 +624,8 @@ begin
 			s_axi_rready <= '0';	
 			pause <= '0';
 			debug_i <= x"03";
+			preemp_counter_n <= preemp_counter;
+			PCfreeze <= PC;
 	
 		when sdivmod =>										-- signed division
 			state_n <= sdivmod_load;
@@ -618,6 +652,8 @@ begin
 			s_axi_rready <= '0';	
 			pause <= '0';
 			debug_i <= x"04";
+			preemp_counter_n <= preemp_counter;
+			PCfreeze <= PC;
 
 		when udivmod =>										-- unsigned division
 			state_n <= udivmod_load;
@@ -644,6 +680,8 @@ begin
 			s_axi_rready <= '0';	
 			pause <= '0';
 			debug_i <= x"05";
+			preemp_counter_n <= preemp_counter;
+			PCfreeze <= PC;
 			
 		when sdivmod_load =>									-- signed division
 			state_n <= common;									
@@ -670,6 +708,8 @@ begin
 			s_axi_rready <= '0';	
 			pause <= '0';
 			debug_i <= x"06";
+			preemp_counter_n <= preemp_counter;
+			PCfreeze <= PC;
 	
 		when udivmod_load =>									-- unsigned division
 			state_n <= common;
@@ -695,6 +735,8 @@ begin
 			s_axi_arvalid <= '0';
 			pause <= '0';
 			debug_i <= x"07";
+			preemp_counter_n <= preemp_counter;
+			PCfreeze <= PC;
 			
 		when Sfetch_byte =>											
 			state_n <= skip1;																	
@@ -721,6 +763,8 @@ begin
 			s_axi_rready <= '0';	
 			pause <= '0';
 			debug_i <= x"08";
+			preemp_counter_n <= preemp_counter;
+			PCfreeze <= PC;
 			
 		when Sfetch_word =>											
 			state_n <= skip1;																	
@@ -747,6 +791,8 @@ begin
 			s_axi_rready <= '0';	
 			pause <= '0';
 			debug_i <= x"09";
+			preemp_counter_n <= preemp_counter;
+			PCfreeze <= PC;
 
 		when Sfetch_long =>											
 			state_n <= skip1;																	
@@ -773,6 +819,8 @@ begin
 			s_axi_rready <= '0';	
 			pause <= '0';
 			debug_i <= x"0a";
+			preemp_counter_n <= preemp_counter;
+			PCfreeze <= PC;
 			
 		when Sstore_long =>											
 			state_n <= SRAM_store;																	
@@ -799,6 +847,8 @@ begin
 			s_axi_rready <= '0';	
 			pause <= '0';
 			debug_i <= x"0b";
+			preemp_counter_n <= preemp_counter;
+			PCfreeze <= PC;
 			
 		when Sstore_word =>											
 			state_n <= SRAM_store;																	
@@ -825,6 +875,8 @@ begin
 			s_axi_rready <= '0';	
 			pause <= '0';
 			debug_i <= x"0c";
+			preemp_counter_n <= preemp_counter;
+			PCfreeze <= PC;
 			
 		when Sstore_byte =>											
 			state_n <= SRAM_store;																	
@@ -851,6 +903,8 @@ begin
 			s_axi_rready <= '0';	
 			pause <= '0';
 			debug_i <= x"0d";
+			preemp_counter_n <= preemp_counter;
+			PCfreeze <= PC;
 			
 		when SRAM_store =>											
 			state_n <= common;		-- skip1																	
@@ -877,6 +931,8 @@ begin
 			s_axi_rready <= '0';	
 			pause <= '0';
 			debug_i <= x"0e";
+			preemp_counter_n <= preemp_counter;
+			PCfreeze <= PC;
 	
 		when Dfetch_long =>											
 			if s_axi_arready = '1' then
@@ -907,6 +963,8 @@ begin
 			s_axi_arvalid <= '1';
 			pause <= '0';
 			debug_i <= x"0f";
+			preemp_counter_n <= preemp_counter;
+			PCfreeze <= PC;
 
 		when Dfetch_long2 =>	
 			if s_axi_rvalid = '1' then
@@ -938,6 +996,8 @@ begin
 			s_axi_rready <= '1';	
 			pause <= '0';
 			debug_i <= x"10";
+			preemp_counter_n <= preemp_counter;
+			PCfreeze <= PC;
 	
 		when Dfetch_word =>											
 			if s_axi_arready = '1' then
@@ -972,6 +1032,8 @@ begin
 			s_axi_arvalid <= '1';
 			pause <= '0';
 			debug_i <= x"11";
+			preemp_counter_n <= preemp_counter;
+			PCfreeze <= PC;
 
 		when Dfetch_word2 =>	
 			if s_axi_rvalid = '1' then
@@ -1007,6 +1069,8 @@ begin
 			s_axi_rready <= '1';	
 			pause <= '0';
 			debug_i <= x"12";
+			preemp_counter_n <= preemp_counter;
+			PCfreeze <= PC;
 				
 		when Dfetch_byte =>											
 			if s_axi_arready = '1' then
@@ -1045,6 +1109,8 @@ begin
 			s_axi_arvalid <= '1';
 			pause <= '0';
 			debug_i <= x"13";
+			preemp_counter_n <= preemp_counter;
+			PCfreeze <= PC;
 
 		when Dfetch_byte2 =>	
 			if s_axi_rvalid = '1' then
@@ -1084,6 +1150,8 @@ begin
 			s_axi_rready <= '1';	
 			pause <= '0';
 			debug_i <= x"14";			
+			preemp_counter_n <= preemp_counter;
+			PCfreeze <= PC;
 				
 		when Dstore_long =>										
 			if s_axi_awready = '1' and s_axi_wready = '1' then			-- CAUTION this will break if s_axi_awready and s_axi_wready do not signal concurrently!
@@ -1114,7 +1182,9 @@ begin
 			s_axi_arvalid <= '0';
 			s_axi_rready <= '0';	
 			pause <= '0';
-			debug_i <= x"15";					
+			debug_i <= x"15";		
+			preemp_counter_n <= preemp_counter;	
+			PCfreeze <= PC;			
 			
 		when Dstore_word =>										
 			if s_axi_awready = '1' and s_axi_wready = '1' then			-- CAUTION this will break if s_axi_awready and s_axi_wready do not signal concurrently!
@@ -1150,6 +1220,8 @@ begin
 			s_axi_rready <= '0';	
 			pause <= '0';
 			debug_i <= x"16";	
+			preemp_counter_n <= preemp_counter;
+			PCfreeze <= PC;
 
 		when Dstore_byte =>										
 			if s_axi_awready = '1' and s_axi_wready = '1' then			-- CAUTION this will break if s_axi_awready and s_axi_wready do not signal concurrently!
@@ -1189,6 +1261,8 @@ begin
 			s_axi_rready <= '0';	
 			pause <= '0';
 			debug_i <= x"17";	
+			preemp_counter_n <= preemp_counter;
+			PCfreeze <= PC;
 
 		when Dstore2 =>										
 			state_n <= skip1;
@@ -1215,6 +1289,8 @@ begin
 			s_axi_rready <= '0';	
 			pause <= '0';
 			debug_i <= x"18";	
+			preemp_counter_n <= preemp_counter;
+			PCfreeze <= PC;
 			
 		when throw =>									
 			state_n <= common;							-- after changing PC, this wait state allows a memory read before execution of next instruction
@@ -1246,16 +1322,18 @@ begin
 			s_axi_rready <= '0';	
 			pause <= '0';
 			debug_i <= x"19";
+			preemp_counter_n <= preemp_counter;
+			PCfreeze <= PC;
 			
 		when virtual_interrupt =>	
 			state_n <= skip1;
 			timer <= 0;
 			PC_n <= PC;
---			if SingleMulti = '1' then
---				ucode <= ops_JSL;								-- push the saved PC address onto the return stack		
---			else
---				ucode <= ops_JSL1;
---			end if;
+			if SingleMulti = '1' then
+				ucode <= ops_JSL;
+			else
+				ucode <= ops_NOP;
+			end if;
 			ucode <= ops_JSL;								-- push the saved PC address onto the return stack		
 			accumulator <= (others=>'0');
 			MEMaddr_i <= PC_addr;				
@@ -1276,6 +1354,8 @@ begin
 			s_axi_rready <= '0';	
 			pause <= '0';
 			debug_i <= x"20";
+			preemp_counter_n <= preemp_counter;
+			PCfreeze <= PC;
 			
 		when others =>										-- skip1, but use default case for speed optimization
 			state_n <= common;							-- after changing PC, this wait state allows a memory read before execution of next instruction
@@ -1301,6 +1381,8 @@ begin
 			s_axi_rready <= '0';	
 			pause <= '0';
 			debug_i <= x"21";
+			preemp_counter_n <= preemp_counter;
+			PCfreeze <= PC;
 
 		end case;
 	end process;
@@ -1309,7 +1391,7 @@ end RTL;
 --Copyright and license
 --=====================
 --
---The N.I.G.E machine, its design and its source code are Copyright (C) 2013 by Andrew Richard Read and dual licensed.
+--The N.I.G.E machine, its design and its source code are Copyright (C) 2015 by Andrew Richard Read and dual licensed.
 --    
 --(1) For commercial or proprietary use you must obtain a commercial license agreement with Andrew Richard Read (anding_eunding@yahoo.com)
 --    
