@@ -158,7 +158,6 @@ begin
 		irq => irq,
 		rti => rti,
 		irv => irv,
-		blocked => blocked,
 		TOS => TOS,
 		TOS_r => TOS_r,
 		NOS_r => NOS_r,

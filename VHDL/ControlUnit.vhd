@@ -13,7 +13,6 @@ entity ControlUnit is
 			  irq : in STD_LOGIC;												-- interrupt request
 			  irv : in std_logic_vector(3 downto 0);						-- interrupt request vector  1 - 15
 			  rti : out std_logic;												-- return from interrupt signal
-			  blocked : in std_logic;											-- currently interrupts are blocked
 			  TOS : in STD_LOGIC_VECTOR (31 downto 0);					-- Top Of Stack (TOS_n from datapath, one cycle ahead of registered value)
 			  TOS_r : in STD_LOGIC_VECTOR (31 downto 0);					-- Top Of Stack (TOS from datapath, the registered value)
 			  NOS_r : in STD_LOGIC_VECTOR (31 downto 0);					-- Next On Stack (registered value)		  
@@ -150,6 +149,7 @@ signal debug_i : std_logic_vector(7 downto 0);
 signal PCthaw_m1 : STD_LOGIC_VECTOR (19 downto 0);
 signal preemp_counter, preemp_counter_n : STD_LOGIC_VECTOR (15 downto 0);
 signal preempt : STD_LOGIC;
+signal blocked : STD_LOGIC;
 
 alias signbit is MEMdatain_X(29);
 
@@ -189,7 +189,7 @@ begin
 	MEMaddr <= MEMaddr_i;
 	MEM_WRQ_X <= MEM_WRQ_X_i;
 				
-	preempt <= '1' when (preemp_counter = interval AND interval /=0 AND singleMulti = '1' and blocked = '0') else '0';
+	preempt <= '1' when (preemp_counter = interval) AND (interval /=0) AND (singleMulti = '1') and (blocked = '0') else '0';
 	
 	-- main control unit state machine
 	
@@ -218,6 +218,11 @@ begin
 			AuxControl_i <= AuxControl_n;
 			debug <= debug_i;
 			preemp_counter <= preemp_counter_n;
+			if int_trig = '1' then
+				blocked <= '1';
+			elsif  opcode = ops_RTI and branch = "01" then 
+				blocked <= '0';
+			end if;
 			if (count >= timer) then 
 				count <= 0;	
 				PC <= PC_n;													-- PC is updated only on the final cycle of multi-cycle opcode states
@@ -238,6 +243,7 @@ begin
 			PCthaw_m1 <= (others=>'0');
 			debug <= (others=>'0');
 			preemp_counter <= (others=>'0');
+			blocked <= '0';
 		end if;
 	end process;
 
@@ -485,7 +491,7 @@ begin
 			
 			-- Interrupt logic
 			irq_n <= '0';
-			if opcode = ops_RTI then 
+			if opcode = ops_RTI and branch = "01" then 
 				rti <= '1';												
 			else
 				rti <= '0';
@@ -524,7 +530,7 @@ begin
 			
 			if singleMulti = '0' or (preemp_counter >= interval) then										
 					preemp_counter_n <= (others => '0');
-			elsif blocked = '0' then
+			elsif blocked = '0' and int_trig = '0' then
 					preemp_counter_n <= preemp_counter + 1;	
 			else
 					preemp_counter_n <= preemp_counter;										-- don't count instructions within interrupts

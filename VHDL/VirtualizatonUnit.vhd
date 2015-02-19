@@ -149,7 +149,7 @@ Inst_Freezer_RAM : entity work.Freezer_RAM
 Inst_TaskControl_RAM : entity work.TaskControl_RAM					-- dual port RAM, depth 32, width 16
   PORT MAP (
     clk => clk,  
-    a => addr_local,
+    a => addr(vmp_w +1 downto 2),
     d => datain(15 downto 0),
     we => wrq_i(1),	
     qspo => dataoutTaskControl,	 

@@ -28,6 +28,7 @@ system-freq	equ	100000000
 ;
 SingleMulti	equ	hex 03B800 ;243712
 CurrentVM	equ	hex 03b804 ;243716
+Interval	equ	hex 03b808 ;243720
 TaskControl	equ	hex 03ba00 ;244224
 PCoverride 	equ	hex 03bc00 ;244736
 VirtualInt	equ	hex 03be00 ;245248
@@ -330,6 +331,18 @@ MULTI.CF	#.b	1
 		#.l	SingleMulti
 MULTI.Z	store.b,rts
 ;
+; PREEMPTIVE ( n --, enable preeemptive multitasking with n instructions per task switch)
+PREEMPTIVE.LF	dc.l	MULTI.NF
+PREEMPTIVE.NF	dc.b	10 128 +
+		dc.s	PREEMPTIVE
+PREEMPTIVE.SF	dc.w	PREEMPTIVE.Z PREEMPTIVE.CF del
+PREEMPTIVE.CF	jsl	checksuspend		( n v)		; suspend multitasking
+		swap				( v n)
+		#.l	Interval		( v n interval)
+		store.w			( v)
+		#.l	SingleMulti				; re-enable multitasking to its prior state
+PREEMPTIVE.Z	store.b,rts		
+;
 ;CHECKSUSPEND ( -- v, get the multitasking status then suspend multitasking)
 CHECKSUSPEND	#.l	SingleMulti
 		dup				( reg reg)
@@ -357,7 +370,7 @@ VM->VIREG 	2*					; VirtualInterrupt registers are 32 bits wide and longword ali
 		+,rts
 ;
 ; VIRQ ( XT VM --, make a virtual interrupt request for the rask running on VM to JSR to XT when it next executes)
-VIRQ.LF	dc.l	MULTI.NF
+VIRQ.LF	dc.l	PREEMPTIVE.NF
 VIRQ.NF	dc.b	4 128 +
 		dc.s	VIRQ
 VIRQ.SF	dc.w	VIRQ.Z VIRQ.CF del
@@ -903,24 +916,24 @@ KKEY?.LF	dc.l 	BAUD.NF
 KKEY?.NF	dc.b	5 128 +
 		dc.b 	char ? char Y char E char K char K
 KKEY?.SF	dc.w	KKEY?.Z KKEY?.CF del
-KKEY?.CF	#.l	sem-keyboard
-		jsl 	acquire.cf
-		#.w 	PSWPOS	
+;		#.l	sem-keyboard
+;		jsl 	acquire.cf
+KKEY?.CF		#.w 	PSWPOS	
 		fetch.b
 		#.w 	PSRPOS
 		fetch.b
 		<>
-		#.l	sem-keyboard
-		jsl 	release.cf		
+;		#.l	sem-keyboard
+;		jsl 	release.cf		
 KKEY?.Z	rts
 ;
 KKEY.LF	dc.l	KKEY?.NF
 KKEY.NF	dc.b	4 128 +
 		dc.b	char Y char E char K char K
 KKEY.SF	dc.w 	KKEY.Z KKEY.CF del
-KKEY.CF	#.l	sem-keyboard
-		jsl 	acquire.cf
-		BEGIN
+;	#.l	sem-keyboard
+;		jsl 	acquire.cf
+KKEY.CF		BEGIN
 			pause
 			jsl	KKEY?.CF
 		UNTIL
@@ -936,8 +949,8 @@ KKEY.CF	#.l	sem-keyboard
 		#.l 	PSBUF		(rx+1 addr)
 		+			(addr+rx+1)
 		fetch.b		(char)
-		#.l	sem-keyboard
-		jsl 	release.cf	
+;		#.l	sem-keyboard
+;		jsl 	release.cf	
 KKEY.Z		rts
 ; PS2DECODE ( raw -- ascii)
 PS2FLAGS	dc.b	0						; modifier flags
@@ -953,9 +966,7 @@ PS2DECODE.LF	dc.l	KKEY.NF
 PS2DECODE.NF	dc.b	9 128 +
 		dc.b	char E char D char O char C char E char D char 2 char S char P
 PS2DECODE.SF	dc.w	PS2DECODE.Z PS2DECODE.CF del
-PS2DECODE.CF	#.l	sem-keyboard
-		jsl 	acquire.cf
-		#.b	hex 12	( raw 12)			; LEFT SHIFT
+PS2DECODE.CF	#.b	hex 12	( raw 12)			; LEFT SHIFT
 		over		( raw 12 raw)
 		=		( raw flag)
 		over		( raw flag raw)
@@ -1119,8 +1130,6 @@ PS2DECODE.CF	#.l	sem-keyboard
 		THEN
 		R>			( FLAGS' &FLAGS)
 		store.b	
-		#.l	sem-keyboard
-		jsl 	release.cf
 PS2DECODE.Z		rts
 ;
 PS2ASCII	CMD			; label here but do nothing    
@@ -1368,9 +1377,9 @@ CSR-ADDR.LF	dc.l	PS2DECODE.NF
 CSR-ADDR.NF	dc.b	8 128 +
 		dc.b	char R char D char D char A char - char R char S char C
 CSR-ADDR.SF	dc.w	CSR-ADDR.Z CSR-ADDR.CF del
-CSR-ADDR.CF	#.l	sem-screen
-		jsl	acquire.cf
-		#.w	CSR-X			
+;	#.l	sem-screen
+;		jsl	acquire.cf
+CSR-ADDR.CF		#.w	CSR-X			
 		fetch.l
 		lsl
 		#.w	CSR-Y
@@ -1384,8 +1393,8 @@ CSR-ADDR.CF	#.l	sem-screen
 		#.l	TEXT_ZERO
 		fetch.l
 		+
-		#.l	sem-screen
-		jsl	release.cf		
+;		#.l	sem-screen
+;		jsl	release.cf		
 CSR-ADDR.Z	rts				( addr)
 ;	
 ; CSR-PLOT ( c --, plot literal character at the current cursor position)
@@ -1393,15 +1402,15 @@ CSR-PLOT.LF	dc.l	CSR-ADDR.NF
 CSR-PLOT.NF	dc.b	8 128 +
 		dc.b	char T char O char L char P char - char R char S char C
 CSR-PLOT.SF	dc.w	CSR-PLOT.Z CSR-PLOT.CF del
-CSR-PLOT.CF	#.l	sem-screen
-		jsl	acquire.cf
-		#.w	INK
+;	#.l	sem-screen
+;		jsl	acquire.cf
+CSR-PLOT.CF		#.w	INK
 		fetch.w			( _c c_)
 		or				( w)
 		jsl	CSR-ADDR.CF		( w addr)			
 		store.w
-		#.l	sem-screen
-		jsl	release.cf		
+;		#.l	sem-screen
+;		jsl	release.cf		
 CSR-PLOT.Z	rts		
 ;
 ; CSR-ON
@@ -1409,9 +1418,9 @@ CSR-ON.LF	dc.l	CSR-PLOT.NF
 CSR-ON.NF	dc.b	6 128 +
 		dc.b	char N char O char - char R char S char C
 CSR-ON.SF	dc.w	CSR-ON.Z CSR-ON.CF del
-CSR-ON.CF	#.l	sem-screen
-		jsl	acquire.cf
-		#.b	char _			( c)
+;	#.l	sem-screen
+;		jsl	acquire.cf
+CSR-ON.CF		#.b	char _			( c)
 		#.w	PALETTE 4 +
 		fetch.b
 		#.w	256
@@ -1424,8 +1433,8 @@ CSR-ON.CF	#.l	sem-screen
 		#.w	CSR			( c addr char csr)
 		store.w			( c addr)
 		store.w
-		#.l	sem-screen
-		jsl	release.cf		
+;		#.l	sem-screen
+;		jsl	release.cf		
 CSR-ON.Z	rts		
 ; saved color+character underneath cursor
 CSR		dc.w	0
@@ -1434,14 +1443,14 @@ CSR-OFF.LF	dc.l	CSR-ON.NF
 CSR-OFF.NF	dc.b	7 128 +
 		dc.b	char F char F char O char - char R char S char C
 CSR-OFF.SF	dc.w	CSR-OFF.Z CSR-ON.Z del
-CSR-OFF.CF	#.l	sem-screen
-		jsl	acquire.cf
-		#.w	CSR
+;	#.l	sem-screen
+;		jsl	acquire.cf
+CSR-OFF.CF		#.w	CSR
 		fetch.b			( char)
 		jsl	CSR-ADDR.CF		
 		store.w
-		#.l	sem-screen
-		jsl	release.cf		
+;		#.l	sem-screen
+;		jsl	release.cf		
 CSR-OFF.Z	rts
 ;
 ;SCROLL	(n -- flag, scroll the screen fwd or back n lines.  returns true if out of range)
@@ -1449,9 +1458,9 @@ SCROLL.LF	dc.l	CSR-OFF.NF
 SCROLL.NF	dc.b	6 128 +
 		dc.b	char L char L char O char R char C char S
 SCROLL.SF	dc.w	SCROLL.Z SCROLL.CF del
-SCROLL.CF	#.l	sem-screen
-		jsl	acquire.cf
-		#.w	COLS				
+;	#.l	sem-screen
+;		jsl	acquire.cf
+SCROLL.CF		#.w	COLS				
 		fetch.b
 		2*				; width of the screen including color bytes
 		mults
@@ -1493,8 +1502,8 @@ SCROLL.CF	#.l	sem-screen
 		swap				( result new)
 		#.l	TEXT_ZERO
 		store.l
-		#.l	sem-screen
-		jsl	release.cf
+;		#.l	sem-screen
+;		jsl	release.cf
 SCROLL.Z	rts		
 ;
 ; (CLS, clear the screen)
@@ -1502,9 +1511,9 @@ CLS.LF		dc.l	SCROLL.NF
 CLS.NF		dc.b	3 128 +
 		dc.b	char S char L char C
 CLS.SF		dc.w	CLS.Z CLS.CF	del
-CLS.CF		#.l	sem-screen
-		jsl	acquire.cf
-		#.l	_TEXT_ZERO		( start start)		; clear screen memory	
+;		#.l	sem-screen
+;		jsl	acquire.cf
+CLS.CF		#.l	_TEXT_ZERO		( start start)		; clear screen memory	
 		dup
 		#.w	SCREENWORDS		( start start 24576)			; number of words in 2 screens
 		zero				( start start 24576 color)		; fill word	
@@ -1513,8 +1522,8 @@ CLS.CF		#.l	sem-screen
 		#.l	TEXT_ZERO					; reset pointer to TEXT_ZERO
 		store.l
 		jsl	HOME.cf
-		#.l	sem-screen
-		jsl	release.cf		
+;		#.l	sem-screen
+;		jsl	release.cf		
 CLS.Z		rts
 ;
 ; HOME ( --, position the cursor upper left without clearing the screen)
@@ -1522,16 +1531,16 @@ HOME.LF	dc.l	CLS.NF
 HOME.NF	dc.b	4 128 +
 		dc.s	HOME
 HOME.SF	dc.w	HOME.Z HOME.CF del
-HOME.CF	#.l	sem-screen
-		jsl	acquire.cf
-		zero							; reset cursor position
+;	#.l	sem-screen
+;		jsl	acquire.cf
+HOME.CF		zero							; reset cursor position
 		#.w	CSR-X
 		store.l	
 		zero
 		#.w	CSR-Y
 		store.l
-		#.l	sem-screen
-		jsl	release.cf
+;		#.l	sem-screen
+;		jsl	release.cf
 HOME.Z	rts	
 ;
 ; VWAIT ( --, wait for a VGA vertical blank)
@@ -1557,9 +1566,9 @@ SCRSET.LF	dc.l	VWAIT.NF
 SCRSET.NF	dc.b	6 128 +
 		dc.b	char T char E char S char R char C char S
 SCRSET.SF	dc.w	SCRSET.Z SCRSET.CF del
-SCRSET.CF	#.l	sem-screen
-		jsl	acquire.cf
-		#.l	mode			; check screen mode
+;	#.l	sem-screen
+;		jsl	acquire.cf
+SCRSET.CF		#.l	mode			; check screen mode
 		fetch.b
 		dup				( mode mode)
 		#.b	binary 00000111
@@ -1584,8 +1593,8 @@ SCRSET.CF	#.l	sem-screen
 		fetch.b			
 		#.w	ROWS			
 		store.b
-		#.l	sem-screen
-		jsl	release.cf	
+;		#.l	sem-screen
+;		jsl	release.cf	
 SCRSET.Z	rts
 SCRSET		dc.b	60 80			; VGA, interlace off, ROWS, COLUMNS
 		dc.b	48 80			; VGA, interlace on
@@ -1599,9 +1608,9 @@ NEWLINE.LF	dc.l	SCRSET.NF
 NEWLINE.NF	dc.b	7 128 +
 		dc.b	char E char N char I char L char W char E char N
 NEWLINE.SF	dc.w	NEWLINE.Z NEWLINE.CF del
-NEWLINE.CF	#.l	sem-screen
-		jsl	acquire.cf
-		#.w	CSR-Y
+;	#.l	sem-screen
+;		jsl	acquire.cf
+NEWLINE.CF		#.w	CSR-Y
 		fetch.l
 		dup				( y y)
 		#.w	ROWS
@@ -1654,17 +1663,17 @@ NEWLINE.CF	#.l	sem-screen
 		zero							; zero x position
 		#.w	CSR-X
 		store.l
-		#.l	sem-screen
-		jsl	release.cf
+;		#.l	sem-screen
+;		jsl	release.cf
 NEWLINE.Z	rts
 ;
 CSR-FWD.LF 	dc.l	NEWLINE.NF
 CSR-FWD.NF 	dc.b	7 128 +
 		dc.b	char D char W char F char - char R char S char C
 CSR-FWD.SF	dc.w	CSR-FWD.Z CSR-FWD.CF del
-CSR-FWD.CF	#.l	sem-screen
-		jsl	acquire.cf
-		#.w	CSR-X
+;	#.l	sem-screen
+;		jsl	acquire.cf
+CSR-FWD.CF		#.w	CSR-X
 		fetch.l
 		dup
 		#.w	COLS
@@ -1679,17 +1688,17 @@ CSR-FWD.CF	#.l	sem-screen
 			#.w	CSR-X
 			store.l
 		THEN
-		#.l	sem-screen
-		jsl	release.cf
+;		#.l	sem-screen
+;		jsl	release.cf
 CSR-FWD.Z	rts
 ;
 CSR-BACK.LF	dc.l	CSR-FWD.NF
 CSR-BACK.NF	dc.b	8 128 +
 		dc.b	char K char C char A char B char - char R char S char C
 CSR-BACK.SF	dc.w	CSR-BACK.Z CSR-BACK.CF del
-CSR-BACK.CF	#.l	sem-screen
-		jsl	acquire.cf	
-		#.w	CSR-X
+;	#.l	sem-screen
+;		jsl	acquire.cf	
+CSR-BACK.CF		#.w	CSR-X
 		fetch.l
 		?dup
 		IF
@@ -1705,9 +1714,9 @@ CSR-TAB.LF	dc.l	CSR-BACK.NF
 CSR-TAB.NF	dc.b	7 128 +
 		dc.b	char B char A char T char - char R char S char C
 CSR-TAB.SF	dc.w	CSR-TAB.Z CSR-TAB.CF del
-CSR-TAB.CF	#.l	sem-screen
-		jsl	acquire.cf
-		#.w	CSR-X
+;	#.l	sem-screen
+;		jsl	acquire.cf
+CSR-TAB.CF		#.w	CSR-X
 		fetch.l		( x)
 		#.w	TAB
 		fetch.l		( x t)
@@ -1729,8 +1738,8 @@ CSR-TAB.CF	#.l	sem-screen
 			#.w	CSR-X
 			store.l
 		THEN
-		#.l	sem-screen
-		jsl	release.cf
+;		#.l	sem-screen
+;		jsl	release.cf
 CSR-TAB.Z	rts
 ;
 ; EMITRAW ( n --, emit a character to the VDU excluding non-printing recognition and cursor update)
@@ -1738,12 +1747,12 @@ EMITRAW.LF	dc.l	CSR-TAB.NF
 EMITRAW.NF	dc.b	7 128 +
 		dc.s	EMITRAW
 EMITRAW.SF	dc.w	EMITRAW.Z EMITRAW.CF del
-EMITRAW.CF	#.l	sem-screen
-		jsl	acquire.cf
-		jsl	CSR-PLOT.CF		; plot
+;	#.l	sem-screen
+;		jsl	acquire.cf
+EMITRAW.CF		jsl	CSR-PLOT.CF		; plot
 		jsl	CSR-FWD.CF		; advance cursor	
-		#.l	sem-screen
-		jsl	release.cf		
+;		#.l	sem-screen
+;		jsl	release.cf		
 EMITRAW.Z	rts
 ;
 ; VEMIT (n --, emit a character to the VDU including non-priniting recognition but excluding cursor update, internal word)
@@ -1751,9 +1760,9 @@ VEMIT.LF	dc.l	EMITRAW.NF
 VEMIT.NF	dc.b	5 128 +
 		dc.b	char T char I char M char E char V
 VEMIT.SF	dc.w	VEMIT.Z VEMIT.CF del
-VEMIT.CF 	#.l	sem-screen
-		jsl	acquire.cf
-		#.b	EOL
+;	#.l	sem-screen
+;		jsl	acquire.cf
+VEMIT.CF		#.b	EOL
 		over
 		=
 		IF								; newline
@@ -1795,8 +1804,8 @@ VEMIT.CF 	#.l	sem-screen
 				THEN
 			THEN
 		THEN
-		#.l	sem-screen
-		jsl	release.cf
+;		#.l	sem-screen
+;		jsl	release.cf
 VEMIT.Z	rts
 ;
 ; TYPERAW ( addr len, type to VDU, excluding non-printing recognition including cursor update)
@@ -1804,9 +1813,9 @@ TYPERAW.LF	dc.l	VEMIT.NF
 TYPERAW.NF	dc.b	7 128 +
 		dc.b	char W char A char R char E char P char Y char T
 TYPERAW.SF	dc.w	TYPERAW.Z TYPERAW.CF del
-TYPERAW.CF	#.l	sem-screen
-		jsl	acquire.cf
-		?dup
+;	#.l	sem-screen
+;		jsl	acquire.cf
+TYPERAW.CF		?dup
 		IF
 			over			( addr len addr)
 			+			( start end)
@@ -1817,8 +1826,8 @@ TYPERAW.CF	#.l	sem-screen
 				jsl	EMITRAW.CF
 			LOOP
 		THEN
-		#.l	sem-screen
-		jsl	release.cf
+;		#.l	sem-screen
+;		jsl	release.cf
 TYPERAW.Z	rts
 ;
 ; VTYPE ( addr len, type to VDU, including non-printing recognition)
@@ -1826,9 +1835,9 @@ VTYPE.LF	dc.l	TYPERAW.NF
 VTYPE.NF	dc.b	5 128 +
 		dc.b	char E char P char Y char T char V
 VTYPE.SF	dc.w	VTYPE.Z VTYPE.CF del
-VTYPE.CF	#.l	sem-screen
-		jsl	acquire.cf
-		?dup
+;	#.l	sem-screen
+;		jsl	acquire.cf
+VTYPE.CF		?dup
 		IF
 			over			( addr len addr)
 			+			( start end)
@@ -1841,8 +1850,8 @@ VTYPE.CF	#.l	sem-screen
 		ELSE				\ null length
 			drop			\ drop address
 		THEN
-		#.l	sem-screen
-		jsl	release.cf
+;		#.l	sem-screen
+;		jsl	release.cf
 VTYPE.Z	rts
 ;				
 ; BACKGROUND ( n --, set the background color)
@@ -1866,9 +1875,9 @@ INTERLACE.LF	dc.l	SEVENSEG.NF
 INTERLACE.NF	dc.b	9 128 +
 		dc.s	INTERLACE
 INTERLACE.SF	dc.w	INTERLACE.Z INTERLACE.CF del
-INTERLACE.CF	#.l	sem-screen
-		jsl	acquire.cf
-		#.l	mode
+;	#.l	sem-screen
+;		jsl	acquire.cf
+INTERLACE.CF		#.l	mode
 		fetch.b
 		swap
 		IF
@@ -1881,8 +1890,8 @@ INTERLACE.CF	#.l	sem-screen
 		#.l	mode
 		store.b	
 		jsl	SCRSET.CF
-		#.l	sem-screen
-		jsl	release.cf		
+;		#.l	sem-screen
+;		jsl	release.cf		
 INTERLACE.Z	rts
 ;
 ; SCREENSIZE ( mode --, set VGA mode.  0 = off, 1=VGA, 2=SVGA, 3=XGA)
@@ -1890,10 +1899,10 @@ VGA.LF	dc.l	INTERLACE.NF
 VGA.NF	dc.b	3 128 +
 		dc.s	VGA
 VGA.SF	dc.w	VGA.Z VGA.CF del
-VGA.CF		#.l	sem-screen
-		jsl	acquire.cf
+;		#.l	sem-screen
+;		jsl	acquire.cf
 		jsl	CLS.CF				( VGA)
-		#.l	mode
+VGA.CF		#.l	mode
 		fetch.b				( VGA mode)
 		#.b	binary	11111000		
 		and					( VGA mode`)
@@ -1901,8 +1910,8 @@ VGA.CF		#.l	sem-screen
 		#.l	mode
 		store.b	
 		jsl	SCRSET.CF
-		#.l	sem-screen
-		jsl	release.cf
+;		#.l	sem-screen
+;		jsl	release.cf
 VGA.Z	rts
 ;
 ; COLORMODE ( flag --. set 16/16 or 256/0 color mode)
@@ -1910,9 +1919,9 @@ COLORMODE.LF	dc.l	VGA.NF
 COLORMODE.NF	dc.b	9 128 +
 		dc.s	COLORMODE
 COLORMODE.SF	dc.w	COLORMODE.Z COLORMODE.CF del
-COLORMODE.CF	#.l	sem-screen
-		jsl	acquire.cf
-		#.l	mode
+;	#.l	sem-screen
+;		jsl	acquire.cf
+COLORMODE.CF		#.l	mode
 		fetch.b
 		swap
 		IF
@@ -1924,8 +1933,8 @@ COLORMODE.CF	#.l	sem-screen
 		THEN
 		#.l	mode
 		store.b	
-		#.l	sem-screen
-		jsl	release.cf		
+;		#.l	sem-screen
+;		jsl	release.cf		
 COLORMODE.Z	rts
 ;
 ;PALETTE.LF	dc.l	COLORMODE.NF
