@@ -6,7 +6,7 @@ DECIMAL
 
 : >pos		\ n -- ; step to position n
 	CSR-X 
-	@ - spaces
+	- spaces
 ;
 
 : 2-		\ n -- n-2

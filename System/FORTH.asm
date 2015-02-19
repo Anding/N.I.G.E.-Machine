@@ -20,6 +20,9 @@
 ; -----------------------------------------------------------------------------------------------
 ; ASSEMBLER CONSTANTS
 ; -----------------------------------------------------------------------------------------------
+; **** SYSTEM HARDWARE ****
+;
+system-freq	equ	100000000
 ;
 ; **** VIRTUALIZATION  ****
 ;
@@ -664,7 +667,9 @@ ACQUIRE.CF	BEGIN			( addr)
 		REPEAT			( v addr)
 		#.l	CurrentVM
 		fetch.b		( v addr VM)
-		swap			( v VM addr)
+		#.b	255
+		xor
+		swap			( v VM~ addr)
 		store.b		( v)
 		#.l	SingleMulti				; re-enable multitasking to its prior state
 ACQUIRE.Z	store.b,rts		
@@ -695,6 +700,8 @@ FREE.CF	fetch.b		( v) 			;binary semaphores are byte variables
 		swap			( flag0 v)
 		#.l	CurrentVM
 		fetch.b		( flag0 v VM)
+		#.b	255
+		xor			( flag0 v VM~)
 		=			( flag0 flag=)	; this task already has the semaphore
 		or,rts			( flag)
 ; 
@@ -762,36 +769,52 @@ SEMIT.LF	dc.l	COUNTER.NF
 SEMIT.NF	dc.b	5 128 +	
 		dc.b 	char T char I char M char E char S
 SEMIT.SF	dc.w 	SEMIT.Z SEMIT.CF del 	
-SEMIT.CF	BEGIN		; check STYPE is not already in progress		
+SEMIT.CF	#.l	sem-RS232
+		jsl	acquire.cf
+		BEGIN		; check STYPE is not already in progress	
+			pause
 			#.l	RStxCNT
 			fetch.l
 			0=
 		UNTIL
 		BEGIN		; wait for TBE
+			pause
 			#.l HWstatus
 			fetch.b	
 			#.b HWmask_TBE
 			and			; TBE bit
 		UNTIL		
 		#.l RS232tx
-SEMIT.Z	store.b,rts
+		store.b
+		#.l	sem-RS232
+		jsl	release.cf
+SEMIT.Z	rts
 ;	
 SKEY?.LF	dc.l 	SEMIT.NF
 SKEY?.NF	dc.b	5 128 +
 		dc.b	char ? char Y char E char K char S
 SKEY?.SF	dc.w	SKEY?.Z SKEY?.CF del
-SKEY?.CF	#.w RSrxWPOS	
+SKEY?.CF	#.l	sem-RS232
+		jsl	acquire.cf
+		#.w RSrxWPOS	
 		fetch.b
 		#.w RSrxRPOS
 		fetch.b
-SKEY?.Z	<>,rts
+		<>
+		#.l	sem-RS232
+		jsl	release.cf		
+SKEY?.Z	rts
 ;
 SKEY.LF	dc.l	SKEY?.NF
 SKEY.NF	dc.b	4 128 +
 		dc.b	char Y char E char K char S
 SKEY.SF	dc.w 	SKEY.Z SKEY.CF del
+		
+SKEY.CF	#.l	sem-RS232
+		jsl	acquire.cf
 		BEGIN
-SKEY.CF	jsl	SKEY?.CF
+			jsl	SKEY?.CF
+			pause
 		UNTIL
 		#.w 	RSrxRPOS
 		dup			(rx& rx&)
@@ -804,14 +827,19 @@ SKEY.CF	jsl	SKEY?.CF
 		store.b		(rx+1)
 		#.l 	RSrxBUF	(rx+1 addr)
 		+			(addr+rx+1)
-SKEY.Z		fetch.b,rts		(char)
+		fetch.b		(char)
+		#.l	sem-RS232
+		jsl	release.cf
+SKEY.Z		rts
 ;
 ; STYPE	(c-addr n --, type a string to RS232_S0)
 STYPE.LF	dc.l	SKEY.NF
 STYPE.NF	dc.b	5 128 +
 		dc.b 	char E char P char Y char T char S
 STYPE.SF	dc.w	STYPE.Z STYPE.CF del
-STYPE.CF	?dup				( c-addr n true | c-addr false)			
+STYPE.CF	#.l	sem-RS232
+		jsl	acquire.cf
+		?dup				( c-addr n true | c-addr false)			
 		IF			; check not zero length string
 ; EMIT the first character
 			over			( c-addr n c-addr)
@@ -829,32 +857,45 @@ STYPE.CF	?dup				( c-addr n true | c-addr false)
 				zero			( dummy)
 			THEN
 		THEN
-STYPE.Z	drop,rts		( )
+		drop		( )
+		#.l	sem-RS232
+		jsl	release.cf
+STYPE.Z	rts
 ;	
 ; SZERO ( --) reposition the RS232 read buffer
 SZERO.LF	dc.l	STYPE.NF
 SZERO.NF	dc.b	5 128 +
 		dc.b	char O char R char E char Z char S
 SZERO.SF	dc.w	SZERO.Z SZERO.CF del
-SZERO.CF	#.b	hex ff
+SZERO.CF	#.l	sem-RS232
+		jsl	acquire.cf
+		#.b	hex ff
 		dup
 		#.w	RSrxWPOS
 		store.b
 		#.w	RSrxRPOS
-SZERO.Z	store.b,rts
+		store.b
+		#.l	sem-RS232
+		jsl	release.cf		
+SZERO.Z	rts
 ;
 ; BAUD ( rate --, set the baud rate)
 BAUD.LF	dc.l	SZERO.NF
 BAUD.NF	dc.b	4 128 +
 		dc.b	char D char U char A char B
 BAUD.SF	dc.w	BAUD.Z BAUD.CF del
-BAUD.CF	#.l	100000000		( system freq)
+BAUD.CF	#.l	sem-RS232
+		jsl	acquire.cf
+		#.l	system-freq		( system freq)
 		swap				( freq baud)
 		1+
 		divu
 		nip				( divide)
 		#.l	RS232DIVIDE
-BAUD.Z		store.l,rts
+		store.l
+		#.l	sem-RS232
+		jsl	release.cf			
+BAUD.Z		rts
 ;
 ; **** KEYBOARD ****
 ;
@@ -862,19 +903,26 @@ KKEY?.LF	dc.l 	BAUD.NF
 KKEY?.NF	dc.b	5 128 +
 		dc.b 	char ? char Y char E char K char K
 KKEY?.SF	dc.w	KKEY?.Z KKEY?.CF del
-KKEY?.CF	pause
+KKEY?.CF	#.l	sem-keyboard
+		jsl 	acquire.cf
 		#.w 	PSWPOS	
 		fetch.b
 		#.w 	PSRPOS
 		fetch.b
-KKEY?.Z	<>,rts
+		<>
+		#.l	sem-keyboard
+		jsl 	release.cf		
+KKEY?.Z	rts
 ;
 KKEY.LF	dc.l	KKEY?.NF
 KKEY.NF	dc.b	4 128 +
 		dc.b	char Y char E char K char K
 KKEY.SF	dc.w 	KKEY.Z KKEY.CF del
-KKEY.CF	BEGIN
-		jsl	KKEY?.CF
+KKEY.CF	#.l	sem-keyboard
+		jsl 	acquire.cf
+		BEGIN
+			pause
+			jsl	KKEY?.CF
 		UNTIL
 		#.w 	PSRPOS
 		dup			(rx& rx&)
@@ -887,7 +935,10 @@ KKEY.CF	BEGIN
 		store.b		(rx+1)
 		#.l 	PSBUF		(rx+1 addr)
 		+			(addr+rx+1)
-KKEY.Z		fetch.b,rts		(char)
+		fetch.b		(char)
+		#.l	sem-keyboard
+		jsl 	release.cf	
+KKEY.Z		rts
 ; PS2DECODE ( raw -- ascii)
 PS2FLAGS	dc.b	0						; modifier flags
 SHIFT_FLAG 	EQU 	1
@@ -902,7 +953,9 @@ PS2DECODE.LF	dc.l	KKEY.NF
 PS2DECODE.NF	dc.b	9 128 +
 		dc.b	char E char D char O char C char E char D char 2 char S char P
 PS2DECODE.SF	dc.w	PS2DECODE.Z PS2DECODE.CF del
-PS2DECODE.CF	#.b	hex 12	( raw 12)			; LEFT SHIFT
+PS2DECODE.CF	#.l	sem-keyboard
+		jsl 	acquire.cf
+		#.b	hex 12	( raw 12)			; LEFT SHIFT
 		over		( raw 12 raw)
 		=		( raw flag)
 		over		( raw flag raw)
@@ -1065,7 +1118,10 @@ PS2DECODE.CF	#.b	hex 12	( raw 12)			; LEFT SHIFT
 			THEN
 		THEN
 		R>			( FLAGS' &FLAGS)
-PS2DECODE.Z	store.b,rts	
+		store.b	
+		#.l	sem-keyboard
+		jsl 	release.cf
+PS2DECODE.Z		rts
 ;
 PS2ASCII	CMD			; label here but do nothing    
  dc.b 0
@@ -1312,7 +1368,9 @@ CSR-ADDR.LF	dc.l	PS2DECODE.NF
 CSR-ADDR.NF	dc.b	8 128 +
 		dc.b	char R char D char D char A char - char R char S char C
 CSR-ADDR.SF	dc.w	CSR-ADDR.Z CSR-ADDR.CF del
-CSR-ADDR.CF	#.w	CSR-X			
+CSR-ADDR.CF	#.l	sem-screen
+		jsl	acquire.cf
+		#.w	CSR-X			
 		fetch.l
 		lsl
 		#.w	CSR-Y
@@ -1325,25 +1383,35 @@ CSR-ADDR.CF	#.w	CSR-X
 		+
 		#.l	TEXT_ZERO
 		fetch.l
-CSR-ADDR.Z	+,rts				( addr)
+		+
+		#.l	sem-screen
+		jsl	release.cf		
+CSR-ADDR.Z	rts				( addr)
 ;	
 ; CSR-PLOT ( c --, plot literal character at the current cursor position)
 CSR-PLOT.LF	dc.l	CSR-ADDR.NF
 CSR-PLOT.NF	dc.b	8 128 +
 		dc.b	char T char O char L char P char - char R char S char C
 CSR-PLOT.SF	dc.w	CSR-PLOT.Z CSR-PLOT.CF del
-CSR-PLOT.CF	#.w	INK
+CSR-PLOT.CF	#.l	sem-screen
+		jsl	acquire.cf
+		#.w	INK
 		fetch.w			( _c c_)
 		or				( w)
 		jsl	CSR-ADDR.CF		( w addr)			
-CSR-PLOT.Z	store.w,rts		
+		store.w
+		#.l	sem-screen
+		jsl	release.cf		
+CSR-PLOT.Z	rts		
 ;
 ; CSR-ON
 CSR-ON.LF	dc.l	CSR-PLOT.NF
 CSR-ON.NF	dc.b	6 128 +
 		dc.b	char N char O char - char R char S char C
 CSR-ON.SF	dc.w	CSR-ON.Z CSR-ON.CF del
-CSR-ON.CF	#.b	char _			( c)
+CSR-ON.CF	#.l	sem-screen
+		jsl	acquire.cf
+		#.b	char _			( c)
 		#.w	PALETTE 4 +
 		fetch.b
 		#.w	256
@@ -1355,7 +1423,10 @@ CSR-ON.CF	#.b	char _			( c)
 		fetch.w			( c addr char)
 		#.w	CSR			( c addr char csr)
 		store.w			( c addr)
-CSR-ON.Z	store.w,rts		
+		store.w
+		#.l	sem-screen
+		jsl	release.cf		
+CSR-ON.Z	rts		
 ; saved color+character underneath cursor
 CSR		dc.w	0
 ;
@@ -1363,17 +1434,24 @@ CSR-OFF.LF	dc.l	CSR-ON.NF
 CSR-OFF.NF	dc.b	7 128 +
 		dc.b	char F char F char O char - char R char S char C
 CSR-OFF.SF	dc.w	CSR-OFF.Z CSR-ON.Z del
-CSR-OFF.CF	#.w	CSR
+CSR-OFF.CF	#.l	sem-screen
+		jsl	acquire.cf
+		#.w	CSR
 		fetch.b			( char)
 		jsl	CSR-ADDR.CF		
-CSR-OFF.Z	store.w,rts
+		store.w
+		#.l	sem-screen
+		jsl	release.cf		
+CSR-OFF.Z	rts
 ;
 ;SCROLL	(n -- flag, scroll the screen fwd or back n lines.  returns true if out of range)
 SCROLL.LF	dc.l	CSR-OFF.NF
 SCROLL.NF	dc.b	6 128 +
 		dc.b	char L char L char O char R char C char S
 SCROLL.SF	dc.w	SCROLL.Z SCROLL.CF del
-SCROLL.CF	#.w	COLS				
+SCROLL.CF	#.l	sem-screen
+		jsl	acquire.cf
+		#.w	COLS				
 		fetch.b
 		2*				; width of the screen including color bytes
 		mults
@@ -1414,13 +1492,19 @@ SCROLL.CF	#.w	COLS
 		THEN
 		swap				( result new)
 		#.l	TEXT_ZERO
-SCROLL.Z	store.l,rts		
+		store.l
+		#.l	sem-screen
+		jsl	release.cf
+SCROLL.Z	rts		
 ;
+; (CLS, clear the screen)
 CLS.LF		dc.l	SCROLL.NF
 CLS.NF		dc.b	3 128 +
 		dc.b	char S char L char C
 CLS.SF		dc.w	CLS.Z CLS.CF	del
-CLS.CF		#.l	_TEXT_ZERO		( start start)		; clear screen memory	
+CLS.CF		#.l	sem-screen
+		jsl	acquire.cf
+		#.l	_TEXT_ZERO		( start start)		; clear screen memory	
 		dup
 		#.w	SCREENWORDS		( start start 24576)			; number of words in 2 screens
 		zero				( start start 24576 color)		; fill word	
@@ -1428,20 +1512,36 @@ CLS.CF		#.l	_TEXT_ZERO		( start start)		; clear screen memory
 		jsl	FILL.W.CF		( start)			
 		#.l	TEXT_ZERO					; reset pointer to TEXT_ZERO
 		store.l
+		jsl	HOME.cf
+		#.l	sem-screen
+		jsl	release.cf		
+CLS.Z		rts
+;
+; HOME ( --, position the cursor upper left without clearing the screen)
+HOME.LF	dc.l	CLS.NF
+HOME.NF	dc.b	4 128 +
+		dc.s	HOME
+HOME.SF	dc.w	HOME.Z HOME.CF del
+HOME.CF	#.l	sem-screen
+		jsl	acquire.cf
 		zero							; reset cursor position
 		#.w	CSR-X
 		store.l	
 		zero
 		#.w	CSR-Y
-CLS.Z		store.l,rts
+		store.l
+		#.l	sem-screen
+		jsl	release.cf
+HOME.Z	rts	
 ;
 ; VWAIT ( --, wait for a VGA vertical blank)
-VWAIT.LF	dc.l	CLS.NF
+VWAIT.LF	dc.l	HOME.NF
 VWAIT.NF	dc.b	5 128 +
 		dc.S	VWAIT
 VWAIT.SF	dc.w	VWAIT.Z VWAIT.CF del
 VWAIT.CF	#.l	VBLANK
 		BEGIN							; wait for 0 to ensure we get a full interval
+			pause
 			dup
 			fetch.b
 			0=
@@ -1457,7 +1557,9 @@ SCRSET.LF	dc.l	VWAIT.NF
 SCRSET.NF	dc.b	6 128 +
 		dc.b	char T char E char S char R char C char S
 SCRSET.SF	dc.w	SCRSET.Z SCRSET.CF del
-SCRSET.CF	#.l	mode			; check screen mode
+SCRSET.CF	#.l	sem-screen
+		jsl	acquire.cf
+		#.l	mode			; check screen mode
 		fetch.b
 		dup				( mode mode)
 		#.b	binary 00000111
@@ -1481,7 +1583,10 @@ SCRSET.CF	#.l	mode			; check screen mode
 		1+
 		fetch.b			
 		#.w	ROWS			
-SCRSET.Z	store.b,rts
+		store.b
+		#.l	sem-screen
+		jsl	release.cf	
+SCRSET.Z	rts
 SCRSET		dc.b	60 80			; VGA, interlace off, ROWS, COLUMNS
 		dc.b	48 80			; VGA, interlace on
 		dc.b	75 100			; SVGA, interlace off
@@ -1494,7 +1599,9 @@ NEWLINE.LF	dc.l	SCRSET.NF
 NEWLINE.NF	dc.b	7 128 +
 		dc.b	char E char N char I char L char W char E char N
 NEWLINE.SF	dc.w	NEWLINE.Z NEWLINE.CF del
-NEWLINE.CF	#.w	CSR-Y
+NEWLINE.CF	#.l	sem-screen
+		jsl	acquire.cf
+		#.w	CSR-Y
 		fetch.l
 		dup				( y y)
 		#.w	ROWS
@@ -1546,13 +1653,18 @@ NEWLINE.CF	#.w	CSR-Y
 		THEN
 		zero							; zero x position
 		#.w	CSR-X
-NEWLINE.Z	store.l,rts
+		store.l
+		#.l	sem-screen
+		jsl	release.cf
+NEWLINE.Z	rts
 ;
 CSR-FWD.LF 	dc.l	NEWLINE.NF
 CSR-FWD.NF 	dc.b	7 128 +
 		dc.b	char D char W char F char - char R char S char C
 CSR-FWD.SF	dc.w	CSR-FWD.Z CSR-FWD.CF del
-CSR-FWD.CF	#.w	CSR-X
+CSR-FWD.CF	#.l	sem-screen
+		jsl	acquire.cf
+		#.w	CSR-X
 		fetch.l
 		dup
 		#.w	COLS
@@ -1567,13 +1679,17 @@ CSR-FWD.CF	#.w	CSR-X
 			#.w	CSR-X
 			store.l
 		THEN
+		#.l	sem-screen
+		jsl	release.cf
 CSR-FWD.Z	rts
 ;
 CSR-BACK.LF	dc.l	CSR-FWD.NF
 CSR-BACK.NF	dc.b	8 128 +
 		dc.b	char K char C char A char B char - char R char S char C
 CSR-BACK.SF	dc.w	CSR-BACK.Z CSR-BACK.CF del
-CSR-BACK.CF	#.w	CSR-X
+CSR-BACK.CF	#.l	sem-screen
+		jsl	acquire.cf	
+		#.w	CSR-X
 		fetch.l
 		?dup
 		IF
@@ -1581,13 +1697,17 @@ CSR-BACK.CF	#.w	CSR-X
 			#.w	CSR-X
 			store.l
 		THEN
+		#.l	sem-screen
+		jsl	release.cf		
 CSR-BACK.Z	rts
 ;
 CSR-TAB.LF	dc.l	CSR-BACK.NF
 CSR-TAB.NF	dc.b	7 128 +
 		dc.b	char B char A char T char - char R char S char C
 CSR-TAB.SF	dc.w	CSR-TAB.Z CSR-TAB.CF del
-CSR-TAB.CF	#.w	CSR-X
+CSR-TAB.CF	#.l	sem-screen
+		jsl	acquire.cf
+		#.w	CSR-X
 		fetch.l		( x)
 		#.w	TAB
 		fetch.l		( x t)
@@ -1609,6 +1729,8 @@ CSR-TAB.CF	#.w	CSR-X
 			#.w	CSR-X
 			store.l
 		THEN
+		#.l	sem-screen
+		jsl	release.cf
 CSR-TAB.Z	rts
 ;
 ; EMITRAW ( n --, emit a character to the VDU excluding non-printing recognition and cursor update)
@@ -1616,16 +1738,22 @@ EMITRAW.LF	dc.l	CSR-TAB.NF
 EMITRAW.NF	dc.b	7 128 +
 		dc.s	EMITRAW
 EMITRAW.SF	dc.w	EMITRAW.Z EMITRAW.CF del
-EMITRAW.CF	jsl	CSR-PLOT.CF		; plot
+EMITRAW.CF	#.l	sem-screen
+		jsl	acquire.cf
+		jsl	CSR-PLOT.CF		; plot
 		jsl	CSR-FWD.CF		; advance cursor	
+		#.l	sem-screen
+		jsl	release.cf		
 EMITRAW.Z	rts
 ;
 ; VEMIT (n --, emit a character to the VDU including non-priniting recognition but excluding cursor update, internal word)
 VEMIT.LF	dc.l	EMITRAW.NF
 VEMIT.NF	dc.b	5 128 +
 		dc.b	char T char I char M char E char V
-		dc.w	VEMIT.Z VEMIT.CF del
-VEMIT.CF 	#.b	EOL
+VEMIT.SF	dc.w	VEMIT.Z VEMIT.CF del
+VEMIT.CF 	#.l	sem-screen
+		jsl	acquire.cf
+		#.b	EOL
 		over
 		=
 		IF								; newline
@@ -1667,6 +1795,8 @@ VEMIT.CF 	#.b	EOL
 				THEN
 			THEN
 		THEN
+		#.l	sem-screen
+		jsl	release.cf
 VEMIT.Z	rts
 ;
 ; TYPERAW ( addr len, type to VDU, excluding non-printing recognition including cursor update)
@@ -1674,7 +1804,9 @@ TYPERAW.LF	dc.l	VEMIT.NF
 TYPERAW.NF	dc.b	7 128 +
 		dc.b	char W char A char R char E char P char Y char T
 TYPERAW.SF	dc.w	TYPERAW.Z TYPERAW.CF del
-TYPERAW.CF	?dup
+TYPERAW.CF	#.l	sem-screen
+		jsl	acquire.cf
+		?dup
 		IF
 			over			( addr len addr)
 			+			( start end)
@@ -1685,6 +1817,8 @@ TYPERAW.CF	?dup
 				jsl	EMITRAW.CF
 			LOOP
 		THEN
+		#.l	sem-screen
+		jsl	release.cf
 TYPERAW.Z	rts
 ;
 ; VTYPE ( addr len, type to VDU, including non-printing recognition)
@@ -1692,7 +1826,9 @@ VTYPE.LF	dc.l	TYPERAW.NF
 VTYPE.NF	dc.b	5 128 +
 		dc.b	char E char P char Y char T char V
 VTYPE.SF	dc.w	VTYPE.Z VTYPE.CF del
-VTYPE.CF	?dup
+VTYPE.CF	#.l	sem-screen
+		jsl	acquire.cf
+		?dup
 		IF
 			over			( addr len addr)
 			+			( start end)
@@ -1705,6 +1841,8 @@ VTYPE.CF	?dup
 		ELSE				\ null length
 			drop			\ drop address
 		THEN
+		#.l	sem-screen
+		jsl	release.cf
 VTYPE.Z	rts
 ;				
 ; BACKGROUND ( n --, set the background color)
@@ -1728,7 +1866,9 @@ INTERLACE.LF	dc.l	SEVENSEG.NF
 INTERLACE.NF	dc.b	9 128 +
 		dc.s	INTERLACE
 INTERLACE.SF	dc.w	INTERLACE.Z INTERLACE.CF del
-INTERLACE.CF	#.l	mode
+INTERLACE.CF	#.l	sem-screen
+		jsl	acquire.cf
+		#.l	mode
 		fetch.b
 		swap
 		IF
@@ -1741,6 +1881,8 @@ INTERLACE.CF	#.l	mode
 		#.l	mode
 		store.b	
 		jsl	SCRSET.CF
+		#.l	sem-screen
+		jsl	release.cf		
 INTERLACE.Z	rts
 ;
 ; SCREENSIZE ( mode --, set VGA mode.  0 = off, 1=VGA, 2=SVGA, 3=XGA)
@@ -1748,7 +1890,9 @@ VGA.LF	dc.l	INTERLACE.NF
 VGA.NF	dc.b	3 128 +
 		dc.s	VGA
 VGA.SF	dc.w	VGA.Z VGA.CF del
-VGA.CF	jsl	CLS.CF					( VGA)
+VGA.CF		#.l	sem-screen
+		jsl	acquire.cf
+		jsl	CLS.CF				( VGA)
 		#.l	mode
 		fetch.b				( VGA mode)
 		#.b	binary	11111000		
@@ -1757,6 +1901,8 @@ VGA.CF	jsl	CLS.CF					( VGA)
 		#.l	mode
 		store.b	
 		jsl	SCRSET.CF
+		#.l	sem-screen
+		jsl	release.cf
 VGA.Z	rts
 ;
 ; COLORMODE ( flag --. set 16/16 or 256/0 color mode)
@@ -1764,7 +1910,9 @@ COLORMODE.LF	dc.l	VGA.NF
 COLORMODE.NF	dc.b	9 128 +
 		dc.s	COLORMODE
 COLORMODE.SF	dc.w	COLORMODE.Z COLORMODE.CF del
-COLORMODE.CF	#.l	mode
+COLORMODE.CF	#.l	sem-screen
+		jsl	acquire.cf
+		#.l	mode
 		fetch.b
 		swap
 		IF
@@ -1776,6 +1924,8 @@ COLORMODE.CF	#.l	mode
 		THEN
 		#.l	mode
 		store.b	
+		#.l	sem-screen
+		jsl	release.cf		
 COLORMODE.Z	rts
 ;
 ;PALETTE.LF	dc.l	COLORMODE.NF
@@ -1809,50 +1959,54 @@ SCREENPLACE.Z		rts			; cannot use #.l,rts with inline compiler
 INK.LF		dc.l	SCREENPLACE.NF
 INK.NF		dc.b	3 128 +
 		dc.b	char K char N char I
-INK.SF		dc.w	4
-INK.CF		#.w	INK
-		rts
+INK.SF		dc.w	INK.Z INK.CF del
+INK.CF		#.l	INK
+INK.Z		rts
 INK		dc.b	6			; note this variable is BYTE length!
 		ds.b	3			; padding
 ;
 CSR-X.LF	dc.l	INK.NF
 CSR-X.NF	dc.b	5 128 +
 		dc.b	char X char - char R char S char C
-CSR-X.SF	dc.w	4
-CSR-X.CF	#.w	CSR-X
-		rts
+CSR-X.SF	dc.w	CSR-X.Z CSR-X.CF del
+CSR-X.CF	#.l	CSR-X
+		fetch.l
+CSR-X.Z	rts
 CSR-X		dc.l	0
 ;
 CSR-Y.LF	dc.l	CSR-X.NF
 CSR-Y.NF	dc.b	5 128 +
 		dc.b	char Y char - char R char S char C
-CSR-Y.SF	dc.w	4
-CSR-Y.CF	#.w	CSR-Y
-		rts
+CSR-Y.SF	dc.w	CSR-Y.Z CSR-Y.CF del
+CSR-Y.CF	#.l	CSR-Y
+		fetch.l
+CSR-Y.Z	rts
 CSR-Y		dc.l	0
 ;
 TAB.LF		dc.l	CSR-Y.NF
 TAB.NF		dc.b	3 128 +
 		dc.b	char B char A char T
-TAB.SF		dc.w	4
-TAB.CF		#.w	TAB
-		rts
+TAB.SF		dc.w	TAB.Z TAB.CF del
+TAB.CF		#.l	TAB
+TAB.Z		rts
 TAB		dc.l	7			; default to 7 spaces
 ;
 ROWS.LF	dc.l	TAB.NF
 ROWS.NF	dc.b	4 128 +
 		dc.b	char S char W char O char R
-ROWS.SF	dc.w	4
+ROWS.SF	dc.w	ROWS.Z ROWS.CF del
 ROWS.CF	#.w	ROWS
-		rts
+		fetch.b
+ROWS.Z		rts
 ROWS		dc.b	60
 ;
 COLS.LF	dc.l	ROWS.NF
 COLS.NF	dc.b	4 128 +
 		dc.b	char S char L char O char C
-COLS.SF	dc.w	4
+COLS.SF	dc.w	ROWS.Z ROWS.CF del
 COLS.CF	#.w	COLS
-		rts
+		fetch.b
+COLS.Z		rts
 COLS		dc.b	100
 ;
 >REMOTE.LF	dc.l	COLS.NF
@@ -3195,9 +3349,10 @@ UPPER.NF	dc.b	5 128 +
 		dc.b	char R char E char P char P char U
 UPPER.SF	dc.w	UPPER.Z UPPER.CF del
 UPPER.CF	dup			( char char)
-		#.b char a 		( char a)
-		< 			( char flag)
-		not			( char flag')
+		#.b 	char a 	( char a)
+		#.b 	char z		( char a z)
+		1+			( char a z+1)
+		jsl 	within.cf	( char flag)
 		IF
 			#.b 32 	( char 32)
 			- 		( CHAR)
@@ -5374,9 +5529,12 @@ VARIABLE.CF	jsl	COLON.CF				; initiate the word
 		fetch.l
 		#.b	6					; allow enough space for a 4 byte PFA address, load and RTS
 		+
-		dup				(PFA PFA)
+		dup				( PFA PFA)
 		jsl	LITERAL.CF				; compile the PFA
 		jsl	SEMICOLON.CF
+		zero				( PFA 0)	; zero the variable
+		over				( PFA 0 PFA)
+		store.l
 		#.b	4			( PFA 4)	; allocate space for the the PFA
 		+				( HERE')
 		#.w  	HERE_			( HERE' &HERE)						
@@ -6466,7 +6624,6 @@ STATE.NF	dc.b	5 128 +
 STATE.SF	dc.w	4
 STATE.CF	#.l	STATE_
 		rts
-STATE_		dc.l	0
 ;
 >IN.LF		dc.l	STATE.NF
 >IN.NF		dc.b	3 128 +
@@ -6814,11 +6971,11 @@ GET-ENTRY.Z		fetch.l,rts
 ; internal FORTH dictionary variables	
 ; ------------------------------------------------------------------------------------------------------------
 COMPILEstackP		dc.l	USERRAM 1016 + ; pointer for the compiler stack (used by LEAVE)
-;LAST-CF		dc.l	0		; CF of last word created by HEAD
-;LAST-SF		dc.l	0		; SF of last word created by HEAD
 USERNEXT_		dc.l	USERRAM 44 +	; next available location for a user variable
 LOCAL.COUNT		dc.l	0		; used in the creation of the local variable buffer
-SD-CARD		dc.b	0		; binary semaphore for SD-CARD access
+sem-keyboard		dc.b	0		; binary semaphore for read access to the keyboard buffer
+sem-screen		dc.b	0		; binary semaphore for write access to the screen
+sem-RS232		dc.b	0		; binary semaphore for read/write access to the RS232 port
 IN_LEN_a		dc.l	0		; used by SAVE-INPUT and RESTORE-INPUT
 >IN_a			dc.l	0		; used by SAVE-INPUT and RESTORE-INPUT
 input_buff_a		dc.l	0		; used by SAVE-INPUT and RESTORE-INPUT

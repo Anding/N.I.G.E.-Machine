@@ -345,8 +345,8 @@ constant ED.SCREENBASE
 		THEN 
 		+							( line col')
 	LOOP								( line col)
-	COLS C@ 1- MIN						( line col)				\ avoid screen overrun
-	swap ed.linenum @ ed.buf1stlinenum @ - COLS C@ * 	( col offsetForLines)
+	COLS 1- MIN						( line col)				\ avoid screen overrun
+	swap ed.linenum @ ed.buf1stlinenum @ - COLS * 	( col offsetForLines)
 	+ 2* ED.SCREENBASE +						( addr)
 ;
 
@@ -386,7 +386,7 @@ constant ED.SCREENBASE
 		THEN
 		0 DO							( dest col char)
 			swap 1+					( dest char col')		
-			dup COLS C@ 1- < IF				( dest char col' )			\ within the line
+			dup COLS 1- < IF				( dest char col' )			\ within the line
 				swap rot over				( col' char dest char)
 				2 256 * or				( col' char dest char+color)	\ textcolor = 2
 				over w!				( col' char dest)
@@ -416,15 +416,15 @@ constant ED.SCREENBASE
 		THEN
 		\ calculate the starting address in the buffer
 		over ED.linenum @ ED.buf1stlinenum @ -		( first-line linecount offsetlines)
-		COLS C@ 2* *						( first-line linecount offsetbytes)
+		COLS 2* *						( first-line linecount offsetbytes)
 		ED.SCREENBASE + swap					( first-line address linecount)
 		\ clear the lines to be refreshed
-		over over COLS C@ 2* * 0 fill
+		over over COLS 2* * 0 fill
 		\ render text
 		0 DO
 			over ED.linelen @ -1 = IF LEAVE THEN 	\ end of file or empty file
 			over over ED.refresh				( line address)
-			COLS C@ 2* +					( line next-address)
+			COLS 2* +					( line next-address)
 			swap LIST.FWD swap				( next-line next-address)
 		LOOP
 		drop drop
@@ -436,7 +436,7 @@ constant ED.SCREENBASE
 	SCREENPLACE @ ED.lastscreenplace !
 	1 ED.buf1stlinenum !
 	1 ED.scr1stlinenum !	
-	ROWS C@ ED.scrlines ! 	
+	ROWS ED.scrlines ! 	
 	ED.cursorline @ ED.refreshline !
 	-1 ED.refreshcount !
 	VWAIT 0 COLORMODE	
@@ -444,7 +444,7 @@ constant ED.SCREENBASE
 	BEGIN
 		ED.refreshbuffer 
 		ED.scr1stlinenum @ ED.buf1stlinenum @ - 
-		COLS C@ 2* * ED.SCREENBASE + SCREENPLACE !
+		COLS 2* * ED.SCREENBASE + SCREENPLACE !
 		ED.drawcursor
 	
 		KEY 
@@ -533,7 +533,7 @@ variable printfile.ID
 	WHILE
 		type CR
 		1+				\ update the line count
-		dup rows c@ /mod drop
+		dup rows /mod drop
 		0= IF key drop THEN	\ screenfull - wait for a keypress to continue	
 	REPEAT
 	drop drop		\ drop address and length

@@ -4,9 +4,9 @@
 : .'
 	0 GET-ENTRY 		( addr NF)		\ only the FORTH worldlist will be searched
 	BEGIN
-		over over U<
+		over over U<	( addr NF flag)
 	WHILE
-		4 - @ 		( addr NF')
+		4 - @ 		( addr NF')		\ get the name field of the next word linked in the dictionary
 	REPEAT
 	dup >R 		( addr NF R:NF)
 	dup c@ 31 and + 3 + 	( addr CF R:NF)
@@ -104,7 +104,6 @@ STRINGTABLE DASM.lookup-ops
 
 \ DASM ( addr n --) disassemble n bytes starting at addr
 : DASM
-	>R >R TAB dup @ swap 5 over ! R> R>
 	over + swap	( end addr)
 	BEGIN
 		over over >
@@ -130,7 +129,7 @@ STRINGTABLE DASM.lookup-ops
 			THEN
 			xword
 			dup 9 emit .
-			over + 9 emit 9 emit u.
+			over + 9 emit u.
 		ELSE				\ not a branch
 			dup 64 =			( end addr n rtsFLAG)
 			IF
@@ -160,7 +159,6 @@ STRINGTABLE DASM.lookup-ops
 	drop
 	drop
 	cr
-	! ( restore TAB)
 ;
 
 \ SIZEOF ( xt -- n), return the size of an executable
