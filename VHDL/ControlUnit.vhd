@@ -13,6 +13,7 @@ entity ControlUnit is
 			  irq : in STD_LOGIC;												-- interrupt request
 			  irv : in std_logic_vector(3 downto 0);						-- interrupt request vector  1 - 15
 			  rti : out std_logic;												-- return from interrupt signal
+			  blocked : in STD_LOGIC;											-- indicates that interrupts are currently blocked
 			  TOS : in STD_LOGIC_VECTOR (31 downto 0);					-- Top Of Stack (TOS_n from datapath, one cycle ahead of registered value)
 			  TOS_r : in STD_LOGIC_VECTOR (31 downto 0);					-- Top Of Stack (TOS from datapath, the registered value)
 			  NOS_r : in STD_LOGIC_VECTOR (31 downto 0);					-- Next On Stack (registered value)		  
@@ -149,7 +150,6 @@ signal debug_i : std_logic_vector(7 downto 0);
 signal PCthaw_m1 : STD_LOGIC_VECTOR (19 downto 0);
 signal preemp_counter, preemp_counter_n : STD_LOGIC_VECTOR (15 downto 0);
 signal preempt : STD_LOGIC;
-signal blocked : STD_LOGIC;
 
 alias signbit is MEMdatain_X(29);
 
@@ -189,7 +189,7 @@ begin
 	MEMaddr <= MEMaddr_i;
 	MEM_WRQ_X <= MEM_WRQ_X_i;
 				
-	preempt <= '1' when (preemp_counter = interval) AND (interval /=0) AND (singleMulti = '1') and (blocked = '0') else '0';
+	preempt <= '1' when (preemp_counter >= interval) and (interval /=0) and (singleMulti = '1')  and (blocked = '0') else '0'; --
 	
 	-- main control unit state machine
 	
@@ -218,11 +218,11 @@ begin
 			AuxControl_i <= AuxControl_n;
 			debug <= debug_i;
 			preemp_counter <= preemp_counter_n;
-			if int_trig = '1' then
-				blocked <= '1';
-			elsif  opcode = ops_RTI and branch = "01" then 
-				blocked <= '0';
-			end if;
+--			if int_trig = '1' then
+--				blocked <= '1';
+--			elsif  opcode = ops_RTI and branch = "01" then 
+--				blocked <= '0';
+--			end if;
 			if (count >= timer) then 
 				count <= 0;	
 				PC <= PC_n;													-- PC is updated only on the final cycle of multi-cycle opcode states
@@ -243,7 +243,7 @@ begin
 			PCthaw_m1 <= (others=>'0');
 			debug <= (others=>'0');
 			preemp_counter <= (others=>'0');
-			blocked <= '0';
+--			blocked <= '0';
 		end if;
 	end process;
 
@@ -262,8 +262,8 @@ begin
 			if int_trig = '1' or retrap(0) = '1' or branch = bps_BRA or branch = bps_BEQ 
 				or opcode = ops_JSL  or opcode = ops_JSR or opcode = ops_JMP or opcode = ops_TRAP or opcode = ops_RETRAP or
 				opcode = ops_byte or opcode = ops_word or opcode = ops_long or opcode = ops_catch or 
-				(virtualInterrupt = 0 AND (opcode = ops_PAUSE or preempt = '1')) or
-				((opcode = ops_toR or opcode = ops_Rfrom) and MEMdatain_X(23 downto 22) = "01")  -- insert one cycle delay between >R or R> and RTS
+				(virtualInterrupt = 0 AND (opcode = ops_PAUSE or preempt = '1')) 
+			-- or	((opcode = ops_toR or opcode = ops_Rfrom) and MEMdatain_X(23 downto 22) = "01")  -- insert one cycle delay between >R or R> and RTS
 				then state_n <= skip1;																				-- 	to allow the return stack value to be stored in RAM
 			elsif (opcode = ops_PAUSE OR preempt = '1') then	-- virtual interrupt
 				state_n <= virtual_interrupt;
@@ -475,7 +475,7 @@ begin
 				AuxControl_n(1 downto 1) <= "0";					-- setting for SRAM fetch or load literal instructions										
 
 			-- Return stack control logic 
-			if (int_trig = '0') and (opcode = ops_RETRAP or branch = bps_RTS) then -- override on interrupt
+			if (int_trig = '0') and (preempt = '0') and (opcode = ops_RETRAP or branch = bps_RTS) then -- override on interrupt or preemptive switch
 				AuxControl_n(0 downto 0) <= "1";						-- decrement return stack pointer
 			else
 				AuxControl_n(0 downto 0) <= "0";
@@ -528,12 +528,10 @@ begin
 				pause <= '0';
 			end if;
 			
-			if singleMulti = '0' or (preemp_counter >= interval) then										
+			if singleMulti = '0' then										
 					preemp_counter_n <= (others => '0');
-			elsif blocked = '0' and int_trig = '0' then
-					preemp_counter_n <= preemp_counter + 1;	
 			else
-					preemp_counter_n <= preemp_counter;										-- don't count instructions within interrupts
+					preemp_counter_n <= preemp_counter + 1;	
 			end if;
 			
 			if preempt = '1' then 
