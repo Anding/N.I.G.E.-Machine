@@ -15,93 +15,33 @@ sevenseg	equ	hex 03F830
 	#.b	1			; task 0 switches to task 1
 	#.l	TaskControl
 	store.w
-	#.l	test			; task 1 PCoverride address
+	#.l	test1			; task 1 PCoverride address
 	#.l	PCoverride 4 +	
 	store.l
 	#.b	1			; enable multitasking
 	#.l	SingleMulti
 	store.b
-	#.b	9			; enable pre-emptive multitasking
+	#.b	25			; enable pre-emptive multitasking
 	#.l	Interval
 	store.b
 ;
-	zero
-	zero
-	zero
+test3	begin
+		jsl debug
+		jsl csr-fwd.cf
+	again
 ;
-	begin
-		NOP	( 0)
-		PSP@	( 1)
-		DUP	( 2)
-		SWAP	( 3)
-		OVER	( 4)
-		ROT	( 4)	
-		DROP	( 3)
-		NIP	( 2)
-		>R	( 1)
-		R@	( 2)
-		R>	( 3)
-		+	( 2)
-		-	( 1)
-		NEGATE	( 1)
-		1+	( 1)
-		1-	( 1)
-		2/	( 1)
-		zero	( 2)
-		ADDX	( 1)
-		zero	( 2)
-		SUBX	( 1)
-		zero	( 2)
-		=	( 1)
-		zero	( 2)
-		<>	( 1)
-		zero	( 2)
-		<	( 1)
-		zero	( 2)
-		>	( 1)
-		zero	( 2)
-		U<	( 1)
-		zero	( 2)
-		U>	( 1)
-		0=	( 1)
-		0<>	( 1)
-		0<	( 1)
-		0>	( 1)
-		zero	( 2)
-		AND	( 1)
-		zero	( 2)
-		OR	( 1)
-		INVERT	( 1)
-		zero	( 2)
-		XOR	( 1)
-		LSL	( 1)
-		LSR	( 1)
-		XBYTE	( 1)
-		XWORD  ( 1)
-		zero	( 2)
-		MULTS	( 1)
-		zero	( 2)
-		MULTU	( 1)
-		zero	( 2)
-		DIVS	( 1)
-		zero	( 2)
-		DIVU	( 1)
-		zero	( 2)
-		?DUP	( 2)
-		not	( 2)
-		?DUP	( 3)
-		drop	( 2)
-		drop	( 1)
-		drop 	( 0)
-		#.B	1	( 1)
-		#.W	1	( 2)
-		#.L	1	( 3)
-		drop	( 2)
-		drop	( 1)
-		drop	( 0)
-	again	
+debug	begin
+		pause
+		zero
+		not
+	until
+		#.b 10
+		zero
+		DO
+		LOOP
+	rts
 ;
-test	begin
+test1	begin
 		PSP@
 		#.l	sevenseg
 		store.l
@@ -113,7 +53,7 @@ MS		>R			( R:n)
 		#.l	MScounter
 		fetch.l		( start R:n)
 			BEGIN		
-;				pause
+				pause
 				#.l	MScounter	
 				fetch.l		( start now R:n)
 				over			( start now start R:n)
@@ -125,3 +65,21 @@ MS		>R			( R:n)
 		drop
 		drop,rts
 ;
+CSR-FWD.CF	#.w	CSR-X
+		fetch.l
+		dup
+		#.w	COLS
+		fetch.b
+		1-
+		=
+		IF	
+			drop
+;			jsl	NEWLINE.CF
+		ELSE
+			1+
+			#.w	CSR-X
+			store.l
+		THEN
+CSR-FWD.Z	rts
+CSR-X		dc.l	0
+COLS		dc.l	0

@@ -189,7 +189,7 @@ begin
 	MEMaddr <= MEMaddr_i;
 	MEM_WRQ_X <= MEM_WRQ_X_i;
 				
-	preempt <= '1' when (preemp_counter >= interval) and (interval /=0) and (singleMulti = '1')  and (blocked = '0') else '0'; --
+	preempt <= '1' when (preemp_counter >= interval) and (interval /=0) and (singleMulti = '1')  and (blocked = '0') and (opcode < 41) and  (opcode /= 7) and (opcode /=2) and (branch = "00") else '0'; --
 	
 	-- main control unit state machine
 	
