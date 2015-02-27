@@ -6,8 +6,49 @@ sevenseg	equ	hex 03F830
 PSDRAM		equ	hex 040000
 SRAM		equ	hex 001000
 USERRAM	equ	hex 03C000
-		ds.l	2		; BLOCK RAM simulator bug
-		#.b	0	
+SingleMulti	equ	243712
+CurrentVM	equ	243716
+Interval	equ	243720
+TaskControl	equ	244224
+PCoverride 	equ	244736
+		ds.l	2			; BLOCK RAM simulator bug
+;
+		#.b	1			; task 0 switches to task 1
+		#.l	TaskControl
+		store.w
+		#.l	test1			; task 1 PCoverride address
+		#.l	PCoverride 4 +	
+		store.l
+		#.b	1			; enable multitasking
+		#.l	SingleMulti
+		store.b
+		#.b	1			; enable pre-emptive multitasking
+		#.l	Interval
+		store.b
+;
+main	begin
+		jsl debug
+		#.b	5
+		zero
+		DO
+			nop
+		LOOP
+	again
+;
+debug	begin
+;		pause
+		zero
+		not
+	until
+		#.b	10
+		>R
+		R@
+		drop
+		R>
+		drop
+	rts
+;
+test1		#.b	0	
 		jsl	announce	; test subroutine call
 		#.b	1	
 		jsl	announce	; test branching	
