@@ -252,14 +252,6 @@ PSRPOS		dc.b	hex ff
 START.CF	jsl	ESTACKINIT.CF
 		jsl	USERINIT.CF
 		jsl	INIT-MULTI.CF
-; debug
-		zero
-		#.b 	1
-		#.w	debug.cf
-		jsl	run.cf
-		pause
-		#.b	25
-		jsl	preemptive.cf
 ; configure the screen
 		jsl	SCRSET.CF
 		jsl	CLS.CF
@@ -937,21 +929,7 @@ KKEY?.CF	#.l	sem-keyboard
 		jsl 	release.cf		
 KKEY?.Z	rts
 ;
-DEBUG.LF	dc.l	KKEY?.NF
-DEBUG.NF	dc.b	5 128 +
-		dc.s	DEBUG
-DEBUG.SF	dc.w 	DEBUG.Z DEBUG.CF del
-DEBUG.CF	BEGIN
-			PSP@
-			#.l	sevenseg
-			store.l
-			pause
-			#.b 	1
-			jsl	ms.cf
-		AGAIN
-DEBUG.Z	rts
-;
-KKEY.LF	dc.l	DEBUG.NF
+KKEY.LF	dc.l	KKEY?.NF
 KKEY.NF	dc.b	4 128 +
 		dc.b	char Y char E char K char K
 KKEY.SF	dc.w 	KKEY.Z KKEY.CF del
@@ -2131,6 +2109,7 @@ SPI.fast 	#.b	16 						; 6.25MHz at 100MHz
 ; SPI.wait ( --, wait until the SPI transfer-bus is available)	
 SPI.wait 	#.l	SPI.status 
 		BEGIN
+			pause
 			dup
 			fetch.b
 			#.b	1
