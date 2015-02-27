@@ -3437,6 +3437,9 @@ D+.CF		#.l	intmask		; disable interrupts to protect ADDX flag
 		zero
 		swap 
 		store.b
+; suspend multitasking		
+		jsl	CHECKSUSPEND	( v)	
+		>R
 ; D+ code
 		SWAP		( h2 l2 l1 h1)
 		>R		( h2 l2 l1 R: h1)
@@ -3447,6 +3450,10 @@ D+.CF		#.l	intmask		; disable interrupts to protect ADDX flag
 		R>		( l3 h2 h1)
 		ADDX		( l3 h3)
 		swap		( h3 l3)
+; re-enable multitasking to its prior state
+		R>
+		#.l	SingleMulti 
+		store.b		
 ; restore interrupts
 		R>
 		#.l	intmask
@@ -3464,6 +3471,9 @@ D-.CF		#.l	intmask		; disable interrupts to protect SUBX flag
 		zero
 		swap 
 		store.b
+; suspend multitasking		
+		jsl	CHECKSUSPEND	( v)	
+		>R
 ; D- code	
 		>R
 		SWAP
@@ -3472,6 +3482,10 @@ D-.CF		#.l	intmask		; disable interrupts to protect SUBX flag
 		R>
 		R>
 		SUBX
+; re-enable multitasking to its prior state
+		R>
+		#.l	SingleMulti 
+		store.b			
 ; restore interrupts
 		R>
 		#.l	intmask
