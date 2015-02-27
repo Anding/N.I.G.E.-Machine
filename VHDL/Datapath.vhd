@@ -220,7 +220,7 @@ begin
 	begin
 		if AuxControl (0 downto 0) = "1" then				-- instruction RTS requires decrement subroutine stack pointer
 			SSP_n <= SSP_m1;
-		elsif (RSP_n1 = SSdatain(535 + rsp_w -1 downto 535)) and (RSP_n1 = RSP_m1) and (SSP /= 0) then
+		elsif (RSP_n1 = SSdatain(535 + rsp_w -1 downto 535)) and (MicroControl(15 downto 13) = "001") and (SSP /= 0) then  -- THIS IS TRIGGERING INSTEAD OF A DATAPATH THAW
 			SSP_n <= SSP_m1;										-- pop of return stack below the baseline requires decrement subroutine stack pointer
 		else
 			case MicroControl(19 downto 17) is				-- multiplexer for setting subroutine stack pointer
@@ -249,8 +249,8 @@ begin
 	-- Exception stack
 	process (AuxControl, MicroControl, ESP_m1, ESP_p1, ESdatain, SSP_n, SSP_m1, ESP, DatapathThaw)	
 	begin
-		if SSP_n = ESdatain(295 + ssp_w -1 downto 295) and (SSP_n = SSP_m1)  and (ESP /= 0) then
-			ESP_n <= ESP_m1;										-- pop of subroutine stack below the baseline requires decrement subroutine stack pointer
+		if SSP_n = ESdatain(295 + ssp_w -1 downto 295) and (MicroControl(19 downto 17) = "001")  and (ESP /= 0) then   
+			ESP_n <= ESP_m1;										-- pop of subroutine stack below the baseline requires decrement exception stack pointer
 		else
 			case MicroControl(22 downto 20) is				-- multiplexer for setting subroutine stack pointer
 				when "001" =>

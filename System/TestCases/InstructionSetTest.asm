@@ -22,7 +22,7 @@ PCoverride 	equ	244736
 		#.b	1			; enable multitasking
 		#.l	SingleMulti
 		store.b
-		#.b	1			; enable pre-emptive multitasking
+		#.b	6			; enable pre-emptive multitasking
 		#.l	Interval
 		store.b
 ;
@@ -539,7 +539,10 @@ arith    	#.b	19
 		#.w	assert
 		jmp
 ; D+ code
-D+sub		SWAP		( h2 l2 l1 h1)
+D+sub		#.b	0			; disable multitasking
+		#.l	SingleMulti
+		store.b
+		SWAP		( h2 l2 l1 h1)
 		>R		( h2 l2 l1 R: h1)
 		rot		( l2 l1 h2 R: h1)
 		>R		( l2 l1 R: h1 h2)
@@ -547,16 +550,25 @@ D+sub		SWAP		( h2 l2 l1 h1)
 		R>		( l3 h2 R: h1)
 		R>		( l3 h2 h1)
 		ADDX		( l3 h3)
-		swap,rts	( h3 l3)
+		swap		( h3 l3)
+		#.b	1			; enable multitasking
+		#.l	SingleMulti	
+		store.b,rts
 ;
 ; D- 	(ud1 ud2 -- ud3)  double precision arithmetic
-D-sub		>R		( h2 l2 h1 R: l1)
+D-sub		#.b	0			; disable multitasking
+		#.l	SingleMulti
+		store.b
+		>R		( h2 l2 h1 R: l1)
 		SWAP		( h2 h1 l2 R: l1)
 		>R		( h2 h1 R: l1 l2)
 		-		( h3 R: l1 l2)
 		R>		( h3 l2 R: l1)
 		R>		( h3 l2 l1)
-		SUBX,rts	( h3 l3)
+		SUBX		( h3 l3)
+		#.b	1			; enable multitasking
+		#.l	SingleMulti		
+		store.b,rts
 ;
 ; others	
 others		#.b	20
