@@ -2,23 +2,21 @@
 The N.I.G.E. Machine
 ====================
 
-The N.I.G.E. Machine is a user-expandable micro-computer system that runs on an FPGA development board. It is designed specifically for the rapid prototyping of experimental scientific hardware or other devices. The key components of the system include a stack-based softcore CPU optimized for embedded control, a FORTH software environment, and a flexible digital logic layer that interfaces the micro-computer components with the external environment. The system is currently hosted on a Digilent Nexys 2 or Nexys 4 development boards.
+The N.I.G.E. Machine is a user-expandable micro-computer system that runs on an FPGA development board. It is designed specifically for the rapid prototyping of experimental scientific hardware or other devices. The key components of the system include a stack-based softcore CPU optimized for embedded control, a FORTH software environment, and a flexible digital logic layer that interfaces the micro-computer components with the external environment. The system is currently hosted on a Digilent Nexys 4 development board.
 
-Short video introduction to the system: 
-<http://www.youtube.com/watch?v=0v-HuVLRoUc>
-Demonstration of an example application with a light sensor:
-<http://www.youtube.com/watch?v=0Kj5EMdnkMk>
+Short video introductions: 
+https://www.youtube.com/channel/UCz_LqPfKT0r2rEID7Av-Chw
 
-Refereed papers about the system as presented at EuroFORTH 2012 and 2013: 
+Refereed papers about the system as presented at EuroFORTH: 
 http://www.complang.tuwien.ac.at/anton/euroforth/ef12/papers/
 http://www.complang.tuwien.ac.at/anton/euroforth/ef13/papers/
-
+http://www.complang.tuwien.ac.at/anton/euroforth/ef14/papers/
 
 
 Copyright and license
 =====================
 
-The N.I.G.E machine, its design and its source code are Copyright (C) 2012-2014 by Andrew Richard Read and dual licensed.
+The N.I.G.E machine, its design and its source code are Copyright (C) 2012-2015 by Andrew Richard Read and dual licensed.
     
 (1) For commercial or proprietary use you must obtain a commercial license agreement with Andrew Read (andrew81244@outlook.com)
     
@@ -30,7 +28,7 @@ The N.I.G.E Machine is distributed in the hope that it will be useful, but WITHO
 Reference manual
 ================
 
-A 50 page reference manual is available that covers getting started through to system customization, with detailed appendices.  Please see the file \Resources\Nige Machine Manual.pdf (in branch v3.0)
+A 50 page reference manual is available that covers getting started through to system customization, with detailed appendices.  Please see the file \Resources\Nige Machine Manual.pdf (in branch v4.0)
 
 
 Respoistory structure
@@ -67,9 +65,7 @@ Suggested experience
 Hardware
 --------
 
-The system currently runs on a Digilent Nexys 2 or Nexys 4 development board.  Please note that there are two versions of the Nexys 2, 1200k gates and 500k gates.  The design has been developed and tested with the 1200k gate board.  A port to the 500k gate board would likely be quite feasible but has not been tested.  If acquiring a new board then the Nexys 4 is recommended.
-http://www.digilentinc.com/Products/Detail.cfm?NavPath=2,400,789&Prod=NEXYS2
-https://digilentinc.com/Products/Detail.cfm?NavPath=2,400,1184&Prod=NEXYS4
+The system currently runs on a Digilent Nexys 4 development board.  A port to the Nexys4-DDR is planned but has not yet been implemented.  Prior versions (available in this repository) are available for the Nexys 2, 1200k gates and 500k gate boards - please see below.  
 
 
 Software
@@ -97,8 +93,9 @@ Set Tools/Options/General/Defaults "Tab Width" to 7
 Versions
 ========
 There are several versions in this repository 
-v3.0 is applicable to the Nexys4 board.  It is being actively developed with bug fixes and new features.
-v2.0 is applicable to the Nexys2 board (1200K gate).  It has been thoroughly tested but some small bugs likely remain.  It is not currently being further developed
+v4.0 is applicable to the Nexys4 board.  It is being actively developed with bug fixes and new features.
+v3.0 is applicable to the Nexys4 board.  It represents the version presented at EuroFORTH 2014
+v2.0 is applicable to the Nexys2 board (1200K gate).  It represents the version presented at EuroFORTH 2013.
 (There is also an experimental branch of v2.0 applicable to the v2.0 Nexys2 board (500K gate))
 v1.0 is the original version that was presented at EuroFORTH 2012
 
