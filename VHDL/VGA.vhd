@@ -21,11 +21,11 @@ entity VGA is
 			  addr_Color : out STD_LOGIC_VECTOR (7 downto 0);			  
            HSync : out  STD_LOGIC;									-- VGA adapter connections
            VSync : out  STD_LOGIC;
-			  VBLANK	: out STD_LOGIC;									-- vertical blank
+			  VBLANK	: out STD_LOGIC;									-- vertical blank (can this be replaced by NOT VGA_Active?)
 			  RGB : out  STD_LOGIC_VECTOR (11 downto 0);
-			  VGA_columns : out std_logic_vector(6 downto 0);
-			  VGA_active : out std_logic := '0';
-			  VGA_newline : out std_logic := '0'
+			  VGA_columns : out std_logic_vector(6 downto 0);	-- number of character columns less one
+			  VGA_active : out std_logic := '0';					-- activates the text buffer to provide data for the visible portion of the screen
+			  VGA_newline : out std_logic := '0'					-- signal that line has been displayed
 			  );
 end VGA;
 
@@ -105,7 +105,7 @@ begin
 			Vc <= CONV_STD_LOGIC_VECTOR(493,11);				-- end of vertical front porch (Vsync ends)
 			Vd <= CONV_STD_LOGIC_VECTOR(478,11);				-- last but one visible vertical pixel
 			Ve <= CONV_STD_LOGIC_VECTOR(526,11);				-- last vertical pixel less one
-			COLUMNS <= CONV_STD_LOGIC_VECTOR(79,7);		
+			COLUMNS <= CONV_STD_LOGIC_VECTOR(79,7);			-- number of displayed columns less one
 		end if;
 	end process;
 						
