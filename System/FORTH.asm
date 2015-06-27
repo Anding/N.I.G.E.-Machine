@@ -22,7 +22,7 @@
 ; -----------------------------------------------------------------------------------------------
 ; **** SYSTEM HARDWARE ****
 ;
-system-freq	equ	100000000
+system-freq	equ	950000000
 ;
 ; **** VIRTUALIZATION  ****
 ;
@@ -59,7 +59,6 @@ VBLANK		equ	hex 03f848
 ; **** MEMORY MAP ****
 ;
 USERRAM	equ	hex 03C000		; USER RAM area
-;PSTACK		equ	hex 03e000	; Parameter stack
 SSTACK		equ	hex 03f000		; Subroutine stack
 local0		equ	SSTACK			; local variables on the subroutine stack
 local1		equ	SSTACK 4 +
@@ -81,12 +80,12 @@ _input_buff	equ	USERRAM 1536 +	; default ACCEPT input buffer location
 _input_size	equ	256			; default ACCEPT input buffer size
 STRINGMAX	equ	480			; area within the PAD that can be used for interpret mode strings		
 ;
-SCREENWORDS	equ	hex 006000		; number of words in the screen buffer (96 rows * 128 cols * 2 screens)
-_TEXT_ZERO	equ	hex 040000		; default text memory location
-_TEXT_END	equ	hex 04C000		; one byte beyond the text memory location
-_FAT.buf	equ	hex 04C000		; FAT 512 byte storage space location 017B30
-_FAT.buffat	equ	hex 04C200		; FAT 512 byte storage space location for file allocation table 017D30
-_END		equ	hex 04C400		; HEAP location
+SCREENWORDS	equ	135 240 2  * *	; number of WORDS in the screen buffer (135 rows * 240 cols * 2 screens)
+_TEXT_ZERO	equ	hex 040000				; default text memory location
+_TEXT_END	equ	SCREENWORDS 2* _TEXT_ZERO +		; one byte beyond the text memory location
+_FAT.buf	equ	_TEXT_END				; FAT 512 byte storage space location
+_FAT.buffat	equ	_TEXT_END 512 +			; FAT 512 byte storage space location for file allocation table
+_END		equ	_TEXT_END 1024 +			; HEAP location
 ;
 ; **** FORTH LANGUAGE CONSTANTS ****
 ;
@@ -1387,7 +1386,7 @@ CSR-ADDR.CF	#.l	sem-screen
 		#.w	CSR-Y
 		fetch.l
 		#.w	COLS
-		fetch.b
+		fetch.w
 		2*
 		mults
 		drop
@@ -1463,7 +1462,7 @@ SCROLL.SF	dc.w	SCROLL.Z SCROLL.CF del
 SCROLL.CF	#.l	sem-screen
 		jsl	acquire.cf
 		#.w	COLS				
-		fetch.b
+		fetch.w
 		2*				; width of the screen including color bytes
 		mults
 		drop				( delta)
@@ -1482,10 +1481,10 @@ SCROLL.CF	#.l	sem-screen
 			dup				( new new)		; check top of range
 			#.l	_TEXT_ZERO
 			#.w	COLS
-			fetch.b
+			fetch.w
 			2*
 			#.w	ROWS
-			fetch.b
+			fetch.w
 			multu
 			drop
 			+				( new new base)
@@ -1568,42 +1567,54 @@ SCRSET.LF	dc.l	VWAIT.NF
 SCRSET.NF	dc.b	6 128 +
 		dc.b	char T char E char S char R char C char S
 SCRSET.SF	dc.w	SCRSET.Z SCRSET.CF del
-SCRSET.CF	#.l	sem-screen
+SCRSET.CF	#.l	sem-screen		; multitasking lock
 		jsl	acquire.cf
 		#.l	mode			; check screen mode
 		fetch.b
 		dup				( mode mode)
 		#.b	binary 00000111
 		and				( mode vga-mode)
-		1-				( mode 0/1/2)
-		lsl
-		lsl				( mode v) ; v is 0, 4, 8
-		swap
-		#.b	binary	00010000
-		and
-		lsr
-		lsr
-		lsr				( v w); w is 0, 2
-		+				( offset)
-		#.w	SCRSET
-		+
-		dup
-		fetch.b			; pickup the columns
+		1-				( mode 0/1/2/3)
+		2*				( mode 0/2/4/6)
+		#.w	SCRSET.C
+		over
+		+				( mode 0/1/2/3 addr)				
+		fetch.w
 		#.w	COLS
-		store.b			; save the variable
-		1+
-		fetch.b			
+		store.w			( mode 0/1/2/3)
+		swap				( 0/1/2/3 mode)
+		#.b	binary	00010000	
+		and				( 0/1/2/3 i-flag)		; interlace flag
+		IF
+			#.w 	SCRSET.RI
+		ELSE
+			#.w	SCRSET.R
+		THEN				
+		+				( addr)
+		fetch.w			
 		#.w	ROWS			
-		store.b
-		#.l	sem-screen
+		store.w
+		#.l	sem-screen		; multitasking lock
 		jsl	release.cf	
 SCRSET.Z	rts
-SCRSET		dc.b	60 80			; VGA, interlace off, ROWS, COLUMNS
-		dc.b	48 80			; VGA, interlace on
-		dc.b	75 100			; SVGA, interlace off
-		dc.b	60 100			; SVGA, interlace on
-		dc.b	96 128			; XGA, interlace off
-		dc.b	77 128			; XGA, interlace on
+SCRSET.C	dc.w	80			; VGA number of columns
+		dc.w	100			; SVGA
+		dc.w	128			; XGA
+		dc.w	240			; HD
+SCRSET.R	dc.w	60			; VGA number of rows		
+		dc.w	75			; SVGA
+		dc.w	96			; XGA
+		dc.w	135			; HD
+SCRSET.RI	dc.w	48			; VGA interlace number of rows
+		dc.w	60			; SVGA
+		dc.w	77			; XGA
+		dc.w	108			; HD
+;		dc.w	60 80			; VGA, interlace off, ROWS, COLUMNS
+;		dc.w	48 80			; VGA, interlace on
+;		dc.w	75 100			; SVGA, interlace off
+;		dc.w	60 100			; SVGA, interlace on
+;		dc.w	96 128			; XGA, interlace off
+;		dc.w	77 128			; XGA, interlace on
 ;
 ; NEWLINE ( --, implement a newline)
 NEWLINE.LF	dc.l	SCRSET.NF
@@ -1616,7 +1627,7 @@ NEWLINE.CF	#.l	sem-screen
 		fetch.l
 		dup				( y y)
 		#.w	ROWS
-		fetch.b
+		fetch.w
 		1-
 		=				( y flag)		; test if the cursor is at the bottom of the screen or not
 		IF							; cursor is bottom of screen
@@ -1627,15 +1638,15 @@ NEWLINE.CF	#.l	sem-screen
 				#.l	TEXT_ZERO			; Step 1 is to copy the current screen to the top of the buffer
 				fetch.l
 				#.w	COLS
-				fetch.b
+				fetch.w
 				2*
 				+						; source for copy begins one line from top of page
 				#.l	_TEXT_ZERO				; destination
 				#.w	ROWS				; Step 2 is to blank the rest of the buffer
-				fetch.b				( rows)
+				fetch.w				( rows)
 				1-					( rows-1)
 				#.w	COLS
-				fetch.b				( rows-1 cols)
+				fetch.w				( rows-1 cols)
 				2*					( rows-1 col-bytes)
 				multu
 				drop					( bytes) ; size = maximum full screen less the top line 
@@ -1679,7 +1690,7 @@ CSR-FWD.CF	#.l	sem-screen
 		fetch.l
 		dup
 		#.w	COLS
-		fetch.b
+		fetch.w
 		1-
 		=
 		IF	
@@ -1730,7 +1741,7 @@ CSR-TAB.CF	#.l	sem-screen
 		+
 		dup
 		#.w	COLS
-		fetch.b
+		fetch.w
 		1-
 		>
 		IF
@@ -2007,18 +2018,18 @@ ROWS.NF	dc.b	4 128 +
 		dc.b	char S char W char O char R
 ROWS.SF	dc.w	ROWS.Z ROWS.CF del
 ROWS.CF	#.w	ROWS
-		fetch.b
+		fetch.w
 ROWS.Z		rts
-ROWS		dc.b	60
+ROWS		dc.w	60
 ;
 COLS.LF	dc.l	ROWS.NF
 COLS.NF	dc.b	4 128 +
 		dc.b	char S char L char O char C
 COLS.SF	dc.w	COLS.Z COLS.CF del
 COLS.CF	#.w	COLS
-		fetch.b
+		fetch.w
 COLS.Z		rts
-COLS		dc.b	100
+COLS		dc.w	100
 ;
 >REMOTE.LF	dc.l	COLS.NF
 >REMOTE.NF	dc.b	7 128 +

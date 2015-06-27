@@ -8,11 +8,11 @@ entity TEXTbuffer is port
 			clk_MEM : IN std_logic;
 			clk_VGA : IN std_logic;
 			-- VGA
-			VGA_columns : IN std_logic_vector(6 downto 0);				-- number of dispalyed columns less one
+			VGA_columns : IN std_logic_vector(7 downto 0);				-- number of dispalyed columns less one
 			VGA_active : IN std_logic;											-- activates the text buffer to provide data for the visible portion of the screen
 			VGA_newline : IN std_logic;										-- signal that line has been displayed
 			txt_zero : IN std_logic_vector(23 downto 0);					-- base address of the screen buffer in PSDRAM
-			ADDR_TEXT : IN std_logic_vector(6 downto 0);					-- column number being read by the VGA controller
+			ADDR_TEXT : IN std_logic_vector(7 downto 0);					-- column number being read by the VGA controller
 			DATA_TEXT : OUT std_logic_vector(15 downto 0);				-- color and character data for the column in question
 			-- AXI burst read channel
 			t_axi_araddr : OUT  std_logic_vector(31 downto 0);
@@ -38,22 +38,22 @@ signal newline_flag : std_logic;
 signal active : std_logic_vector(2 downto 0);
 signal axi_addr, axi_addr_n : std_logic_vector(23 downto 0);
 signal wea : STD_LOGIC_VECTOR(0 DOWNTO 0);
-signal buffer_addr, buffer_addr_n : STD_LOGIC_VECTOR(6 DOWNTO 0);
+signal buffer_addr, buffer_addr_n : STD_LOGIC_VECTOR(7 DOWNTO 0);
 signal dina : STD_LOGIC_VECTOR(15 DOWNTO 0);
-signal addra, addrb : STD_LOGIC_VECTOR(7 DOWNTO 0);
+signal addra, addrb : STD_LOGIC_VECTOR(8 DOWNTO 0);
 signal bank, bank_n : std_logic :='0';
 signal line_count, line_count_n : std_logic_vector(2 downto 0);
 
 begin
 		t_axi_araddr <= "00000000" & axi_addr;		-- current start of row position in PSDRAM screen buffer 
-		t_axi_arlen  <= "0" & VGA_columns;			-- number of words to read is the number of characters in a row (= number of columns)
+		t_axi_arlen  <= VGA_columns;					-- number of words to read is the number of characters in a row (= number of columns)
 		t_axi_arsize <= "001";							-- readsize is word (16 bits)
 		t_axi_arburst <= "01";							-- Type: "01" = INCR
 		t_axi_rready <= '1';								-- The text buffer is always ready to read data
 		
 		addra <= (not bank) & buffer_addr;																							-- concatenate the active bank for writing with the current write address
 		addrb <= bank & ADDR_TEXT;																										-- concatenate the active bank for reading with the current read address
-		dina <= t_axi_rdata(31 downto 16) when buffer_addr(0) = '1' else t_axi_rdata(15 downto 0);				-- select word from longword bus		
+		dina <= t_axi_rdata(31 downto 16) when buffer_addr(0) = '1' else t_axi_rdata(15 downto 0);				-- select WORD from longword bus		
 			
 		process				-- cross clock domain signals
 		begin

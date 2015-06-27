@@ -61,7 +61,7 @@ signal bank, bank_n : bank_t;
 signal counter_clk, counter_ms : std_logic_vector(31 downto 0) := (others =>'0');
 signal timer_ms : std_logic_vector(31 downto 0) := (others =>'0');	
 signal reset, invReset, trig : std_logic;
-signal VGAclk25, VGAclk50, VGAclk75, clk100 : std_logic;
+signal VGAclk25, VGAclk50, VGAclk75, VGAclk150, clk100 : std_logic;
 signal irq, rti, ms_irq : std_logic;
 signal irv : std_logic_vector(3 downto 0);
 signal irq_mask : std_logic_vector(15 downto 1);
@@ -87,7 +87,7 @@ signal txt_zero : std_logic_vector(23 downto 0);
 signal DATA_OUT_VGA : std_logic_vector(7 downto 0) := (others=>'0');
 signal ADDR_VGA : std_logic_vector(8 downto 0);
 signal DATA_TEXT : std_logic_vector(15 downto 0) := (others=>'0');
-signal ADDR_TEXT : std_logic_vector(6 downto 0);
+signal ADDR_TEXT : std_logic_vector(7 downto 0);
 signal DATA_Char : std_logic_vector(7 downto 0);
 signal ADDR_Char : std_logic_vector(10 downto 0);
 signal DATA_Color : std_logic_vector(15 downto 0);
@@ -174,7 +174,7 @@ signal t_axi_rresp : std_logic_vector(1 downto 0);
 signal t_axi_rlast : std_logic;
 signal t_axi_rvalid : std_logic;
 signal s_aresetn : std_logic;
-signal VGA_columns : std_logic_vector(6 downto 0);
+signal VGA_columns : std_logic_vector(7 downto 0);
 signal VGA_active : std_logic;
 signal VGA_newline : std_logic;
 signal clk_system : std_logic;
@@ -205,7 +205,8 @@ signal blocked : STD_LOGIC;
 	  CLK_OUT1          : out    std_logic;
 	  CLK_OUT2          : out    std_logic;
 	  CLK_OUT3          : out    std_logic;
-	  CLK_OUT4          : out    std_logic
+	  CLK_OUT4          : out    std_logic;
+	  CLK_OUT5          : out    std_logic	  
 	 );
 	end component;
 		
@@ -228,7 +229,8 @@ begin
 	 CLK_OUT1 => VGACLK25,
     CLK_OUT2 => VGACLK50,
     CLK_OUT3 => VGACLK75,
-	 CLK_OUT4 => CLK100);
+    CLK_OUT4 => VGACLK150,	 
+	 CLK_OUT5 => CLK100);
 	 
 	-- System and memory clock selector
 	clk_system <= clk100;
@@ -238,10 +240,11 @@ begin
 		-- gated clocks are not good design practice in general but here we explicitly assume 
 		-- that the VGA clock domain is not synchronized with the SYSTEM clock domain
 		-- do not use these clocks to drive modules aside from VGA since they are be not timing constrained
-	with mode(1 downto 0) select
-			clk_VGA <= VGAclk25 when "01",
-						  VGAclk50 when "10",
-						  VGAclk75 when others;
+	with mode(2 downto 0) select
+			clk_VGA <= VGAclk25  when "001",
+						  VGAclk75  when "011",	
+						  VGAclk150 when "100",
+						  VGAclk50  when others; --"010"
 	 
 	-- global counters
 	process														 
