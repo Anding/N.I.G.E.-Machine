@@ -5,7 +5,7 @@
 \ 04 BCK reference
 \ 08 length of line (excluding line endings, -1 for list headers)
 \ 12 line number (starting at 1)
-\ 16 text (128 bytes reserved)
+\ 16 text (256 bytes reserved)
 
 : ED.linelen
 	8 + 
@@ -33,8 +33,8 @@ variable ED.refreshcount		\ number of lines to be refreshed in the buffer (-1 = 
 variable ED.lastscreenplace		\ restore the screen here
 
 \ allocate memory for editor's own screen buffer
-192 ed.buflines !
-ed.buflines @ 128 * 2* allocate drop				\ 128 maximum number of columns
+270 ed.buflines !
+ed.buflines @ 256 * 2* allocate drop			\ 256 maximum number of columns
 constant ED.SCREENBASE
 
 
@@ -57,10 +57,10 @@ constant ED.SCREENBASE
 	dup 20 + -1 swap !
 	0 >R							( last-node R:linenum)
 	BEGIN							( last-node R:linenum)
-		144 allocate 					( last-node addr ior R:linenum)
+		272 allocate 					( last-node addr ior R:linenum)
 		IF c" ALLOCATE failed" THROW THEN		
 		dup ED.linetxt				( last-node addr text-addr R:linenum)
-		128 ED.fileid @ READ-LINE 			( last-node addr u2 flag ior R:linenum)
+		256 ED.fileid @ READ-LINE 			( last-node addr u2 flag ior R:linenum)
 		IF c" READ-LINE failed" THROW THEN		
 	WHILE
 		over ED.linelen !			\ store the length u2, excluding delimiters
@@ -134,7 +134,7 @@ constant ED.SCREENBASE
 \ Implement a carriage return press
 : ED.carriage-return
 	\ create a new line and after the old line
-	144 allocate IF c" Allocate failed" THROW THEN	( addr)
+	272 allocate IF c" Allocate failed" THROW THEN	( addr)
 	ED.cursorline @ over over LIST.ins		( new-line old-line)
 	\ copy the characters following the cursor to the new line
 	dup ED.linelen @ ED.cursorcol @ - >R	( new-line old-line R:count)
@@ -157,7 +157,7 @@ constant ED.SCREENBASE
 : ED.insert ( char --)
 	ED.cursorline @ 				( char line)
 	dup ED.linelen @				( char line linelen)
-	dup 128 < IF					\ check within maximum line length				
+	dup 256 < IF					\ check within maximum line length				
 		ED.cursorcol @ -				( char line len)
 		?dup IF					\ there are characters to be copies
 			over ED.linetxt ED.cursorcol @ +	( char line len addr-src)
@@ -291,7 +291,7 @@ constant ED.SCREENBASE
 			\ reposition the cursor
 			dup ED.cursorcol !			( line2 line1 length1)
 			\ calculate src, dest, len and move
-			dup 128 swap - >R			( line2 line1 length1 R: sparelength1)
+			dup 256 swap - >R			( line2 line1 length1 R: sparelength1)
 			rot dup ED.linelen @			( line1 length1 line2 length2 R: sparelength1)
 			R> min >R				( line1 length1 line2 R: movelen)
 			-rot					( line2 line1 length1 R: movelen)
@@ -521,7 +521,7 @@ constant ED.SCREENBASE
 ;	
 
 variable printfile.ID
-128 buffer: printfile.buf
+256 buffer: printfile.buf
 
 : {print-file} ( -- inner routine for print-file)
 	CR
