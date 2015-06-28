@@ -230,10 +230,10 @@ begin
     CLK_OUT2 => VGACLK50,
     CLK_OUT3 => VGACLK75,
     CLK_OUT4 => VGACLK150,	 
-	 CLK_OUT5 => CLK100);
+	 CLK_OUT5 => CLK100);								-- THIS IS ACTUALLY 95MHz.  Reoptimize for 100MHz with SmartXplorer as final design step if needed
 	 
 	-- System and memory clock selector
-	clk_system <= clk100;
+	clk_system <= clk100;								-- Note above 100MHz vs. 95MHz
 	clk_MEM <= clk100;
 	
 	-- VGA clock selector
