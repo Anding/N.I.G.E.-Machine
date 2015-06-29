@@ -20,10 +20,10 @@ entity VGA is
 			  addr_Color : out STD_LOGIC_VECTOR (7 downto 0);			  
            HSync : out  STD_LOGIC;									-- VGA adapter connections
            VSync : out  STD_LOGIC;
-			  VBLANK	: out STD_LOGIC;									-- vertical blank
+			  VBlank	: out STD_LOGIC;									-- vertical blank
 			  RGB : out  STD_LOGIC_VECTOR (11 downto 0);
 			  VGA_columns : out std_logic_vector(7 downto 0);	-- number of character columns less one
-			  VGA_active : out std_logic := '0';					-- activates the text buffer to provide data for the visible portion of the screen
+--			  VGA_active : out std_logic := '0';					-- activates the text buffer to provide data for the visible portion of the screen
 			  VGA_newline : out std_logic := '0'					-- signal that line has been displayed
 			  );
 end VGA;
@@ -37,7 +37,7 @@ signal addressChar : std_logic_vector(10 downto 0):= (others=>'0');		  		-- Char
 signal addressColor : std_logic_vector(7 downto 0):= (others=>'0');	
 
 signal Hblk0, Hblk1, Hblk2, Hblk3, Hblk4, Hblk5: std_logic;							-- Signals video blank period
-signal Vblk0,vblk1m_i: std_logic := '1';													-- Signals video blank period
+signal VBlank_i: std_logic := '1';																-- Signals video blank period
 signal pixelGFX0, pixelGFX1, pixelGFX2 : std_logic_vector(7 downto 0);			-- Graphics pixel pipeline
 signal char_pixels : STD_LOGIC_VECTOR(7 downto 0);										-- Character shift register.  8 or 16 bit depending on character width
 signal char_color : STD_LOGIC_VECTOR(11 downto 0);										-- Colour data for current character
@@ -64,7 +64,7 @@ begin
 	addr_Text <= addressText;
 	addr_Char <= addressChar;
 	addr_Color <= addressColor;
-	--VBLANK <= vblk1m_i;
+	VBLANK <= VBLANK_i;
 	VGA_COLUMNS <= COLUMNS;
 	
 	with mode_r(4) select 											-- select the interlace mode
@@ -167,15 +167,15 @@ begin
 			VSync_i <= '1';			
 		end if;	
 		
-		-- Vertical blank signal
-		if Hcount = Ha then					-- last horizontal pixel:
-			if Vcount = Vd then					-- screen height less two:
-				vblk1m_i <= '1';					-- one row early, for driving DMA to fetch memory in advance
-			elsif Vcount = Ve then 		   -- last vertical pixel less one:
-				vblk1m_i <= '0';		
-			end if;
-			vblk0 <= vblk1m_i;				-- vertical blank signal		
-		end if;	
+--		-- Vertical blank signal
+--		if Hcount = Ha then					-- last horizontal pixel:
+--			if Vcount = Vd then					-- screen height less two:
+--				vblk1m_i <= '1';					-- one row early, for driving DMA to fetch memory in advance
+--			elsif Vcount = Ve then 		   -- last vertical pixel less one:
+--				vblk1m_i <= '0';		
+--			end if;
+--			vblk0 <= vblk1m_i;				-- vertical blank signal		
+--		end if;	
 	
 		-- Horizontal blank signals
 		if Hcount = Hd then						-- last visible pixel: VGA 639, SVGA 799
@@ -198,24 +198,29 @@ begin
 		
 		-- TEXTbuffer VGA active
 		if Vcount = Va and mode_r(2 downto 0) /= "000" then
-			VGA_active <= '1';
-			VBLANK <= '0';
+--			VGA_active <= '1';
+			VBLANK_i <= '0';
 		elsif Vcount = Vd then
-			VGA_active <= '0';
-			VBLANK <= '1';
+--			VGA_active <= '0';
+			VBLANK_i <= '1';
 		end if;
 	  
 	  	-- Text RAM address generator
-		if vblk0 = '0' and tVcount < 8 then							
-			if Hblk0 = '0' and Hcount(2 downto 0) = 7 then		-- (2 downto 0) or (3 downto 0) = 7 or 15, for 8 or 16 bit character width		
-				if addressText = COLUMNS then							-- CharWidth
-					addressText <= (others=>'0');		-- next frame row	
-				else
-					addressText <= addressText + 1;	-- last frame column: move to next character
-				end if;	
-			end if;	
-		else
-			addressText <= (others=>'0');
+		--if vblk0 = '0' and tVcount < 8 then			
+--		if Vcount = Ve then
+--					addressText <= (others=>'0');	
+--		elsif Hblk0 = '0' and Hcount(2 downto 0) = 7 then		-- (2 downto 0) or (3 downto 0) = 7 or 15, for 8 or 16 bit character width		
+--				if addressText = COLUMNS then							-- CharWidth
+--					addressText <= (others=>'0');		-- next frame row	
+--				else
+--					addressText <= addressText + 1;	-- last frame column: move to next character
+--				end if;	
+--		end if;
+		
+		if Hcount = Ha then
+				addressText <= (others=>'0');	
+		elsif Hcount(2 downto 0) = 7 then
+				addressText <= addressText + 1;					
 		end if;
 			
 		-- Read text memory and set char and color memory address
@@ -268,7 +273,7 @@ begin
 		end if;
 		
 		-- Drive pixel to output
-		if reset = '0' and Hblk5 = '0' and Vblk0 = '0' and mode_r(2 downto 0) /= "000" then
+		if reset = '0' and Hblk5 = '0' and VBLANK_i = '0' and mode_r(2 downto 0) /= "000" then
 			if char_pixels(7) = '1' then		
 				RGB_i <= text_f;
 			else

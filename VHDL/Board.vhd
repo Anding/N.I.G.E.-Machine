@@ -680,7 +680,7 @@ begin
 		VBLANK => VBLANK,
 		RGB => RGB,
 		VGA_columns => VGA_columns,
-		VGA_active => VGA_active,
+--		VGA_active => VGA_active,
 		VGA_newline => VGA_newline
 	);	
 	
@@ -688,7 +688,7 @@ begin
 		clk_MEM => clk_MEM,
 		clk_VGA => clk_VGA,
 		VGA_columns => VGA_columns,
-		VGA_active => VGA_active,
+		VBlank => VBlank,
 		VGA_newline => VGA_newline,
 		txt_zero => txt_zero,
 		ADDR_TEXT => ADDR_TEXT,
