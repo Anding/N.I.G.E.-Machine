@@ -14,8 +14,8 @@ entity VGA is
 			  background : in STD_LOGIC_VECTOR (15 downto 0);	-- background color for 0&256 char color mode
 			  data_Text : in STD_LOGIC_VECTOR (15 downto 0);	-- screen buffer for current character
 			  addr_Text : out STD_LOGIC_VECTOR (7 downto 0);	-- refers to the current column
-			  data_Char : in STD_LOGIC_VECTOR (7 downto 0);		-- character memory
-			  addr_Char : out STD_LOGIC_VECTOR (10 downto 0);
+			  data_Char : in STD_LOGIC_VECTOR (7 downto 0);		-- character memory	UPDATE to (15 downto 0) for 16 bit wide
+			  addr_Char : out STD_LOGIC_VECTOR (10 downto 0);  -- UPDATE to (11 downto 0) for 16 bit wide
 			  data_Color : in STD_LOGIC_VECTOR (15 downto 0);	-- color memory
 			  addr_Color : out STD_LOGIC_VECTOR (7 downto 0);			  
            HSync : out  STD_LOGIC;									-- VGA adapter connections
@@ -68,8 +68,8 @@ begin
 	VGA_COLUMNS <= COLUMNS;
 	
 	with mode_r(4) select 											-- select the interlace mode
-		height <= "1001" when '1',
-					 "0111" when others;
+		height <= "1001" when '1',									-- CharHeight + Interlace
+					 "0111" when others;								-- CharHeight
 	PROCESS (mode_r)
 	begin
 	
@@ -144,7 +144,7 @@ begin
 			end if;	
 		end if;
 		
-		-- text Vertical count
+		-- text Vertical count, counts from 0 to 7 non-interlace or 0 - 9 interlace
 		if Hcount = Ha then					-- last horizontal pixel: VGA 799, SVGA 1039
 			if Vcount = Va or tVcount = height then		-- last vertical pixel: VGA 527, SVGA 666  if Vcount = Va or tVcount = height then
 				tVcount <= "0000";
@@ -190,7 +190,7 @@ begin
 		Hblk5 <= Hblk4;							-- Hblk5 synchronized with sync signals for pixel out
 		
 		-- TEXTbuffer new line
-		if Hcount = Hb and tVcount < 8 and Vcount /= Va then
+		if Hcount = Hb and tVcount = 7 and Vcount /= Va then		-- CharHeight
 				VGA_newline <= '1';
 		elsif Hcount = Hc then
 				VGA_newline <= '0';
@@ -206,9 +206,9 @@ begin
 		end if;
 	  
 	  	-- Text RAM address generator
-		if vblk0 = '0' and tVcount < 8 then
+		if vblk0 = '0' and tVcount < 8 then							
 			if Hblk0 = '0' and Hcount(2 downto 0) = 7 then		-- (2 downto 0) or (3 downto 0) = 7 or 15, for 8 or 16 bit character width		
-				if addressText = COLUMNS then	
+				if addressText = COLUMNS then							-- CharWidth
 					addressText <= (others=>'0');		-- next frame row	
 				else
 					addressText <= addressText + 1;	-- last frame column: move to next character
@@ -220,7 +220,8 @@ begin
 			
 		-- Read text memory and set char and color memory address
 		addressChar(10 downto 3)<= data_Text(15 downto 8); 		-- char contents of Text RAM
-		addressChar(2 downto 0) <= tVcount(2 downto 0);				-- Vcount(2 downto 0) or (3 downto 1) for 8 or 16 bit char width	
+																					-- UPDATE to (11 downto 4) for 16 bit wide characters
+		addressChar(2 downto 0) <= tVcount(2 downto 0);				-- UPDATE to (3 downto 0) for 16 bit wide characters
 		if mode_r(3) = '1' then												-- 256/0 color mode
 			addressColor <= data_TEXT(7 downto 0);
 		else																		-- 16/16 color mode
@@ -228,7 +229,7 @@ begin
 		end if;
 	  
 	  	-- Read char and color memory and control shift register
-		if (Hcount(2 downto 0) = 4) then								-- trip at 4 for synchronization with output signals
+		if (Hcount(2 downto 0) = 4) then									-- trip at 4 for synchronization with output signals
 			char_pixels <= data_Char;
 			char_color <= data_color(11 downto 0);
 			case data_TEXT(7 downto 4) is
@@ -250,12 +251,12 @@ begin
 				when others =>	back_color <= X"808";		
 			end case;
 		else
-			char_pixels <= char_pixels(6 downto 0) & '0';		-- shift the register: 6 or 14 for 8 or 16 bit char width
+			char_pixels <= char_pixels(6 downto 0) & '0';		-- shift the register MSB first: UPDATE to (14 downto 0) for 16 bit characters
 		end if;
 	  		
 		-- Define character color scheme
-		if not(tVcount < 8) then						-- interlace lines
-			text_f := background(11 downto 0);
+		if not(tVcount < 8) then						-- interlace lines  -- replace with tVcount >= CharHeight
+			text_f := background(11 downto 0);		-- use back_color somehow here anyway?
 			text_b := background(11 downto 0);
 		else
 			text_f := char_color;

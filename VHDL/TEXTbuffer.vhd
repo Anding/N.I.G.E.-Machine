@@ -78,14 +78,14 @@ begin
 		-- state machine next state decode
 		process (state, active, line_count, t_axi_rlast, newline_flag )
 		begin
-			if active = "111" then													
+			if active = "111" then																									
 				case (state) is
 					when vblank =>															-- waiting for VGA controller to signal Vactive = high, indicating that character data will be required
 						next_state <= run;
 				
 					when new_line =>														-- count the number of new_line signals from the VGA controller and fetch a new character column
 						if line_count = "111" then										-- 	after eight passes (should this counting logic be moved inside VGA controller?)
-							next_state <= run;
+							next_state <= run;											
 						else
 							next_state <= idle;
 						end if;
@@ -102,7 +102,7 @@ begin
 		
 					when others =>															-- idle: wait for VGA controller to signal that line has been displayed
 						if newline_flag = '1' then
-							next_state <= new_line;
+							next_state <= run;
 						else
 							next_state <= state;
 						end if;
