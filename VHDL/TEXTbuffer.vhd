@@ -9,7 +9,7 @@ entity TEXTbuffer is port
 			clk_VGA : IN std_logic;
 			-- VGA
 			VGA_columns : IN std_logic_vector(7 downto 0);				-- number of dispalyed columns less one
-			VBlank : IN std_logic;											-- activates the text buffer to provide data for the visible portion of the screen
+			VBlank : IN std_logic;												-- activates the text buffer to provide data for the visible portion of the screen
 			VGA_newline : IN std_logic;										-- signal that line has been displayed
 			txt_zero : IN std_logic_vector(23 downto 0);					-- base address of the screen buffer in PSDRAM
 			ADDR_TEXT : IN std_logic_vector(7 downto 0);					-- column number being read by the VGA controller
@@ -80,27 +80,20 @@ begin
 		begin
 			if active = "111" then																									
 				case (state) is
-					when blank =>															-- waiting for VGA controller to signal Vactive = high, indicating that character data will be required
+					when blank =>														-- waiting for VGA controller to signal Vactive = high, indicating that character data will be required
 						next_state <= refill;
-				
---					when new_line =>														-- count the number of new_line signals from the VGA controller and fetch a new character column
---						if line_count = "111" then										-- 	after eight passes (should this counting logic be moved inside VGA controller?)
---							next_state <= run;											
---						else
---							next_state <= idle;
---					end if;
 						
-					when refill =>															-- initiate a read of a full column of characters on the AXI4 memory bus and wait until the bus signals that all are sent
+					when refill =>														-- initiate a read of a full column of characters on the AXI4 memory bus and wait until the bus signals that all are sent
 						if t_axi_rlast = '1' then
 							next_state <= pause;
 						else
 							next_state <= state;
 						end if;		
 						
-					when switch_bank =>													-- spend one cycle in this state and use it to "switch over" the two buffer banks
+					when switch_bank =>												-- spend one cycle in this state and use it to "switch over" the two buffer banks
 						next_state <= refill;
 		
-					when others =>															-- pause: wait for VGA controller to signal that line has been displayed
+					when others =>														-- pause: wait for VGA controller to signal that line has been displayed
 						if newline_flag = '1' then
 							next_state <= switch_bank;
 						else
@@ -108,17 +101,13 @@ begin
 						end if;
 						
 				end case;
-			else																				-- state machine freezes to vblank when VGA controller ceases to signal Vactive = high
+			else																			-- state machine freezes to vblank when VGA controller ceases to signal Vactive = high
 				next_state <= blank;
 			end if;
 		end process;
 		
 		-- state machine output signal generation
 		-- 	organized by signal rather than by state for clarity
---		with state select
---			line_count_n <= 	"000" when vblank,									-- count up new_line signals from the VGA controller until it's time to read another column of characters		
---									line_count + 1 when new_line,
---									line_count when others;	
 									
 		with state select
 			axi_addr_n <= 	txt_zero when blank,									-- move through memory buffer incrementing by the 2 * number of characters in a column (memory format is word = data+color)
@@ -126,7 +115,7 @@ begin
 								axi_addr when others;
 								
 		with state select
-			t_axi_arvalid <=	'1' when refill,											-- AXI4 memory controller signal
+			t_axi_arvalid <=	'1' when refill,									-- AXI4 memory controller signal
 									'0' when others;
 			
 		with state select				
@@ -134,7 +123,7 @@ begin
 							bank when others;
 				
 			buffer_addr_n <= 	(others=>'0') when (state = blank or state = switch_bank) else
-									buffer_addr + 1 when (state = refill and t_axi_rvalid = '1') else  -- increment the text buffer write address each time after valid data is presented 
+									buffer_addr + 1 when (state = refill and t_axi_rvalid = '1') else  	-- increment the text buffer write address each time after valid data is presented 
 									buffer_addr;
 							
 			wea <=	"1" when (state = refill and t_axi_rvalid = '1') else "0";

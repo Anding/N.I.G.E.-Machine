@@ -23,7 +23,6 @@ entity VGA is
 			  VBlank	: out STD_LOGIC;									-- vertical blank
 			  RGB : out  STD_LOGIC_VECTOR (11 downto 0);
 			  VGA_columns : out std_logic_vector(7 downto 0);	-- number of character columns less one
---			  VGA_active : out std_logic := '0';					-- activates the text buffer to provide data for the visible portion of the screen
 			  VGA_newline : out std_logic := '0'					-- signal that line has been displayed
 			  );
 end VGA;
@@ -36,7 +35,6 @@ signal addressText : std_logic_vector(7 downto 0):= (others=>'0');		  		-- Colum
 signal addressChar : std_logic_vector(10 downto 0):= (others=>'0');		  		-- Char RAM lookup of current character
 signal addressColor : std_logic_vector(7 downto 0):= (others=>'0');	
 
-signal Hblk0, Hblk1, Hblk2, Hblk3, Hblk4, Hblk5: std_logic;							-- Signals video blank period
 signal VBlank_i: std_logic := '1';																-- Signals video blank period
 signal pixelGFX0, pixelGFX1, pixelGFX2 : std_logic_vector(7 downto 0);			-- Graphics pixel pipeline
 signal char_pixels : STD_LOGIC_VECTOR(7 downto 0);										-- Character shift register.  8 or 16 bit depending on character width
@@ -145,8 +143,8 @@ begin
 		end if;
 		
 		-- text Vertical count, counts from 0 to 7 non-interlace or 0 - 9 interlace
-		if Hcount = Ha then					-- last horizontal pixel: VGA 799, SVGA 1039
-			if Vcount = Va or tVcount = height then		-- last vertical pixel: VGA 527, SVGA 666  if Vcount = Va or tVcount = height then
+		if Hcount = Ha then
+			if Vcount = Va or tVcount = height then
 				tVcount <= "0000";
 			else
 				tVcount <= tVcount + 1;
@@ -154,40 +152,25 @@ begin
 		end if;
 		
 		-- Horizontal sync signal
-		if Hcount = Hb then						-- screen width plus horizontal front porch (HFP) plus 2: VGA 660, SVGA 861 
+		if Hcount = Hb then
 			HSync_i <= '0';
-		elsif Hcount = Hc then					-- screen width plus HFB plus Hpulse plus 2: VGA 756, SVGA 981 
+		elsif Hcount = Hc then
 			HSync_i <= '1';			
 		end if;
 		
 		-- Vertical sync signal
-		if Vcount = Vb then						-- screen height plus vertical front porch (VFP) plus one: VGA 491, SVGA 637
+		if Vcount = Vb then
 			VSync_i <= '0';			
-		elsif Vcount = Vc then					-- screen height plus VFP plus Vpulse plus one: VGA 493, SVGA 643
+		elsif Vcount = Vc then
 			VSync_i <= '1';			
 		end if;	
 		
---		-- Vertical blank signal
---		if Hcount = Ha then					-- last horizontal pixel:
---			if Vcount = Vd then					-- screen height less two:
---				vblk1m_i <= '1';					-- one row early, for driving DMA to fetch memory in advance
---			elsif Vcount = Ve then 		   -- last vertical pixel less one:
---				vblk1m_i <= '0';		
---			end if;
---			vblk0 <= vblk1m_i;				-- vertical blank signal		
---		end if;	
-	
-		-- Horizontal blank signals
-		if Hcount = Hd then						-- last visible pixel: VGA 639, SVGA 799
-			Hblk0 <= '1';							-- Hblk0 synchronized with pixel clocks for pixel creation
-		elsif Hcount = Ha then				-- last horizontal pixel: VGA 799, SVGA 1039
-			Hblk0 <= '0';							
-		end if;
-		Hblk1 <= Hblk0;
-		Hblk2 <= Hblk1;												
-		Hblk3 <= Hblk2;
-		Hblk4 <= Hblk3;								
-		Hblk5 <= Hblk4;							-- Hblk5 synchronized with sync signals for pixel out
+		-- Vertical blank signals
+		if Vcount = Vd then
+			VBLANK_i <= '1';
+		elsif Vcount = Va then
+			VBLANK_i <= '0';
+		end if;		
 		
 		-- TEXTbuffer new line
 		if Hcount = Hb and tVcount = 7 and Vcount /= Va then		-- CharHeight
@@ -196,30 +179,9 @@ begin
 				VGA_newline <= '0';
 		end if;
 		
-		-- TEXTbuffer VGA active
-		if Vcount = Va and mode_r(2 downto 0) /= "000" then
---			VGA_active <= '1';
-			VBLANK_i <= '0';
-		elsif Vcount = Vd then
---			VGA_active <= '0';
-			VBLANK_i <= '1';
-		end if;
-	  
-	  	-- Text RAM address generator
-		--if vblk0 = '0' and tVcount < 8 then			
---		if Vcount = Ve then
---					addressText <= (others=>'0');	
---		elsif Hblk0 = '0' and Hcount(2 downto 0) = 7 then		-- (2 downto 0) or (3 downto 0) = 7 or 15, for 8 or 16 bit character width		
---				if addressText = COLUMNS then							-- CharWidth
---					addressText <= (others=>'0');		-- next frame row	
---				else
---					addressText <= addressText + 1;	-- last frame column: move to next character
---				end if;	
---		end if;
-		
 		if Hcount = Ha then
 				addressText <= (others=>'0');	
-		elsif Hcount(2 downto 0) = 7 then
+		elsif Hcount(2 downto 0) = 7 then								-- CharWidth
 				addressText <= addressText + 1;					
 		end if;
 			
@@ -273,7 +235,7 @@ begin
 		end if;
 		
 		-- Drive pixel to output
-		if reset = '0' and Hblk5 = '0' and VBLANK_i = '0' and mode_r(2 downto 0) /= "000" then
+		if reset = '0' and VBLANK_i = '0' and mode_r(2 downto 0) /= "000" then
 			if char_pixels(7) = '1' then		
 				RGB_i <= text_f;
 			else
