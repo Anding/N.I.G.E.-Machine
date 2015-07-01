@@ -175,8 +175,7 @@ signal t_axi_rlast : std_logic;
 signal t_axi_rvalid : std_logic;
 signal s_aresetn : std_logic;
 signal VGA_columns : std_logic_vector(7 downto 0);
-signal VGA_active : std_logic;
-signal VGA_newline : std_logic;
+signal FetchNextRow : std_logic;
 signal clk_system : std_logic;
 signal clk_VGA : std_logic;
 signal clk_MEM : std_logic;
@@ -681,7 +680,7 @@ begin
 		RGB => RGB,
 		VGA_columns => VGA_columns,
 --		VGA_active => VGA_active,
-		VGA_newline => VGA_newline
+		FetchNextRow => FetchNextRow
 	);	
 	
 		Inst_TEXTbuffer: entity work.TEXTbuffer PORT MAP(
@@ -689,7 +688,7 @@ begin
 		clk_VGA => clk_VGA,
 		VGA_columns => VGA_columns,
 		VBlank => VBlank,
-		VGA_newline => VGA_newline,
+		FetchNextRow => FetchNextRow,
 		txt_zero => txt_zero,
 		ADDR_TEXT => ADDR_TEXT,
 		DATA_TEXT => DATA_TEXT,

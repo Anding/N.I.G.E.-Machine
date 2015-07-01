@@ -9,8 +9,8 @@ entity TEXTbuffer is port
 			clk_VGA : IN std_logic;
 			-- VGA
 			VGA_columns : IN std_logic_vector(7 downto 0);				-- number of dispalyed columns less one
-			VBlank : IN std_logic;												-- activates the text buffer to provide data for the visible portion of the screen
-			VGA_newline : IN std_logic;										-- signal that line has been displayed
+			VBlank : IN std_logic;												-- Vertical Blank indicator
+			FetchNextRow : IN std_logic;										-- request that the next row of character data be fetched from memory
 			txt_zero : IN std_logic_vector(23 downto 0);					-- base address of the screen buffer in PSDRAM
 			ADDR_TEXT : IN std_logic_vector(7 downto 0);					-- column number being read by the VGA controller
 			DATA_TEXT : OUT std_logic_vector(15 downto 0);				-- color and character data for the column in question
@@ -31,7 +31,7 @@ end TEXTbuffer;
 
 architecture Behavioral of TEXTbuffer is
 
-type state_T is (blank, pause, refill, switch_bank);
+type state_T is (blank, pause, first_fill, refill, switch_bank);
 signal state, next_state : state_T;
 signal newline, newline_m : std_logic_vector(2 downto 0);
 signal newline_flag : std_logic;
@@ -58,7 +58,7 @@ begin
 		process				-- cross clock domain signals
 		begin
 			wait until rising_edge(clk_MEM);
-			newline <= newline(1 downto 0) & VGA_newline;
+			newline <= newline(1 downto 0) & FetchNextRow;
 			newline_m <= newline;
 			active <= active(1 downto 0) & NOT VBlank;
 		end process;
@@ -80,28 +80,35 @@ begin
 		begin
 			if active = "111" then																									
 				case (state) is
-					when blank =>														-- waiting for VGA controller to signal Vactive = high, indicating that character data will be required
-						next_state <= refill;
-						
-					when refill =>														-- initiate a read of a full column of characters on the AXI4 memory bus and wait until the bus signals that all are sent
+					when blank =>														-- waiting for VGA controller to signal the end of VBLANK and indicate that character data will be required
+						next_state <= first_fill;										-- now go and read the first row of character date
+
+					when first_fill =>												-- fill the first row of character data from the AXI4 memory bus into the local buffer
 						if t_axi_rlast = '1' then
-							next_state <= pause;
+							next_state <= switch_bank;									-- now go and switch the buffer so that the first row of data just read is available to the VGA controller
 						else
 							next_state <= state;
+						end if;							
+						
+					when refill =>														-- read the next row of character data from the AXI4 memory bus into the local buffer
+						if t_axi_rlast = '1' then										-- keep reading until the bus signals that the full row of data has been sent
+							next_state <= pause;											-- now go and wait for the VGA controller to use up this data
+						else
+							next_state <= state;											
 						end if;		
 						
 					when switch_bank =>												-- spend one cycle in this state and use it to "switch over" the two buffer banks
-						next_state <= refill;
+						next_state <= refill;											-- now go and refill the character data on the side of the buffer that has already been used by the VGA controller
 		
-					when others =>														-- pause: wait for VGA controller to signal that line has been displayed
-						if newline_flag = '1' then
+					when others =>														-- pause: wait for VGA controller to signal it has finished displaying this character row
+						if newline_flag = '1' then										-- now go and switch over the two buffer banks
 							next_state <= switch_bank;
 						else
 							next_state <= state;
 						end if;
 						
 				end case;
-			else																			-- state machine freezes to vblank when VGA controller ceases to signal Vactive = high
+			else																			-- state machine holds inactive during the VBLANK
 				next_state <= blank;
 			end if;
 		end process;
@@ -116,6 +123,7 @@ begin
 								
 		with state select
 			t_axi_arvalid <=	'1' when refill,									-- AXI4 memory controller signal
+									'1' when first_fill,
 									'0' when others;
 			
 		with state select				
@@ -123,10 +131,11 @@ begin
 							bank when others;
 				
 			buffer_addr_n <= 	(others=>'0') when (state = blank or state = switch_bank) else
-									buffer_addr + 1 when (state = refill and t_axi_rvalid = '1') else  	-- increment the text buffer write address each time after valid data is presented 
+									buffer_addr + 1 when (state = refill and t_axi_rvalid = '1') else  		-- increment the text buffer write address each time after valid data is presented 
+									buffer_addr + 1 when (state = first_fill and t_axi_rvalid = '1') else 	-- increment the text buffer write address each time after valid data is presented 
 									buffer_addr;
 							
-			wea <=	"1" when (state = refill and t_axi_rvalid = '1') else "0";
+		wea <=	"1" when (state = refill and t_axi_rvalid = '1') else "0";
 			
 	inst_BUFFER_TXT : entity work.BUFFER_TXT
 	PORT MAP (
