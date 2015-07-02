@@ -194,7 +194,11 @@ signal VM : std_logic_vector(vmp_w -1 downto 0);
 signal vir_EN : STD_LOGIC;
 signal MEMdata_vir : STD_LOGIC_VECTOR(31 DOWNTO 0);
 signal blocked : STD_LOGIC;
-
+signal interlace	: STD_LOGIC_VECTOR (3 downto 0);	
+signal charHeight: STD_LOGIC_VECTOR (3 downto 0);
+signal charWidth: STD_LOGIC_VECTOR (3 downto 0);	
+signal VGArows : STD_LOGIC_VECTOR (7 downto 0);					  
+signal VGAcols : STD_LOGIC_VECTOR (7 downto 0);
 
 	component CLOCKMANAGER
 	port
@@ -502,6 +506,11 @@ begin
 		txt_zero => txt_zero,
 		mode => mode,
 		background => background,
+		interlace => interlace,
+		charHeight => charHeight,
+		charWidth => charWidth, 
+		VGArows => 	VGArows,	  
+		VGAcols => VGAcols,
 		en => reg_en,
 		addr => MEMaddr(10 downto 0),
 		datain => MEMdataout_X,
@@ -524,8 +533,7 @@ begin
 		SD_control => SD_control,
 		SD_wr => SD_wr,
 		SD_divide => SD_divide,
-		VBLANK => VBLANK,
-		VMID => open
+		VBLANK => VBLANK
 	);
 	
 		Inst_stack_access: entity work.stack_access PORT MAP(
@@ -678,15 +686,18 @@ begin
 		VSync => VSync,
 		VBLANK => VBLANK,
 		RGB => RGB,
-		VGA_columns => VGA_columns,
---		VGA_active => VGA_active,
+		interlace => interlace,
+		charHeight => charHeight,
+		charWidth => charWidth, 
+		VGArows => 	VGArows,	  
+		VGAcols => VGAcols,
 		FetchNextRow => FetchNextRow
 	);	
 	
 		Inst_TEXTbuffer: entity work.TEXTbuffer PORT MAP(
 		clk_MEM => clk_MEM,
 		clk_VGA => clk_VGA,
-		VGA_columns => VGA_columns,
+		VGAcols => VGAcols,
 		VBlank => VBlank,
 		FetchNextRow => FetchNextRow,
 		txt_zero => txt_zero,

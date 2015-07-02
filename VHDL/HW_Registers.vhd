@@ -10,18 +10,26 @@ use IEEE.STD_LOGIC_UNSIGNED.ALL;
 entity HW_Registers is
     Port ( clk : in  STD_LOGIC;
            rst : in  STD_LOGIC;
-			  -- connections to other hardware components
-			  SD_datain : in std_logic_vector(7 downto 0);			-- SD card interface
+			  -- SD card interface
+			  SD_datain : in std_logic_vector(7 downto 0);			
 			  SD_dataout : out std_logic_vector(7 downto 0);
 			  SD_control : out std_logic_vector(3 downto 0);
 			  SD_status : in std_logic_vector(3 downto 0);
 			  SD_wr : out std_logic;
 			  SD_divide : out std_logic_vector(7 downto 0);
-			  --
+			  -- VGA adapter
 			  txt_zero : out std_logic_vector(23 downto 0);			-- base address of character graphics memory
 			  mode	 	: out STD_LOGIC_VECTOR (4 downto 0);		-- graphics adapter mode
 			  background : out STD_LOGIC_VECTOR (15 downto 0);		-- background color for graphics adapter text mode
+			  interlace	: out	STD_LOGIC_VECTOR (3 downto 0);		-- number of interlace scan lines between character rows
+			  charHeight: out	STD_LOGIC_VECTOR (3 downto 0);		-- height of a character in pixels
+			  charWidth: out	STD_LOGIC_VECTOR (3 downto 0);		-- width of a character in pixels	
+			  VGArows : out STD_LOGIC_VECTOR (7 downto 0);				-- number of complete character columns displayed on the screen					  
+			  VGAcols : out STD_LOGIC_VECTOR (7 downto 0);				-- number of complete character columns displayed on the screen
+			  VBLANK : in std_logic;										-- VGA vertical blank			
+			  -- interrupt controller
 			  irq_mask : out STD_LOGIC_VECTOR(15 downto 1);			-- mask for interrupt controller
+			  -- RS232 port
 			  RS232_rx_S0 : in std_logic_vector(7 downto 0);		-- RS232 port 0 datain
 			  RS232_tx_S0 : out std_logic_vector(7 downto 0);		-- RS232 port 0 dataout
 			  RS232_wr_S0 : out std_logic;								-- RS232 port 0 write request
@@ -30,15 +38,14 @@ entity HW_Registers is
 			  RS232_TBE_S0 : in std_logic;								-- RS232 port 0 Transfer Bus Enable (TBE) signal
 			  RS232_RDA_S0 : in std_logic;								-- RS232 port 0 Read Data Available (RDA) signal
 			  RS232_DIVIDE_S0 : out std_logic_vector(31 downto 0);	-- RS232 port 0 baud rate setting (DIVIDE = Clock (Baud+1))
+			  -- PS2 keyboard port
 			  PS2_data : in std_logic_vector(7 downto 0);			-- PS/2 port
+			  -- counters
 			  counter_ms : in std_logic_vector(31 downto 0);		-- 32 bit millisecond timer
 			  counter_clk : in std_logic_vector(31 downto 0);		-- 32 bit clock timer
+			  -- Nexys board
 			  ssData	: out std_logic_vector(31 downto 0);			-- data for seven segment display
 			  SW	: in std_logic_vector(15 downto 0);					-- switches onboard Nexys2
-			  VBLANK : in std_logic;										-- VGA vertical blank
-			  -- Virtualization
-			  VMID : out std_logic_vector(4 downto 0);					-- currently executing virtual machine
-			  
 			  -- CPU system memory channel
 			  en : in STD_LOGIC;													-- Enable is set by board level logic depending on higher bit of 
 																											-- the address to enable this piece of memory when it is addressed	  
@@ -50,6 +57,7 @@ entity HW_Registers is
 end HW_Registers;
 
 architecture Behavioral of HW_Registers is
+
 	-- registers for writeable signals
 	signal SD_dataout_r : std_logic_vector(7 downto 0);
 	signal SD_control_r : std_logic_vector(3 downto 0);
@@ -60,8 +68,12 @@ architecture Behavioral of HW_Registers is
 	signal DIVIDE_r_S0	: std_logic_vector(31 downto 0);
 	signal background_r : std_logic_vector(15 downto 0);
 	signal mode_r : std_logic_vector(4 downto 0);
+	signal interlace_r	: STD_LOGIC_VECTOR (3 downto 0);
+	signal charHeight_r: STD_LOGIC_VECTOR (3 downto 0);
+	signal charWidth_r: STD_LOGIC_VECTOR (3 downto 0);	
+	signal VGArows_r : STD_LOGIC_VECTOR (7 downto 0);						  
+	signal VGAcols_r : STD_LOGIC_VECTOR (7 downto 0);		
 	signal ssData_r : std_logic_vector(31 downto 0);
-	signal VMID_r : std_logic_vector(4 downto 0);	
 	
 	signal addr_i : std_logic_vector(7 downto 0);					-- local address bus
 	signal clk_i : std_logic;												-- local slow clock for debounce
@@ -96,12 +108,16 @@ begin
 	RS232_tx_S0 <= RS232_tx_r_S0;
 	background <= background_r;
 	mode <= mode_r;
+	interlace <= interlace_r;
+	charHeight <= charHeight_r;
+	charWidth <= charWidth_r;	
+	VGArows <= VGArows_r;						  
+	VGAcols <= VGAcols_r;	
 	RS232_DIVIDE_S0 <= DIVIDE_r_S0;
 	ssData <= ssData_r;
 	addr_i <= addr(7 downto 0);
 	clk_i <= counter_clk(13);
 	irq_mask <= irq_mask_r;
-	VMID <= VMID_r;
 	
 	-- update writable registers
 	
@@ -126,6 +142,11 @@ begin
 			txt_zero_r <= X"040600";									
 			background_r <= X"0000";
 			mode_r <= "11010";										-- 11010
+			interlace_r <= X"2";
+			charHeight_r <= X"8";
+			charWidth_r <= X"8";	
+			VGArows_r <= CONV_STD_LOGIC_VECTOR(60,8);						  
+			VGAcols_r <= CONV_STD_LOGIC_VECTOR(100,8);
 			RS232_tx_r_S0 <= (others=>'0');	
 			ssData_r <= (others=>'0');
 			
@@ -160,10 +181,22 @@ begin
 		
 					when x"44" =>										-- SD clock divide
 						SD_divide_r <= datain_r(7 downto 0);
+	
+					when x"4C" =>										-- interlace lines
+						interlace_r <= datain_r(3 downto 0);
 						
-					when x"FF" =>										-- VM number
-						VMID_r <= datain_r(4 downto 0);	
-					
+					when x"50" =>										-- charWidth
+						charWidth_r <= datain_r(3 downto 0); 
+						
+					when x"54" =>										-- charHeight
+						charHeight_r <= datain_r(3 downto 0); 
+						
+					when x"58" =>										-- VGArows
+						VGArows_r <= datain_r(7 downto 0); 	
+						
+					when x"5C" =>										-- VGAcols
+						VGAcols_r <= datain_r(7 downto 0); 
+						
 					when others =>
 						null;	
 				end case;		
@@ -205,8 +238,6 @@ begin
 	
 		dataout <= dataout_i;
 	
-	--process (en, addr, txt_zero_r, gfx_zero_r, background_r, mode_r, RS232_rx_S0_r, RS232_TBE_S0_r, RS232_RDA_S0_r, PS2_data_r, counter_clk,
-	--			counter_ms, IRQ_mask_r, SW_r, SD_datain_r, SD_control_r, SD_status_r, VMID_r)
 	process			
 	begin																
 		wait until rising_edge(clk);		-- register all outputs to reduce multiplexer delays
@@ -254,8 +285,20 @@ begin
 				when x"48"	=>										-- VGA vertical blank
 					dataout_i	<= blank3 & "0000000" & VBLANK_r;
 					
-				when x"FF" =>										-- VMID
-					dataout_i	<= blank3 & "000" & VMID_r;
+				when x"4C" =>										-- interlace lines
+					dataout_i	<= blank3 & "0000" &	interlace_r;
+						
+				when x"50" =>										-- charWidth
+					dataout_i	<= blank3 & "0000" &	charWidth_r; 
+						
+				when x"54" =>										-- charHeight
+					dataout_i	<= blank3 & "0000" &	charHeight_r; 
+						
+				when x"58" =>										-- VGArows
+					dataout_i	<= blank3 &	VGArows_r; 	
+						
+				when x"5C" =>										-- VGAcols
+					dataout_i	<= blank3 &	VGAcols_r; 
 
 				when others =>
 					dataout_i <= (others=>'0');

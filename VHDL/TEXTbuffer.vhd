@@ -7,8 +7,8 @@ entity TEXTbuffer is port
 			(
 			clk_MEM : IN std_logic;
 			clk_VGA : IN std_logic;
-			-- VGA
-			VGA_columns : IN std_logic_vector(7 downto 0);				-- number of dispalyed columns less one
+			-- VGA				  
+			VGAcols : IN STD_LOGIC_VECTOR (7 downto 0);					-- number of complete character columns displayed on the screen
 			VBlank : IN std_logic;												-- Vertical Blank indicator
 			FetchNextRow : IN std_logic;										-- request that the next row of character data be fetched from memory
 			txt_zero : IN std_logic_vector(23 downto 0);					-- base address of the screen buffer in PSDRAM
@@ -46,7 +46,7 @@ signal line_count, line_count_n : std_logic_vector(2 downto 0);
 
 begin
 		t_axi_araddr <= "00000000" & axi_addr;		-- current start of row position in PSDRAM screen buffer 
-		t_axi_arlen  <= VGA_columns;					-- number of words to read is the number of characters in a row (= number of columns)
+		t_axi_arlen  <= VGAcols - 1;					-- number of words to read is the number of characters in a row (AXI4 starts counting 0 = one)
 		t_axi_arsize <= "001";							-- readsize is word (16 bits)
 		t_axi_arburst <= "01";							-- Type: "01" = INCR
 		t_axi_rready <= '1';								-- The text buffer is always ready to read data
@@ -118,7 +118,7 @@ begin
 									
 		with state select
 			axi_addr_n <= 	txt_zero when blank,									-- move through memory buffer incrementing by the 2 * number of characters in a column (memory format is word = data+color)
-								axi_addr + (VGA_columns & "0") + "10" when switch_bank,
+								axi_addr + (VGAcols & "0") when switch_bank,
 								axi_addr when others;
 								
 		with state select

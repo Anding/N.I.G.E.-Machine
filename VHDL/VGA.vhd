@@ -12,6 +12,11 @@ entity VGA is
 			  reset 		: in STD_LOGIC;
 			  mode		: in STD_LOGIC_VECTOR (4 downto 0);		-- VGA mode in hardware registers	
 			  background : in STD_LOGIC_VECTOR (15 downto 0);	-- background color for 0&256 char color mode
+			  interlace	: in	STD_LOGIC_VECTOR (3 downto 0);		-- number of interlace scan lines between character rows
+			  charHeight: in	STD_LOGIC_VECTOR (3 downto 0);		-- height of a character in pixels
+			  charWidth: in	STD_LOGIC_VECTOR (3 downto 0);		-- width of a character in pixels	
+			  VGArows : in STD_LOGIC_VECTOR (7 downto 0);				-- number of complete character columns displayed on the screen					  
+			  VGAcols : in STD_LOGIC_VECTOR (7 downto 0);				-- number of complete character columns displayed on the screen
 			  data_Text : in STD_LOGIC_VECTOR (15 downto 0);	-- screen buffer for current character
 			  addr_Text : out STD_LOGIC_VECTOR (7 downto 0);	-- refers to the current column
 			  data_Char : in STD_LOGIC_VECTOR (7 downto 0);		-- character memory	UPDATE to (15 downto 0) for 16 bit wide
