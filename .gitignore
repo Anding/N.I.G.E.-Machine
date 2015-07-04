@@ -1,5 +1,7 @@
 Xilinx*/
 t.*
+*.cfi
+*.prm
 impact*
 webtalk*
 usage*
