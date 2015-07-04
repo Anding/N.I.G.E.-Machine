@@ -39,6 +39,11 @@ VMcount	equ	32		; count of available virtual machines
 TEXT_ZERO	equ	hex 03f800
 BACKGROUND	equ	hex 03f808
 mode		equ	hex 03f80c
+Interlace	equ	hex 03f84c
+charWidth	equ	hex 03f850
+charHeight	equ	hex 03f854
+VGArows	equ	hex 03f858
+VGAcols	equ	hex 03f85c
 RS232rx	equ	hex 03f810
 RS232tx	equ	hex 03f814
 RS232DIVIDE	equ	hex 03f818
@@ -66,11 +71,11 @@ local2		equ	SSTACK 8 +
 local3		equ	SSTACK 12 +
 ESTACK		equ	hex 03f080		; Exception stack
 ;
-SRAMSIZE	equ	128 1024 * 512 -	; Amount of SRAM in bytes
+SRAMSIZE	equ	124 1024 * 512 -	; Amount of SRAM in bytes
 USERRAMSIZE	equ	2048			; Amount of USER RAM in bytes
 ;
-RSrxBUF	equ	128 1024 * 512 -	; RS232 buffer (256 bytes) location
-PSBUF		equ	128 1024 * 256 -	; PS/2 keyboard buffer (256 bytes) location
+RSrxBUF	equ	124 1024 * 512 -	; RS232 buffer (256 bytes) location
+PSBUF		equ	124 1024 * 256 -	; PS/2 keyboard buffer (256 bytes) location
 ;
 _PAD		equ	USERRAM 1024 +	; PAD location
 _STRING	equ	_PAD			; buffer for interpret mode string storage (e.g. S")
@@ -1385,8 +1390,8 @@ CSR-ADDR.CF	#.l	sem-screen
 		lsl
 		#.w	CSR-Y
 		fetch.l
-		#.w	COLS
-		fetch.w
+		#.l	VGAcols
+		fetch.b
 		2*
 		mults
 		drop
@@ -1461,8 +1466,8 @@ SCROLL.NF	dc.b	6 128 +
 SCROLL.SF	dc.w	SCROLL.Z SCROLL.CF del
 SCROLL.CF	#.l	sem-screen
 		jsl	acquire.cf
-		#.w	COLS				
-		fetch.w
+		#.l	VGAcols				
+		fetch.b
 		2*				; width of the screen including color bytes
 		mults
 		drop				( delta)
@@ -1480,11 +1485,11 @@ SCROLL.CF	#.l	sem-screen
 		ELSE
 			dup				( new new)		; check top of range
 			#.l	_TEXT_ZERO
-			#.w	COLS
-			fetch.w
+			#.l	VGAcols
+			fetch.b
 			2*
-			#.w	ROWS
-			fetch.w
+			#.l	VGArows
+			fetch.b
 			multu
 			drop
 			+				( new new base)
@@ -1570,52 +1575,46 @@ SCRSET.SF	dc.w	SCRSET.Z SCRSET.CF del
 SCRSET.CF	#.l	sem-screen		; multitasking lock
 		jsl	acquire.cf
 		#.l	mode			; check screen mode
-		fetch.b
-		dup				( mode mode)
+		fetch.b			( mode)
 		#.b	binary 00000111
-		and				( mode vga-mode)
-		1-				( mode 0/1/2/3)
-		2*				( mode 0/2/4/6)
-		#.w	SCRSET.C
+		and				( vga-mode)
+		1-				( 0/1/2/3)
+		2*				( offset)
+		#.w	SCRSET.H
 		over
-		+				( mode 0/1/2/3 addr)				
-		fetch.w
-		#.w	COLS
-		store.w			( mode 0/1/2/3)
-		swap				( 0/1/2/3 mode)
-		#.b	binary	00010000	
-		and				( 0/1/2/3 i-flag)		; interlace flag
-		IF
-			#.w 	SCRSET.RI
-		ELSE
-			#.w	SCRSET.R
-		THEN				
-		+				( addr)
-		fetch.w			
-		#.w	ROWS			
-		store.w
+		+				( offset addr)				
+		fetch.w			( offset Hpixels)
+		#.l	charWidth		
+		fetch.b			
+		1+				( offset Hpixels width)
+		divu
+		nip				( offset cols)
+		#.l	VGAcols
+		store.b			( offset)
+		#.w	SCRSET.V
+		+				( addr)				
+		fetch.w			( Vpixels)
+		#.l	charHeight		
+		fetch.b			
+		1+				( Vpixels height)
+		#.l	interlace
+		fetch.b
+		+				( Vpixels height-with-interlace)
+		divu
+		nip				( rows)			
+		#.l	VGArows			
+		store.b
 		#.l	sem-screen		; multitasking lock
 		jsl	release.cf	
 SCRSET.Z	rts
-SCRSET.C	dc.w	80			; VGA number of columns
-		dc.w	100			; SVGA
-		dc.w	128			; XGA
-		dc.w	240			; HD
-SCRSET.R	dc.w	60			; VGA number of rows		
-		dc.w	75			; SVGA
-		dc.w	96			; XGA
-		dc.w	135			; HD
-SCRSET.RI	dc.w	48			; VGA interlace number of rows
-		dc.w	60			; SVGA
-		dc.w	77			; XGA
-		dc.w	108			; HD
-;		dc.w	60 80			; VGA, interlace off, ROWS, COLUMNS
-;		dc.w	48 80			; VGA, interlace on
-;		dc.w	75 100			; SVGA, interlace off
-;		dc.w	60 100			; SVGA, interlace on
-;		dc.w	96 128			; XGA, interlace off
-;		dc.w	77 128			; XGA, interlace on
-;
+SCRSET.H	dc.w	640			; VGA -  number of pixels horizontally
+		dc.w	800			; SVGA
+		dc.w	1024			; XGA
+		dc.w	1920			; HD
+SCRSET.V	dc.w	480			; VGA - number of pixels vertically		
+		dc.w	600			; SVGA
+		dc.w	768			; XGA
+		dc.w	1080			; HD
 ; NEWLINE ( --, implement a newline)
 NEWLINE.LF	dc.l	SCRSET.NF
 NEWLINE.NF	dc.b	7 128 +
@@ -1626,8 +1625,8 @@ NEWLINE.CF	#.l	sem-screen
 		#.w	CSR-Y
 		fetch.l
 		dup				( y y)
-		#.w	ROWS
-		fetch.w
+		#.l	VGArows
+		fetch.b
 		1-
 		=				( y flag)		; test if the cursor is at the bottom of the screen or not
 		IF							; cursor is bottom of screen
@@ -1637,16 +1636,16 @@ NEWLINE.CF	#.l	sem-screen
 			IF						; SCROLL returned true, indicating that the screen page is now at the bottom of the buffer
 				#.l	TEXT_ZERO			; Step 1 is to copy the current screen to the top of the buffer
 				fetch.l
-				#.w	COLS
-				fetch.w
+				#.l	VGAcols
+				fetch.b
 				2*
 				+						; source for copy begins one line from top of page
 				#.l	_TEXT_ZERO				; destination
-				#.w	ROWS				; Step 2 is to blank the rest of the buffer
-				fetch.w				( rows)
+				#.l	VGArows				; Step 2 is to blank the rest of the buffer
+				fetch.b				( rows)
 				1-					( rows-1)
-				#.w	COLS
-				fetch.w				( rows-1 cols)
+				#.l	VGAcols
+				fetch.b				( rows-1 cols)
 				2*					( rows-1 col-bytes)
 				multu
 				drop					( bytes) ; size = maximum full screen less the top line 
@@ -1689,8 +1688,8 @@ CSR-FWD.CF	#.l	sem-screen
 		#.w	CSR-X
 		fetch.l
 		dup
-		#.w	COLS
-		fetch.w
+		#.l	VGAcols
+		fetch.b
 		1-
 		=
 		IF	
@@ -1740,8 +1739,8 @@ CSR-TAB.CF	#.l	sem-screen
 		-
 		+
 		dup
-		#.w	COLS
-		fetch.w
+		#.l	VGAcols
+		fetch.b
 		1-
 		>
 		IF
@@ -1883,31 +1882,21 @@ SEVENSEG.SF	dc.w	SEVENSEG.Z SEVENSEG.CF del
 SEVENSEG.CF	#.l	SEVENSEG
 SEVENSEG.Z	store.l,rts
 ;
-; SCREENMODE ( flag --, set interlace mode on or off)
+; INTERLACE ( lines --, set number of interlace lines)
 INTERLACE.LF	dc.l	SEVENSEG.NF
 INTERLACE.NF	dc.b	9 128 +
 		dc.s	INTERLACE
 INTERLACE.SF	dc.w	INTERLACE.Z INTERLACE.CF del
 INTERLACE.CF	#.l	sem-screen
 		jsl	acquire.cf
-		#.l	mode
-		fetch.b
-		swap
-		IF
-			#.b	16
-			or
-		ELSE
-			#.b	239
-			and
-		THEN
-		#.l	mode
+		#.l	interlace
 		store.b	
 		jsl	SCRSET.CF
 		#.l	sem-screen
 		jsl	release.cf		
 INTERLACE.Z	rts
 ;
-; SCREENSIZE ( mode --, set VGA mode.  0 = off, 1=VGA, 2=SVGA, 3=XGA)
+; SCREENSIZE ( mode --, set VGA mode.  0=off, 1=VGA, 2=SVGA, 3=XGA, 4=HD)
 VGA.LF	dc.l	INTERLACE.NF
 VGA.NF	dc.b	3 128 +
 		dc.s	VGA
@@ -2017,17 +2006,16 @@ ROWS.LF	dc.l	TAB.NF
 ROWS.NF	dc.b	4 128 +
 		dc.b	char S char W char O char R
 ROWS.SF	dc.w	ROWS.Z ROWS.CF del
-ROWS.CF	#.w	ROWS
-		fetch.w
+ROWS.CF	#.l	VGArows
+		fetch.b
 ROWS.Z		rts
-ROWS		dc.w	60
 ;
 COLS.LF	dc.l	ROWS.NF
 COLS.NF	dc.b	4 128 +
 		dc.b	char S char L char O char C
 COLS.SF	dc.w	COLS.Z COLS.CF del
-COLS.CF	#.w	COLS
-		fetch.w
+COLS.CF	#.l	VGAcols
+		fetch.b
 COLS.Z		rts
 COLS		dc.w	100
 ;

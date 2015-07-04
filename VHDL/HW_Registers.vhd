@@ -22,10 +22,10 @@ entity HW_Registers is
 			  mode	 	: out STD_LOGIC_VECTOR (4 downto 0);		-- graphics adapter mode
 			  background : out STD_LOGIC_VECTOR (15 downto 0);		-- background color for graphics adapter text mode
 			  interlace	: out	STD_LOGIC_VECTOR (3 downto 0);		-- number of interlace scan lines between character rows
-			  charHeight: out	STD_LOGIC_VECTOR (3 downto 0);		-- height of a character in pixels
-			  charWidth: out	STD_LOGIC_VECTOR (3 downto 0);		-- width of a character in pixels	
-			  VGArows : out STD_LOGIC_VECTOR (7 downto 0);				-- number of complete character columns displayed on the screen					  
-			  VGAcols : out STD_LOGIC_VECTOR (7 downto 0);				-- number of complete character columns displayed on the screen
+			  charHeight: out	STD_LOGIC_VECTOR (3 downto 0);		-- height of a character in pixels LESS ONE 
+			  charWidth: out	STD_LOGIC_VECTOR (3 downto 0);		-- width of a character in pixels LESS ONE
+			  VGArows : out STD_LOGIC_VECTOR (7 downto 0);			-- number of complete character columns displayed on the screen					  
+			  VGAcols : out STD_LOGIC_VECTOR (7 downto 0);			-- number of complete character columns displayed on the screen
 			  VBLANK : in std_logic;										-- VGA vertical blank			
 			  -- interrupt controller
 			  irq_mask : out STD_LOGIC_VECTOR(15 downto 1);			-- mask for interrupt controller
@@ -143,8 +143,8 @@ begin
 			background_r <= X"0000";
 			mode_r <= "11010";										-- 11010
 			interlace_r <= X"2";
-			charHeight_r <= X"8";
-			charWidth_r <= X"8";	
+			charHeight_r <= X"7";
+			charWidth_r <= X"7";	
 			VGArows_r <= CONV_STD_LOGIC_VECTOR(60,8);						  
 			VGAcols_r <= CONV_STD_LOGIC_VECTOR(100,8);
 			RS232_tx_r_S0 <= (others=>'0');	

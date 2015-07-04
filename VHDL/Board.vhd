@@ -68,7 +68,7 @@ signal irq_mask : std_logic_vector(15 downto 1);
 signal PSdatain :  std_logic_vector(31 downto 0);
 signal RSdatain :  std_logic_vector(31 downto 0);
 signal MEMdatain_Xi :  std_logic_vector(31 downto 0);
-signal MEMdata_Char :  std_logic_vector(7 downto 0);
+signal MEMdata_Char :  std_logic_vector(15 downto 0);
 signal MEMdata_Color :  std_logic_vector(15 downto 0);
 signal MEMdata_Pstack, MEMdata_Rstack, MEMdata_Reg, MEMdata_stack_access : std_logic_vector(31 downto 0);   
 signal MEMdata_User :  std_logic_vector(31 downto 0);      
@@ -88,8 +88,8 @@ signal DATA_OUT_VGA : std_logic_vector(7 downto 0) := (others=>'0');
 signal ADDR_VGA : std_logic_vector(8 downto 0);
 signal DATA_TEXT : std_logic_vector(15 downto 0) := (others=>'0');
 signal ADDR_TEXT : std_logic_vector(7 downto 0);
-signal DATA_Char : std_logic_vector(7 downto 0);
-signal ADDR_Char : std_logic_vector(10 downto 0);
+signal DATA_Char : std_logic_vector(15 downto 0);
+signal ADDR_Char : std_logic_vector(11 downto 0);
 signal DATA_Color : std_logic_vector(15 downto 0);
 signal ADDR_Color : std_logic_vector(7 downto 0);
 signal RS232_TX_S0 : std_logic_vector(7 downto 0);
@@ -305,7 +305,7 @@ begin
 	 with bank select														-- one cycle delayed to switch output
 		MEMdatain_Xi <= --MEMdata_Pstack when Pstack,
 							--MEMdata_Rstack when Rstack,				-- trial #2
-							"000000000000000000000000" & MEMdata_Char when Char,
+							"0000000000000000" & MEMdata_Char when Char,
 							"0000000000000000" & MEMdata_Color when Color,
 							MEMdata_Reg when Reg,
 							Memdata_stack_access when stack_access,
@@ -426,8 +426,8 @@ begin
 		 clkb => clk_system,
 		 enb => Char_EN,
 		 web => MEM_WRQ_XX,
-		 addrb => MEMaddr(10 downto 0),
-		 dinb => MEMdataout_X(7 downto 0),
+		 addrb => MEMaddr(11 downto 0),
+		 dinb => MEMdataout_X(15 downto 0),
 		 doutb => MEMdata_Char
 	  );		
 	

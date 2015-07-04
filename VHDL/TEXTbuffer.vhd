@@ -7,10 +7,11 @@ entity TEXTbuffer is port
 			(
 			clk_MEM : IN std_logic;
 			clk_VGA : IN std_logic;
-			-- VGA				  
+			-- VGA (trans regnum temporis)				  
 			VGAcols : IN STD_LOGIC_VECTOR (7 downto 0);					-- number of complete character columns displayed on the screen
 			VBlank : IN std_logic;												-- Vertical Blank indicator
 			FetchNextRow : IN std_logic;										-- request that the next row of character data be fetched from memory
+			-- HWregisters
 			txt_zero : IN std_logic_vector(23 downto 0);					-- base address of the screen buffer in PSDRAM
 			ADDR_TEXT : IN std_logic_vector(7 downto 0);					-- column number being read by the VGA controller
 			DATA_TEXT : OUT std_logic_vector(15 downto 0);				-- color and character data for the column in question
@@ -33,9 +34,9 @@ architecture Behavioral of TEXTbuffer is
 
 type state_T is (blank, pause, first_fill, refill, switch_bank);
 signal state, next_state : state_T;
-signal newline, newline_m : std_logic_vector(2 downto 0);
+signal newline, newline_m : std_logic_vector(4 downto 0);
 signal newline_flag : std_logic;
-signal active : std_logic_vector(2 downto 0);
+signal active : std_logic_vector(4 downto 0);
 signal axi_addr, axi_addr_n : std_logic_vector(23 downto 0);
 signal wea : STD_LOGIC_VECTOR(0 DOWNTO 0);
 signal buffer_addr, buffer_addr_n : STD_LOGIC_VECTOR(7 DOWNTO 0);
@@ -58,12 +59,12 @@ begin
 		process				-- cross clock domain signals
 		begin
 			wait until rising_edge(clk_MEM);
-			newline <= newline(1 downto 0) & FetchNextRow;
+			newline <= newline(3 downto 0) & FetchNextRow;
 			newline_m <= newline;
-			active <= active(1 downto 0) & NOT VBlank;
+			active <= active(3 downto 0) & NOT VBlank;
 		end process;
 		
-		newline_flag <= '1' when (newline = "111" and newline_m /= "111") else '0';
+		newline_flag <= '1' when (newline = "11111" and newline_m /= "11111") else '0';
 		
 		process				-- state machine and register update
 		begin
@@ -78,7 +79,7 @@ begin
 		-- state machine next state decode
 		process (state, active, line_count, t_axi_rlast, newline_flag )
 		begin
-			if active = "111" then																									
+			if active = "11111" then																									
 				case (state) is
 					when blank =>														-- waiting for VGA controller to signal the end of VBLANK and indicate that character data will be required
 						next_state <= first_fill;										-- now go and read the first row of character date
