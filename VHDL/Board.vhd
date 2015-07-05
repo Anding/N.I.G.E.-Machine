@@ -691,7 +691,8 @@ begin
 		charWidth => charWidth, 
 		VGArows => 	VGArows,	  
 		VGAcols => VGAcols,
-		FetchNextRow => FetchNextRow
+		FetchNextRow => FetchNextRow,
+		SW => SW
 	);	
 	
 		Inst_TEXTbuffer: entity work.TEXTbuffer PORT MAP(

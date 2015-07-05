@@ -264,7 +264,7 @@ START.CF	jsl	ESTACKINIT.CF
 		store.b
 ; Power-on message
 		#.w	START.0	
-		#.b	52
+		#.b	START.1 START.0 - 
 		jsl	TYPE.CF
 		jsl	UNUSED.CF	; Show free bytes
 		jsl 	UDOT.CF
@@ -275,9 +275,13 @@ START.CF	jsl	ESTACKINIT.CF
 		zero
 		jsl	QUIT.CF	; QUIT will not return but JSL is more efficient than #.W JMP
 ;
-START.0	dc.b	EOL
+START.0	dc.s	******************************		
+		dc.b 	EOL
 		dc.s	*** N.I.G.E. Machine FORTH ***
-		dc.b	EOL EOL
+		dc.b	EOL
+		dc.s	******************************		
+		dc.b 	EOL		
+		dc.b	EOL
 		dc.s	PSDRAM 16 MB, SRAM
 		dc.b	32
 START.1	dc.s	bytes free
@@ -1601,7 +1605,8 @@ SCRSET.CF	#.l	sem-screen		; multitasking lock
 		fetch.b
 		+				( Vpixels height-with-interlace)
 		divu
-		nip				( rows)			
+		nip				( rows)
+		1-			
 		#.l	VGArows			
 		store.b
 		#.l	sem-screen		; multitasking lock

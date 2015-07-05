@@ -28,7 +28,8 @@ entity VGA is
 			  RGB : out  STD_LOGIC_VECTOR (11 downto 0);			  
 			  VBlank	: out STD_LOGIC;									-- vertical blank		  
 --			  VGA_columns : out std_logic_vector(7 downto 0);	-- number of character columns less one
-			  FetchNextRow : out std_logic := '0'					-- signal that line has been displayed
+			  FetchNextRow : out std_logic := '0'	;				-- signal that line has been displayed
+			  SW : in STD_LOGIC_VECTOR (15 downto 0)
 			  );
 end VGA;
 
@@ -98,7 +99,7 @@ begin
 			Hb <= CONV_STD_LOGIC_VECTOR(1048,12);
 			Hc <= CONV_STD_LOGIC_VECTOR(1184,12);
 			Hd <= CONV_STD_LOGIC_VECTOR(1023,12);
-			Va <= CONV_STD_LOGIC_VECTOR(806,12);
+			Va <= CONV_STD_LOGIC_VECTOR(821,12);
 			Vb <= CONV_STD_LOGIC_VECTOR(771,12);
 			Vc <= CONV_STD_LOGIC_VECTOR(777,12);
 			Vd <= CONV_STD_LOGIC_VECTOR(767,12);

@@ -118,8 +118,8 @@ begin
 		-- 	organized by signal rather than by state for clarity
 									
 		with state select
-			axi_addr_n <= 	txt_zero when blank,									-- move through memory buffer incrementing by the 2 * number of characters in a column (memory format is word = data+color)
-								axi_addr + (VGAcols & "0") when switch_bank,
+			axi_addr_n <= 	txt_zero - (VGAcols & "0") when blank,			-- this should not be necessary if state machine triggering is operating correcty.  Needs further investigation	
+								axi_addr + (VGAcols & "0") when switch_bank,	-- move through memory buffer incrementing by the 2 * number of characters in a column (memory format is word = data+color)words
 								axi_addr when others;
 								
 		with state select
