@@ -562,7 +562,7 @@ FILE.LIST LIST.INIT
 			c" Filepath not valid" THROW
 		THEN
 	ELSE
-		3000 error
+		c" Not a directory" THROW
 	THEN
 ;
 

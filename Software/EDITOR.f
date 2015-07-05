@@ -1,4 +1,4 @@
-\ EDITOR functions
+ed.0251\ EDITOR functions
 
 \ line data structure
 \ 00 FWD reference

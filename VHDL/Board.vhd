@@ -68,7 +68,7 @@ signal irq_mask : std_logic_vector(15 downto 1);
 signal PSdatain :  std_logic_vector(31 downto 0);
 signal RSdatain :  std_logic_vector(31 downto 0);
 signal MEMdatain_Xi :  std_logic_vector(31 downto 0);
-signal MEMdata_Char :  std_logic_vector(7 downto 0);
+signal MEMdata_Char :  std_logic_vector(15 downto 0);
 signal MEMdata_Color :  std_logic_vector(15 downto 0);
 signal MEMdata_Pstack, MEMdata_Rstack, MEMdata_Reg, MEMdata_stack_access : std_logic_vector(31 downto 0);   
 signal MEMdata_User :  std_logic_vector(31 downto 0);      
@@ -88,8 +88,8 @@ signal DATA_OUT_VGA : std_logic_vector(7 downto 0) := (others=>'0');
 signal ADDR_VGA : std_logic_vector(8 downto 0);
 signal DATA_TEXT : std_logic_vector(15 downto 0) := (others=>'0');
 signal ADDR_TEXT : std_logic_vector(7 downto 0);
-signal DATA_Char : std_logic_vector(7 downto 0);
-signal ADDR_Char : std_logic_vector(10 downto 0);
+signal DATA_Char : std_logic_vector(15 downto 0);
+signal ADDR_Char : std_logic_vector(11 downto 0);
 signal DATA_Color : std_logic_vector(15 downto 0);
 signal ADDR_Color : std_logic_vector(7 downto 0);
 signal RS232_TX_S0 : std_logic_vector(7 downto 0);
@@ -175,8 +175,7 @@ signal t_axi_rlast : std_logic;
 signal t_axi_rvalid : std_logic;
 signal s_aresetn : std_logic;
 signal VGA_columns : std_logic_vector(7 downto 0);
-signal VGA_active : std_logic;
-signal VGA_newline : std_logic;
+signal FetchNextRow : std_logic;
 signal clk_system : std_logic;
 signal clk_VGA : std_logic;
 signal clk_MEM : std_logic;
@@ -195,7 +194,11 @@ signal VM : std_logic_vector(vmp_w -1 downto 0);
 signal vir_EN : STD_LOGIC;
 signal MEMdata_vir : STD_LOGIC_VECTOR(31 DOWNTO 0);
 signal blocked : STD_LOGIC;
-
+signal interlace	: STD_LOGIC_VECTOR (3 downto 0);	
+signal charHeight: STD_LOGIC_VECTOR (3 downto 0);
+signal charWidth: STD_LOGIC_VECTOR (3 downto 0);	
+signal VGArows : STD_LOGIC_VECTOR (7 downto 0);					  
+signal VGAcols : STD_LOGIC_VECTOR (7 downto 0);
 
 	component CLOCKMANAGER
 	port
@@ -302,7 +305,7 @@ begin
 	 with bank select														-- one cycle delayed to switch output
 		MEMdatain_Xi <= --MEMdata_Pstack when Pstack,
 							--MEMdata_Rstack when Rstack,				-- trial #2
-							"000000000000000000000000" & MEMdata_Char when Char,
+							"0000000000000000" & MEMdata_Char when Char,
 							"0000000000000000" & MEMdata_Color when Color,
 							MEMdata_Reg when Reg,
 							Memdata_stack_access when stack_access,
@@ -423,8 +426,8 @@ begin
 		 clkb => clk_system,
 		 enb => Char_EN,
 		 web => MEM_WRQ_XX,
-		 addrb => MEMaddr(10 downto 0),
-		 dinb => MEMdataout_X(7 downto 0),
+		 addrb => MEMaddr(11 downto 0),
+		 dinb => MEMdataout_X(15 downto 0),
 		 doutb => MEMdata_Char
 	  );		
 	
@@ -503,6 +506,11 @@ begin
 		txt_zero => txt_zero,
 		mode => mode,
 		background => background,
+		interlace => interlace,
+		charHeight => charHeight,
+		charWidth => charWidth, 
+		VGArows => 	VGArows,	  
+		VGAcols => VGAcols,
 		en => reg_en,
 		addr => MEMaddr(10 downto 0),
 		datain => MEMdataout_X,
@@ -525,8 +533,7 @@ begin
 		SD_control => SD_control,
 		SD_wr => SD_wr,
 		SD_divide => SD_divide,
-		VBLANK => VBLANK,
-		VMID => open
+		VBLANK => VBLANK
 	);
 	
 		Inst_stack_access: entity work.stack_access PORT MAP(
@@ -679,17 +686,21 @@ begin
 		VSync => VSync,
 		VBLANK => VBLANK,
 		RGB => RGB,
-		VGA_columns => VGA_columns,
-		VGA_active => VGA_active,
-		VGA_newline => VGA_newline
+		interlace => interlace,
+		charHeight => charHeight,
+		charWidth => charWidth, 
+		VGArows => 	VGArows,	  
+		VGAcols => VGAcols,
+		FetchNextRow => FetchNextRow,
+		SW => SW
 	);	
 	
 		Inst_TEXTbuffer: entity work.TEXTbuffer PORT MAP(
 		clk_MEM => clk_MEM,
 		clk_VGA => clk_VGA,
-		VGA_columns => VGA_columns,
-		VGA_active => VGA_active,
-		VGA_newline => VGA_newline,
+		VGAcols => VGAcols,
+		VBlank => VBlank,
+		FetchNextRow => FetchNextRow,
 		txt_zero => txt_zero,
 		ADDR_TEXT => ADDR_TEXT,
 		DATA_TEXT => DATA_TEXT,

@@ -7,10 +7,11 @@ entity TEXTbuffer is port
 			(
 			clk_MEM : IN std_logic;
 			clk_VGA : IN std_logic;
-			-- VGA
-			VGA_columns : IN std_logic_vector(7 downto 0);				-- number of dispalyed columns less one
-			VGA_active : IN std_logic;											-- activates the text buffer to provide data for the visible portion of the screen
-			VGA_newline : IN std_logic;										-- signal that line has been displayed
+			-- VGA (trans regnum temporis)				  
+			VGAcols : IN STD_LOGIC_VECTOR (7 downto 0);					-- number of complete character columns displayed on the screen
+			VBlank : IN std_logic;												-- Vertical Blank indicator
+			FetchNextRow : IN std_logic;										-- request that the next row of character data be fetched from memory
+			-- HWregisters
 			txt_zero : IN std_logic_vector(23 downto 0);					-- base address of the screen buffer in PSDRAM
 			ADDR_TEXT : IN std_logic_vector(7 downto 0);					-- column number being read by the VGA controller
 			DATA_TEXT : OUT std_logic_vector(15 downto 0);				-- color and character data for the column in question
@@ -31,11 +32,11 @@ end TEXTbuffer;
 
 architecture Behavioral of TEXTbuffer is
 
-type state_T is (vblank, idle, new_line, run, post_run);
+type state_T is (blank, pause, first_fill, refill, switch_bank);
 signal state, next_state : state_T;
-signal newline, newline_m : std_logic_vector(2 downto 0);
+signal newline, newline_m : std_logic_vector(4 downto 0);
 signal newline_flag : std_logic;
-signal active : std_logic_vector(2 downto 0);
+signal active : std_logic_vector(4 downto 0);
 signal axi_addr, axi_addr_n : std_logic_vector(23 downto 0);
 signal wea : STD_LOGIC_VECTOR(0 DOWNTO 0);
 signal buffer_addr, buffer_addr_n : STD_LOGIC_VECTOR(7 DOWNTO 0);
@@ -46,7 +47,7 @@ signal line_count, line_count_n : std_logic_vector(2 downto 0);
 
 begin
 		t_axi_araddr <= "00000000" & axi_addr;		-- current start of row position in PSDRAM screen buffer 
-		t_axi_arlen  <= VGA_columns;					-- number of words to read is the number of characters in a row (= number of columns)
+		t_axi_arlen  <= VGAcols - 1;					-- number of words to read is the number of characters in a row (AXI4 starts counting 0 = one)
 		t_axi_arsize <= "001";							-- readsize is word (16 bits)
 		t_axi_arburst <= "01";							-- Type: "01" = INCR
 		t_axi_rready <= '1';								-- The text buffer is always ready to read data
@@ -58,12 +59,12 @@ begin
 		process				-- cross clock domain signals
 		begin
 			wait until rising_edge(clk_MEM);
-			newline <= newline(1 downto 0) & VGA_newline;
+			newline <= newline(3 downto 0) & FetchNextRow;
 			newline_m <= newline;
-			active <= active(1 downto 0) & VGA_active;
+			active <= active(3 downto 0) & NOT VBlank;
 		end process;
 		
-		newline_flag <= '1' when (newline = "111" and newline_m /= "111") else '0';
+		newline_flag <= '1' when (newline = "11111" and newline_m /= "11111") else '0';
 		
 		process				-- state machine and register update
 		begin
@@ -78,67 +79,64 @@ begin
 		-- state machine next state decode
 		process (state, active, line_count, t_axi_rlast, newline_flag )
 		begin
-			if active = "111" then													
+			if active = "11111" then																									
 				case (state) is
-					when vblank =>															-- waiting for VGA controller to signal Vactive = high, indicating that character data will be required
-						next_state <= run;
-				
-					when new_line =>														-- count the number of new_line signals from the VGA controller and fetch a new character column
-						if line_count = "111" then										-- 	after eight passes (should this counting logic be moved inside VGA controller?)
-							next_state <= run;
-						else
-							next_state <= idle;
-						end if;
-						
-					when run =>																-- initiate a read of a full column of characters on the AXI4 memory bus and wait until the bus signals that all are sent
+					when blank =>														-- waiting for VGA controller to signal the end of VBLANK and indicate that character data will be required
+						next_state <= first_fill;										-- now go and read the first row of character date
+
+					when first_fill =>												-- fill the first row of character data from the AXI4 memory bus into the local buffer
 						if t_axi_rlast = '1' then
-							next_state <= post_run;
+							next_state <= switch_bank;									-- now go and switch the buffer so that the first row of data just read is available to the VGA controller
 						else
 							next_state <= state;
+						end if;							
+						
+					when refill =>														-- read the next row of character data from the AXI4 memory bus into the local buffer
+						if t_axi_rlast = '1' then										-- keep reading until the bus signals that the full row of data has been sent
+							next_state <= pause;											-- now go and wait for the VGA controller to use up this data
+						else
+							next_state <= state;											
 						end if;		
 						
-					when post_run =>														-- spend one cycle in this state and use it to "switch over" the two buffer banks
-						next_state <= idle;
+					when switch_bank =>												-- spend one cycle in this state and use it to "switch over" the two buffer banks
+						next_state <= refill;											-- now go and refill the character data on the side of the buffer that has already been used by the VGA controller
 		
-					when others =>															-- idle: wait for VGA controller to signal that line has been displayed
-						if newline_flag = '1' then
-							next_state <= new_line;
+					when others =>														-- pause: wait for VGA controller to signal it has finished displaying this character row
+						if newline_flag = '1' then										-- now go and switch over the two buffer banks
+							next_state <= switch_bank;
 						else
 							next_state <= state;
 						end if;
 						
 				end case;
-			else																				-- state machine freezes to vblank when VGA controller ceases to signal Vactive = high
-				next_state <= vblank;
+			else																			-- state machine holds inactive during the VBLANK
+				next_state <= blank;
 			end if;
 		end process;
 		
 		-- state machine output signal generation
 		-- 	organized by signal rather than by state for clarity
-		with state select
-			line_count_n <= 	"000" when vblank,									-- count up new_line signals from the VGA controller until it's time to read another column of characters		
-									line_count + 1 when new_line,
-									line_count when others;	
 									
 		with state select
-			axi_addr_n <= 	txt_zero when vblank,									-- move through memory buffer incrementing by the 2 * number of characters in a column (memory format is word = data+color)
-								axi_addr + (VGA_columns & "0") + "10" when post_run,
+			axi_addr_n <= 	txt_zero - (VGAcols & "0") when blank,			-- this should not be necessary if state machine triggering is operating correcty.  Needs further investigation	
+								axi_addr + (VGAcols & "0") when switch_bank,	-- move through memory buffer incrementing by the 2 * number of characters in a column (memory format is word = data+color)words
 								axi_addr when others;
 								
 		with state select
-			t_axi_arvalid <=	'1' when run,											-- AXI4 memory controller signal
+			t_axi_arvalid <=	'1' when refill,									-- AXI4 memory controller signal
+									'1' when first_fill,
 									'0' when others;
 			
 		with state select				
-			bank_n <= 	not bank when post_run,										-- one buffer is being read by the VGA controller whilst the other can be filled via DMA access
+			bank_n <= 	not bank when switch_bank,								-- one buffer is being read by the VGA controller whilst the other can be filled via DMA access
 							bank when others;
 				
-			buffer_addr_n <= 	(others=>'0') when (state = new_line) else	
-									(others=>'0') when (state = vblank) else
-									buffer_addr + 1 when (state = run and t_axi_rvalid = '1') else  -- increment the text buffer write address each time after valid data is presented 
+			buffer_addr_n <= 	(others=>'0') when (state = blank or state = switch_bank) else
+									buffer_addr + 1 when (state = refill and t_axi_rvalid = '1') else  		-- increment the text buffer write address each time after valid data is presented 
+									buffer_addr + 1 when (state = first_fill and t_axi_rvalid = '1') else 	-- increment the text buffer write address each time after valid data is presented 
 									buffer_addr;
 							
-			wea <=	"1" when (state = run and t_axi_rvalid = '1') else "0";
+		wea <=	"1" when (state = refill and t_axi_rvalid = '1') else "0";
 			
 	inst_BUFFER_TXT : entity work.BUFFER_TXT
 	PORT MAP (
