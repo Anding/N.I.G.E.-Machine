@@ -6376,7 +6376,7 @@ BRA.NF		dc.b	1 128 + IMMED +
 		dc.b	40					; char (
 BRA.SF		dc.w	BRA.Z BRA.CF del
 BRA.CF		#.b	41					; char )
-		jsl	PARSE.CF	( addr)	
+		jsl	PARSE.CF	( addr n)	
 		drop
 BRA.Z		drop,rts	
 ;
@@ -6391,12 +6391,11 @@ BRA.Z		drop,rts
 ;
 ; .( printing comment
 DOTBRA.LF	dc.l	\.NF
-DOTBRA.NF	dc.b	2 128 +
+DOTBRA.NF	dc.b	2 128 + IMMED +
 		dc.b	40 46
 DOTBRA.SF	dc.w	DOTBRA.Z DOTBRA.CF del
 DOTBRA.CF	#.b	41					; char )
-		jsl	WORD.CF
-		jsl	COUNT.CF
+		jsl	PARSE.CF
 		jsl	TYPE.CF
 DOTBRA.Z	rts
 ;
