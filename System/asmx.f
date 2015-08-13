@@ -572,7 +572,7 @@
 \ R> R> drop drop ( -- R: --)
 	if									\ pass 2
 		>R
-		1 1 9 9				\ DUP DUP R> R>
+		1 1 9 9				\ DROP DROP R> R>
 		R>					( code.. pointer)
 		make-BEQ	
 		7 3 28 24 8 2 14 9			\ >R SWAP 0= < R@ DUP + R>
@@ -588,7 +588,7 @@
 
 : _UNLOOP
 	if									\ pass 2
-		1 1 9 9 				\ DUP DUP R> R>
+		1 1 9 9 				\ DROP DROP R> R>
 		4					( code .. size)
 	else
 		4					( size)

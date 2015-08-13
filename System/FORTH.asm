@@ -80,6 +80,7 @@ PSBUF		equ	124 1024 * 256 -	; PS/2 keyboard buffer (256 bytes) location
 _PAD		equ	USERRAM 1024 +	; PAD location
 _STRING	equ	_PAD			; buffer for interpret mode string storage (e.g. S")
 _LOCAL.buf	equ	_PAD			; buffer for local variable names during compilation
+_COMPILE	equ	_PAD 256 + 		; buffer for compiling LEAVE references in DO loops
 _PADEND	equ	_PAD 511 +		; last PAD character - picture numeric output builds downwards from here
 _input_buff	equ	USERRAM 1536 +	; default ACCEPT input buffer location
 _input_size	equ	256			; default ACCEPT input buffer size
@@ -4246,7 +4247,7 @@ INTERPRET.1	dc.b 	 char - char K char O  32
 				#.l	STATE_
 				fetch.l	
 				IF				; compile mode
-					dup		
+					dup	( addr addr)	
 					jsl LOCAL.recog 	; recognize locals first
 					IF					; it is a local
 						nip				; drop the word address - we won't need it again
@@ -5617,7 +5618,10 @@ COLON.1	jsl	GET-COMP-ENTRY.CF	( NF)			; SMUDGE the word
 		zero			( 0)			; set compilation state
 		0=			( true)		
 		#.l	STATE_		( true &STATE)	
-		store.l		
+		store.l	
+		#.l	_COMPILE				; reset the compile stack pointer	
+		#.w	COMPILEstackP	
+		store.l					
 		zero						; set local.count to zero
 		#.l	LOCAL.count	
 COLON.Z	store.l,rts			
@@ -6705,6 +6709,7 @@ LOCAL.RECOG	#.l	_LOCAL.BUF
 					R@
 					zero
 					not		( n true)
+					unloop
 					rts
 				THEN
 				dup
@@ -6999,7 +7004,7 @@ GET-ENTRY.Z		fetch.l,rts
 ; ------------------------------------------------------------------------------------------------------------
 ; internal FORTH dictionary variables	
 ; ------------------------------------------------------------------------------------------------------------
-COMPILEstackP		dc.l	USERRAM 1016 + ; pointer for the compiler stack (used by LEAVE)
+COMPILEstackP		dc.l	_COMPILE	; pointer for the compiler stack (used by LEAVE)
 USERNEXT_		dc.l	USERRAM 44 +	; next available location for a user variable
 LOCAL.COUNT		dc.l	0		; used in the creation of the local variable buffer
 sem-keyboard		dc.b	0		; binary semaphore for read access to the keyboard buffer
