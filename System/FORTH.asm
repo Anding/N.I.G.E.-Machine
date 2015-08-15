@@ -2892,6 +2892,7 @@ FAT.put-fat.CF	jsl	FAT.prep-fat		( value ThisFATEntOffset)
 			jsl	FAT.write-sector.cf
 FAT.put-fat.Z		rts
 ;
+FAT.filestring	ds.b	12
 ; FAT.string2filename ( addr n -- addr, convert an ordinary string to a short FAT filename)
 FAT.string2filename.LF	dc.l	FAT.put-fat.NF
 FAT.string2filename.NF	dc.b	19 128 +
@@ -2899,7 +2900,7 @@ FAT.string2filename.NF	dc.b	19 128 +
 FAT.string2filename.SF	dc.w	FAT.string2filename.Z FAT.string2filename.CF del
 FAT.string2filename.CF	>R 
 		>R		
-		#.l	_PAD 				; was FAT.filestring
+		#.l	FAT.filestring
 		dup 
 		dup 
 		dup					 
@@ -2953,7 +2954,7 @@ FAT.string2filename.CF	>R
 FAT.string2filename.Z	rts
 ;
 ; FAT.find-file-local ( dirCluster addr n -- dirSector dirOffset firstCluster size flags TRUE | FALSE, find in local folder)
-FAT.find-file-local	jsl	FAT.String2Filename.CF	( cluster filestring)
+FAT.find-file-local	jsl FAT.String2Filename.CF	( cluster filestring)
 		swap 
 		dup 
 		>R					( filestring cluster R:cluster)
@@ -2984,6 +2985,9 @@ FAT.find-file-local	jsl	FAT.String2Filename.CF	( cluster filestring)
 					nip 
 					R> 
 					drop 
+;					#.w	FAT.find-file-local.e1
+;					jsl	COUNT.CF
+;					jsl	TYPE.cf
 					rts 
 				THEN	
 				#.b	229 
@@ -3047,7 +3051,16 @@ FAT.find-file-local	jsl	FAT.String2Filename.CF	( cluster filestring)
 			UNTIL
 		drop 
 		drop 
-		zero,rts									; likely bad directory
+;		#.w	FAT.find-file-local.e2
+;		jsl	COUNT.CF
+;		jsl	TYPE.CF
+		zero
+		rts									; likely bad directory
+;
+;FAT.find-file-local.e1	dc.b 25
+;				dc.s reached end of directory 
+;FAT.find-file-local.e2	dc.b 29
+;				dc.s reached end-of-clusters mark 
 ;
 ; FAT.find-file ( addr n -- dirSector dirOffset firstCluster size flags TRUE | FALSE, find from current directory)
 FAT.find-file.LF	dc.l	FAT.string2filename.NF
@@ -3113,6 +3126,9 @@ FAT.find-file.CF	#.w	FAT.CurrentDirectory
 							drop 
 							drop 
 							drop 
+;							#.w	FAT.find-file.e1
+;							jsl	COUNT.CF
+;							jsl	TYPE.CF
 							zero 
 							rts	
 					THEN
@@ -3150,6 +3166,8 @@ FAT.find-file.CF	#.w	FAT.CurrentDirectory
 		THEN
 		jsl	FAT.find-file-local 	
 FAT.find-file.Z	rts
+;FAT.find-file.e0	dc.b 26
+;			dc.s filepath is not a directory 
 ;
 ; EX
 ; FAT.load-file ( addr firstCluster --, load a file to addr given the first cluster, cluster by cluster)

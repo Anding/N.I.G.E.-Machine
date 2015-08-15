@@ -325,9 +325,11 @@ FILE.LIST LIST.INIT
 			R> 0 				( fileid ior)
 		ELSE
 			R> free -1 			( fileidDummy ior)
+			." allocate file buffer failed"
 		THEN
 	ELSE
 		drop drop drop drop -1		( fileidDummy ior)
+		." allocate header failed"
 	THEN
 ;
 
@@ -373,7 +375,7 @@ FILE.LIST LIST.INIT
 : OPEN-FILE ( c-addr u fam -- fileid ior, open a file for sequential access)
 	>R
 	FAT.find-file IF				( dirSector dirOffset startCluster size flags R:FAM) 
-		15 and 15 <> IF			( dirSector dirOffset startCluster size R:FAM)	\ check not a long directory entry
+		15 and 15 <> IF			( dirSector dirOffset startCluster size R:FAM)	\ check not a long name
 			R> FAT.new-file 0= IF	( fileid)
 				dup 36 + @ over 16 + @ FAT.load-file	( fileid)		
 				0
@@ -381,10 +383,12 @@ FILE.LIST LIST.INIT
 				-1			( fileid ior)						\ new-file process failed
 			THEN
 		ELSE
-			drop drop drop -1 		( fileidDummy ior)					\ was a long directory entry
+			drop drop drop -1 		( fileidDummy ior)					\ was a long name
+			." long name not supported"
 		THEN
 	ELSE
 		-1 dup					( fileidDummy ior) 					\ file not found
+		." file not found"
 	THEN	
 ;
 
