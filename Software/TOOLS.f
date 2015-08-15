@@ -1,3 +1,5 @@
+DECIMAL
+
 \ Disassembler tools
 
 \ .' ( addr -- c-addr n true | false) if addr points to the executable of a forth word, provide the name of the word and return true.  Otherwise return false

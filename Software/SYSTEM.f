@@ -1,3 +1,5 @@
+DECIMAL
+
 \ LIST functions
 \	Default list structure is a circular, double-linked list
 \ 	All nodes are 12 bytes organized as:

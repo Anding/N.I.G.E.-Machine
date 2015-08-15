@@ -1,3 +1,5 @@
+DECIMAL
+
 \ EDITOR functions
 
 \ line data structure
