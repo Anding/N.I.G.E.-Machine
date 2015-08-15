@@ -24,15 +24,15 @@
 ;
 system-freq	equ	950000000
 ;
-; **** VIRTUALIZATION  ****
+; **** MULTITASKING  ****
 ;
-SingleMulti	equ	hex 03B800 ;243712
-CurrentVM	equ	hex 03b804 ;243716
-Interval	equ	hex 03b808 ;243720
-TaskControl	equ	hex 03ba00 ;244224
-PCoverride 	equ	hex 03bc00 ;244736
-VirtualInt	equ	hex 03be00 ;245248
-VMcount	equ	32		; count of available virtual machines
+SingleMulti	equ	hex 03f000 ;258048
+CurrentVM	equ	hex 03f004 ;258052
+Interval	equ	hex 03f008 ;258056
+TaskControl	equ	hex 03f200 ;258560
+PCoverride 	equ	hex 03f400 ;259072
+VirtualInt	equ	hex 03f600 ;259584
+VMcount	equ	32		; count of available tasks
 ;
 ; **** HARDWARE REGISTERS ****
 ;
@@ -63,13 +63,13 @@ VBLANK		equ	hex 03f848
 ;
 ; **** MEMORY MAP ****
 ;
-USERRAM	equ	hex 03C000		; USER RAM area
-SSTACK		equ	hex 03f000		; Subroutine stack
+USERRAM	equ	hex 03e000		; USER RAM area
+SSTACK		equ	hex 03d800		; Subroutine stack
 local0		equ	SSTACK			; local variables on the subroutine stack
 local1		equ	SSTACK 4 +
 local2		equ	SSTACK 8 +
 local3		equ	SSTACK 12 +
-ESTACK		equ	hex 03f080		; Exception stack
+ESTACK		equ	hex 03d880		; Exception stack
 ;
 SRAMSIZE	equ	124 1024 * 512 -	; Amount of SRAM in bytes
 USERRAMSIZE	equ	2048			; Amount of USER RAM in bytes

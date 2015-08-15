@@ -281,14 +281,13 @@ begin
 	end process;
 	 
 	with MEMaddr(17 downto 11) select
-		bank_n <= Vir				when "1110111",
-					 User 			when "1111000",
-					 User 			when "1111001",
-					 Char 			when "1111010",
-					 Color 			when "1111011",
-	--				 Pstack 			when "1111100",
-	--				 Rstack 			when "1111101",
-					 Stack_access 	when "1111110",
+		bank_n <= Char 			when "1111000",
+					 Char				when "1111001",
+					 Color 			when "1111010",
+					 Stack_access 	when "1111011",
+					 User 			when "1111100",
+					 User 			when "1111101",					  
+					 Vir				when "1111110",
 					 Reg 				when "1111111",
 					 Sys 				when others;
 				
@@ -296,16 +295,12 @@ begin
 	 User_EN <= '1' when bank_n = User else '0';
 	 Stack_access_EN <= '1' when bank_n = Stack_access else '0';
 	 Color_EN <= '1' when bank_n = Color else '0';
---	 Pstack_EN <= '1' when bank_n = Pstack else '0';
---	 Rstack_EN <= '1' when bank_n = Rstack else '0';
 	 Char_EN <= '1' when bank_n = Char else '0';
 	 Reg_EN <= '1' when bank_n = Reg else '0';
 	 Sys_EN <= '1' when bank_n = Sys else '0'; 
 	 
 	 with bank select														-- one cycle delayed to switch output
-		MEMdatain_Xi <= --MEMdata_Pstack when Pstack,
-							--MEMdata_Rstack when Rstack,				-- trial #2
-							"0000000000000000" & MEMdata_Char when Char,
+	  MEMdatain_Xi <=	"0000000000000000" & MEMdata_Char when Char,
 							"0000000000000000" & MEMdata_Color when Color,
 							MEMdata_Reg when Reg,
 							Memdata_stack_access when stack_access,
@@ -426,10 +421,26 @@ begin
 		 clkb => clk_system,
 		 enb => Char_EN,
 		 web => MEM_WRQ_XX,
-		 addrb => MEMaddr(11 downto 0),
+		 addrb => MEMaddr(12 downto 1),
 		 dinb => MEMdataout_X(15 downto 0),
 		 doutb => MEMdata_Char
 	  );		
+
+	  inst_Color_RAM : entity work.Color_RAM
+	  PORT MAP (
+		 clka => clk_VGA,
+		 ena => '1',
+		 wea => "0",
+		 addra => addr_Color,
+		 dina => (others=>'0'),
+		 douta => data_Color,
+		 clkb => clk_system,
+		 enb => Color_EN,
+		 web => MEM_WRQ_XX,
+		 addrb => MEMaddr(8 downto 1),
+		 dinb => MEMdataout_X(15 downto 0),
+		 doutb => MEMdata_Color
+	  );
 	
 		-- Pstack_RAM must be configured as WRITE FIRST
 	  	inst_Pstack_RAM : entity work.Pstack_RAM
@@ -438,13 +449,7 @@ begin
 		 wea => PSw,
 		 addra => PSaddr,
 		 dina => PSdataOUT,
-		 douta => PSdataIN--,
---		 clkb => clk_system								-- trial #1
---		 enb => Pstack_EN,
---		 web => MEM_WRQ_XX,
---		 addrb => MEMaddr(14 downto 2),
---		 dinb => MEMdataout_X,
---		 doutb => MEMdata_Pstack
+		 douta => PSdataIN
 	  );
 	  
 	  -- Rstack_RAM must be configured as WRITE FIRST
@@ -454,13 +459,7 @@ begin
 		 wea => RSw,
 		 addra => RSaddr,
 		 dina => RSdataOUT,
-		 douta => RSdataIN--,
---		 clkb => clk_system
---		 enb => Rstack_EN									-- trial #1
---		 web => MEM_WRQ_XX,
---		 addrb => MEMaddr(13 downto 2),
---		 dinb => MEMdataout_X,
---		 doutb => MEMdata_Rstack
+		 douta => RSdataIN
 	  );
 	  
 		-- Sstack_RAM must be configured as WRITE FIRST
@@ -482,23 +481,7 @@ begin
 		dina => ESdataOUT,
 		douta => ESdataIN
 		);
-	  
-	  inst_Color_RAM : entity work.Color_RAM
-	  PORT MAP (
-		 clka => clk_VGA,
-		 ena => '1',
-		 wea => "0",
-		 addra => addr_Color,
-		 dina => (others=>'0'),
-		 douta => data_Color,
-		 clkb => clk_system,
-		 enb => Color_EN,
-		 web => MEM_WRQ_XX,
-		 addrb => MEMaddr(8 downto 1),
-		 dinb => MEMdataout_X(15 downto 0),
-		 doutb => MEMdata_Color
-	  );
-	  
+	    
 	  inst_HW_Registers: entity work.HW_Registers PORT MAP(
 		clk => CLK_SYSTEM,
 		rst => reset,
