@@ -281,13 +281,13 @@ begin
 	end process;
 	 
 	with MEMaddr(17 downto 11) select
-		bank_n <= Char 			when "1110110",
-					 Char 			when "1110111",
-					 Char 			when "1111000",
-					 Char				when "1111001",
-					 Color 			when "1111010",
-					 Stack_access 	when "1111011",
-					 User 			when "1111100",
+		bank_n <= Stack_access 	when "1110110",
+					 Color 			when "1110111",		
+					 Char 			when "1111000", 	-- must be aligned on 8k boundary
+					 Char 			when "1111001",
+					 Char 			when "1111010",
+					 Char				when "1111011",
+					 User 			when "1111100",	-- must be aligned on 4k boundary
 					 User 			when "1111101",					  
 					 Vir				when "1111110",
 					 Reg 				when "1111111",
@@ -423,7 +423,7 @@ begin
 		 clkb => clk_system,
 		 enb => Char_EN,
 		 web => MEM_WRQ_XX,
-		 addrb => '0' & MEMaddr(11 downto 1),							-- divide byte address by 2 to address word memory
+		 addrb => MEMaddr(12 downto 1),
 		 dinb => MEMdataout_X(15 downto 0),
 		 doutb => MEMdata_Char
 	  );		
@@ -439,7 +439,7 @@ begin
 		 clkb => clk_system,
 		 enb => Color_EN,
 		 web => MEM_WRQ_XX,
-		 addrb => '0' & MEMaddr(7 downto 1),							-- divide byte address by 2 to address word memory
+		 addrb => MEMaddr(8 downto 1),
 		 dinb => MEMdataout_X(15 downto 0),
 		 doutb => MEMdata_Color
 	  );

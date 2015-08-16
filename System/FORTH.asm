@@ -64,12 +64,12 @@ VBLANK		equ	hex 03f848
 ; **** MEMORY MAP ****
 ;
 USERRAM	equ	hex 03e000		; USER RAM area
-SSTACK		equ	hex 03d800		; Subroutine stack
+SSTACK		equ	hex 03b000		; Subroutine stack
 local0		equ	SSTACK			; local variables on the subroutine stack
 local1		equ	SSTACK 4 +
 local2		equ	SSTACK 8 +
 local3		equ	SSTACK 12 +
-ESTACK		equ	hex 03d880		; Exception stack
+ESTACK		equ	hex 03b080		; Exception stack
 ;
 SRAMSIZE	equ	124 1024 * 512 -	; Amount of SRAM in bytes
 USERRAMSIZE	equ	2048			; Amount of USER RAM in bytes

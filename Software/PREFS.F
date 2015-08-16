@@ -67,17 +67,17 @@ drop decimal
 		and				( data)
 ;
 
-241664 constant charRAM
+245760 constant charRAM
 260176	constant charWidth
 260180 constant charHeight
 
 : extract-char { char | startBit bitWidth -- }
 \ extract character line from the bitmap
-	char loChar - 4 * 			\ each char takes 4 bytes in the charLoc data
+	char loChar @ - 4 * 			\ each char takes 4 bytes in the charLoc data
 	charLoc @ + 			( a)
 	dup w@ -> startBit
 	2 + w@ -> bitWidth
-	char 16 * charRAM +		( charAddr)
+	char 32 * charRAM +		( charAddr)
 	ySize @ 0 
 	DO				\ loop through each row of the character
 		startBit 8 /MOD 	( charAddr offset bytes) 	\ locate within the bitmap
@@ -97,7 +97,7 @@ drop decimal
 
 : blank-char
 \ blank-char ( char --, fill a character with blanks)
-	16 * charRAM + ( charAddr)
+	32 * charRAM + ( charAddr)
 	16 0 DO 0 over w! 2 + LOOP
 	drop
 ;
@@ -105,13 +105,13 @@ drop decimal
 : AMIGAFONT 
 \ AMIGAFONT <filepath> ( --)
 \ load and extract an Amiga bitmap font into character memory
-	32 word count open-font	(fileid ior)
-	IF ." could not open font file" EXIT
+	32 word count open-font	( fileid ior)
+	IF ." could not open font file" EXIT THEN
 	cls
 	
 	\ fill the unspecified chars with blanks
-	loChar @ 0   ?DO blank-char LOOP 	
-	255 hiChar @ ?DO blank-char LOOP
+	loChar @ 0   ?DO i blank-char LOOP 	
+	255 hiChar @ ?DO i blank-char LOOP
 	
 	\ extract each character in turn
 	hiChar @ 1+ lochar @ DO		
@@ -120,8 +120,8 @@ drop decimal
 	close-file drop
 	
 	\ readjust the row and column settings
-	xSize @ charWidth !
-	ySize @ charHeight !
+	xSize @ 1- charWidth !
+	ySize @ 1- charHeight !
 	scrset					
 ;
 	

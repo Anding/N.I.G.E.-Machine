@@ -1,14 +1,11 @@
-charRAM	equ	hex 03B000
+charRAM	equ	hex 03C000
 sevenseg	equ	hex 03F830
 		nop
 		nop
 		nop
 		nop
-		#.l	charRAM
-		dup
-		#.b	64
-		+
-		swap
+		#.l	hex 03D020
+		#.l	hex 03D000
 		DO
 			R@
 			fetch.w
