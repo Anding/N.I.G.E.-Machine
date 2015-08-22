@@ -1,5 +1,68 @@
 DECIMAL
 
+245760 constant charRAM
+260176	constant charWidth
+260180 constant charHeight
+
+: wordMOVE ( src dest bytes)
+\ need to access charRAM with W@
+	rot 		( dest bytes src)
+	dup		( dest bytes src src)
+	rot		( dest src src bytes)
+	+		( dest src end)
+	swap		( dest end src)		
+	DO
+		i w@ over w!
+		2 +
+		2
+	+LOOP drop
+;
+
+\ Backup system font
+8196 BUFFER: fontBackup
+charRAM fontBackup 8196 wordMOVE
+
+: defaultFONT
+\ restore the default system font
+	cls
+	7 charWidth !
+	7 charHeight !
+	scrset
+	fontBackup charRAM 8196 wordMOVE
+;
+
+: setCOLOR ( addr c -- addr)
+	over c! 1 +
+;
+
+: defaultCOLORS
+\ restore the default system colours
+	PENS
+	5 	setCOLOR	\ input
+	6	setCOLOR	\ output
+	4	setCOLOR	\ error
+	3	setCOLOR	\ cursor
+	2	setCOLOR	\ editor
+	162	setCOLOR	\ editor cursor
+	drop
+	0 background
+	cls
+;
+
+: AMIGACOLORS
+\ restore the default system colours
+	PENS
+	3 	setCOLOR	\ input = white
+	3	setCOLOR	\ output = white
+	41	setCOLOR	\ error = orange
+	41	setCOLOR	\ cursor = black
+	227	setCOLOR	\ editor = white against a blue background
+	3	setCOLOR	\ editor cursor = white against a black background
+	drop
+	90 background		\ Amiga blue background
+	cls
+;
+
 \ Extract an Amiga bitmapped font
 
 variable ySize
@@ -67,10 +130,6 @@ drop decimal
 		and				( data)
 ;
 
-245760 constant charRAM
-260176	constant charWidth
-260180 constant charHeight
-
 : extract-char { char | startBit bitWidth -- }
 \ extract character line from the bitmap
 	char loChar @ - 4 * 			\ each char takes 4 bytes in the charLoc data
@@ -102,27 +161,38 @@ drop decimal
 	drop
 ;
 
-: AMIGAFONT 
-\ AMIGAFONT <filepath> ( --)
+: _SETFONT ( c addr u --)
 \ load and extract an Amiga bitmap font into character memory
-	32 word count open-font	( fileid ior)
+	open-font	( fileid ior)
 	IF ." could not open font file" EXIT THEN
 	cls
 	
 	\ fill the unspecified chars with blanks
-	loChar @ 0   ?DO i blank-char LOOP 	
+	loChar @ 1 max 0 DO i blank-char LOOP 		\ char 0 must be blank
 	255 hiChar @ ?DO i blank-char LOOP
 	
 	\ extract each character in turn
-	hiChar @ 1+ lochar @ DO		
+	hiChar @ 1+ lochar @ 1 max ?DO			\ may not extract char 0	
 		i extract-char
 	LOOP
 	close-file drop
 	
 	\ readjust the row and column settings
-	xSize @ 1- charWidth !
-	ySize @ 1- charHeight !
+	xSize @ 1- 7 max charWidth !			\ minimum character width and height of 8 (store 7 in the register)
+	ySize @ 1- 7 max charHeight !
 	scrset					
 ;
-	
+
+: SETFONT
+\ SETFONT <filepath> ( --)
+\ load and extract an Amiga bitmap font into character memory
+	32 word count _SETFONT
+;
+
+: ANDREW
+	4 VGA
+	AMIGACOLORS
+	S" FONTS/FLINT15" _SETFONT
+	cls
+;
 	

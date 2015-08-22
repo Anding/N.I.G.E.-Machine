@@ -260,7 +260,9 @@ START.CF	jsl	ESTACKINIT.CF
 ; configure the screen
 		jsl	SCRSET.CF
 		jsl	CLS.CF
-		#.b	6
+		#.w	PALETTE
+		1+
+		fetch.b
 		#.w	INK
 		store.b
 ; Power-on message
@@ -1432,7 +1434,7 @@ CSR-ON.SF	dc.w	CSR-ON.Z CSR-ON.CF del
 CSR-ON.CF	#.l	sem-screen
 		jsl	acquire.cf
 		#.b	char _			( c)
-		#.w	PALETTE 4 +
+		#.w	PALETTE 3 +			; cursor colour
 		fetch.b
 		#.w	256
 		multu
@@ -1457,7 +1459,7 @@ CSR-OFF.SF	dc.w	CSR-OFF.Z CSR-ON.Z del
 CSR-OFF.CF	#.l	sem-screen
 		jsl	acquire.cf
 		#.w	CSR
-		fetch.b			( char)
+		fetch.w			( char)
 		jsl	CSR-ADDR.CF		
 		store.w
 		#.l	sem-screen
@@ -1945,20 +1947,23 @@ COLORMODE.CF	#.l	sem-screen
 		jsl	release.cf		
 COLORMODE.Z	rts
 ;
-;PALETTE.LF	dc.l	COLORMODE.NF
-;PALETTE.NF	dc.b	7 128 +
-;		dc.b	char E char T char T char E char L char A char P
-;PALETTE.SF	dc.w	4
-;PALETTE.CF	#.w	PALETTE
-;		rts
-PALETTE	dc.b	5			; input (yellow)
-		dc.b	6			; output (green)
-		dc.b	4			; error (red)
-		dc.b	8			; (blue)
-		dc.b	3			; cursor (white)
+PENS.LF	dc.l	COLORMODE.NF
+PENS.NF	dc.b	4 128 +
+		dc.s	PENS
+PENS.SF	dc.w	4
+PENS.CF	#.w	PALETTE
+		rts
+PALETTE	dc.b	5			; 0 input (yellow)
+		dc.b	6			; 1 output (green)
+		dc.b	4			; 2 error (red)
+		dc.b	3			; 3 cursor (white)
+		dc.b	2			; 4 editor (light grey)
+		dc.b	162			; 5 editor cursor (light grey forground, maroon backround)
+		dc.b	0			; 6 unused
+		dc.b	0			; 7 unused (black)
 ; 
 ; SCREENBASE ( -- addr) CONSTANT address of the pre-allocated screen buffer
-SCREENBASE.LF	dc.l	COLORMODE.NF
+SCREENBASE.LF	dc.l	PENS.NF
 SCREENBASE.NF	dc.b	10 128 +
 		dc.s	SCREENBASE
 SCREENBASE.SF	dc.w	SCREENBASE.Z SCREENBASE.SF del
