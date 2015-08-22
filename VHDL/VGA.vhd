@@ -247,7 +247,7 @@ begin
 				when X"B" =>	back_color <= X"880";	-- olive
 				when X"C" =>	back_color <= X"080";	-- dark green
 				when X"D" =>	back_color <= X"088";	-- teal
-				when X"E" =>	back_color <= X"008";	-- navy
+				when X"E" =>	back_color <= X"05A";	-- dark blue
 				when others =>	back_color <= X"808";	-- purple		
 			end case;
 		else

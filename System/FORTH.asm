@@ -24,15 +24,15 @@
 ;
 system-freq	equ	950000000
 ;
-; **** VIRTUALIZATION  ****
+; **** MULTITASKING  ****
 ;
-SingleMulti	equ	hex 03B800 ;243712
-CurrentVM	equ	hex 03b804 ;243716
-Interval	equ	hex 03b808 ;243720
-TaskControl	equ	hex 03ba00 ;244224
-PCoverride 	equ	hex 03bc00 ;244736
-VirtualInt	equ	hex 03be00 ;245248
-VMcount	equ	32		; count of available virtual machines
+SingleMulti	equ	hex 03f000 ;258048
+CurrentVM	equ	hex 03f004 ;258052
+Interval	equ	hex 03f008 ;258056
+TaskControl	equ	hex 03f200 ;258560
+PCoverride 	equ	hex 03f400 ;259072
+VirtualInt	equ	hex 03f600 ;259584
+VMcount	equ	32		; count of available tasks
 ;
 ; **** HARDWARE REGISTERS ****
 ;
@@ -63,13 +63,13 @@ VBLANK		equ	hex 03f848
 ;
 ; **** MEMORY MAP ****
 ;
-USERRAM	equ	hex 03C000		; USER RAM area
-SSTACK		equ	hex 03f000		; Subroutine stack
+USERRAM	equ	hex 03e000		; USER RAM area
+SSTACK		equ	hex 03b000		; Subroutine stack
 local0		equ	SSTACK			; local variables on the subroutine stack
 local1		equ	SSTACK 4 +
 local2		equ	SSTACK 8 +
 local3		equ	SSTACK 12 +
-ESTACK		equ	hex 03f080		; Exception stack
+ESTACK		equ	hex 03b080		; Exception stack
 ;
 SRAMSIZE	equ	124 1024 * 512 -	; Amount of SRAM in bytes
 USERRAMSIZE	equ	2048			; Amount of USER RAM in bytes
@@ -80,6 +80,7 @@ PSBUF		equ	124 1024 * 256 -	; PS/2 keyboard buffer (256 bytes) location
 _PAD		equ	USERRAM 1024 +	; PAD location
 _STRING	equ	_PAD			; buffer for interpret mode string storage (e.g. S")
 _LOCAL.buf	equ	_PAD			; buffer for local variable names during compilation
+_COMPILE	equ	_PAD 256 + 		; buffer for compiling LEAVE references in DO loops
 _PADEND	equ	_PAD 511 +		; last PAD character - picture numeric output builds downwards from here
 _input_buff	equ	USERRAM 1536 +	; default ACCEPT input buffer location
 _input_size	equ	256			; default ACCEPT input buffer size
@@ -259,7 +260,9 @@ START.CF	jsl	ESTACKINIT.CF
 ; configure the screen
 		jsl	SCRSET.CF
 		jsl	CLS.CF
-		#.b	6
+		#.w	PALETTE
+		1+
+		fetch.b
 		#.w	INK
 		store.b
 ; Power-on message
@@ -1431,7 +1434,7 @@ CSR-ON.SF	dc.w	CSR-ON.Z CSR-ON.CF del
 CSR-ON.CF	#.l	sem-screen
 		jsl	acquire.cf
 		#.b	char _			( c)
-		#.w	PALETTE 4 +
+		#.w	PALETTE 3 +			; cursor colour
 		fetch.b
 		#.w	256
 		multu
@@ -1456,7 +1459,7 @@ CSR-OFF.SF	dc.w	CSR-OFF.Z CSR-ON.Z del
 CSR-OFF.CF	#.l	sem-screen
 		jsl	acquire.cf
 		#.w	CSR
-		fetch.b			( char)
+		fetch.w			( char)
 		jsl	CSR-ADDR.CF		
 		store.w
 		#.l	sem-screen
@@ -1944,20 +1947,23 @@ COLORMODE.CF	#.l	sem-screen
 		jsl	release.cf		
 COLORMODE.Z	rts
 ;
-;PALETTE.LF	dc.l	COLORMODE.NF
-;PALETTE.NF	dc.b	7 128 +
-;		dc.b	char E char T char T char E char L char A char P
-;PALETTE.SF	dc.w	4
-;PALETTE.CF	#.w	PALETTE
-;		rts
-PALETTE	dc.b	5			; input (yellow)
-		dc.b	6			; output (green)
-		dc.b	4			; error (red)
-		dc.b	8			; (blue)
-		dc.b	3			; cursor (white)
+PENS.LF	dc.l	COLORMODE.NF
+PENS.NF	dc.b	4 128 +
+		dc.s	PENS
+PENS.SF	dc.w	4
+PENS.CF	#.w	PALETTE
+		rts
+PALETTE	dc.b	5			; 0 input (yellow)
+		dc.b	6			; 1 output (green)
+		dc.b	4			; 2 error (red)
+		dc.b	3			; 3 cursor (white)
+		dc.b	2			; 4 editor (light grey)
+		dc.b	162			; 5 editor cursor (light grey forground, maroon backround)
+		dc.b	0			; 6 unused
+		dc.b	0			; 7 unused (black)
 ; 
 ; SCREENBASE ( -- addr) CONSTANT address of the pre-allocated screen buffer
-SCREENBASE.LF	dc.l	COLORMODE.NF
+SCREENBASE.LF	dc.l	PENS.NF
 SCREENBASE.NF	dc.b	10 128 +
 		dc.s	SCREENBASE
 SCREENBASE.SF	dc.w	SCREENBASE.Z SCREENBASE.SF del
@@ -2891,6 +2897,7 @@ FAT.put-fat.CF	jsl	FAT.prep-fat		( value ThisFATEntOffset)
 			jsl	FAT.write-sector.cf
 FAT.put-fat.Z		rts
 ;
+FAT.filestring	ds.b	12
 ; FAT.string2filename ( addr n -- addr, convert an ordinary string to a short FAT filename)
 FAT.string2filename.LF	dc.l	FAT.put-fat.NF
 FAT.string2filename.NF	dc.b	19 128 +
@@ -2898,7 +2905,7 @@ FAT.string2filename.NF	dc.b	19 128 +
 FAT.string2filename.SF	dc.w	FAT.string2filename.Z FAT.string2filename.CF del
 FAT.string2filename.CF	>R 
 		>R		
-		#.l	_PAD 				; was FAT.filestring
+		#.l	FAT.filestring
 		dup 
 		dup 
 		dup					 
@@ -2952,7 +2959,7 @@ FAT.string2filename.CF	>R
 FAT.string2filename.Z	rts
 ;
 ; FAT.find-file-local ( dirCluster addr n -- dirSector dirOffset firstCluster size flags TRUE | FALSE, find in local folder)
-FAT.find-file-local	jsl	FAT.String2Filename.CF	( cluster filestring)
+FAT.find-file-local	jsl FAT.String2Filename.CF	( cluster filestring)
 		swap 
 		dup 
 		>R					( filestring cluster R:cluster)
@@ -2983,6 +2990,9 @@ FAT.find-file-local	jsl	FAT.String2Filename.CF	( cluster filestring)
 					nip 
 					R> 
 					drop 
+;					#.w	FAT.find-file-local.e1
+;					jsl	COUNT.CF
+;					jsl	TYPE.cf
 					rts 
 				THEN	
 				#.b	229 
@@ -3046,7 +3056,16 @@ FAT.find-file-local	jsl	FAT.String2Filename.CF	( cluster filestring)
 			UNTIL
 		drop 
 		drop 
-		zero,rts									; likely bad directory
+;		#.w	FAT.find-file-local.e2
+;		jsl	COUNT.CF
+;		jsl	TYPE.CF
+		zero
+		rts									; likely bad directory
+;
+;FAT.find-file-local.e1	dc.b 25
+;				dc.s reached end of directory 
+;FAT.find-file-local.e2	dc.b 29
+;				dc.s reached end-of-clusters mark 
 ;
 ; FAT.find-file ( addr n -- dirSector dirOffset firstCluster size flags TRUE | FALSE, find from current directory)
 FAT.find-file.LF	dc.l	FAT.string2filename.NF
@@ -3112,6 +3131,9 @@ FAT.find-file.CF	#.w	FAT.CurrentDirectory
 							drop 
 							drop 
 							drop 
+;							#.w	FAT.find-file.e1
+;							jsl	COUNT.CF
+;							jsl	TYPE.CF
 							zero 
 							rts	
 					THEN
@@ -3149,6 +3171,8 @@ FAT.find-file.CF	#.w	FAT.CurrentDirectory
 		THEN
 		jsl	FAT.find-file-local 	
 FAT.find-file.Z	rts
+;FAT.find-file.e0	dc.b 26
+;			dc.s filepath is not a directory 
 ;
 ; EX
 ; FAT.load-file ( addr firstCluster --, load a file to addr given the first cluster, cluster by cluster)
@@ -4246,7 +4270,7 @@ INTERPRET.1	dc.b 	 char - char K char O  32
 				#.l	STATE_
 				fetch.l	
 				IF				; compile mode
-					dup		
+					dup	( addr addr)	
 					jsl LOCAL.recog 	; recognize locals first
 					IF					; it is a local
 						nip				; drop the word address - we won't need it again
@@ -5617,7 +5641,10 @@ COLON.1	jsl	GET-COMP-ENTRY.CF	( NF)			; SMUDGE the word
 		zero			( 0)			; set compilation state
 		0=			( true)		
 		#.l	STATE_		( true &STATE)	
-		store.l		
+		store.l	
+		#.l	_COMPILE				; reset the compile stack pointer	
+		#.w	COMPILEstackP	
+		store.l					
 		zero						; set local.count to zero
 		#.l	LOCAL.count	
 COLON.Z	store.l,rts			
@@ -6376,7 +6403,7 @@ BRA.NF		dc.b	1 128 + IMMED +
 		dc.b	40					; char (
 BRA.SF		dc.w	BRA.Z BRA.CF del
 BRA.CF		#.b	41					; char )
-		jsl	PARSE.CF	( addr)	
+		jsl	PARSE.CF	( addr n)	
 		drop
 BRA.Z		drop,rts	
 ;
@@ -6391,12 +6418,11 @@ BRA.Z		drop,rts
 ;
 ; .( printing comment
 DOTBRA.LF	dc.l	\.NF
-DOTBRA.NF	dc.b	2 128 +
+DOTBRA.NF	dc.b	2 128 + IMMED +
 		dc.b	40 46
 DOTBRA.SF	dc.w	DOTBRA.Z DOTBRA.CF del
 DOTBRA.CF	#.b	41					; char )
-		jsl	WORD.CF
-		jsl	COUNT.CF
+		jsl	PARSE.CF
 		jsl	TYPE.CF
 DOTBRA.Z	rts
 ;
@@ -6706,6 +6732,7 @@ LOCAL.RECOG	#.l	_LOCAL.BUF
 					R@
 					zero
 					not		( n true)
+					unloop
 					rts
 				THEN
 				dup
@@ -7000,7 +7027,7 @@ GET-ENTRY.Z		fetch.l,rts
 ; ------------------------------------------------------------------------------------------------------------
 ; internal FORTH dictionary variables	
 ; ------------------------------------------------------------------------------------------------------------
-COMPILEstackP		dc.l	USERRAM 1016 + ; pointer for the compiler stack (used by LEAVE)
+COMPILEstackP		dc.l	_COMPILE	; pointer for the compiler stack (used by LEAVE)
 USERNEXT_		dc.l	USERRAM 44 +	; next available location for a user variable
 LOCAL.COUNT		dc.l	0		; used in the creation of the local variable buffer
 sem-keyboard		dc.b	0		; binary semaphore for read access to the keyboard buffer
