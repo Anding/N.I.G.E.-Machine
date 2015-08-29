@@ -761,23 +761,42 @@ FREE.CF	fetch.b		( v) 			;binary semaphores are byte variables
 ;TIMEOUT.Z	store.l,rts	
 ;		
 ; MS ( n --, wait for n ms)
+; takes into account the possibility that the counter may go over the top
 MS.LF		dc.l	RELEASE.NF
 MS.NF		dc.b	2 128 +
 		dc.s	MS
 MS.SF		dc.w	MS.Z MS.CF del
-MS.CF		>R			( R:n)
-		#.l	MScounter
-		fetch.l		( start R:n)
-			BEGIN		
-				pause
-				#.l	MScounter	
-				fetch.l		( start now R:n)
-				over			( start now start R:n)
-				-			( start m R:n)
-				R@			( start m n R:n)
-				U>			( start R:n)
-			UNTIL
-		R>
+MS.CF		#.l	MScounter
+		fetch.l		( n current)		
+		swap			( current n)
+		over			( current n current)
+		+			( current final)
+		dup
+		#.l	-1		; -1 is the top counter position unsigned
+		=			( current final flag)
+		IF
+			drop		; if final is the top counter position, bump to 0 to be compatible with WITHIN
+			zero
+		THEN			( current final)
+		over
+		over
+		U>			( current final flag)
+		IF			; need to go over the top of the clock
+			swap		( lo=final hi=current)
+		ELSE
+			nip		 
+			#.l	-1	( lo=current hi=topOfRange)
+		THEN
+		BEGIN			( lo hi)	
+			pause
+			over 
+			over 			( lo hi lo hi)
+			#.l	MScounter	
+			fetch.l		( lo hi lo hi now)
+			rot			( lo hi hi now lo)
+			rot			( lo hi now lo hi)
+			jsl	within.cf	( lo hi flag)
+		UNTIL
 		drop
 MS.Z		drop,rts
 ;
@@ -3818,10 +3837,10 @@ WITHIN.SF	dc.w	WITHIN.Z WITHIN.CF del
 WITHIN.CF	rot			( x2 x3 x1)
 		dup			( x2 x3 x1 x1)
 		>R			( x2 x3 x1 R:x1)
-		>			( x2 flag R:x1)
+		U>			( x2 flag R:x1)
 		R>			( x2 flag x1)
 		rot			( flag x1 x2)
-		<			
+		U<			
 		not			( flag flag)
 WITHIN.Z	and,rts		( flag)
 ;
