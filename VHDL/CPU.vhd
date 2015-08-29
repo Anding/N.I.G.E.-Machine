@@ -28,9 +28,9 @@ entity CPU is
 				RSdataout : OUT std_logic_vector(31 downto 0);
 				RSw : OUT std_logic_vector(0 downto 0);
 				SSaddr : out STD_LOGIC_VECTOR (vmp_w + ssp_w -1 downto 0);			-- Subroutine stack memory
-			   SSdatain : in STD_LOGIC_VECTOR (543 downto 512);	
-			   SSdataout : out STD_LOGIC_VECTOR (543 downto 512);
-			   SSw : out STD_LOGIC_VECTOR (67 downto 64);
+			   SSdatain : in STD_LOGIC_VECTOR (351 downto 320);	
+			   SSdataout : out STD_LOGIC_VECTOR (351 downto 320);
+			   SSw : out STD_LOGIC_VECTOR (43 downto 40);
 			   ESaddr : out STD_LOGIC_VECTOR (vmp_w + esp_w -1  downto 0);			-- Exception stack memory
 			   ESdatain : in STD_LOGIC_VECTOR (303 downto 256);	
 			   ESdataout : out STD_LOGIC_VECTOR (303 downto 256);

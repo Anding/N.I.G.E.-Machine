@@ -182,9 +182,9 @@ signal clk_MEM : std_logic;
 signal debug : std_logic_vector(31 downto 0);
 signal debug_CPU : std_logic_vector(7 downto 0);
 signal debug_DMAcontroller : std_logic_vector(7 downto 0);
-signal SSdataOUT : std_logic_vector(543 downto 0);
-signal SSdataIN : std_logic_vector(543 downto 0);
-signal SSw : std_logic_vector(67 downto 0);
+signal SSdataOUT : std_logic_vector(351 downto 0);
+signal SSdataIN : std_logic_vector(351 downto 0);
+signal SSw : std_logic_vector(43 downto 0);
 signal SSaddr : std_logic_vector(vmp_w + ssp_w -1 downto 0);
 signal ESdataOUT : std_logic_vector(303 downto 0);
 signal ESdataIN : std_logic_vector(303 downto 0);
@@ -524,10 +524,10 @@ begin
 		Inst_stack_access: entity work.stack_access PORT MAP(
 		clk => CLK_SYSTEM,
 		rst => reset,
-		SSdatain => SSdatain(511 downto 0),
-		SSdataout => SSdataout(511 downto 0),
-		SSw => SSw(63 downto 0),
-		SSwSignal => SSw(64),
+		SSdatain => SSdatain(319 downto 0),
+		SSdataout => SSdataout(319 downto 0),
+		SSw => SSw(39 downto 0),
+		SSwSignal => SSw(40),
 		ESdatain => ESdatain(255 downto 0),
 		ESdataout => ESdataout(255 downto 0),
 		ESw => ESw(31 downto 0),
@@ -563,9 +563,9 @@ begin
 		RSdataout => RSdataout,
 		RSw => RSw,
 		SSaddr => SSaddr,
-		SSdatain => SSdatain(543 downto 512),	
-		SSdataout => SSdataout(543 downto 512),
-		SSw => SSw(67 downto 64),
+		SSdatain => SSdatain(351 downto 320),	
+		SSdataout => SSdataout(351 downto 320),
+		SSw => SSw(43 downto 40),
 		ESaddr => ESaddr,
 		ESdatain => ESdatain(303 downto 256),
 		ESdataout => ESdataout(303 downto 256),

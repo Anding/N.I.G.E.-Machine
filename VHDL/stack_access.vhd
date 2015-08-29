@@ -5,9 +5,9 @@ entity stack_access is
 Port ( clk : in  STD_LOGIC;
 		  rst : in  STD_LOGIC;
 		  -- connections to subroutine and exeception stacks 
-			SSdatain : in STD_LOGIC_VECTOR (511 downto 0);	
-			SSdataout : out STD_LOGIC_VECTOR (511 downto 0);
-			SSw : out STD_LOGIC_VECTOR (63 downto 0);
+			SSdatain : in STD_LOGIC_VECTOR (319 downto 0);	
+			SSdataout : out STD_LOGIC_VECTOR (319 downto 0);
+			SSw : out STD_LOGIC_VECTOR (39 downto 0);
 			SSwSignal : in STD_LOGIC;											-- write by datapath signalled here
 			ESdatain : in STD_LOGIC_VECTOR (255 downto 0);	
 			ESdataout : out STD_LOGIC_VECTOR (255 downto 0);
@@ -60,18 +60,18 @@ begin
 					dataout_i <= SSdatain(287 downto 256);
 				when x"24" =>										
 					dataout_i <= SSdatain(319 downto 288);
-				when x"28" =>										
-					dataout_i <= SSdatain(351 downto 320);
-				when x"2C" =>										
-					dataout_i <= SSdatain(383 downto 352);
-				when x"30" =>										
-					dataout_i <= SSdatain(415 downto 384);		
-				when x"34" =>										
-					dataout_i <= SSdatain(447 downto 416);
-				when x"38" =>										
-					dataout_i <= SSdatain(479 downto 448);
-				when x"3C" =>										
-					dataout_i <= SSdatain(511 downto 480);
+--				when x"28" =>										
+--					dataout_i <= SSdatain(351 downto 320);
+--				when x"2C" =>										
+--					dataout_i <= SSdatain(383 downto 352);
+--				when x"30" =>										
+--					dataout_i <= SSdatain(415 downto 384);		
+--				when x"34" =>										
+--					dataout_i <= SSdatain(447 downto 416);
+--				when x"38" =>										
+--					dataout_i <= SSdatain(479 downto 448);
+--				when x"3C" =>										
+--					dataout_i <= SSdatain(511 downto 480);
 				when x"80" =>										
 					dataout_i <= ESdatain(31 downto 0);
 				when x"84" =>										
@@ -105,7 +105,7 @@ begin
 	end process;	
 	
 	with SSwSignal_m select 
-		SSdataout <= 	datain_m & datain_m & datain_m & datain_m & datain_m & datain_m & datain_m & datain_m &
+		SSdataout <= 	datain_m & datain_m &
 							datain_m & datain_m & datain_m & datain_m & datain_m & datain_m & datain_m & datain_m when '0',
 							(others=>'0') when others;		-- zero local variables when subroutine stack advances
 							
@@ -130,37 +130,37 @@ begin
 		if en = '1' and wrq = "1" then
 			case addr_i is
 				when x"00" =>	
-					SSw <= x"000000000000000F";
+					SSw <= x"000000000F";
 				when x"04" =>	
-					SSw <= x"00000000000000F0";
+					SSw <= x"00000000F0";
 				when x"08" =>	
-					SSw <= x"0000000000000F00";
+					SSw <= x"0000000F00";
 				when x"0C" =>	
-					SSw <= x"000000000000F000";
+					SSw <= x"000000F000";
 				when x"10" =>	
-					SSw <= x"00000000000F0000";
+					SSw <= x"00000F0000";
 				when x"14" =>	
-					SSw <= x"0000000000F00000";
+					SSw <= x"0000F00000";
 				when x"18" =>	
-					SSw <= x"000000000F000000";
+					SSw <= x"000F000000";
 				when x"1C" =>	
-					SSw <= x"00000000F0000000";	
+					SSw <= x"00F0000000";	
 				when x"20" =>	
-					SSw <= x"0000000F00000000";
+					SSw <= x"0F00000000";
 				when x"24" =>	
-					SSw <= x"000000F000000000";
-				when x"28" =>	
-					SSw <= x"00000F0000000000";
-				when x"2C" =>	
-					SSw <= x"0000F00000000000";
-				when x"30" =>	
-					SSw <= x"000F000000000000";
-				when x"34" =>	
-					SSw <= x"00F0000000000000";
-				when x"38" =>	
-					SSw <= x"0F00000000000000";
-				when x"3C" =>	
-					SSw <= x"F000000000000000";	
+					SSw <= x"F000000000";
+--				when x"28" =>	
+--					SSw <= x"00000F0000000000";
+--				when x"2C" =>	
+--					SSw <= x"0000F00000000000";
+--				when x"30" =>	
+--					SSw <= x"000F000000000000";
+--				when x"34" =>	
+--					SSw <= x"00F0000000000000";
+--				when x"38" =>	
+--					SSw <= x"0F00000000000000";
+--				when x"3C" =>	
+--					SSw <= x"F000000000000000";	
 				when x"80" =>	
 					ESw <= x"0000000F";
 				when x"84" =>	

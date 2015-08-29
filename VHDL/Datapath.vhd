@@ -37,9 +37,9 @@ entity Datapath is
 			  RSdataout : out STD_LOGIC_VECTOR (31 downto 0);
 			  RSw : out STD_LOGIC_VECTOR (0 downto 0);
 			  SSaddr : out STD_LOGIC_VECTOR (vmp_w + ssp_w -1 downto 0);			-- Subroutine stack memory
-			  SSdatain : in STD_LOGIC_VECTOR (543 downto 512);	
-			  SSdataout : out STD_LOGIC_VECTOR (543 downto 512);
-			  SSw : out STD_LOGIC_VECTOR (67 downto 64);
+			  SSdatain : in STD_LOGIC_VECTOR (351 downto 320);	
+			  SSdataout : out STD_LOGIC_VECTOR (351 downto 320);
+			  SSw : out STD_LOGIC_VECTOR (43 downto 40);
 			  ESaddr : out STD_LOGIC_VECTOR (vmp_w + esp_w -1 downto 0);			-- Exception stack memory
 			  ESdatain : in STD_LOGIC_VECTOR (303 downto 256);	
 			  ESdataout : out STD_LOGIC_VECTOR (303 downto 256);
@@ -167,7 +167,7 @@ begin
 	RSP_m1 <= RSP - 1;							-- available for incrementing and decrementing stack pointers
 	RSP_p1 <= RSP + 1;	
 	RSaddr <= VM(vmp_w -1 downto 0) & RSP_n1;					-- return stack address  (use the post-auxiliary override value for RSP so that RTS is processed same cycle)
-	TORS <= "000000000" & SSdatain(534 downto 512);				-- TORS is directly read from BLOCK RAM
+	TORS <= "000000000" & SSdatain(342 downto 320);				-- TORS is directly read from BLOCK RAM
 	ExceptionAddress <= "000000000" & ESdatain(294 downto 272);
 	
 	-- Subroutine stack
@@ -186,7 +186,7 @@ begin
 	process (AuxControl, MicroControl, RSP_m1, RSP_p1, TOS_i, SSdatain, DatapathThaw, RSP)	
 	begin
 		if AuxControl (0 downto 0) = "1" then				-- instruction RTS requires reset of return stack pointer
-			RSP_n1 <= SSdatain(535 + rsp_w -1 downto 535);
+			RSP_n1 <= SSdatain(343 + rsp_w -1 downto 343);
 		else
 			case MicroControl(15 downto 13) is				-- multiplexer for setting return stack pointer
 				when "001" =>
@@ -194,9 +194,9 @@ begin
 				when "010" =>
 					RSP_n1 <= RSP_p1;
 				when "011" =>
-					RSP_n1 <= SSdatain(535 + rsp_w -1 downto 535);
+					RSP_n1 <= SSdatain(343 + rsp_w -1 downto 343);
 				when "100" =>
-					RSP_n1 <= SSdatain(535 + rsp_w -1 downto 535) + 1;
+					RSP_n1 <= SSdatain(343 + rsp_w -1 downto 343) + 1;
 				when "101" =>
 					RSP_n1 <= (others=>'0');	
 				when "110" =>
@@ -220,7 +220,7 @@ begin
 	begin
 		if AuxControl (0 downto 0) = "1" then				-- instruction RTS requires decrement subroutine stack pointer
 			SSP_n <= SSP_m1;
-		elsif (RSP_n1 = SSdatain(535 + rsp_w -1 downto 535)) and (MicroControl(15 downto 13) = "001") and (SSP /= 0) then  -- THIS IS TRIGGERING INSTEAD OF A DATAPATH THAW
+		elsif (RSP_n1 = SSdatain(343 + rsp_w -1 downto 343)) and (MicroControl(15 downto 13) = "001") and (SSP /= 0) then  -- THIS IS TRIGGERING INSTEAD OF A DATAPATH THAW
 			SSP_n <= SSP_m1;										-- pop of return stack below the baseline requires decrement subroutine stack pointer
 		else
 			case MicroControl(19 downto 17) is				-- multiplexer for setting subroutine stack pointer

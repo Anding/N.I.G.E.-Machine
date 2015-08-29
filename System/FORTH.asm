@@ -97,6 +97,7 @@ _END		equ	_TEXT_END 1024 +			; HEAP location
 ;
 EOL		equ	10			; line separator = ASCII 10
 ~EOL		equ	13			; ignore this character, not line separator = ASCII 13
+MAXLOCALS	equ	10			; maximum number of local variables
 ;
 ; .NF flags
 PRECEDENCE	equ	128
@@ -6840,8 +6841,8 @@ TO.1		dc.b	29
 						jsl	local.create
 						#.l	local.count
 						fetch.l
-						#.b	16
-						>			
+						#.b	MAXLOCALS
+						=			
 						IF			; exceeded available local varaible storage
 							#.l	{:.5
 							THROW

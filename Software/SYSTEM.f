@@ -528,24 +528,27 @@ FILE.LIST LIST.INIT
 				i c@ ?dup 0= IF UNLOOP UNLOOP R> drop EXIT THEN		\ empty entry and no following entries
 				229 <> IF							\ non-0xE5 first byte indicates valid entry
 					i 11 + c@ 
-					dup 15 and 15 <> IF					\ is not a long-name entry
+\					dup 15 and 15 <> IF					\ is not a long-name entry
 						CASE
-							8 OF
-								." VOLUME" ENDOF
+							8 OF					\ system volume
+								." VOLUME" 
+								9 emit i FAT.Filename2String type cr
+							ENDOF
 							16 OF 					\ directory
-								." DIR   " ENDOF
+								." DIR   " 
+								9 emit i FAT.Filename2String type cr
+							ENDOF
 							32 OF 					\ filename
 								i 28 FAT.read-long 6 u.r 	\ file size
 								\ i 20 FAT.read-word 65536 *	\ first cluster hi
 								\ i 26 FAT.read-word + 6 u.r  	\ first cluster lo	
-							   ENDOF
+								9 emit i FAT.Filename2String type cr
+							 ENDOF
 						ENDCASE
-						9 emit
-						i FAT.Filename2String type	
-						cr
-					ELSE
-						drop
-					THEN
+\						9 emit i FAT.Filename2String type cr
+\					ELSE
+\						drop
+\					THEN
 				THEN
 			32 +LOOP
 		LOOP	
