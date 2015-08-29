@@ -2030,7 +2030,7 @@ TAB.NF		dc.b	3 128 +
 TAB.SF		dc.w	TAB.Z TAB.CF del
 TAB.CF		#.l	TAB
 TAB.Z		rts
-TAB		dc.l	7			; default to 7 spaces
+TAB		dc.l	7			; default tab setting
 ;
 ROWS.LF	dc.l	TAB.NF
 ROWS.NF	dc.b	4 128 +
@@ -2215,8 +2215,6 @@ SD.init.LF	dc.l	<REMOTE.NF
 SD.init.NF	dc.b	7 128 +
 		dc.s	SD.init
 SD.init.SF	dc.w	SD.init.Z SD.init.CF del
-;		#.w	5000 
-;		jsl	timeout.cf
 SD.init.CF	jsl	spi.slow 
 		jsl	spi.cs-hi 		; power sequence dummy clock
 		#.b	80 
@@ -2226,7 +2224,7 @@ SD.init.CF	jsl	spi.slow
 			jsl	spi.put 
 		LOOP
 		jsl	spi.cs-lo
-		#.b	25			; limit of 25 tries
+		#.b	100			; limit of 100 tries, approx 1 sec timeout
 		#.l	local0
 		store.b
 		BEGIN				; CMD0 repeated until good
@@ -2244,7 +2242,7 @@ SD.init.CF	jsl	spi.slow
 			#.l	SD.init.0	; inline function call countout
 			#.l	countout.cf
 			jmp			
-SD.init.0		#.b	100 		; 100 ms delay
+SD.init.0		#.b	10 		; 10 ms delay
 			jsl	ms.cf
 	REPEAT
 		#.b	135 			; CMD8	
@@ -2366,8 +2364,6 @@ SD.init.0		#.b	100 		; 100 ms delay
 		jsl 	SPI.CS-hi 			; DESELECT
 		#.b	255 
 		jsl	spi.put			
-;		zero	
-;		jsl	timeout.cf
 SD.init.Z	rts
 SD.init.err	#.b	29
 		dc.s	SD card initialization failed
@@ -2401,28 +2397,32 @@ SD.sector-code 	#.w	sd.ver
 ;
 ; SD.select&check ( --, select and wait for SD card)
 SD.select&check 	jsl spi.cs-lo		; SELECT
-		#.w	32768			; limit of tries
+		#.w	2000			; limit of tries
 		#.l	local0
 		store.w				
 		BEGIN				
 			#.l	SD.select&check.0	; inline function call to countout
 			#.l	countout.cf
 			jmp
-SD.select&check.0	jsl spi.get 
+SD.select&check.0	#.b	1
+			jsl	ms.cf			; ms delay
+			jsl spi.get 
 			#.b	255 
 			=				; if CS is asserted while card is busy then card will set D0 low			
 		UNTIL
 		rts
 ;
 ; SD.wait-token ( --, wait for an SD-card data token)
-SD.wait-token.CF	#.w	32768			; limit of tries
+SD.wait-token.CF	#.w	5000			; limit of tries
 			#.l	local0
 			store.w
 			BEGIN	
 				#.l	SD.wait-token.0	; inline function call to countout
 				#.l	countout.cf
 				jmp
-SD.wait-token.0		jsl	spi.get
+SD.wait-token.0		#.b	1			; ms delay
+				jsl	ms.cf
+				jsl	spi.get
 				#.b	254 
 				=
 			UNTIL
@@ -2433,8 +2433,6 @@ SD.read-sector.LF	dc.l	SD.init.NF
 SD.read-sector.NF	dc.b	14 128 +
 			dc.b	char R char O char T char C char E char S char - char D char A char E char R char . char D char S
 SD.read-sector.SF	dc.w	SD.read-sector.Z SD.read-sector.CF del
-;			#.w	1000 
-;			jsl 	timeout.cf
 SD.read-sector.CF		jsl 	sd.select&check
 		#.b	1 				; checksum
 		swap					
@@ -2448,11 +2446,6 @@ SD.read-sector.CF		jsl 	sd.select&check
 			THROW
 		THEN
 		jsl	SD.wait-token.CF
-;		BEGIN					; wait for data token
-;			jsl	spi.get
-;			#.b	254 
-;			=
-;		UNTIL
 		dup 
 		#.w	512 
 		+ 
@@ -2471,8 +2464,6 @@ SD.read-sector.CF		jsl 	sd.select&check
 		jsl 	SPI.CS-hi 
 		#.b	255 
 		jsl	spi.put			; DESELECT
-;		zero 
-;		jsl	timeout.CF
 SD.read-sector.Z	rts
 SD.read-sector.ERR	dc.b	21
 			dc.s	SD.read-sector failed
@@ -2482,8 +2473,6 @@ SD.verify-sector.LF	dc.l	SD.read-sector.NF
 SD.verify-sector.NF	dc.b	16 128 +
 			dc.s	SD.VERIFY-SECTOR
 SD.verify-sector.SF	dc.w	SD.verify-sector.Z SD.verify-sector.CF del
-;		#.w	1000 
-;		jsl 	timeout.cf
 SD.verify-sector.CF		jsl 	sd.select&check
 		#.b	1 				; checksum
 		swap					
@@ -2497,11 +2486,6 @@ SD.verify-sector.CF		jsl 	sd.select&check
 			THROW
 		THEN
 		jsl	SD.wait-token.CF
-;		BEGIN					; wait for data token
-;			jsl	spi.get
-;			#.b	254 
-;			=
-;		UNTIL
 		dup 
 		#.w	512 
 		+ 
@@ -2526,8 +2510,6 @@ SD.verify-sector.CF		jsl 	sd.select&check
 		jsl 	SPI.CS-hi 
 		#.b	255 
 		jsl	spi.put			; DESELECT
-;		zero 
-;		jsl	timeout.CF
 SD.verify-sector.Z		rts
 SD.verify-sector.ERR	dc.b	23
 			dc.s	SD.verify-sector failed
@@ -2537,8 +2519,6 @@ SD.write-sector.LF	dc.l	SD.verify-sector.NF
 SD.write-sector.NF	dc.b	15 128 +
 			dc.b	char R char O char T char C char E char S char - char E char T char I char R char W char . char D char S
 SD.write-sector.SF	dc.w	SD.write-sector.Z SD.write-sector.CF del
-;		#.w	10000
-;		jsl	timeout.CF
 SD.write-sector.CF		jsl	sd.select&check	
 		#.b	1 				; checksum
 		swap					
@@ -2582,8 +2562,6 @@ SD.write-sector.CF		jsl	sd.select&check
 		jsl	SPI.CS-hi 
 		#.b	255 
 		jsl	spi.put			; DESELECT
-;		zero 
-;		jsl	timeout.cf
 SD.write-sector.Z		rts
 SD.write-sector.ERR	dc.b	22
 			dc.s	SD.write-sector failed
@@ -4087,13 +4065,6 @@ WORDS.NF	dc.b	5 128 +
 		dc.b	char S char D char R char O char W
 WORDS.SF	dc.w	WORDS.Z WORDS.CF del
 WORDS.CF	jsl	CR.CF
-		#.w	TAB		( &tab)			; change tab setting for optimal display
-		dup			( &tab &tab)
-		fetch.l		( &tab tab)
-		swap			( tab &tab) 
-		#.b	10		( tab &tab 20)
-		over			( tab &tab 20 &tab)
-		store.l		( tab &tab)			; ( ignore tab &tab comment from here to end)
 		#.l	WID.COUNT	
 		fetch.b		( count)
 		?dup								; check count of the search order is not zero
@@ -4109,7 +4080,7 @@ WORDS.CF	jsl	CR.CF
 				jsl	{WORDS}.CF	( )			
 			LOOP	
 		THEN
-WORDS.Z	store.l,rts						; restore original tab setting		
+WORDS.Z	rts						; restore original tab setting		
 ;		
 ; {WORDS} ( WID --, display the words in this wordlist)
 {WORDS}.CF	jsl	GET-ENTRY.CF	( NF)
@@ -4126,7 +4097,7 @@ WORDS.Z	store.l,rts						; restore original tab setting
 			IF
 				jsl	TYPE.CF 	( NF)		
 				#.b	09
-				jsl	EMIT.CF
+				jsl	EMIT.CF			
 			ELSE
 				drop			( NF)
 			THEN			( NF)
