@@ -5851,14 +5851,52 @@ IMMEDIATE.Z	store.b,rts
 		jsl	LITERAL.CF
 ['].Z		rts
 ;
-; POSTPONE , force compilation of an immediate word
-POSTPONE.LF	dc.l	['].NF
+; COMPILE
+COMPILE.LF	dc.l	['].NF
+COMPILE.NF	dc.b	7 128 + IMMED +
+		dc.s	COMPILE
+COMPILE.SF	dc.w	COMPILE.Z COMPILE.CF del
+COMPILE.CF	jsl	TICK.CF
+		jsl	LITERAL.CF
+		#.l	COMPILE,.CF
+		jsl	COMPILE,.CF
+COMPILE.Z	rts
+;
+; [COMPILE]
+[COMPILE].LF	dc.l	COMPILE.NF
+[COMPILE].NF	dc.b	9 128 + IMMED +
+		dc.s	[COMPILE]
+[COMPILE].SF	dc.w	[COMPILE].Z [COMPILE].CF del
+[COMPILE].CF	jsl	TICK.CF
+		jsl	COMPILE,.CF
+[COMPILE].Z	rts
+;
+; POSTPONE
+POSTPONE.LF	dc.l	[COMPILE].NF
 POSTPONE.NF	dc.b	8 128 + IMMED +
 		dc.b	char E char N char O char P char T char S char O char P
 POSTPONE.SF	dc.w	POSTPONE.Z POSTPONE.CF del
-POSTPONE.CF	jsl	TICK.CF
-		jsl	COMPILE,.CF
+POSTPONE.CF	#.b	32
+		jsl	WORD.CF
+		jsl	FIND.CF
+		dup
+		0=
+		IF
+			#.l	POSTPONE.ERR
+			throw
+		THEN
+		#.b	1
+		=
+		IF				; IMMEDIATE
+			jsl COMPILE,.CF
+		ELSE				; not IMMEDIATE
+			jsl LITERAL.CF
+			#.l COMPILE,.CF
+			jsl COMPILE,.CF
+		THEN
 POSTPONE.Z	rts
+POSTPONE.ERR	dc.b	14
+		dc.s	word not found
 ;
 ; [CHAR] , IMMEDIATE CHAR
 [CHAR].LF	dc.l	POSTPONE.NF
@@ -5866,6 +5904,7 @@ POSTPONE.Z	rts
 		dc.b 	93 char R char A char H char C 91
 [CHAR].SF	dc.w	[CHAR].Z [CHAR].CF del
 [CHAR].CF	jsl	CHAR.CF
+		jsl	LITERAL.CF
 [CHAR].Z	rts
 ;
 ; or.w! ( word addr -- ) or word with memory - internal word
@@ -6660,7 +6699,7 @@ INLINESIZE	dc.l	10
 BASE.LF	dc.l	INLINESIZE.NF
 BASE.NF	dc.b	4 128 +
 		dc.b	char E char S char A char B
-BASE.SF	dc.w	4
+BASE.SF	dc.w	6
 BASE.CF	#.l	BASE_
 		rts
 ;BASE_		dc.l	10
@@ -6668,14 +6707,14 @@ BASE.CF	#.l	BASE_
 STATE.LF	dc.l	BASE.NF
 STATE.NF	dc.b	5 128 +
 		dc.b	char E char T char A char T char S
-STATE.SF	dc.w	4
+STATE.SF	dc.w	6
 STATE.CF	#.l	STATE_
 		rts
 ;
 >IN.LF		dc.l	STATE.NF
 >IN.NF		dc.b	3 128 +
 		dc.b	char N char I 62
->IN.SF		dc.w	4
+>IN.SF		dc.w	6
 >IN.CF		#.l	>IN_
 		rts
 >IN_		dc.l	0
