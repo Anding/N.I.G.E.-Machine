@@ -47,6 +47,18 @@ entity Board_Nexys4 is
 			  MISO : in STD_LOGIC;
 			  SD_CS : out STD_LOGIC;
 			  SD_CD : in STD_LOGIC;
+			  -- Ethernet
+			  PHYMDC : out  STD_LOGIC;
+           PHYMDIO : inout  STD_LOGIC;
+           PHYRSTN : out  STD_LOGIC;
+           PHYCRS : in  STD_LOGIC;
+           PHYRXERR : in  STD_LOGIC;
+           PHYRXD : in  STD_LOGIC_VECTOR (1 downto 0);
+           PHYTXEN : out  STD_LOGIC;
+           PHYTXD : out  STD_LOGIC_VECTOR (1 downto 0);
+           PHYCLK50MHZ : out  STD_LOGIC;
+           PHYINTN : in  STD_LOGIC;
+			  JB : out  STD_LOGIC_VECTOR (7 downto 0);
 			  --SD_WP : In STD_LOGIC
 			  SD_RESET : out STD_LOGIC
 			  );
@@ -199,6 +211,9 @@ signal charHeight: STD_LOGIC_VECTOR (3 downto 0);
 signal charWidth: STD_LOGIC_VECTOR (3 downto 0);	
 signal VGArows : STD_LOGIC_VECTOR (7 downto 0);					  
 signal VGAcols : STD_LOGIC_VECTOR (7 downto 0);
+signal MACdata : STD_LOGIC_VECTOR(1 DOWNTO 0);
+signal MACready, MACread_enable : STD_LOGIC;
+signal divided : STD_LOGIC_VECTOR(9 DOWNTO 0);
 
 	component CLOCKMANAGER
 	port
@@ -215,6 +230,22 @@ signal VGAcols : STD_LOGIC_VECTOR (7 downto 0);
 		
 begin
 
+	-- Ethernet
+	PHYRSTN <= '1';
+	PHYMDC <= '0';
+	PHYMDIO <= '0';
+	PHYTXEN <= '0';
+	PHYTXD <= "00";
+	
+	JB(0) <= PHYCRS;
+	JB(1) <= MACready;
+	JB(2) <= divided(7);
+	JB(3) <= MACdata(0);
+	JB(4) <= MACdata(1);
+	JB(5) <= '0';
+	JB(6) <= '0';
+	JB(7) <= '0';
+	
 	-- debug and monitoring
 		-- use these connections for debugging but do not drive high continuously (use PWM)
 	RGB1_Red <= '0';
@@ -518,6 +549,9 @@ begin
 		SD_control => SD_control,
 		SD_wr => SD_wr,
 		SD_divide => SD_divide,
+		MACready => MACready,
+		MACdata => MACdata,
+		MACread_enable => MACread_enable,
 		VBLANK => VBLANK
 	);
 	
@@ -784,6 +818,25 @@ begin
 		divide => SD_divide,
 		CLKout => CLKSPI
 	);
+	
+		Inst_PHYBuffer: entity work.PHYBUFFER PORT MAP(
+		CLK100MHZ => CLK_SYSTEM,
+		PHYCRS => PHYCRS,
+		PHYRXERR => PHYRXERR,
+		PHYRXD => PHYRXD,
+		PHYCLK50MHZ => PHYCLK50MHZ,
+		data => MACdata,
+		ready => MACready,
+		read_enable => MACread_enable
+	);
+	
+--	PROCESS
+--	BEGIN
+--	wait until rising_edge(CLK_SYSTEM);
+--		divided <= divided + 1;
+--	END PROCESS;
+--
+--	MACread_enable <= '1' when divided(6 downto 0) = "0000000" else '0';
 	
 end RTL;
 
