@@ -313,16 +313,17 @@ begin
 				when others =>
 					dataout_i <= (others=>'0');
 					
-			-- read triggers
+			end case;						
+		end if;	
+		
+		-- read triggers
 			
-			if en_r = '1' and addr_r = x"64" then 
-				MACread_enable <= '1';	
-			else
-				MACread_enable <= '0';
-			end if;
-
-			end case;
+		if en = '1' and addr_i = x"64" then 
+			MACread_enable <= '1';	
+		else
+			MACread_enable <= '0';
 		end if;
+			
 	end process;	
 		
 end Behavioral;
