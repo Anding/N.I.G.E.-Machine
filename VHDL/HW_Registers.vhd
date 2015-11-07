@@ -45,8 +45,9 @@ entity HW_Registers is
 			  counter_clk : in std_logic_vector(31 downto 0);		-- 32 bit clock timer
 			  -- Ethernet MAC
 			  MACready : in std_logic;
+			  MACchecksum_err : in std_logic;
 			  MACread_enable : out std_logic;
-			  MACdata : in std_logic_vector(1 downto 0);
+			  MACdata : in std_logic_vector(7 downto 0);
 			  -- Nexys board
 			  ssData	: out std_logic_vector(31 downto 0);			-- data for seven segment display
 			  SW	: in std_logic_vector(15 downto 0);					-- switches onboard Nexys2
@@ -305,10 +306,13 @@ begin
 					dataout_i	<= blank3 &	VGAcols_r; 
 					
 				when x"60" =>										-- MACready
-					dataout_i	<= blank3 & "0000000" & MACready;
+					dataout_i 	<= blank3 & "0000000" & MACready;
 					
 				when x"64" =>										-- MACdata
-					dataout_i	<= blank3 & "000000" & MACdata;
+					dataout_i 	<= blank3 & MACdata;				
+
+				when x"68" =>										-- MACchecksum_err
+					dataout_i	<= blank3 & "0000000" & MACchecksum_err;
 
 				when others =>
 					dataout_i <= (others=>'0');
@@ -317,7 +321,7 @@ begin
 		end if;	
 		
 		-- read triggers
-			
+		
 		if en = '1' and addr_i = x"64" then 
 			MACread_enable <= '1';	
 		else

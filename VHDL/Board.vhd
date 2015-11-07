@@ -211,8 +211,8 @@ signal charHeight: STD_LOGIC_VECTOR (3 downto 0);
 signal charWidth: STD_LOGIC_VECTOR (3 downto 0);	
 signal VGArows : STD_LOGIC_VECTOR (7 downto 0);					  
 signal VGAcols : STD_LOGIC_VECTOR (7 downto 0);
-signal MACdata : STD_LOGIC_VECTOR(1 DOWNTO 0);
-signal MACready, MACread_enable : STD_LOGIC;
+signal MACdata : STD_LOGIC_VECTOR(7 DOWNTO 0);
+signal MACready, MACread_enable, MACchecksum_err : STD_LOGIC;
 signal divided : STD_LOGIC_VECTOR(9 DOWNTO 0);
 
 	component CLOCKMANAGER
@@ -552,6 +552,7 @@ begin
 		MACready => MACready,
 		MACdata => MACdata,
 		MACread_enable => MACread_enable,
+		MACchecksum_err => MACchecksum_err,
 		VBLANK => VBLANK
 	);
 	
@@ -827,16 +828,9 @@ begin
 		PHYCLK50MHZ => PHYCLK50MHZ,
 		data => MACdata,
 		ready => MACready,
-		read_enable => MACread_enable
+		read_enable => MACread_enable,
+		checksum_err => MACchecksum_err
 	);
-	
---	PROCESS
---	BEGIN
---	wait until rising_edge(CLK_SYSTEM);
---		divided <= divided + 1;
---	END PROCESS;
---
---	MACread_enable <= '1' when divided(6 downto 0) = "0000000" else '0';
-	
+		
 end RTL;
 
