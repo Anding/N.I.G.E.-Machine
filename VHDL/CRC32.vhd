@@ -1,15 +1,14 @@
+-- Ethernet CRC-32 FCS calculator
+-- Andrew Read, 31 Oct 2015
+
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
-
--- Ethernet CRC-32 FCS calculator
--- Andrew Read, 31 Oct 2015
 
 entity CRC32calc is
     Port ( clk : in  STD_LOGIC;
            reset : in  STD_LOGIC;
 			  data : in  STD_LOGIC;
-			  octets : out STD_LOGIC_VECTOR (31 downto 0);		-- interpret the checksum as 4 little-endian octets
            checksum : out  STD_LOGIC_VECTOR (31 downto 0)	-- interpret the checksum as a single 32 bit value
 			  );
 end CRC32calc;
@@ -23,13 +22,14 @@ end CRC32calc;
 --		if a pre-prepared Ethernet frame is being checksumed, feed the data byte by byte, LSB first for each byte
 
 --		Checksum:
---		if the CRC-32 calculator is run over an incoming Ethernet frame excluding the last 4 bytes FCS, then the four octets should match the four bytes of the FCS
---		if the CRC-32 calculator is run over an incoming Ethernet frame including the FCS, then the 32 bit checksum should always be the magic number hex 38FB2284 and the FCS bytes "1C DF 44 21"
+--		if the CRC-32 calculator is run over an incoming Ethernet frame excluding the last 4 bytes FCS, then the four octets should match the four octets of the FCS
+--		if the CRC-32 calculator is run over an incoming Ethernet frame including the FCS, then the 32 bit checksum should always be the magic number hex 38FB2284 and the octets are "1C DF 44 21"
 -- 	if the CRC-32 calculator is run over an outgoing Ethernet frame then the generated 32 bit checksum should be transmitted following the payload, high bit first
 
 architecture RTL of CRC32calc is
 
-signal SR : std_logic_vector (31 downto 0);		-- shift register that will be used for the CRC calculation
+signal SR : std_logic_vector (31 downto 0);			-- shift register that will be hold the CRC calculation
+signal octets : STD_LOGIC_VECTOR (31 downto 0);		-- interpret the checksum as 4 little-endian octets
 signal inbit : std_logic;
 
 begin
@@ -39,6 +39,7 @@ begin
 checksum <= not SR;
 
 -- if the checksum is to be intrepreted as 4 little-endian octets then the following bit reversals are required
+--  debugging use only.  These signals are not connected and will be trimmed by the synthesizer
 
 octets(0) <= not SR(7);
 octets(1) <= not SR(6);

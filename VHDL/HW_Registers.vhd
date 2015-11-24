@@ -44,10 +44,14 @@ entity HW_Registers is
 			  counter_ms : in std_logic_vector(31 downto 0);		-- 32 bit millisecond timer
 			  counter_clk : in std_logic_vector(31 downto 0);		-- 32 bit clock timer
 			  -- Ethernet MAC
-			  MACready : in std_logic;
+			  MACreadyRX : in std_logic;
 			  MACchecksum_err : in std_logic;
 			  MACread_enable : out std_logic;
-			  MACdata : in std_logic_vector(7 downto 0);
+			  MACdataRX : in std_logic_vector(7 downto 0);
+			  MACdataTX : out STD_LOGIC_VECTOR(7 downto 0);
+			  MACweTX : out STD_LOGIC;
+			  MACreadyTX : in STD_LOGIC;
+			  MACtransmit_request : out  STD_LOGIC;
 			  -- Nexys board
 			  ssData	: out std_logic_vector(31 downto 0);			-- data for seven segment display
 			  SW	: in std_logic_vector(15 downto 0);					-- switches onboard Nexys2
@@ -79,16 +83,17 @@ architecture Behavioral of HW_Registers is
 	signal VGArows_r : STD_LOGIC_VECTOR (7 downto 0);						  
 	signal VGAcols_r : STD_LOGIC_VECTOR (7 downto 0);		
 	signal ssData_r : std_logic_vector(31 downto 0);
+	signal MACdataTX_r :  std_logic_vector(7 downto 0);	
 	
 	signal addr_i : std_logic_vector(7 downto 0);					-- local address bus
 	signal clk_i : std_logic;												-- local slow clock for debounce
 
-	
 	-- pipeline registers for hardware write
 	signal en_r : std_logic :='0';
 	signal addr_r : std_logic_vector(7 downto 0) :=(others=>'0');
 	signal datain_r : std_logic_vector(31 downto 0) :=(others=>'0');
 	signal wrq_r : std_logic_vector (0 downto 0) :="0";
+	
 	-- pipeline registers for hardware read
 	signal RS232_rx_S0_r : std_logic_vector(7 downto 0);
 	signal RS232_TBE_S0_r, RS232_RDA_S0_r : std_logic;	
@@ -123,6 +128,7 @@ begin
 	addr_i <= addr(7 downto 0);
 	clk_i <= counter_clk(13);
 	irq_mask <= irq_mask_r;
+	MACdataTX <= MACdataTX_r;
 	
 	-- update writable registers
 	
@@ -154,6 +160,7 @@ begin
 			VGAcols_r <= CONV_STD_LOGIC_VECTOR(100,8);
 			RS232_tx_r_S0 <= (others=>'0');	
 			ssData_r <= (others=>'0');
+			MACdataTX_r <= (others=>'0');
 			
 		elsif en_r = '1' and wrq_r = "1" then					-- writable registers
 				case addr_r is			
@@ -202,6 +209,9 @@ begin
 					when x"5C" =>										-- VGAcols
 						VGAcols_r <= datain_r(7 downto 0); 
 						
+					when x"70" =>										-- MAC controller data
+						MACdataTX_r <= datain_r(7 downto 0); 						
+
 					when others =>
 						null;	
 				end case;		
@@ -218,6 +228,18 @@ begin
 			else
 				SD_wr <= '0';
 			end if;
+			
+			if en_r = '1' and wrq_r = "1" and addr_r = x"70" then
+				MACweTX <= '1';	
+			else
+				MACweTX <= '0';
+			end if;
+			
+			if en_r = '1' and wrq_r = "1" and addr_r = x"74" then					-- write triggers
+				MACtransmit_request <= '1';	
+			else
+				MACtransmit_request <= '0';
+			end if;			
 
 	end process;
 	
@@ -306,20 +328,23 @@ begin
 					dataout_i	<= blank3 &	VGAcols_r; 
 					
 				when x"60" =>										-- MACready
-					dataout_i 	<= blank3 & "0000000" & MACready;
+					dataout_i 	<= blank3 & "0000000" & MACreadyRX;
 					
 				when x"64" =>										-- MACdata
-					dataout_i 	<= blank3 & MACdata;				
+					dataout_i 	<= blank3 & MACdataRX;				
 
 				when x"68" =>										-- MACchecksum_err
 					dataout_i	<= blank3 & "0000000" & MACchecksum_err;
+					
+				when x"6C" =>
+					dataout_i 	<= blank3 & "0000000" & MACreadyTX;
 
 				when others =>
 					dataout_i <= (others=>'0');
 					
 			end case;						
 		end if;	
-		
+			  
 		-- read triggers
 		
 		if en = '1' and addr_i = x"64" then 

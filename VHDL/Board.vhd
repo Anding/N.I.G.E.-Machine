@@ -211,9 +211,9 @@ signal charHeight: STD_LOGIC_VECTOR (3 downto 0);
 signal charWidth: STD_LOGIC_VECTOR (3 downto 0);	
 signal VGArows : STD_LOGIC_VECTOR (7 downto 0);					  
 signal VGAcols : STD_LOGIC_VECTOR (7 downto 0);
-signal MACdata : STD_LOGIC_VECTOR(7 DOWNTO 0);
-signal MACready, MACread_enable, MACchecksum_err : STD_LOGIC;
-signal divided : STD_LOGIC_VECTOR(9 DOWNTO 0);
+signal MACdataRX, MACdataTX : STD_LOGIC_VECTOR(7 DOWNTO 0);
+signal MACreadyRX, MACreadyTX, MACread_enable, MACchecksum_err, MACweTX, MACtransmit_request  : STD_LOGIC;
+
 
 	component CLOCKMANAGER
 	port
@@ -231,17 +231,12 @@ signal divided : STD_LOGIC_VECTOR(9 DOWNTO 0);
 begin
 
 	-- Ethernet
-	PHYRSTN <= '1';
-	PHYMDC <= '0';
-	PHYMDIO <= '0';
-	PHYTXEN <= '0';
-	PHYTXD <= "00";
-	
+
 	JB(0) <= PHYCRS;
-	JB(1) <= MACready;
-	JB(2) <= divided(7);
-	JB(3) <= MACdata(0);
-	JB(4) <= MACdata(1);
+	JB(1) <= '0';
+	JB(2) <= '0';
+	JB(3) <= '0';
+	JB(4) <= '0';
 	JB(5) <= '0';
 	JB(6) <= '0';
 	JB(7) <= '0';
@@ -264,7 +259,7 @@ begin
     CLK_OUT2 => VGACLK50,
     CLK_OUT3 => VGACLK75,
     CLK_OUT4 => VGACLK150,	 
-	 CLK_OUT5 => CLK100);								-- THIS IS ACTUALLY 95MHz.  Reoptimize for 100MHz with SmartXplorer as final design step if needed
+	 CLK_OUT5 => CLK100);								
 	 
 	-- System and memory clock selector
 	clk_system <= clk100;								-- Note above 100MHz vs. 95MHz
@@ -362,7 +357,7 @@ begin
 		 dinb => dinb_sysram,
 		 doutb => doutb_sysram
 	  );
-	  
+  
 --	Inst_RAM_for_Testbench: entity work.RAM_for_Testbench PORT MAP(
 --		rst => reset,
 --		clk => clk_system,
@@ -549,13 +544,17 @@ begin
 		SD_control => SD_control,
 		SD_wr => SD_wr,
 		SD_divide => SD_divide,
-		MACready => MACready,
-		MACdata => MACdata,
+		MACreadyRX => MACreadyRX,
+		MACdataRX => MACdataRX,
 		MACread_enable => MACread_enable,
 		MACchecksum_err => MACchecksum_err,
+		MACdataTX => MACdataTX,
+		MACreadyTX => MACreadyTX,
+		MACtransmit_request => MACtransmit_request,
+		MACweTX => MACweTX,
 		VBLANK => VBLANK
-	);
-	
+	);  
+			  
 		Inst_stack_access: entity work.stack_access PORT MAP(
 		clk => CLK_SYSTEM,
 		rst => reset,
@@ -820,16 +819,40 @@ begin
 		CLKout => CLKSPI
 	);
 	
-		Inst_PHYBuffer: entity work.PHYBUFFER PORT MAP(
+--		Inst_PHYBuffer: entity work.PHYBUFFER PORT MAP(
+--		CLK100MHZ => CLK_SYSTEM,
+--		PHYCRS => PHYCRS,
+--		PHYRXERR => PHYRXERR,
+--		PHYRXD => PHYRXD,
+--		PHYCLK50MHZ => PHYCLK50MHZ,
+--		data => MACdata,
+--		ready => MACready,
+--		read_enable => MACread_enable,
+--		checksum_err => MACchecksum_err
+--	);
+	
+		Inst_MediaAccessController: entity work.MediaAccessController PORT MAP(
 		CLK100MHZ => CLK_SYSTEM,
+		reset => reset,
 		PHYCRS => PHYCRS,
 		PHYRXERR => PHYRXERR,
 		PHYRXD => PHYRXD,
 		PHYCLK50MHZ => PHYCLK50MHZ,
-		data => MACdata,
-		ready => MACready,
+		PHYMDC => PHYMDC,
+		PHYMDIO => PHYMDIO,
+		PHYRSTN => PHYRSTN,
+		PHYTXEN => PHYTXEN,
+		PHYTXD => PHYTXD,
+		PHYINTN => PHYINTN,
+		dataRX => MACdataRX,
+		readyRX => MACreadyRX,
 		read_enable => MACread_enable,
-		checksum_err => MACchecksum_err
+		Ethernet_IRQ => open,
+		checksum_err => MACchecksum_err,
+		dataTX => MACdataTX,
+		weTX => MACweTX,
+		readyTX => MACreadyTX,
+		transmit_request => MACtransmit_request
 	);
 		
 end RTL;
