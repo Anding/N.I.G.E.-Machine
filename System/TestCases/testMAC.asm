@@ -30,5 +30,5 @@ MACtransmit	equ	hex 03F874
 		nop
 		nop
 		nop
-		dc.b	hex FF FF FF FF FF FF 00 08 DC 1E 52 60 08 06 00 01 08 00 06 04 00 01 00 08 DC 1E 52 60 C0 A8 0B 64 00 00 00 00 00 00 C0 A8 0B 01
-testFrame	dc.b	43		; number of bytes.  Read from here less one backwards.. FCS 
+		dc.b	hex 00 FF FF FF FF FF 00 08 DC 1E 52 60 08 06 00 01 08 00 06 04 00 01 00 08 DC 1E 52 60 C0 A8 0B 64 00 00 00 00 00 00 C0 A8 0B 01
+testFrame	dc.b	43		; number of bytes.  Read from here less one backwards.. FCS 2D 2F 4C 24

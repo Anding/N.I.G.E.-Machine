@@ -213,7 +213,13 @@ signal VGArows : STD_LOGIC_VECTOR (7 downto 0);
 signal VGAcols : STD_LOGIC_VECTOR (7 downto 0);
 signal MACdataRX, MACdataTX : STD_LOGIC_VECTOR(7 DOWNTO 0);
 signal MACreadyRX, MACreadyTX, MACread_enable, MACchecksum_err, MACweTX, MACtransmit_request  : STD_LOGIC;
+signal CLK50MHZ : STD_LOGIC;
 
+-- debug
+--signal PHYCRS_i :  STD_LOGIC;
+--signal PHYRXD_i :  STD_LOGIC_VECTOR (1 downto 0);
+--signal PHYTXEN_i :  STD_LOGIC;
+--signal PHYTXD_i :  STD_LOGIC_VECTOR (1 downto 0);
 
 	component CLOCKMANAGER
 	port
@@ -224,11 +230,20 @@ signal MACreadyRX, MACreadyTX, MACread_enable, MACchecksum_err, MACweTX, MACtran
 	  CLK_OUT2          : out    std_logic;
 	  CLK_OUT3          : out    std_logic;
 	  CLK_OUT4          : out    std_logic;
-	  CLK_OUT5          : out    std_logic	  
+	  CLK_OUT5          : out    std_logic;
+	  CLK_OUT6			  : out    std_logic	  
 	 );
 	end component;
 		
 begin
+
+--	-- debug
+--	
+--PHYCRS_i <= PHYTXEN_i;
+--PHYRXD_i <= PHYTXD_i;
+--
+--PHYTXEN <= '0';
+--PHYTXD <= "00";
 
 	-- Ethernet
 
@@ -259,7 +274,8 @@ begin
     CLK_OUT2 => VGACLK50,
     CLK_OUT3 => VGACLK75,
     CLK_OUT4 => VGACLK150,	 
-	 CLK_OUT5 => CLK100);								
+	 CLK_OUT5 => CLK100,
+	 CLK_OUT6 => CLK50MHZ);								
 	 
 	-- System and memory clock selector
 	clk_system <= clk100;								-- Note above 100MHz vs. 95MHz
@@ -832,6 +848,7 @@ begin
 --	);
 	
 		Inst_MediaAccessController: entity work.MediaAccessController PORT MAP(
+		CLK50MHZ => CLK50MHZ,
 		CLK100MHZ => CLK_SYSTEM,
 		reset => reset,
 		PHYCRS => PHYCRS,

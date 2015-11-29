@@ -1,37 +1,80 @@
 hex
-03f860 constant MACready
-03f864 constant MACdata
+03f860 constant MACreadyRX
+03f864 constant MACdataRX
+03f868 constant MACchecksum_err
+03f86c	constant MACreadyTX
+03f870	constant MACdataTX
+03f874	constant MACtransmit_req
 decimal
 
-: octet ( -- x)		\ fetch an octet from the MAC FIFO buffer
-	0
-	4 0 DO			\ lo nibble first
-		2 rshift
-		MACdata @
-		6 lshift
-		or
-	LOOP
+: octet ( -- x)
+	MACdataRX @
 ;
 
-0 constant #preamble
-1 constant #destination
-2 constant #source
-3 constant #type
-7 constant #other
-
 : .frame
-	#preamble
+	hex
+	CR
 	BEGIN
+	MACreadyRX @ 0<>
+	WHILE
+		octet 2 .r
+	REPEAT 
+	MACchecksum_err @ if ." CRC error" THEN
+	CR
+	decimal
+;
 
-	CASE
-	#preamble	OF MACdata @ 3 = IF #destination ELSE #preamble THEN ENDOF
-	#destination	OF CR ." Dest: " 6 0 DO octet . LOOP #source ENDOF
-	#source	OF CR ." Src:  " 6 0 DO octet . LOOP #length ENDOF
-	#type		OF CR ." Type:  " octet 256 * octet + . CR #other ENDOF			
-	#other		OF octet . #other ENDOF
-	ENDCASE	
 
-	MACready @ 0=
-	UNTIL
-	drop CR
-;	
+: capture
+	>remote
+	begin
+		MACreadyRX @ 0<> IF .frame THEN
+	key? until
+	>local
+;
+
+: new-frame ( --)
+	create
+	does> ( pfa --)
+	hex
+	CR
+	dup 4 + dup rot @ + swap 
+	DO
+		i c@ 
+		dup 2 .r 
+		MACdataTX !
+	LOOP
+	CR
+	decimal
+
+;
+
+
+new-frame frame1
+42 , 						\ number of bytes
+hex 
+FF c, FF c, FF c, FF c, FF c, FF c,
+00 c, 08 c, DC c, 1E c, 52 c, 60 c,
+08 c, 06 c, 
+00 c, 01 c, 08 c, 00 c, 06 c, 04 c,
+00 c, 01 c, 00 c, 08 c, DC c, 1E c, 
+52 c, 60 c, C0 c, A8 c, 0B c, 64 c,
+00 c, 00 c, 00 c, 00 c, 00 c, 00 c,
+C0 c, A8 c, 0B c, 01 c,
+decimal
+
+new-frame frame2
+60 ,
+hex
+FF c, FF c, FF c, FF c, FF c, FF c,
+00 c, 00 c, 00 c, 04 c, 14 c, 13 c,
+08 c, 00 c, 
+45 c, 00 c, 00 c, 2E c, 00 c, 00 c,
+00 c, 00 c, 40 c, 11 c, 7A c, C0 c,
+00 c, 00 c, 00 c, 00 c, FF c, FF c,
+FF c, FF c, 00 c, 00 c, 50 c, DA c,
+00 c, 12 c, 00 c, 00 c, 42 c, 42 c,
+42 c, 42 c, 42 c, 42 c, 42 c, 42 c,
+42 c, 42 c, 42 c, 42 c, 42 c, 42 c,
+42 c, 42 c, 42 c, 42 c,
+decimal

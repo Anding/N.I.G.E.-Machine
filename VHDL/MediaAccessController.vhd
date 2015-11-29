@@ -8,6 +8,7 @@ use IEEE.STD_LOGIC_UNSIGNED.ALL;
 
 entity MediaAccessController is
     Port ( CLK100MHZ : in  STD_LOGIC;
+			  CLK50MHZ : in STD_LOGIC;
 			  reset : in STD_LOGIC;
 			  -- RMII PHY signals
            PHYCRS : in  STD_LOGIC;								
@@ -49,6 +50,14 @@ COMPONENT FIFO8
     empty : OUT STD_LOGIC
   );
 END COMPONENT;
+
+-- registered I/O     
+	-- combinatorial signals that update registered outputs
+signal PHYTXEN_i : STD_LOGIC;
+signal PHYTXD_i : STD_LOGIC_VECTOR (1 downto 0);
+	-- registers that are updated from combinatorial inputs
+signal PHYCRS_i : STD_LOGIC;
+signal PHYRXD_i : STD_LOGIC_VECTOR (1 downto 0);
 
 -- state machines
 type state_ethernet_RX_type is (preamble_0, preamble_1, payload_init, payload, waiting, bad_checksum, finish);
@@ -130,6 +139,11 @@ Inst_CRC32calc_TX: entity work.CRC32calc
 -- sequential logic
 -------------------
 
+--PHYCLKout <= CLK50MHZ;
+
+PHYCRS_i <= PHYCRS;
+PHYRXD_i <= PHYRXD;	
+
 PROCESS
 BEGIN
 	wait until rising_edge(CLK100MHZ);
@@ -137,11 +151,21 @@ BEGIN
 	-- generate a 50MHz clock for the RMII interface
 	if PHYCLKout = '0' then			-- rising edge of 50MHz clock
 		PHYCLKout <= '1';
-		valid_flag <= PHYCRS;
+		
+		valid_flag <= PHYCRS_i;		-- synchronize trigger with update of shift register
+		
+		-- register outputs
+		PHYTXEN <= PHYTXEN_i;
+		PHYTXD <= PHYTXD_i;	
+
+		
 	else
+		-- register inputs
+
+	
 		PHYCLKout <= '0';
 	end if;
-	
+	 
 	-- Receiver logic
 	-----------------
 	
@@ -207,9 +231,9 @@ BEGIN
 	-- drive PHY transmission enable high at the start of the transmission preamble and low when complete
 	--		use registers rather than combinatorial logic for a one cycle gap to coincide with the shift register
 	if state_ethernet_TX = preamble then
-		PHYTXEN <= '1';
+		PHYTXEN_i <= '1';
 	elsif (state_ethernet_TX = gap) or (state_ethernet_TX = waiting) then
-		PHYTXEN <= '0';		
+		PHYTXEN_i <= '0';		
 	end if;
 	
 	-- reset the transmission checksum prior to each new each frame
@@ -378,8 +402,8 @@ end process;
 
 -- capture the incoming RMII data at 2 bit/50MHz and convert to 1 bit/100MHz
 with PHYCLKout select
-	next_bit_RX <= PHYRXD(0) when '0',
-					PHYRXD(1) when others;
+	next_bit_RX <= PHYRXD_i(0) when '0',
+					PHYRXD_i(1) when others;
 							
 -- hold RX checksum reset until the payload begins
 with state_ethernet_RX select 
@@ -424,12 +448,12 @@ read_enableTX <= '1' when (PHYCLKout = '0' and state_ethernet_TX = payload and S
 				 
 -- connect low bits of shift register to PHY data lanes using a multiplexer
 with output_multiplexer select
-PHYTXD(0) <= checksum_TX(30) when checksum_direct,				-- first bits of checksum needs as soon as they are calulcated, no time to register
+PHYTXD_i(0) <= checksum_TX(30) when checksum_direct,				-- first bits of checksum needs as soon as they are calulcated, no time to register
 				 checksum_TX_r(30) when checksum_registered,		
 				 SR_TX(1) when others;									-- shift register for payload and pad
 				 
 with output_multiplexer select
-PHYTXD(1) <= checksum_TX(31) when checksum_direct,
+PHYTXD_i(1) <= checksum_TX(31) when checksum_direct,
 				 checksum_TX_r(31) when checksum_registered,
 				 SR_TX(0) when others;
 					
