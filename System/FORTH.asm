@@ -74,6 +74,7 @@ ESTACK		equ	hex 03b080		; Exception stack
 SRAMSIZE	equ	124 1024 * 512 -	; Amount of SRAM in bytes
 USERRAMSIZE	equ	2048			; Amount of USER RAM in bytes
 ;
+RStxBUF_	equ	124 1024 * 768 -	; RS232 buffer transmit 
 RSrxBUF	equ	124 1024 * 512 -	; RS232 buffer (256 bytes) location
 PSBUF		equ	124 1024 * 256 -	; PS/2 keyboard buffer (256 bytes) location
 ;
@@ -275,8 +276,13 @@ START.CF	jsl	ESTACKINIT.CF
 		#.w	START.1	
 		#.b	12
 		jsl	TYPE.CF
-		#.b 	100
+; activate RS232 terminal in another task
 		zero
+		#.l	REMOTE.CF
+		jsl	RUN.CF
+		drop
+		drop
+;
 		jsl	QUIT.CF	; QUIT will not return but JSL is more efficient than #.W JMP
 ;
 START.0	dc.s	******************************		
@@ -290,6 +296,12 @@ START.0	dc.s	******************************
 		dc.b	32
 START.1	dc.s	bytes free
 		dc.b	EOL EOL
+;
+; Second terminal running over RS232
+REMOTE.CF	jsl	>remote.cf
+		jsl	<remote.cf
+		jsl	QUIT.CF	; QUIT will not return but JSL is more efficient than #.W JMP
+;
 ;
 ; ----------------------------------------------------------------------------------------------
 ; WORLDLIST table
@@ -892,14 +904,22 @@ STYPE.CF	#.l	sem-RS232
 			fetch.b		( c-addr n char)
 			jsl	SEMIT.CF	( c-addr n)			
 ; check length of remaining string
-			1-			( c-addr n-1)
-			?dup			( c-addr n-1 true | c-addr false)
+			nop			( c-addr n)
+			?dup			( c-addr n true | c-addr false)
 			IF			; check more characters remaining
 ; write to TBE interrupt handler
-				#.w RStxCNT		( c-addr n-1 RStxCNT)
-				store.l		( c-addr 
-				#.w RStxBUF		( c-addr RStxBUF)
-				store.l		( )
+				dup 			( c-addr n)
+				>R			( c-addr n R:n)
+				#.l RStxBUF_		( c-addr n buf R:n)
+				swap			( c-addr buf n R:n)
+				jsl move.cf		; copy the characters to the RS232 buffer - essential if in USERRAM
+				R>			( n)
+				1-			( n-1)
+				#.l RStxCNT		( n-1 RStxCNT)
+				store.l		( )			; save the count
+				#.l RStxBUF_
+				#.l RStxBUF		( buf RStxBUF)
+				store.l		( )			; reset the buffer pointer
 				zero			( dummy)
 			THEN
 		THEN
