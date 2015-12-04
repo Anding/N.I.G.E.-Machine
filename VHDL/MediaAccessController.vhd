@@ -141,8 +141,15 @@ Inst_CRC32calc_TX: entity work.CRC32calc
 
 --PHYCLKout <= CLK50MHZ;
 
-PHYCRS_i <= PHYCRS;
-PHYRXD_i <= PHYRXD;	
+--PROCESS
+--BEGIN
+--	wait until rising_edge(CLK50MHZ);
+	--	 register inputs
+		PHYCRS_i <= PHYCRS;
+		PHYRXD_i <= PHYRXD;
+
+--END PROCESS;
+
 
 PROCESS
 BEGIN
@@ -151,19 +158,13 @@ BEGIN
 	-- generate a 50MHz clock for the RMII interface
 	if PHYCLKout = '0' then			-- rising edge of 50MHz clock
 		PHYCLKout <= '1';
-		
-		valid_flag <= PHYCRS_i;		-- synchronize trigger with update of shift register
-		
-		-- register outputs
-		PHYTXEN <= PHYTXEN_i;
-		PHYTXD <= PHYTXD_i;	
-
-		
-	else
-		-- register inputs
-
+		valid_flag <= PHYCRS_i;		-- synchronize trigger with update of shift register		
 	
+	else
 		PHYCLKout <= '0';
+		-- register outputs in falling edge (these signals will be read by the PHY chip on the rising edge)
+		PHYTXEN <= PHYTXEN_i;
+		PHYTXD <= PHYTXD_i;		
 	end if;
 	 
 	-- Receiver logic
@@ -272,7 +273,7 @@ BEGIN
 END PROCESS;
 
 -- next state logic for TX Ethernet frame state machine
-PROCESS (state_ethernet_TX, emptyTX, transmit_request, PHYCLKout)
+PROCESS (state_ethernet_TX, emptyTX, transmit_request, transmit_request_m, PHYCLKout, nibbleCount)
 begin
 	case state_ethernet_TX is
 		when waiting =>													-- synchronize TX initialization with falling edge of the PHY 50 MHz clock
@@ -327,7 +328,9 @@ begin
 	case state_ethernet_RX is
 		when waiting =>											-- physical layer sends a high bit
 			if valid_flag = '1' then 
-				state_ethernet_RX_n <= preamble_0;
+				-- debug
+				--state_ethernet_RX_n <= preamble_0;
+				state_ethernet_RX_n <= payload_init;
 			else
 				state_ethernet_RX_n <= waiting;
 			end if;
