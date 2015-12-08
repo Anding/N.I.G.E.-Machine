@@ -15,8 +15,6 @@ entity MediaAccessController is
            PHYRXERR : in  STD_LOGIC;
            PHYRXD : in  STD_LOGIC_VECTOR(1 downto 0);
            PHYCLK50MHZ : out  STD_LOGIC;
-			  PHYMDC : out  STD_LOGIC;
-           PHYMDIO : inout  STD_LOGIC;
            PHYRSTN : out  STD_LOGIC;           
 			  PHYTXEN : out  STD_LOGIC;
            PHYTXD : out  STD_LOGIC_VECTOR (1 downto 0);
@@ -465,9 +463,6 @@ PHYTXD_i(1) <= checksum_TX(31) when checksum_direct,
 
 -- PHY reset low
 PHYRSTN <= not reset;
--- management interface not used
-PHYMDC <= '0';
-PHYMDIO <= '0';		
 			
 end RTL;
 

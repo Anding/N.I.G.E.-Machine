@@ -214,6 +214,12 @@ signal VGAcols : STD_LOGIC_VECTOR (7 downto 0);
 signal MACdataRX, MACdataTX : STD_LOGIC_VECTOR(7 DOWNTO 0);
 signal MACreadyRX, MACreadyTX, MACread_enable, MACchecksum_err, MACweTX, MACtransmit_request  : STD_LOGIC;
 signal CLK50MHZ : STD_LOGIC;
+signal SMIaddr :  std_logic_vector(9 downto 0);
+signal SMIdataWrite :  std_logic_vector(15 downto 0);
+signal SMIread_request :  std_logic;
+signal SMIwrite_request :  std_logic;       
+signal SMIdataRead :  std_logic_vector(15 downto 0);
+signal SMIready :  std_logic;
 
 -- debug
 --signal PHYCRS_i :  STD_LOGIC;
@@ -568,6 +574,12 @@ begin
 		MACreadyTX => MACreadyTX,
 		MACtransmit_request => MACtransmit_request,
 		MACweTX => MACweTX,
+		SMIaddr => SMIaddr,
+		SMIdataWrite => SMIdataWrite,
+		SMIread_request => SMIread_request,
+		SMIwrite_request => SMIwrite_request,    
+		SMIdataRead => SMIdataRead,
+		SMIready => SMIready,
 		VBLANK => VBLANK
 	);  
 			  
@@ -855,8 +867,6 @@ begin
 		PHYRXERR => PHYRXERR,
 		PHYRXD => PHYRXD,
 		PHYCLK50MHZ => PHYCLK50MHZ,
-		PHYMDC => PHYMDC,
-		PHYMDIO => PHYMDIO,
 		PHYRSTN => PHYRSTN,
 		PHYTXEN => PHYTXEN,
 		PHYTXD => PHYTXD,
@@ -870,6 +880,18 @@ begin
 		weTX => MACweTX,
 		readyTX => MACreadyTX,
 		transmit_request => MACtransmit_request
+	);
+	
+		Inst_SMI: entity work.SMI PORT MAP(
+		CLK100MHz => CLK_SYSTEM,
+		addr => SMIaddr,
+		dataRead => SMIdataRead,
+		dataWrite => SMIdataWrite,
+		read_request => SMIread_request,
+		write_request => SMIwrite_request,
+		ready => SMIready,
+		MDC => PHYMDC,
+		MDIO => PHYMDIO
 	);
 		
 end RTL;

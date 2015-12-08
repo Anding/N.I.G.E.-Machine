@@ -52,6 +52,13 @@ entity HW_Registers is
 			  MACweTX : out STD_LOGIC;
 			  MACreadyTX : in STD_LOGIC;
 			  MACtransmit_request : out  STD_LOGIC;
+			  -- Ethernet MAC Serial Management Interface
+			  SMIaddr : out std_logic_vector(9 downto 0);
+			  SMIdataWrite : out std_logic_vector(15 downto 0);
+			  SMIread_request : out std_logic;
+			  SMIwrite_request : out std_logic;       
+			  SMIdataRead : in std_logic_vector(15 downto 0);
+			  SMIready : in std_logic;
 			  -- Nexys board
 			  ssData	: out std_logic_vector(31 downto 0);			-- data for seven segment display
 			  SW	: in std_logic_vector(15 downto 0);					-- switches onboard Nexys2
@@ -83,7 +90,9 @@ architecture Behavioral of HW_Registers is
 	signal VGArows_r : STD_LOGIC_VECTOR (7 downto 0);						  
 	signal VGAcols_r : STD_LOGIC_VECTOR (7 downto 0);		
 	signal ssData_r : std_logic_vector(31 downto 0);
-	signal MACdataTX_r :  std_logic_vector(7 downto 0);	
+	signal MACdataTX_r :  std_logic_vector(7 downto 0);
+	signal SMIaddr_r : std_logic_vector(9 downto 0);
+	signal SMIdataWrite_r : std_logic_vector(15 downto 0);	
 	
 	signal addr_i : std_logic_vector(7 downto 0);					-- local address bus
 	signal clk_i : std_logic;												-- local slow clock for debounce
@@ -129,6 +138,8 @@ begin
 	clk_i <= counter_clk(13);
 	irq_mask <= irq_mask_r;
 	MACdataTX <= MACdataTX_r;
+	SMIaddr <= SMIaddr_r;
+	SMIdataWrite <= SMIdataWrite_r;
 	
 	-- update writable registers
 	
@@ -161,6 +172,8 @@ begin
 			RS232_tx_r_S0 <= (others=>'0');	
 			ssData_r <= (others=>'0');
 			MACdataTX_r <= (others=>'0');
+			SMIaddr_r <= (others=>'0');
+			SMIdataWrite_r <= (others=>'0');
 			
 		elsif en_r = '1' and wrq_r = "1" then					-- writable registers
 				case addr_r is			
@@ -210,14 +223,21 @@ begin
 						VGAcols_r <= datain_r(7 downto 0); 
 						
 					when x"70" =>										-- MAC controller data
-						MACdataTX_r <= datain_r(7 downto 0); 						
+						MACdataTX_r <= datain_r(7 downto 0); 	
 
+					when x"78" =>										-- MAC SMI: PHY and REG addresss
+						SMIaddr_r <= datain_r(9 downto 0);
+					
+					when x"7C" =>										-- MAC SMI: write data
+						SMIdataWrite_r <= datain_r(15 downto 0);
+						
 					when others =>
 						null;	
 				end case;		
 			end if;
-		
-			if en_r = '1' and wrq_r = "1" and addr_r = x"14" then					-- write triggers
+
+			-- write triggers
+			if en_r = '1' and wrq_r = "1" and addr_r = x"14" then					
 				RS232_wr_S0 <= '1';	
 			else
 				RS232_wr_S0 <= '0';
@@ -235,12 +255,19 @@ begin
 				MACweTX <= '0';
 			end if;
 			
-			if en_r = '1' and wrq_r = "1" and addr_r = x"74" then					-- write triggers
+			if en_r = '1' and wrq_r = "1" and addr_r = x"74" then	
 				MACtransmit_request <= '1';	
 			else
 				MACtransmit_request <= '0';
-			end if;			
+			end if;		
 
+			if en_r = '1' and wrq_r = "1" and addr_r = x"7C" then	
+				SMIwrite_request <= '1';	
+			else
+				SMIwrite_request <= '0';
+			end if;				
+			
+			
 	end process;
 	
 	-- read hardware signals
@@ -262,7 +289,6 @@ begin
 		RS232_RDA_S0_r <= RS232_RDA_S0;
 		VBLANK_r <= VBLANK;
 
-	
 		dataout <= dataout_i;
 	
 	process			
@@ -336,22 +362,34 @@ begin
 				when x"68" =>										-- MACchecksum_err
 					dataout_i	<= blank3 & "0000000" & MACchecksum_err;
 					
-				when x"6C" =>
+				when x"6C" =>										-- MAC ready signal
 					dataout_i 	<= blank3 & "0000000" & MACreadyTX;
+					
+				when x"84" =>										-- SMI ready to read
+					dataout_i 	<= blank3 & "0000000" & SMIready;
+					
+				when x"88" =>										-- SMI read data
+					dataout_i 	<= blank2 & SMIdataRead;
 
 				when others =>
-					dataout_i <= (others=>'0');
+					dataout_i 	<= (others=>'0');
 					
 			end case;						
 		end if;	
 			  
 		-- read triggers
 		
-		if en = '1' and addr_i = x"64" then 
+		if en = '1' and addr_i = x"64" then 				-- advance FIFO buffer
 			MACread_enable <= '1';	
 		else
 			MACread_enable <= '0';
 		end if;
+		
+		if en_r = '1' and addr_r = x"80" then				-- SMI read request
+			SMIread_request <= '1';	
+		else
+			SMIread_request <= '0';
+		end if;	
 			
 	end process;	
 		
