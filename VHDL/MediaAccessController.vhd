@@ -58,8 +58,8 @@ signal PHYCRS_i : STD_LOGIC;
 signal PHYRXD_i : STD_LOGIC_VECTOR (1 downto 0);
 
 -- state machines
-type state_ethernet_RX_type is (preamble_0, preamble_1, payload_init, payload, waiting, bad_checksum, finish);
-type state_ethernet_TX_type is (waiting, preamble, start_of_frame, payload, pad, fcs, gap);
+type state_ethernet_RX_type is (preamble_0, preamble_1, payload_init, payloadRX, waiting, bad_checksum, finish);
+type state_ethernet_TX_type is (waiting, preamble, start_of_frame, payloadTX, pad, fcs, gap);
 type state_FIFO_RX_type is (waiting, loading, emptying);
 signal state_ethernet_RX, state_ethernet_RX_n : state_ethernet_RX_type := waiting;
 signal state_ethernet_TX, state_ethernet_TX_n : state_ethernet_TX_type := waiting;
@@ -157,11 +157,12 @@ BEGIN
 	if PHYCLKout = '0' then			-- rising edge of 50MHz clock
 		PHYCLKout <= '1';
 		valid_flag <= PHYCRS_i;		-- synchronize trigger with update of shift register		
-	
+		PHYTXEN <= PHYTXEN_i;	
+		
 	else
 		PHYCLKout <= '0';
 		-- register outputs in falling edge (these signals will be read by the PHY chip on the rising edge)
-		PHYTXEN <= PHYTXEN_i;
+
 		PHYTXD <= PHYTXD_i;
 	end if;
 	 
@@ -176,7 +177,7 @@ BEGIN
 	SR_RX <= next_bit_RX & SR_RX(7 downto 1);				-- shift in LSB first
 	
 	-- reset the shift register with each new frame recieved and after each byte
-	if (state_ethernet_RX = payload_init or state_ethernet_RX = payload or state_ethernet_RX = finish) then
+	if (state_ethernet_RX = payload_init or state_ethernet_RX = payloadRX or state_ethernet_RX = finish) then
 		if SR_RX_count = "1000" then 
 			SR_RX_count <= "0001";						-- reset to 1 since SR_RX_count equals the actual number of valid bits in the register (1 to 8)
 		else
@@ -236,7 +237,7 @@ BEGIN
 	end if;
 	
 	-- reset the transmission checksum prior to each new each frame
-	if state_ethernet_TX = payload then	
+	if state_ethernet_TX = payloadTX then	
 		reset_CRC_TX <= '0';
 	elsif state_ethernet_TX = waiting then
 		reset_CRC_TX <= '1';
@@ -264,7 +265,7 @@ BEGIN
 	-- counts the bits/bytes of the payload ready to pad as needed to 60 bytes (full frame 64 bytes)
 	if state_ethernet_TX = start_of_frame then
 		nibbleCount <= 0;
-	elsif (state_ethernet_TX = payload or state_ethernet_TX = pad) and PHYCLKout = '0' and nibbleCount < 240 then
+	elsif (state_ethernet_TX = payloadTX or state_ethernet_TX = pad) and PHYCLKout = '0' and nibbleCount < 240 then
 		nibbleCount <= nibbleCount + 1;										-- 2 bits each 50MHz cycle, need to count only to a maximum of 240 nibbles = 60 bytes
 	end if;
 		
@@ -288,12 +289,12 @@ begin
 			state_ethernet_TX_timer <= 55;							-- transition after 7 bytes ( 7 bytes * (8 bits per byte / 2 bits per nibble) * (100MHz/50Mhz) - 1 = 55 ) 
 																				--  minus 1 since counter begins at zero
 		when start_of_frame =>
-			state_ethernet_TX_n <= payload;
+			state_ethernet_TX_n <= payloadTX;
 			state_ethernet_TX_timer <= 7;								-- transition after one byte
 			
-		when payload =>
+		when payloadTX =>
 			if emptyTX = '0' then 										-- continue transmitting payload until FIFO buffer is empty
-				state_ethernet_TX_n <= payload;
+				state_ethernet_TX_n <= payloadTX;
 			elsif nibbleCount = 240 then
 				state_ethernet_TX_n <= fcs;							-- 60 bytes or more already transmitted
 			else
@@ -313,7 +314,7 @@ begin
 			state_ethernet_TX_n <= gap;
 			state_ethernet_TX_timer <= 31;							-- transition after 32 bits		
 			
-		when gap =>															
+		when others =>						-- gap									
 			state_ethernet_TX_n <= waiting;
 			state_ethernet_TX_timer <= 95;							-- transition after 12 bytes
 			
@@ -348,7 +349,7 @@ begin
 			end if;
 			
 		when payload_init =>										-- first cycle of payload, state used to trigger a one cycle IRQ
-			state_ethernet_RX_n <= payload;
+			state_ethernet_RX_n <= payloadRX;
 			
 		when finish =>												-- first cycle after payload, state used to trigger a transition of the RX_FIFO buffer
 			state_ethernet_RX_n <= waiting;
@@ -356,13 +357,13 @@ begin
 		when bad_checksum =>										-- first cycle after payload, state used to trigger a transition of the RX_FIFO buffer
 			state_ethernet_RX_n <= waiting;
 	
-		when others => 											-- payload
+		when others => 											-- payloadRX
 			if checksum_RX = magicChecksum then				-- magic checksum reached -> deem success	
 				state_ethernet_RX_n <= finish;					
 			elsif valid_flag = '0' then						-- carrier sense goes low without valid checksum -> deem failure
 				state_ethernet_RX_n <= bad_checksum;
 			else
-				state_ethernet_RX_n <= payload;
+				state_ethernet_RX_n <= payloadRX;
 			end if;
 			
 	end case;
@@ -408,7 +409,7 @@ with PHYCLKout select
 							
 -- hold RX checksum reset until the payload begins
 with state_ethernet_RX select 
-	reset_CRC_RX <= '0' when payload,
+	reset_CRC_RX <= '0' when payloadRX,
 					 '0' when payload_init,
 					 '1' when others;
 					 
@@ -441,15 +442,15 @@ with PHYCLKout select
 with state_ethernet_TX select
 	next_byte <= "01010101" when preamble,
 					 "11010101" when start_of_frame,			-- remember, this is transmitted LSB first
-					 dataTX_out when payload,						-- from FIFO
+					 dataTX_out when payloadTX,				-- from FIFO
 					 "00000000" when others;					-- including pad
 
 -- trigger FIFO to advance internal pointer each time a byte is read				  
-read_enableTX <= '1' when (PHYCLKout = '0' and state_ethernet_TX = payload and SR_TX_count = 0) else '0';
+read_enableTX <= '1' when (PHYCLKout = '0' and state_ethernet_TX = payloadTX and SR_TX_count = 0) else '0';
 				 
 -- connect low bits of shift register to PHY data lanes using a multiplexer
 with output_multiplexer select
-PHYTXD_i(0) <= checksum_TX(30) when checksum_direct,				-- first bits of checksum needs as soon as they are calulcated, no time to register
+PHYTXD_i(0) <= checksum_TX(30) when checksum_direct,			-- first bits of checksum needs as soon as they are calulcated, no time to register
 				 checksum_TX_r(30) when checksum_registered,		
 				 SR_TX(1) when others;									-- shift register for payload and pad
 				 
