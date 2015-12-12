@@ -8,7 +8,7 @@ SMIdataRead	equ	hex 03F888
 	nop
 	nop
 	nop
-	bra	l_B
+;	bra	l_B
 ; write test
 	#.w	binary 0000100000	; register 0 of PHY 1
 	#.l	SMIaddr

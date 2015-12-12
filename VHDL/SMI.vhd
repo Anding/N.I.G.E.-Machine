@@ -36,10 +36,10 @@ signal SR_in : std_logic_vector (15 downto 0);
 begin
 
 MDC <= '0' when state = waiting else MDC_i;									-- 420ns MDC clock cycle time
-MDIO <=  SR_out(31) when (state = preamble or state = init or state = address or (state = data and direction = writing)) else 'Z';
+MDIO <=  SR_out(31) when (state = preamble or state = init or state = address) or direction = writing else 'Z';
 
 ready <= '1' when state = waiting else '0';
-dataRead <= SR_in;
+dataRead <= SR_in(15 downto 0);
 
 -- state machine update
 process
@@ -65,10 +65,12 @@ begin
 		state <= state_n;
 		SR_out <= SR_out_next;
 	else
-		state_counter <= state_counter + 1;					-- must update each 100MHz tickS
-		if (cycles = cycles_top and MDC_i = '1') then
-			SR_out <= SR_out(30 downto 0) & '0';
-			if state = data then 
+		state_counter <= state_counter + 1;					-- must update each 100MHz tick
+		if cycles = cycles_top then
+			if MDC_i = '1' then									-- latch data out on falling edge of MDC
+				SR_out <= SR_out(30 downto 0) & '0';			
+			end if;
+			if state = data and MDC_i = '0' then 			-- latch data in on rising edge of MDC
 				SR_in <= SR_in(14 downto 0) & MDIO;
 			end if;
 		end if;
@@ -86,7 +88,7 @@ begin
 end process;
 
 -- next state logic
-process (state, read_request, write_request, direction)
+process (state, read_request, write_request, direction, addr, dataWrite)
 begin
 	case state is
 		when waiting =>

@@ -162,7 +162,7 @@ BEGIN
 		PHYCLKout <= '0';
 		-- register outputs in falling edge (these signals will be read by the PHY chip on the rising edge)
 		PHYTXEN <= PHYTXEN_i;
-		PHYTXD <= PHYTXD_i;		
+		PHYTXD <= PHYTXD_i;
 	end if;
 	 
 	-- Receiver logic
