@@ -22,7 +22,7 @@
 ; -----------------------------------------------------------------------------------------------
 ; **** SYSTEM HARDWARE ****
 ;
-system-freq	equ	950000000
+system-freq	equ	1000000000
 ;
 ; **** MULTITASKING  ****
 ;
@@ -267,8 +267,17 @@ START.CF	jsl	ESTACKINIT.CF
 		fetch.b
 		#.w	INK
 		store.b
-; Power-on message
-		#.w	START.0	
+; activate a second terminal in another task that will comminucate by RS232
+		zero
+		#.l	TERM2.CF
+		jsl	RUN.CF
+		drop
+		drop
+; Power-on message and enter interpret loop
+		jsl	POMESSAGE
+		jsl	QUIT.CF	; QUIT will not return but JSL is more efficient than #.W JMP
+;
+POMESSAGE	#.w	START.0	
 		#.b	START.1 START.0 - 
 		jsl	TYPE.CF
 		jsl	UNUSED.CF	; Show free bytes
@@ -276,15 +285,7 @@ START.CF	jsl	ESTACKINIT.CF
 		#.w	START.1	
 		#.b	12
 		jsl	TYPE.CF
-; activate RS232 terminal in another task
-		zero
-		#.l	REMOTE.CF
-		jsl	RUN.CF
-		drop
-		drop
-;
-		jsl	QUIT.CF	; QUIT will not return but JSL is more efficient than #.W JMP
-;
+		rts
 START.0	dc.s	******************************		
 		dc.b 	EOL
 		dc.s	*** N.I.G.E. Machine FORTH ***
@@ -298,9 +299,11 @@ START.1	dc.s	bytes free
 		dc.b	EOL EOL
 ;
 ; Second terminal running over RS232
-REMOTE.CF	jsl	>remote.cf
+TERM2.CF	jsl	SZERO.CF
+		jsl	>remote.cf
 		jsl	<remote.cf
-		jsl	QUIT.CF	; QUIT will not return but JSL is more efficient than #.W JMP
+		jsl	POMESSAGE
+		jsl	QUIT.CF
 ;
 ;
 ; ----------------------------------------------------------------------------------------------
