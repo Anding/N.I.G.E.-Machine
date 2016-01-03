@@ -5,13 +5,13 @@ entity stack_access is
 Port ( clk : in  STD_LOGIC;
 		  rst : in  STD_LOGIC;
 		  -- connections to subroutine and exeception stacks 
-			SSdatain : in STD_LOGIC_VECTOR (319 downto 0);	
-			SSdataout : out STD_LOGIC_VECTOR (319 downto 0);
-			SSw : out STD_LOGIC_VECTOR (39 downto 0);
+			SSdatain : in STD_LOGIC_VECTOR (255 downto 0);	
+			SSdataout : out STD_LOGIC_VECTOR (255 downto 0);
+			SSw : out STD_LOGIC_VECTOR (31 downto 0);
 			SSwSignal : in STD_LOGIC;											-- write by datapath signalled here
-			ESdatain : in STD_LOGIC_VECTOR (255 downto 0);	
-			ESdataout : out STD_LOGIC_VECTOR (255 downto 0);
-			ESw : out STD_LOGIC_VECTOR (31 downto 0);
+			ESdatain : in STD_LOGIC_VECTOR (191 downto 0);	
+			ESdataout : out STD_LOGIC_VECTOR (191 downto 0);
+			ESw : out STD_LOGIC_VECTOR (23 downto 0);
 			ESwSignal :	in STD_LOGIC;											-- write by datapath signalled here
 		  -- CPU system memory channel
 		  en : in STD_LOGIC;												
@@ -25,7 +25,7 @@ end stack_access;
 architecture RTL of stack_access is
 signal addr_i : std_logic_vector(7 downto 0);					-- local address bus
 signal dataout_i : STD_LOGIC_VECTOR (31 downto 0);
-signal ESdatain_m : STD_LOGIC_VECTOR (255 downto 0);
+signal ESdatain_m : STD_LOGIC_VECTOR (191 downto 0);
 signal ESwSignal_m, SSwSignal_m : std_logic;
 signal datain_m : STD_LOGIC_VECTOR (31 downto 0);	
 
@@ -56,10 +56,10 @@ begin
 					dataout_i <= SSdatain(223 downto 192);
 				when x"1C" =>										
 					dataout_i <= SSdatain(255 downto 224);
-				when x"20" =>										
-					dataout_i <= SSdatain(287 downto 256);
-				when x"24" =>										
-					dataout_i <= SSdatain(319 downto 288);
+--				when x"20" =>										
+--					dataout_i <= SSdatain(287 downto 256);
+--				when x"24" =>										
+--					dataout_i <= SSdatain(319 downto 288);
 --				when x"28" =>										
 --					dataout_i <= SSdatain(351 downto 320);
 --				when x"2C" =>										
@@ -84,10 +84,10 @@ begin
 					dataout_i <= ESdatain(159 downto 128);
 				when x"94" =>										
 					dataout_i <= ESdatain(191 downto 160);					
-				when x"98" =>										
-					dataout_i <= ESdatain(223 downto 192);
-				when x"9C" =>										
-					dataout_i <= ESdatain(255 downto 224);		
+--				when x"98" =>										
+--					dataout_i <= ESdatain(223 downto 192);
+--				when x"9C" =>										
+--					dataout_i <= ESdatain(255 downto 224);		
 				when others =>
 					dataout_i <= (others=>'0');
 			end case;
@@ -106,11 +106,11 @@ begin
 	
 	with SSwSignal_m select 
 		SSdataout <= 	datain_m & datain_m &
-							datain_m & datain_m & datain_m & datain_m & datain_m & datain_m & datain_m & datain_m when '0',
+							datain_m & datain_m & datain_m & datain_m & datain_m & datain_m when '0',
 							(others=>'0') when others;		-- zero local variables when subroutine stack advances
 							
 	with ESwSignal_m select 				 
-		ESdataout <= 	datain_m & datain_m & datain_m & datain_m & datain_m & datain_m & datain_m & datain_m when '0',
+		ESdataout <= 	datain_m & datain_m & datain_m & datain_m & datain_m & datain_m when '0',
 							ESdatain_m when others;			-- "copy down" environment variables when exception stack advances
 
 	process	--(SSwSignal, ESwSignal, en, wrq, addr_i)
@@ -130,25 +130,25 @@ begin
 		if en = '1' and wrq = "1" then
 			case addr_i is
 				when x"00" =>	
-					SSw <= x"000000000F";
+					SSw <= x"0000000F";
 				when x"04" =>	
-					SSw <= x"00000000F0";
+					SSw <= x"000000F0";
 				when x"08" =>	
-					SSw <= x"0000000F00";
+					SSw <= x"00000F00";
 				when x"0C" =>	
-					SSw <= x"000000F000";
+					SSw <= x"0000F000";
 				when x"10" =>	
-					SSw <= x"00000F0000";
+					SSw <= x"000F0000";
 				when x"14" =>	
-					SSw <= x"0000F00000";
+					SSw <= x"00F00000";
 				when x"18" =>	
-					SSw <= x"000F000000";
+					SSw <= x"0F000000";
 				when x"1C" =>	
-					SSw <= x"00F0000000";	
-				when x"20" =>	
-					SSw <= x"0F00000000";
-				when x"24" =>	
-					SSw <= x"F000000000";
+					SSw <= x"F0000000";	
+--				when x"20" =>	
+--					SSw <= x"0F00000000";
+--				when x"24" =>	
+--					SSw <= x"F000000000";
 --				when x"28" =>	
 --					SSw <= x"00000F0000000000";
 --				when x"2C" =>	
@@ -162,21 +162,21 @@ begin
 --				when x"3C" =>	
 --					SSw <= x"F000000000000000";	
 				when x"80" =>	
-					ESw <= x"0000000F";
+					ESw <= x"00000F";
 				when x"84" =>	
-					ESw <= x"000000F0";
+					ESw <= x"0000F0";
 				when x"88" =>	
-					ESw <= x"00000F00";
+					ESw <= x"000F00";
 				when x"8C" =>	
-					ESw <= x"0000F000";
+					ESw <= x"00F000";
 				when x"90" =>	
-					ESw <= x"000F0000";
+					ESw <= x"0F0000";
 				when x"94" =>	
-					ESw <= x"00F00000";
-				when x"98" =>	
-					ESw <= x"0F000000";
-				when x"9C" =>	
-					ESw <= x"F0000000";	
+					ESw <= x"F00000";
+--				when x"98" =>	
+--					ESw <= x"0F000000";
+--				when x"9C" =>	
+--					ESw <= x"F0000000";	
 				when others =>
 			end case;
 		end if;

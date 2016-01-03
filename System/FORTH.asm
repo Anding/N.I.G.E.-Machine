@@ -71,12 +71,12 @@ local2		equ	SSTACK 8 +
 local3		equ	SSTACK 12 +
 ESTACK		equ	hex 03b080		; Exception stack
 ;
-SRAMSIZE	equ	124 1024 * 512 -	; Amount of SRAM in bytes
+SRAMSIZE	equ	128 1024 * 768 -	; Amount of SRAM in bytes
 USERRAMSIZE	equ	2048			; Amount of USER RAM in bytes
 ;
-RStxBUF_	equ	124 1024 * 768 -	; RS232 buffer transmit 
-RSrxBUF	equ	124 1024 * 512 -	; RS232 buffer (256 bytes) location
-PSBUF		equ	124 1024 * 256 -	; PS/2 keyboard buffer (256 bytes) location
+RStxBUF_	equ	128 1024 * 768 -	; RS232 buffer transmit (256 bytes) location
+RSrxBUF	equ	128 1024 * 512 -	; RS232 buffer (256 bytes) location
+PSBUF		equ	128 1024 * 256 -	; PS/2 keyboard buffer (256 bytes) location
 ;
 _PAD		equ	USERRAM 1024 +	; PAD location
 _STRING	equ	_PAD			; buffer for interpret mode string storage (e.g. S")
@@ -98,7 +98,7 @@ _END		equ	_TEXT_END 1024 +			; HEAP location
 ;
 EOL		equ	10			; line separator = ASCII 10
 ~EOL		equ	13			; ignore this character, not line separator = ASCII 13
-MAXLOCALS	equ	10			; maximum number of local variables
+MAXLOCALS	equ	8			; maximum number of local variables
 ;
 ; .NF flags
 PRECEDENCE	equ	128
@@ -7137,12 +7137,12 @@ KEY_VECTOR		equ	ESTACK 12 +
 			dc.l	KKEY.CF
 KEY?_VECTOR		equ	ESTACK 16 +
 			dc.l	KKEY?.CF
-			ds.l	8 5 -		; spare slots on the exception stack
+			ds.l	6 5 -		; spare slots on the exception stack
 ;
 ESTACKINIT.CF		#.l	ESTACK_MAP			; code to initialize the exception stack
 			#.l	ESTACK
-			#.b	8				; 8 exception stack variables
-			zero	( s d 8 0)
+			#.b	6				; 8 exception stack variables
+			zero	( s d N 0)
 			DO					; MOVE not used since this area is longword addressable only
 ;
 				over		( s d s)

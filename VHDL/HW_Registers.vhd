@@ -159,7 +159,7 @@ begin
 			SD_dataout_r <= (others=>'0');	
 			SD_control_r <= (others=>'0');	
 			SD_divide_r <= "11111111";								-- divide by 254	
-			DIVIDE_r_S0 <= CONV_STD_LOGIC_VECTOR(1736,32);		-- 10416 = 9600 BAUD at 100 MHz		
+			DIVIDE_r_S0 <= CONV_STD_LOGIC_VECTOR(1736,32);	-- 1736 = 57,600 BAUD at 100 MHz		
 			irq_mask_r <= "000000000000111";						-- "000000000000111";
 			txt_zero_r <= X"040600";									
 			background_r <= X"0000";

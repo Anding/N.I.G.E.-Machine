@@ -15,9 +15,11 @@ entity Board_Nexys4 is
 					);
 					
     Port ( CLK_IN : in  STD_LOGIC;
+			  -- VGA
 			  RGB : out  STD_LOGIC_VECTOR (11 downto 0);
            HSync : out  STD_LOGIC;
            VSync : out  STD_LOGIC;
+			  -- PSDRAM
 			  ADDR_SDRAM : out  STD_LOGIC_VECTOR (23 downto 1);		
            DATA_SDRAM : inout  STD_LOGIC_VECTOR (15 downto 0);
            OE_SDRAM : out  STD_LOGIC;
@@ -29,8 +31,10 @@ entity Board_Nexys4 is
            CE_SDRAM : out  STD_LOGIC;
            CRE_SDRAM : out  STD_LOGIC;
            WAIT_SDRAM : in  STD_LOGIC;
+			  -- RS232
 			  RXD_S0 : in STD_LOGIC;
 			  TXD_S0 : out STD_LOGIC;
+			  -- PS/2 keyboard
 			  PS2C : in STD_LOGIC;
 			  PS2D : in STD_LOGIC;
 			  -- Board
@@ -41,12 +45,13 @@ entity Board_Nexys4 is
 			  RGB1_Red : out STD_LOGIC;				  -- useful for debugging but do not drive high continuously
 			  RGB1_Green : out STD_LOGIC;
 			  RGB1_Blue : out STD_LOGIC;
-			  -- SPI
+			  -- SPI for SD-card
 			  SCK : out STD_LOGIC;
 			  MOSI : out STD_LOGIC;
 			  MISO : in STD_LOGIC;
 			  SD_CS : out STD_LOGIC;
 			  SD_CD : in STD_LOGIC;
+			  SD_RESET : out STD_LOGIC;			  
 			  -- Ethernet
 			  PHYMDC : out  STD_LOGIC;
            PHYMDIO : inout  STD_LOGIC;
@@ -58,9 +63,7 @@ entity Board_Nexys4 is
            PHYTXD : out  STD_LOGIC_VECTOR (1 downto 0);
            PHYCLK50MHZ : out  STD_LOGIC;
            PHYINTN : in  STD_LOGIC;
-			  JB : out  STD_LOGIC_VECTOR (7 downto 0);
-			  --SD_WP : In STD_LOGIC
-			  SD_RESET : out STD_LOGIC
+			  JB : out  STD_LOGIC_VECTOR (7 downto 0)
 			  );
 end Board_Nexys4;
 
@@ -194,13 +197,13 @@ signal clk_MEM : std_logic;
 signal debug : std_logic_vector(31 downto 0);
 signal debug_CPU : std_logic_vector(7 downto 0);
 signal debug_DMAcontroller : std_logic_vector(7 downto 0);
-signal SSdataOUT : std_logic_vector(351 downto 0);
-signal SSdataIN : std_logic_vector(351 downto 0);
-signal SSw : std_logic_vector(43 downto 0);
+signal SSdataOUT : std_logic_vector(287 downto 0);
+signal SSdataIN : std_logic_vector(287 downto 0);
+signal SSw : std_logic_vector(35 downto 0);
 signal SSaddr : std_logic_vector(vmp_w + ssp_w -1 downto 0);
-signal ESdataOUT : std_logic_vector(303 downto 0);
-signal ESdataIN : std_logic_vector(303 downto 0);
-signal ESw : std_logic_vector(37 downto 0);
+signal ESdataOUT : std_logic_vector(239 downto 0);
+signal ESdataIN : std_logic_vector(239 downto 0);
+signal ESw : std_logic_vector(29 downto 0);
 signal ESaddr : std_logic_vector(vmp_w + esp_w -1 downto 0);
 signal VM : std_logic_vector(vmp_w -1 downto 0);
 signal vir_EN : STD_LOGIC;
@@ -586,14 +589,14 @@ begin
 		Inst_stack_access: entity work.stack_access PORT MAP(
 		clk => CLK_SYSTEM,
 		rst => reset,
-		SSdatain => SSdatain(319 downto 0),
-		SSdataout => SSdataout(319 downto 0),
-		SSw => SSw(39 downto 0),
-		SSwSignal => SSw(40),
-		ESdatain => ESdatain(255 downto 0),
-		ESdataout => ESdataout(255 downto 0),
-		ESw => ESw(31 downto 0),
-		ESwSignal => ESw(32),
+		SSdatain => SSdatain(255 downto 0),
+		SSdataout => SSdataout(255 downto 0),
+		SSw => SSw(31 downto 0),
+		SSwSignal => SSw(32),
+		ESdatain => ESdatain(191 downto 0),
+		ESdataout => ESdataout(191 downto 0),
+		ESw => ESw(23 downto 0),
+		ESwSignal => ESw(24),
 		en => stack_access_en,
 		addr => MEMaddr(10 downto 0),
 		datain => MEMdataout_X,
@@ -625,13 +628,13 @@ begin
 		RSdataout => RSdataout,
 		RSw => RSw,
 		SSaddr => SSaddr,
-		SSdatain => SSdatain(351 downto 320),	
-		SSdataout => SSdataout(351 downto 320),
-		SSw => SSw(43 downto 40),
+		SSdatain => SSdatain(287 downto 256),	
+		SSdataout => SSdataout(287 downto 256),
+		SSw => SSw(35 downto 32),
 		ESaddr => ESaddr,
-		ESdatain => ESdatain(303 downto 256),
-		ESdataout => ESdataout(303 downto 256),
-		ESw => ESw(37 downto 32),
+		ESdatain => ESdatain(239 downto 192),
+		ESdataout => ESdataout(239 downto 192),
+		ESw => ESw(29 downto 24),
 		MEMaddr => MEMaddr,
 		MEMdatain_X => MEMdatain_Xi,
 		MEMdatain_X_quick => MEMdata_Sys_quick,
