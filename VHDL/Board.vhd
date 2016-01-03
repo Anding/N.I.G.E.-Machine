@@ -47,6 +47,18 @@ entity Board_Nexys4 is
 			  MISO : in STD_LOGIC;
 			  SD_CS : out STD_LOGIC;
 			  SD_CD : in STD_LOGIC;
+			  -- Ethernet
+			  PHYMDC : out  STD_LOGIC;
+           PHYMDIO : inout  STD_LOGIC;
+           PHYRSTN : out  STD_LOGIC;
+           PHYCRS : in  STD_LOGIC;
+           PHYRXERR : in  STD_LOGIC;
+           PHYRXD : in  STD_LOGIC_VECTOR (1 downto 0);
+           PHYTXEN : out  STD_LOGIC;
+           PHYTXD : out  STD_LOGIC_VECTOR (1 downto 0);
+           PHYCLK50MHZ : out  STD_LOGIC;
+           PHYINTN : in  STD_LOGIC;
+			  JB : out  STD_LOGIC_VECTOR (7 downto 0);
 			  --SD_WP : In STD_LOGIC
 			  SD_RESET : out STD_LOGIC
 			  );
@@ -199,6 +211,21 @@ signal charHeight: STD_LOGIC_VECTOR (3 downto 0);
 signal charWidth: STD_LOGIC_VECTOR (3 downto 0);	
 signal VGArows : STD_LOGIC_VECTOR (7 downto 0);					  
 signal VGAcols : STD_LOGIC_VECTOR (7 downto 0);
+signal MACdataRX, MACdataTX : STD_LOGIC_VECTOR(7 DOWNTO 0);
+signal MACreadyRX, MACreadyTX, MACread_enable, MACchecksum_err, MACweTX, MACtransmit_request  : STD_LOGIC;
+signal CLK50MHZ : STD_LOGIC;
+signal SMIaddr :  std_logic_vector(9 downto 0);
+signal SMIdataWrite :  std_logic_vector(15 downto 0);
+signal SMIread_request :  std_logic;
+signal SMIwrite_request :  std_logic;       
+signal SMIdataRead :  std_logic_vector(15 downto 0);
+signal SMIready :  std_logic;
+
+-- debug
+--signal PHYCRS_i :  STD_LOGIC;
+--signal PHYRXD_i :  STD_LOGIC_VECTOR (1 downto 0);
+--signal PHYTXEN_i :  STD_LOGIC;
+--signal PHYTXD_i :  STD_LOGIC_VECTOR (1 downto 0);
 
 	component CLOCKMANAGER
 	port
@@ -209,12 +236,32 @@ signal VGAcols : STD_LOGIC_VECTOR (7 downto 0);
 	  CLK_OUT2          : out    std_logic;
 	  CLK_OUT3          : out    std_logic;
 	  CLK_OUT4          : out    std_logic;
-	  CLK_OUT5          : out    std_logic	  
+	  CLK_OUT5          : out    std_logic;
+	  CLK_OUT6			  : out    std_logic	  
 	 );
 	end component;
 		
 begin
 
+--	-- debug
+--	
+--PHYCRS_i <= PHYTXEN_i;
+--PHYRXD_i <= PHYTXD_i;
+--
+--PHYTXEN <= '0';
+--PHYTXD <= "00";
+
+	-- Ethernet
+
+	JB(0) <= PHYCRS;
+	JB(1) <= '0';
+	JB(2) <= '0';
+	JB(3) <= '0';
+	JB(4) <= '0';
+	JB(5) <= '0';
+	JB(6) <= '0';
+	JB(7) <= '0';
+	
 	-- debug and monitoring
 		-- use these connections for debugging but do not drive high continuously (use PWM)
 	RGB1_Red <= '0';
@@ -233,7 +280,8 @@ begin
     CLK_OUT2 => VGACLK50,
     CLK_OUT3 => VGACLK75,
     CLK_OUT4 => VGACLK150,	 
-	 CLK_OUT5 => CLK100);								-- THIS IS ACTUALLY 95MHz.  Reoptimize for 100MHz with SmartXplorer as final design step if needed
+	 CLK_OUT5 => CLK100,
+	 CLK_OUT6 => CLK50MHZ);								
 	 
 	-- System and memory clock selector
 	clk_system <= clk100;								-- Note above 100MHz vs. 95MHz
@@ -331,7 +379,7 @@ begin
 		 dinb => dinb_sysram,
 		 doutb => doutb_sysram
 	  );
-	  
+  
 --	Inst_RAM_for_Testbench: entity work.RAM_for_Testbench PORT MAP(
 --		rst => reset,
 --		clk => clk_system,
@@ -518,9 +566,23 @@ begin
 		SD_control => SD_control,
 		SD_wr => SD_wr,
 		SD_divide => SD_divide,
+		MACreadyRX => MACreadyRX,
+		MACdataRX => MACdataRX,
+		MACread_enable => MACread_enable,
+		MACchecksum_err => MACchecksum_err,
+		MACdataTX => MACdataTX,
+		MACreadyTX => MACreadyTX,
+		MACtransmit_request => MACtransmit_request,
+		MACweTX => MACweTX,
+		SMIaddr => SMIaddr,
+		SMIdataWrite => SMIdataWrite,
+		SMIread_request => SMIread_request,
+		SMIwrite_request => SMIwrite_request,    
+		SMIdataRead => SMIdataRead,
+		SMIready => SMIready,
 		VBLANK => VBLANK
-	);
-	
+	);  
+			  
 		Inst_stack_access: entity work.stack_access PORT MAP(
 		clk => CLK_SYSTEM,
 		rst => reset,
@@ -785,5 +847,52 @@ begin
 		CLKout => CLKSPI
 	);
 	
+--		Inst_PHYBuffer: entity work.PHYBUFFER PORT MAP(
+--		CLK100MHZ => CLK_SYSTEM,
+--		PHYCRS => PHYCRS,
+--		PHYRXERR => PHYRXERR,
+--		PHYRXD => PHYRXD,
+--		PHYCLK50MHZ => PHYCLK50MHZ,
+--		data => MACdata,
+--		ready => MACready,
+--		read_enable => MACread_enable,
+--		checksum_err => MACchecksum_err
+--	);
+	
+		Inst_MediaAccessController: entity work.MediaAccessController PORT MAP(
+		CLK50MHZ => CLK50MHZ,
+		CLK100MHZ => CLK_SYSTEM,
+		reset => reset,
+		PHYCRS => PHYCRS,
+		PHYRXERR => PHYRXERR,
+		PHYRXD => PHYRXD,
+		PHYCLK50MHZ => PHYCLK50MHZ,
+		PHYRSTN => PHYRSTN,
+		PHYTXEN => PHYTXEN,
+		PHYTXD => PHYTXD,
+		PHYINTN => PHYINTN,
+		dataRX => MACdataRX,
+		readyRX => MACreadyRX,
+		read_enable => MACread_enable,
+		Ethernet_IRQ => open,
+		checksum_err => MACchecksum_err,
+		dataTX => MACdataTX,
+		weTX => MACweTX,
+		readyTX => MACreadyTX,
+		transmit_request => MACtransmit_request
+	);
+	
+		Inst_SMI: entity work.SMI PORT MAP(
+		CLK100MHz => CLK_SYSTEM,
+		addr => SMIaddr,
+		dataRead => SMIdataRead,
+		dataWrite => SMIdataWrite,
+		read_request => SMIread_request,
+		write_request => SMIwrite_request,
+		ready => SMIready,
+		MDC => PHYMDC,
+		MDIO => PHYMDIO
+	);
+		
 end RTL;
 

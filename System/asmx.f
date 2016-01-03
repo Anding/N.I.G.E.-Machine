@@ -558,31 +558,35 @@
 	then
 ;
 
-: _+LOOP							\ KNOWN ISSUE - +LOOP only works with positive increments!
+: _+LOOP
 \ Forth code
-\ R>	( flag1 n index R: limit)
-\ +	( flag1 index+ R: limit)
-\ dup	( flag1 index+ index+ R: limit)
-\ R@	( flag1 index+ index+ limit R: limit)
-\ <	( flag1 index+ flag R: limit)
-\ not	( flag1 index+ flag2 R: limit)
-\ swap ( flag1 flag2 index+  R: limit)
-\ >R   ( flag1 flag2 R: limit index+)
-\ BEQ
-\ R> R> drop drop ( -- R: --)
+\	dup
+\	0<
+\	swap		( flag1 n R: limit index)		; sign of index variable
+\	R>		( flag1 n index R: limit)
+\	+		( flag1 index+ R: limit)
+\	dup		( flag1 index+ index+ R: limit)
+\	R@		( flag1 index+ index+ limit R: limit)
+\	<		( flag1 index+ flag R: limit)
+\	not  		( flag1 index+ flag2 R: limit)
+\	swap 		( flag1 flag2 index+  R: limit)
+\	>R   		( flag1 flag2 R: limit index+)
+\	xor,rts	( flag R: limit index+)		; if index variable was negative, invert flag
+
 	if									\ pass 2
 		>R
 		1 1 9 9				\ DROP DROP R> R>
 		R>					( code.. pointer)
 		make-BEQ	
-		7 3 28 24 8 2 14 9			\ >R SWAP 0= < R@ DUP + R>
-		14					( code.. size)
+		36 7 3 28 24 8 2 14 9 3 30 2 	\ >R swap not < R@ dup + R>  should cope with negative increments
+		\ 7 3 28 24 8 2 14 9			\ >R SWAP 0= < R@ DUP + R>   size = 14
+		18					( code.. size)
 	else									\ pass 1
 		\ update instruction count
 		instruction-count 67 4 * + 1 swap +!
-		-5					( pointer sub-offset)
+		-9					( pointer sub-offset)
 		calc-rev-offset			
-		14					( size)
+		18					( size)
 	then
 ;
 
