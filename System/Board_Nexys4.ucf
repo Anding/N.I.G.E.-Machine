@@ -146,14 +146,14 @@ NET "PhyTxd<1>"		LOC = "A8"	| IOSTANDARD = "LVCMOS33";		#Bank = 16, Pin name = I
 #NET "PhyTxd<0>"		LOC = "G4"	|IOSTANDARD = "LVCMOS33";		#Bank = 16, Pin name = IO_L14P_T2_SRCC_16,					Sch name = ETH_TXD0
 #NET "PhyTxd<1>"		LOC = "G2"	|IOSTANDARD = "LVCMOS33";		#Bank = 16, Pin name = IO_L12N_T1_MRCC_16,					Sch name = ETH_TXD1
 # Pmod Header JB
-NET "JB<0>"			LOC = "G14"	|IOSTANDARD = "LVCMOS33";		#Bank = 15, Pin name = IO_L15N_T2_DQS_ADV_B_15,				Sch name = JB1
-NET "JB<1>"			LOC = "P15"	|IOSTANDARD = "LVCMOS33";		#Bank = 14, Pin name = IO_L13P_T2_MRCC_14,					Sch name = JB2
-NET "JB<2>"			LOC = "V11"	|IOSTANDARD = "LVCMOS33";		#Bank = 14, Pin name = IO_L21N_T3_DQS_A06_D22_14,			Sch name = JB3
-NET "JB<3>"			LOC = "V15"	|IOSTANDARD = "LVCMOS33";		#Bank = CONFIG, Pin name = IO_L16P_T2_CSI_B_14,				Sch name = JB4
-NET "JB<4>"			LOC = "K16"	|IOSTANDARD = "LVCMOS33";		#Bank = 15, Pin name = IO_25_15,							Sch name = JB7
-NET "JB<5>"			LOC = "R16"	|IOSTANDARD = "LVCMOS33";		#Bank = CONFIG, Pin name = IO_L15P_T2_DQS_RWR_B_14,			Sch name = JB8
-NET "JB<6>"			LOC = "T9"  |IOSTANDARD = "LVCMOS33";		#Bank = 14, Pin name = IO_L24P_T3_A01_D17_14,				Sch name = JB9
-NET "JB<7>"			LOC = "U11"	|IOSTANDARD = "LVCMOS33";		#Bank = 14, Pin name = IO_L19N_T3_A09_D25_VREF_14,			Sch name = JB10 
+#NET "JB<0>"			LOC = "G14"	|IOSTANDARD = "LVCMOS33";		#Bank = 15, Pin name = IO_L15N_T2_DQS_ADV_B_15,				Sch name = JB1
+#NET "JB<1>"			LOC = "P15"	|IOSTANDARD = "LVCMOS33";		#Bank = 14, Pin name = IO_L13P_T2_MRCC_14,					Sch name = JB2
+#NET "JB<2>"			LOC = "V11"	|IOSTANDARD = "LVCMOS33";		#Bank = 14, Pin name = IO_L21N_T3_DQS_A06_D22_14,			Sch name = JB3
+#NET "JB<3>"			LOC = "V15"	|IOSTANDARD = "LVCMOS33";		#Bank = CONFIG, Pin name = IO_L16P_T2_CSI_B_14,				Sch name = JB4
+#NET "JB<4>"			LOC = "K16"	|IOSTANDARD = "LVCMOS33";		#Bank = 15, Pin name = IO_25_15,							Sch name = JB7
+#NET "JB<5>"			LOC = "R16"	|IOSTANDARD = "LVCMOS33";		#Bank = CONFIG, Pin name = IO_L15P_T2_DQS_RWR_B_14,			Sch name = JB8
+#NET "JB<6>"			LOC = "T9"  |IOSTANDARD = "LVCMOS33";		#Bank = 14, Pin name = IO_L24P_T3_A01_D17_14,				Sch name = JB9
+#NET "JB<7>"			LOC = "U11"	|IOSTANDARD = "LVCMOS33";		#Bank = 14, Pin name = IO_L19N_T3_A09_D25_VREF_14,			Sch name = JB10 
 # Timing 
 NET "CLK_IN" TNM_NET = CLK_IN;
 TIMESPEC TS_CLK_IN = PERIOD "CLK_IN" 10 ns HIGH 50% ;
@@ -163,10 +163,10 @@ OFFSET = OUT 10 ns AFTER "CLK_IN";
 NET "VGAclk25" TNM_NET = VGAclk25;
 NET "VGAclk50" TNM_NET = VGAclk50;
 NET "VGAclk75" TNM_NET = VGAclk75;
-NET "clk100" TNM_NET = clk100;
-TIMESPEC TS_CROSS_1 = FROM "VGAclk25" TO "clk100" 100 ns;
-TIMESPEC TS_CROSS_2 = FROM "clk100" TO "VGAclk25" 100 ns;
-TIMESPEC TS_CROSS_3 = FROM "VGAclk50" TO "clk100" 100 ns;
-TIMESPEC TS_CROSS_4 = FROM "clk100" TO "VGAclk50" 100 ns;
-TIMESPEC TS_CROSS_5 = FROM "VGAclk75" TO "clk100" 100 ns;
-TIMESPEC TS_CROSS_6 = FROM "clk100" TO "VGAclk75" 100 ns;
+NET "clk100MHZ" TNM_NET = clk100MHZ;
+TIMESPEC TS_CROSS_1 = FROM "VGAclk25" TO "clk100MHZ" 100 ns;
+TIMESPEC TS_CROSS_2 = FROM "clk100MHZ" TO "VGAclk25" 100 ns;
+TIMESPEC TS_CROSS_3 = FROM "VGAclk50" TO "clk100MHZ" 100 ns;
+TIMESPEC TS_CROSS_4 = FROM "clk100MHZ" TO "VGAclk50" 100 ns;
+TIMESPEC TS_CROSS_5 = FROM "VGAclk75" TO "clk100MHZ" 100 ns;
+TIMESPEC TS_CROSS_6 = FROM "clk100MHZ" TO "VGAclk75" 100 ns;

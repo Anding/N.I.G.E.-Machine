@@ -41,15 +41,15 @@ entity ControlUnit is
 				s_axi_wvalid : OUT STD_LOGIC;
 				s_axi_wready : IN STD_LOGIC;
 				-- write response
-				s_axi_bresp : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
-				s_axi_bvalid : IN STD_LOGIC;
-				s_axi_bready : OUT STD_LOGIC;
+--				s_axi_bresp : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
+--				s_axi_bvalid : IN STD_LOGIC;
+--				s_axi_bready : OUT STD_LOGIC;
 				-- address read
 				s_axi_araddr : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
 				s_axi_arvalid : OUT STD_LOGIC;
 				s_axi_arready : IN STD_LOGIC;
 				-- read
-				s_axi_rresp : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
+--				s_axi_rresp : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
 				s_axi_rvalid : IN STD_LOGIC;
 				s_axi_rdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 				s_axi_rready : OUT STD_LOGIC;
@@ -59,8 +59,7 @@ entity ControlUnit is
 				singleMulti : IN STD_LOGIC;
 				pause : OUT STD_LOGIC;
 				VirtualInterrupt : IN STD_LOGIC_VECTOR (19 downto 0);
-				Interval : IN STD_LOGIC_VECTOR (15 downto 0);
-				debug : OUT STD_LOGIC_VECTOR(7 DOWNTO 0)			
+				Interval : IN STD_LOGIC_VECTOR (15 downto 0)			
            );
 end ControlUnit;
 
@@ -150,6 +149,7 @@ signal debug_i : std_logic_vector(7 downto 0);
 signal PCthaw_m1 : STD_LOGIC_VECTOR (19 downto 0);
 signal preemp_counter, preemp_counter_n : STD_LOGIC_VECTOR (15 downto 0);
 signal preempt : STD_LOGIC;
+signal debug : STD_LOGIC_VECTOR(7 downto 0);
 
 alias signbit is MEMdatain_X(29);
 
@@ -170,7 +170,7 @@ begin
 	-- AXI interface constant settings
 	s_axi_awaddr <= TOS(31 downto 2) & "00";
 	s_axi_araddr <= TOS(31 downto 2) & "00";	
-	s_axi_bready <= '1';	
+--	s_axi_bready <= '1';	
 
 	int_trig <= irq or irq_m1;
 	irv_i <= "000" & irv & "0";										-- double the interrupt vector number
@@ -247,1149 +247,1179 @@ begin
 		end if;
 	end process;
 
-	process (state, state_n, PC, PC_n, PC_plus, PC_jsl, PC_branch, PC_skipbranch, PC_m1, PC_addr, delta, PC_plus_two, PC_plus_three, PC_plus_four,
-				ucode, equalzero, equalzero_r, branch, opcode, chip_RAM, MEMdatain_X, retrap,
-				s_axi_awready, s_axi_wready, s_axi_arready, s_axi_rvalid, s_axi_rdata, axiaddr, preempt,
-				TOS, TOS_r, NOS_r, TORS, int_trig, int_vector_ext, int_vector_ext_i, branch, opcode, ExceptionAddress, virtualInterrupt, SingleMulti, PCthaw, PCthaw_m1, preemp_counter, preemp_counter_n)
-	begin																					-- combinational section of state machine
-		case state is
+process (state, state_n, PC, PC_n, PC_plus, PC_jsl, PC_branch, PC_skipbranch, PC_m1, PC_addr, delta, PC_plus_two, PC_plus_three, PC_plus_four,
+			ucode, equalzero, equalzero_r, branch, opcode, chip_RAM, MEMdatain_X, retrap,
+			s_axi_awready, s_axi_wready, s_axi_arready, s_axi_rvalid, s_axi_rdata, axiaddr, preempt,
+			TOS, TOS_r, NOS_r, TORS, int_trig, int_vector_ext, int_vector_ext_i, branch, opcode, ExceptionAddress, virtualInterrupt, SingleMulti, PCthaw, PCthaw_m1, preemp_counter, preemp_counter_n)
 
-		when common =>																	-- common state executes most instructions in 1 clock cycle
-		
-		-- Next state logic		-- interrupts and timed trap take first priority
-										-- check branches next as they use the opcode bits for offsets
+begin
+
+-- default signal assignments
+state_n <= common;
+timer <= 0;
+PC_n <= PC_plus;
+ucode <= ops_NOP;																			
+accumulator <= (others=>'0');
+MEMaddr_i <= PC_addr;				
+MEM_WRQ_X_i <= '0';
+MEMsize_X_n <= "11";
+MEMdataout_X <= NOS_r;	
+AuxControl_n(0 downto 0) <= "0";
+AuxControl_n(1 downto 1) <= "0";
+ReturnAddress_n <= PC_addr;
+irq_n <= int_trig;
+rti <= '0';
+retrap_n <= retrap;
+s_axi_awvalid <= '0';
+s_axi_wdata <= NOS_r;
+s_axi_wstrb <= "1111";
+s_axi_wvalid <= '0';
+s_axi_arvalid <= '0';
+s_axi_rready <= '0';	
+pause <= '0';
+debug_i <= x"21";
+preemp_counter_n <= preemp_counter;
+PCfreeze <= PC;
+
+-- combinational section of state machine
+case state is
+
+	when common =>	-- common state executes most instructions in 1 clock cycle
 	
-			if int_trig = '1' or retrap(0) = '1' or branch = bps_BRA or branch = bps_BEQ 
-				or opcode = ops_JSL  or opcode = ops_JSR or opcode = ops_JMP or opcode = ops_TRAP or opcode = ops_RETRAP or
-				opcode = ops_byte or opcode = ops_word or opcode = ops_long or opcode = ops_catch or 
-				(virtualInterrupt = 0 AND (opcode = ops_PAUSE or preempt = '1')) 
-			-- or	((opcode = ops_toR or opcode = ops_Rfrom) and MEMdatain_X(23 downto 22) = "01")  -- insert one cycle delay between >R or R> and RTS
-				then state_n <= skip1;																				-- 	to allow the return stack value to be stored in RAM
-			elsif (opcode = ops_PAUSE OR preempt = '1') then	-- virtual interrupt
-				state_n <= virtual_interrupt;
-			elsif opcode = ops_throw then
-				state_n <= throw;
-			elsif opcode = ops_lfetch then
-				if chip_RAM = '1' then
-					state_n <= Sfetch_long;	
-				else
-					state_n <= Dfetch_long;
-				end if;
-			elsif opcode = ops_wfetch then
-				if chip_RAM = '1' then
-					state_n <= Sfetch_word;	
-				else
-					state_n <= Dfetch_word;
-				end if;				
-			elsif opcode = ops_cfetch then
-				if chip_RAM = '1' then
-					state_n <= Sfetch_byte;	
-				else
-					state_n <= Dfetch_byte;
-				end if;	
-			elsif opcode = ops_LSTORE then
-				if chip_RAM = '1' then
-					state_n <= Sstore_long;
-				else
-					state_n <= Dstore_long;
-				end if;
-			elsif opcode = ops_WSTORE then
-				if chip_RAM = '1' then
-					state_n <= Sstore_word;
-				else
-					state_n <= Dstore_word;
-				end if;
-			elsif opcode = ops_CSTORE then
-				if chip_RAM = '1' then
-					state_n <= Sstore_byte;
-				else
-					state_n <= Dstore_byte;
-				end if;							
-			elsif opcode = ops_ifdup then 
-				state_n <= ifdup;
-			elsif opcode = ops_SDIVMOD then
-				state_n <= sdivmod;		
-			elsif opcode = ops_UDIVMOD then
-				state_n <= udivmod;
-			elsif opcode = ops_SMULT then
-				state_n <= smult;
-			elsif opcode = ops_UMULT then
-				state_n <= umult;
-			elsif branch = bps_RTS then											-- other RTS instructions									
-				state_n <= skip1;	
+	-- Next state logic		-- interrupts and timed trap take first priority
+					-- check branches next as they use the opcode bits for offsets
+
+		if int_trig = '1' or retrap(0) = '1' or branch = bps_BRA or branch = bps_BEQ 
+			or opcode = ops_JSL  or opcode = ops_JSR or opcode = ops_JMP or opcode = ops_TRAP or opcode = ops_RETRAP or
+			opcode = ops_byte or opcode = ops_word or opcode = ops_long or opcode = ops_catch or 
+			(virtualInterrupt = 0 AND (opcode = ops_PAUSE or preempt = '1')) 
+		-- or	((opcode = ops_toR or opcode = ops_Rfrom) and MEMdatain_X(23 downto 22) = "01")  -- insert one cycle delay between >R or R> and RTS
+			then state_n <= skip1;																				-- 	to allow the return stack value to be stored in RAM
+		elsif (opcode = ops_PAUSE OR preempt = '1') then	-- virtual interrupt
+			state_n <= virtual_interrupt;
+		elsif opcode = ops_throw then
+			state_n <= throw;
+		elsif opcode = ops_lfetch then
+			if chip_RAM = '1' then
+				state_n <= Sfetch_long;	
+			else
+				state_n <= Dfetch_long;
+			end if;
+		elsif opcode = ops_wfetch then
+			if chip_RAM = '1' then
+				state_n <= Sfetch_word;	
+			else
+				state_n <= Dfetch_word;
+			end if;				
+		elsif opcode = ops_cfetch then
+			if chip_RAM = '1' then
+				state_n <= Sfetch_byte;	
+			else
+				state_n <= Dfetch_byte;
+			end if;	
+		elsif opcode = ops_LSTORE then
+			if chip_RAM = '1' then
+				state_n <= Sstore_long;
+			else
+				state_n <= Dstore_long;
+			end if;
+		elsif opcode = ops_WSTORE then
+			if chip_RAM = '1' then
+				state_n <= Sstore_word;
+			else
+				state_n <= Dstore_word;
+			end if;
+		elsif opcode = ops_CSTORE then
+			if chip_RAM = '1' then
+				state_n <= Sstore_byte;
+			else
+				state_n <= Dstore_byte;
+			end if;							
+		elsif opcode = ops_ifdup then 
+			state_n <= ifdup;
+		elsif opcode = ops_SDIVMOD then
+			state_n <= sdivmod;		
+		elsif opcode = ops_UDIVMOD then
+			state_n <= udivmod;
+		elsif opcode = ops_SMULT then
+			state_n <= smult;
+		elsif opcode = ops_UMULT then
+			state_n <= umult;
+		elsif branch = bps_RTS then											-- other RTS instructions									
+			state_n <= skip1;	
 --			elsif opcode >= 51 then 												-- comparator format found to be slightly slower and LUT costly than OR format
 --				state_n <= skip1;	
-			else
-				state_n <= common;
-			end if;
-			timer <= 0;
-			
-			-- Memory write logic
-			MEMdataout_X <= NOS_r;											-- 32bit SRAM						
-			MEM_WRQ_X_i <= '0';
+		else
+			state_n <= common;
+		end if;
+		timer <= 0;
+		
+		-- Memory write logic
+		MEMdataout_X <= NOS_r;											-- 32bit SRAM						
+		MEM_WRQ_X_i <= '0';
 
-			if opcode = ops_BYTE or opcode = ops_CSTORE then						
-				MEMsize_X_n <= "01";														
-			elsif opcode = ops_WORD or opcode = ops_WSTORE then
-				MEMsize_X_n <= "10";
-			else
-				MEMsize_X_n <= "11";
-			end if;
-															
-			MEMaddr_i <= PC_addr;											
-					
-			-- Program counter logic					-- This logic is a timing constraint!  Maybe flatten into a less hierachical structure.
-			if int_trig = '1' then
-				PC_n <= int_vector_ext;												-- PC from external interrupt vector
-			elsif retrap(0) = '1' then
-				PC_n <= int_vector_TRAP;											-- PC from internal interrupt vector	
-			elsif preempt = '1' then 
-				if virtualInterrupt = 0 then
-					PC_n <= PCthaw;
-				else
-					PC_n <= virtualInterrupt;
-				end if;
-			else
-			   case branch is 
-					when bps_BEQ =>
-						if equalzero = '1' then
-							PC_n <= PC_branch;
-						else
-							PC_n <= PC_plus;		
-						end if;	
-					when bps_BRA =>
-						PC_n <= PC_branch;	
-					when bps_RTS =>
-						PC_n <= TORS(19 downto 0);									-- PC from Top Of Return Stack (also covers RTI and RETRAP, which include RTS by default)	
-					when others =>
-						case opcode is
-							when ops_TRAP =>
-								PC_n <= int_vector_TRAP;							-- PC from internal interrupt vector
-							when ops_JSL =>
-								PC_n <= PC_jsl;	
-							when ops_JSR =>
-								PC_n <= TOS(19 downto 0);		
-							when ops_JMP =>
-								PC_n <= TOS(19 downto 0);	
-							when ops_CATCH =>
-								PC_n <= TOS(19 downto 0);
-							when ops_THROW =>
-								if equalzero = '0' then
-									PC_n <= ExceptionAddress(19 downto 0);
-								else
-									PC_n <= PC;
-								end if;
-							when ops_word =>
-								PC_n <= PC_plus_two;
-							when ops_long =>
-								PC_n <= PC_plus_four;
-							when ops_CFETCH =>
-								PC_n <= PC;											-- PC update is done on the final cycle of multi-cycle instructions
-							when ops_WFETCH =>
-								PC_n <= PC;
-							when ops_LFETCH =>
-								PC_n <= PC;
-							when ops_CSTORE =>
-								PC_n <= PC;
-							when ops_WSTORE =>
-								PC_n <= PC;
-							when ops_LSTORE =>
-								PC_n <= PC;
-							when ops_SDIVMOD =>
-								PC_n <= PC;
-							when ops_UDIVMOD =>
-								PC_n <= PC;	
-							when ops_SMULT =>
-								PC_n <= PC;
-							when ops_UMULT =>
-								PC_n <= PC;		
-							when ops_IFDUP =>
-								PC_n <= PC;	
-							when ops_toR =>												-- insert one cycle delay between >R or R> and RTS
-								if MEMdatain_X(23 downto 22) = "01" then
-									PC_n <= PC;
-								else
-									PC_n <= PC_plus;
-								end if;
-							when ops_Rfrom =>												-- insert one cycle delay between >R or R> and RTS
-								if MEMdatain_X(23 downto 22) = "01" then
-									PC_n <= PC;
-								else
-									PC_n <= PC_plus;
-								end if;	
-							when ops_PAUSE =>
-								if SingleMulti = '1' then
-									if virtualInterrupt = 0 then
-										PC_n <= PCthaw;
-									else
-										PC_n <= virtualInterrupt;
-									end if;
-								else
-									PC_n <= PC;
-								end if;
-							when others =>
-								PC_n <= PC_plus;
-							end case;
-				end case;
-			end if;
+		if opcode = ops_BYTE or opcode = ops_CSTORE then						
+			MEMsize_X_n <= "01";														
+		elsif opcode = ops_WORD or opcode = ops_WSTORE then
+			MEMsize_X_n <= "10";
+		else
+			MEMsize_X_n <= "11";
+		end if;
+														
+		MEMaddr_i <= PC_addr;											
 				
-			-- Microcode logic
-			if int_trig = '1' or retrap(0) = '1' then
-				ucode <= ops_JSL;												-- interrupt microcode 
-			elsif preempt = '1' then
-				ucode <= ops_PAUSE;
+		-- Program counter logic					-- This logic is a timing constraint!  Maybe flatten into a less hierachical structure.
+		if int_trig = '1' then
+			PC_n <= int_vector_ext;												-- PC from external interrupt vector
+		elsif retrap(0) = '1' then
+			PC_n <= int_vector_TRAP;											-- PC from internal interrupt vector	
+		elsif preempt = '1' then 
+			if virtualInterrupt = 0 then
+				PC_n <= PCthaw;
 			else
-				case branch is
-					when bps_BRA =>
-						ucode <= ops_NOP;										-- avoid executing the high 6 bits of the branch offset as an opcode!
-					when bps_BEQ =>
-						ucode <= ops_DROP;									-- drop the flag
-					when others =>
-						case opcode is
-							when ops_SDIVMOD =>					-- suppress microcode until last cycle of these instructions
-								ucode <= ops_NOP;
-							when ops_UDIVMOD =>	
-								ucode <= ops_NOP;	
-							when ops_THROW =>
-								if equalzero = '0' then
-									ucode <= opcode;
+				PC_n <= virtualInterrupt;
+			end if;
+		else
+		   case branch is 
+				when bps_BEQ =>
+					if equalzero = '1' then
+						PC_n <= PC_branch;
+					else
+						PC_n <= PC_plus;		
+					end if;	
+				when bps_BRA =>
+					PC_n <= PC_branch;	
+				when bps_RTS =>
+					PC_n <= TORS(19 downto 0);									-- PC from Top Of Return Stack (also covers RTI and RETRAP, which include RTS by default)	
+				when others =>
+					case opcode is
+						when ops_TRAP =>
+							PC_n <= int_vector_TRAP;							-- PC from internal interrupt vector
+						when ops_JSL =>
+							PC_n <= PC_jsl;	
+						when ops_JSR =>
+							PC_n <= TOS(19 downto 0);		
+						when ops_JMP =>
+							PC_n <= TOS(19 downto 0);	
+						when ops_CATCH =>
+							PC_n <= TOS(19 downto 0);
+						when ops_THROW =>
+							if equalzero = '0' then
+								PC_n <= ExceptionAddress(19 downto 0);
+							else
+								PC_n <= PC;
+							end if;
+						when ops_word =>
+							PC_n <= PC_plus_two;
+						when ops_long =>
+							PC_n <= PC_plus_four;
+						when ops_CFETCH =>
+							PC_n <= PC;											-- PC update is done on the final cycle of multi-cycle instructions
+						when ops_WFETCH =>
+							PC_n <= PC;
+						when ops_LFETCH =>
+							PC_n <= PC;
+						when ops_CSTORE =>
+							PC_n <= PC;
+						when ops_WSTORE =>
+							PC_n <= PC;
+						when ops_LSTORE =>
+							PC_n <= PC;
+						when ops_SDIVMOD =>
+							PC_n <= PC;
+						when ops_UDIVMOD =>
+							PC_n <= PC;	
+						when ops_SMULT =>
+							PC_n <= PC;
+						when ops_UMULT =>
+							PC_n <= PC;		
+						when ops_IFDUP =>
+							PC_n <= PC;	
+						when ops_toR =>												-- insert one cycle delay between >R or R> and RTS
+							if MEMdatain_X(23 downto 22) = "01" then
+								PC_n <= PC;
+							else
+								PC_n <= PC_plus;
+							end if;
+						when ops_Rfrom =>												-- insert one cycle delay between >R or R> and RTS
+							if MEMdatain_X(23 downto 22) = "01" then
+								PC_n <= PC;
+							else
+								PC_n <= PC_plus;
+							end if;	
+						when ops_PAUSE =>
+							if SingleMulti = '1' then
+								if virtualInterrupt = 0 then
+									PC_n <= PCthaw;
 								else
-									ucode <= ops_drop;
+									PC_n <= virtualInterrupt;
 								end if;
-							when ops_PAUSE =>
-								if SingleMulti = '1' then
-									ucode <= opcode;
-								else
-									ucode <= ops_NOP;
-								end if;
-						   when others =>
-								ucode <= opcode;
+							else
+								PC_n <= PC;
+							end if;
+						when others =>
+							PC_n <= PC_plus;
 						end case;
-				end case;
-			end if;
+			end case;
+		end if;
+			
+		-- Microcode logic
+		if int_trig = '1' or retrap(0) = '1' then
+			ucode <= ops_JSL;												-- interrupt microcode 
+		elsif preempt = '1' then
+			ucode <= ops_PAUSE;
+		else
+			case branch is
+				when bps_BRA =>
+					ucode <= ops_NOP;										-- avoid executing the high 6 bits of the branch offset as an opcode!
+				when bps_BEQ =>
+					ucode <= ops_DROP;									-- drop the flag
+				when others =>
+					case opcode is
+						when ops_SDIVMOD =>					-- suppress microcode until last cycle of these instructions
+							ucode <= ops_NOP;
+						when ops_UDIVMOD =>	
+							ucode <= ops_NOP;	
+						when ops_THROW =>
+							if equalzero = '0' then
+								ucode <= opcode;
+							else
+								ucode <= ops_drop;
+							end if;
+						when ops_PAUSE =>
+							if SingleMulti = '1' then
+								ucode <= opcode;
+							else
+								ucode <= ops_NOP;
+							end if;
+					   when others =>
+							ucode <= opcode;
+					end case;
+			end case;
+		end if;
 
-			-- Accumulator logic
-			accumulator <= (others=>'0');
-			
-			-- Data multiplexer logic														
-				AuxControl_n(1 downto 1) <= "0";					-- setting for SRAM fetch or load literal instructions										
+		-- Accumulator logic
+		accumulator <= (others=>'0');
+		
+		-- Data multiplexer logic														
+			AuxControl_n(1 downto 1) <= "0";					-- setting for SRAM fetch or load literal instructions										
 
-			-- Return stack control logic 
-			if (int_trig = '0') and (preempt = '0') and (opcode = ops_RETRAP or branch = bps_RTS) then -- override on interrupt or preemptive switch
-				AuxControl_n(0 downto 0) <= "1";						-- decrement return stack pointer
-			else
-				AuxControl_n(0 downto 0) <= "0";
-			end if;
-			
-			if int_trig = '1' or retrap(0) = '1' then											
-				ReturnAddress_n <= "000000000000" & PC_m1;
-			elsif opcode = ops_JSL then
-				ReturnAddress_n <= "000000000000" & PC_plus_three;
-			else
-				ReturnAddress_n <= PC_addr;
-			end if;
-			
-			-- Interrupt logic
-			irq_n <= '0';
-			if opcode = ops_RTI and branch = "01" then 
-				rti <= '1';												
-			else
-				rti <= '0';
-			end if;
-			
-			-- Trap logic
-			if opcode = ops_RETRAP and branch = "00" then
-				retrap_n <= "10";
-			elsif opcode = ops_TRAP and branch = "00" then
-				retrap_n <= "00";
-			else
-				retrap_n <= "0" & retrap(1);
-			end if;
-			
-			-- Delayed RTS logic
+		-- Return stack control logic 
+		if (int_trig = '0') and (preempt = '0') and (opcode = ops_RETRAP or branch = bps_RTS) then -- override on interrupt or preemptive switch
+			AuxControl_n(0 downto 0) <= "1";						-- decrement return stack pointer
+		else
+			AuxControl_n(0 downto 0) <= "0";
+		end if;
+		
+		if int_trig = '1' or retrap(0) = '1' then											
+			ReturnAddress_n <= "000000000000" & PC_m1;
+		elsif opcode = ops_JSL then
+			ReturnAddress_n <= "000000000000" & PC_plus_three;
+		else
+			ReturnAddress_n <= PC_addr;
+		end if;
+		
+		-- Interrupt logic
+		irq_n <= '0';
+		if opcode = ops_RTI and branch = "01" then 
+			rti <= '1';												
+		else
+			rti <= '0';
+		end if;
+		
+		-- Trap logic
+		if opcode = ops_RETRAP and branch = "00" then
+			retrap_n <= "10";
+		elsif opcode = ops_TRAP and branch = "00" then
+			retrap_n <= "00";
+		else
+			retrap_n <= "0" & retrap(1);
+		end if;
+		
+		-- Delayed RTS logic
 --			if branch = bps_RTS and not (int_trig = '1' or retrap(0) = '1') then
 --				delayed_RTS_n <= '1';
 --			else
 --				delayed_RTS_n <= '0';
 --			end if;
-			
-			-- AXI logic
-			s_axi_arvalid <= '0';
-			s_axi_awvalid <= '0';
-			s_axi_wdata <= NOS_r;
-			s_axi_wstrb <= "1111";
-			s_axi_wvalid <= '0';
-			s_axi_rready <= '0';	
-			
-			-- virtualization
-			if	int_trig = '0' and ((singleMulti = '1' and opcode = ops_PAUSE) or preempt = '1') then
-				pause <= '1'; 	
-			else
-				pause <= '0';
-			end if;
-			
-			if singleMulti = '0' then										
-					preemp_counter_n <= (others => '0');
-			else
-					preemp_counter_n <= preemp_counter + 1;	
-			end if;
-			
-			if preempt = '1' then 
-				PCfreeze <= PC_m1;
-			else
-				PCfreeze <= PC;
-			end if;
-			
-			-- debug
-			debug_i <= x"00";
-	
-		when ifdup =>											-- ifdup
-			state_n <= common;
-			timer <= 0;
-			PC_n <= PC_plus;
-			if equalzero_r = '1' then								-- TOS was equal to zero
-				ucode <= ops_DROP;									-- DROP previously DUP'd value if TOS was zero
-			else
-				ucode <= ops_NOP;
-			end if;
-			accumulator <= (others=>'0');
-			MEMaddr_i <= PC_addr;	
-			MEM_WRQ_X_i <= '0';
-			MEMdataout_X <= NOS_r;
-			MEMsize_X_n <= "11";
-			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
-			ReturnAddress_n <= PC_addr;
-			irq_n <= int_trig;
-			rti <= '0';
-			retrap_n <= retrap;
-			-- delayed_RTS_n <= delayed_RTS;
-			s_axi_awvalid <= '0';
-			s_axi_wdata <= NOS_r;
-			s_axi_wstrb <= "1111";
-			s_axi_wvalid <= '0';
-			s_axi_arvalid <= '0';
-			s_axi_rready <= '0';	
+		
+		-- AXI logic
+		s_axi_arvalid <= '0';
+		s_axi_awvalid <= '0';
+		s_axi_wdata <= NOS_r;
+		s_axi_wstrb <= "1111";
+		s_axi_wvalid <= '0';
+		s_axi_rready <= '0';	
+		
+		-- virtualization
+		if	int_trig = '0' and ((singleMulti = '1' and opcode = ops_PAUSE) or preempt = '1') then
+			pause <= '1'; 	
+		else
 			pause <= '0';
-			debug_i <= x"01";
-			preemp_counter_n <= preemp_counter;
+		end if;
+		
+		if singleMulti = '0' then										
+				preemp_counter_n <= (others => '0');
+		else
+				preemp_counter_n <= preemp_counter + 1;	
+		end if;
+		
+		if preempt = '1' then 
+			PCfreeze <= PC_m1;
+		else
 			PCfreeze <= PC;
-			
-		when smult =>										-- signed multiply
-			state_n <= common;
-			timer <= 4;  											-- wait for multiplier
-			PC_n <= PC_plus;										-- PC update will take place only on transition to next state	
-			ucode <= ops_SMULT;							
-			accumulator <= (others=>'0');	
-			MEMaddr_i <= PC_addr;	
-			MEM_WRQ_X_i <= '0';
-			MEMdataout_X <= NOS_r;
-			MEMsize_X_n <= "11";
-			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
-			ReturnAddress_n <= PC_addr;
-			irq_n <= int_trig;
-			rti <= '0';
-			retrap_n <= retrap;
-			-- delayed_RTS_n <= delayed_RTS;
-			s_axi_awvalid <= '0';
-			s_axi_wdata <= NOS_r;
-			s_axi_wstrb <= "1111";
-			s_axi_wvalid <= '0';
-			s_axi_arvalid <= '0';
-			s_axi_rready <= '0';	
-			pause <= '0';
-			debug_i <= x"02";
-			preemp_counter_n <= preemp_counter;
-			PCfreeze <= PC;
-	
-		when umult =>										-- unsigned multiply
-			state_n <= common;
-			timer <= 4;  											-- wait for multiplier
-			PC_n <= PC_plus;										-- PC update will take place only on transition to next state
-			ucode <= ops_UMULT;									
-			accumulator <= (others=>'0');	
-			MEMaddr_i <= PC_addr;	
-			MEM_WRQ_X_i <= '0';
-			MEMdataout_X <= NOS_r;
-			MEMsize_X_n <= "11";
-			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
-			ReturnAddress_n <= PC_addr;
-			irq_n <= int_trig;
-			rti <= '0';
-			retrap_n <= retrap;
-			-- delayed_RTS_n <= delayed_RTS;
-			s_axi_awvalid <= '0';
-			s_axi_wdata <= NOS_r;
-			s_axi_wstrb <= "1111";
-			s_axi_wvalid <= '0';
-			s_axi_arvalid <= '0';
-			s_axi_rready <= '0';	
-			pause <= '0';
-			debug_i <= x"03";
-			preemp_counter_n <= preemp_counter;
-			PCfreeze <= PC;
-	
-		when sdivmod =>										-- signed division
-			state_n <= sdivmod_load;
-			timer <= 42;  											-- wait for divider
-			PC_n <= PC;	
+		end if;
+		
+		-- debug
+		debug_i <= x"00";
+
+	when ifdup =>											-- ifdup
+		state_n <= common;
+		timer <= 0;
+		PC_n <= PC_plus;
+		if equalzero_r = '1' then								-- TOS was equal to zero
+			ucode <= ops_DROP;									-- DROP previously DUP'd value if TOS was zero
+		else
 			ucode <= ops_NOP;
-			accumulator <= (others=>'0');	
-			MEMaddr_i <= PC_addr;	
-			MEM_WRQ_X_i <= '0';
-			MEMdataout_X <= NOS_r;
-			MEMsize_X_n <= "11";
-			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
-			ReturnAddress_n <= PC_addr;
-			irq_n <= int_trig;
-			rti <= '0';
-			retrap_n <= retrap;
-			-- delayed_RTS_n <= delayed_RTS;
-			s_axi_awvalid <= '0';
-			s_axi_wdata <= NOS_r;
-			s_axi_wstrb <= "1111";
-			s_axi_wvalid <= '0';
-			s_axi_arvalid <= '0';
-			s_axi_rready <= '0';	
-			pause <= '0';
-			debug_i <= x"04";
-			preemp_counter_n <= preemp_counter;
-			PCfreeze <= PC;
+		end if;
+		accumulator <= (others=>'0');
+		MEMaddr_i <= PC_addr;	
+		MEM_WRQ_X_i <= '0';
+		MEMdataout_X <= NOS_r;
+		MEMsize_X_n <= "11";
+		AuxControl_n(0 downto 0) <= "0";
+		AuxControl_n(1 downto 1) <= "0";
+		ReturnAddress_n <= PC_addr;
+		irq_n <= int_trig;
+		rti <= '0';
+		retrap_n <= retrap;
+		-- delayed_RTS_n <= delayed_RTS;
+		s_axi_awvalid <= '0';
+		s_axi_wdata <= NOS_r;
+		s_axi_wstrb <= "1111";
+		s_axi_wvalid <= '0';
+		s_axi_arvalid <= '0';
+		s_axi_rready <= '0';	
+		pause <= '0';
+		debug_i <= x"01";
+		preemp_counter_n <= preemp_counter;
+		PCfreeze <= PC;
+		
+	when smult =>										-- signed multiply
+		state_n <= common;
+		timer <= 4;  											-- wait for multiplier
+		PC_n <= PC_plus;										-- PC update will take place only on transition to next state	
+		ucode <= ops_SMULT;							
+		accumulator <= (others=>'0');	
+		MEMaddr_i <= PC_addr;	
+		MEM_WRQ_X_i <= '0';
+		MEMdataout_X <= NOS_r;
+		MEMsize_X_n <= "11";
+		AuxControl_n(0 downto 0) <= "0";
+		AuxControl_n(1 downto 1) <= "0";
+		ReturnAddress_n <= PC_addr;
+		irq_n <= int_trig;
+		rti <= '0';
+		retrap_n <= retrap;
+		-- delayed_RTS_n <= delayed_RTS;
+		s_axi_awvalid <= '0';
+		s_axi_wdata <= NOS_r;
+		s_axi_wstrb <= "1111";
+		s_axi_wvalid <= '0';
+		s_axi_arvalid <= '0';
+		s_axi_rready <= '0';	
+		pause <= '0';
+		debug_i <= x"02";
+		preemp_counter_n <= preemp_counter;
+		PCfreeze <= PC;
 
-		when udivmod =>										-- unsigned division
-			state_n <= udivmod_load;
-			timer <= 41;											-- wait for divider
-			PC_n <= PC;
+	when umult =>										-- unsigned multiply
+		state_n <= common;
+		timer <= 4;  											-- wait for multiplier
+		PC_n <= PC_plus;										-- PC update will take place only on transition to next state
+		ucode <= ops_UMULT;									
+		accumulator <= (others=>'0');	
+		MEMaddr_i <= PC_addr;	
+		MEM_WRQ_X_i <= '0';
+		MEMdataout_X <= NOS_r;
+		MEMsize_X_n <= "11";
+		AuxControl_n(0 downto 0) <= "0";
+		AuxControl_n(1 downto 1) <= "0";
+		ReturnAddress_n <= PC_addr;
+		irq_n <= int_trig;
+		rti <= '0';
+		retrap_n <= retrap;
+		-- delayed_RTS_n <= delayed_RTS;
+		s_axi_awvalid <= '0';
+		s_axi_wdata <= NOS_r;
+		s_axi_wstrb <= "1111";
+		s_axi_wvalid <= '0';
+		s_axi_arvalid <= '0';
+		s_axi_rready <= '0';	
+		pause <= '0';
+		debug_i <= x"03";
+		preemp_counter_n <= preemp_counter;
+		PCfreeze <= PC;
+
+	when sdivmod =>										-- signed division
+		state_n <= sdivmod_load;
+		timer <= 42;  											-- wait for divider
+		PC_n <= PC;	
+		ucode <= ops_NOP;
+		accumulator <= (others=>'0');	
+		MEMaddr_i <= PC_addr;	
+		MEM_WRQ_X_i <= '0';
+		MEMdataout_X <= NOS_r;
+		MEMsize_X_n <= "11";
+		AuxControl_n(0 downto 0) <= "0";
+		AuxControl_n(1 downto 1) <= "0";
+		ReturnAddress_n <= PC_addr;
+		irq_n <= int_trig;
+		rti <= '0';
+		retrap_n <= retrap;
+		-- delayed_RTS_n <= delayed_RTS;
+		s_axi_awvalid <= '0';
+		s_axi_wdata <= NOS_r;
+		s_axi_wstrb <= "1111";
+		s_axi_wvalid <= '0';
+		s_axi_arvalid <= '0';
+		s_axi_rready <= '0';	
+		pause <= '0';
+		debug_i <= x"04";
+		preemp_counter_n <= preemp_counter;
+		PCfreeze <= PC;
+
+	when udivmod =>										-- unsigned division
+		state_n <= udivmod_load;
+		timer <= 41;											-- wait for divider
+		PC_n <= PC;
+		ucode <= ops_NOP;
+		accumulator <= (others=>'0');	
+		MEMaddr_i <= PC_addr;	
+		MEM_WRQ_X_i <= '0';
+		MEMdataout_X <= NOS_r;
+		MEMsize_X_n <= "11";
+		AuxControl_n(0 downto 0) <= "0";
+		AuxControl_n(1 downto 1) <= "0";
+		ReturnAddress_n <= PC_addr;
+		irq_n <= int_trig;
+		rti <= '0';
+		retrap_n <= retrap;
+		-- delayed_RTS_n <= delayed_RTS;
+		s_axi_awvalid <= '0';
+		s_axi_wdata <= NOS_r;
+		s_axi_wstrb <= "1111";
+		s_axi_wvalid <= '0';
+		s_axi_arvalid <= '0';
+		s_axi_rready <= '0';	
+		pause <= '0';
+		debug_i <= x"05";
+		preemp_counter_n <= preemp_counter;
+		PCfreeze <= PC;
+		
+	when sdivmod_load =>									-- signed division
+		state_n <= common;									
+		timer <= 0;  
+		PC_n <= PC_plus;
+		ucode <= ops_SDIVMOD; 								-- load TOS and NOS with results
+		accumulator <= (others=>'0');
+		MEMaddr_i <= PC_addr;	
+		MEM_WRQ_X_i <= '0';
+		MEMdataout_X <= NOS_r;
+		MEMsize_X_n <= "11";
+		AuxControl_n(0 downto 0) <= "0";
+		AuxControl_n(1 downto 1) <= "0";
+		ReturnAddress_n <= PC_addr;
+		irq_n <= int_trig;
+		rti <= '0';
+		retrap_n <= retrap;
+		-- delayed_RTS_n <= delayed_RTS;
+		s_axi_awvalid <= '0';
+		s_axi_wdata <= NOS_r;
+		s_axi_wstrb <= "1111";
+		s_axi_wvalid <= '0';
+		s_axi_arvalid <= '0';
+		s_axi_rready <= '0';	
+		pause <= '0';
+		debug_i <= x"06";
+		preemp_counter_n <= preemp_counter;
+		PCfreeze <= PC;
+
+	when udivmod_load =>									-- unsigned division
+		state_n <= common;
+		timer <= 0;
+		PC_n <= PC_plus;
+		ucode <= ops_UDIVMOD;								-- load TOS and NOS with results
+		accumulator <= (others=>'0');
+		MEMaddr_i <= PC_addr;	
+		MEM_WRQ_X_i <= '0';
+		MEMdataout_X <= NOS_r;
+		MEMsize_X_n <= "11";
+		AuxControl_n(0 downto 0) <= "0";
+		AuxControl_n(1 downto 1) <= "0";
+		ReturnAddress_n <= PC_addr;
+		irq_n <= int_trig;
+		rti <= '0';
+		retrap_n <= retrap;
+		-- delayed_RTS_n <= delayed_RTS;
+		s_axi_awvalid <= '0';
+		s_axi_wdata <= NOS_r;
+		s_axi_wstrb <= "1111";
+		s_axi_wvalid <= '0';
+		s_axi_arvalid <= '0';
+		pause <= '0';
+		debug_i <= x"07";
+		preemp_counter_n <= preemp_counter;
+		PCfreeze <= PC;
+		
+	when Sfetch_byte =>											
+		state_n <= skip1;																	
+		ucode <= ops_REPLACE;											
+		timer <= 0;
+		PC_n <= PC;
+		MEMaddr_i <= TOS_r;										-- address now available in registered TOS					
+		MEM_WRQ_X_i <= '0';
+		MEMdataout_X <= NOS_r;
+		MEMsize_X_n <= "01";
+		accumulator <= (others=>'0');			
+		AuxControl_n(0 downto 0) <= "0";
+		AuxControl_n(1 downto 1) <= "0";
+		ReturnAddress_n <= PC_addr;
+		irq_n <= int_trig;
+		rti <= '0';
+		retrap_n <= retrap;
+		-- delayed_RTS_n <= delayed_RTS;
+		s_axi_awvalid <= '0';
+		s_axi_wdata <= NOS_r;
+		s_axi_wstrb <= "1111";
+		s_axi_wvalid <= '0';
+		s_axi_arvalid <= '0';
+		s_axi_rready <= '0';	
+		pause <= '0';
+		debug_i <= x"08";
+		preemp_counter_n <= preemp_counter;
+		PCfreeze <= PC;
+		
+	when Sfetch_word =>											
+		state_n <= skip1;																	
+		ucode <= ops_REPLACE;											
+		timer <= 0;
+		PC_n <= PC;
+		MEMaddr_i <= TOS_r;										-- address now available in registered TOS					
+		MEM_WRQ_X_i <= '0';
+		MEMdataout_X <= NOS_r;
+		MEMsize_X_n <= "10";
+		accumulator <= (others=>'0');			
+		AuxControl_n(0 downto 0) <= "0";
+		AuxControl_n(1 downto 1) <= "0";
+		ReturnAddress_n <= PC_addr;
+		irq_n <= int_trig;
+		rti <= '0';
+		retrap_n <= retrap;
+		-- delayed_RTS_n <= delayed_RTS;
+		s_axi_awvalid <= '0';
+		s_axi_wdata <= NOS_r;
+		s_axi_wstrb <= "1111";
+		s_axi_wvalid <= '0';
+		s_axi_arvalid <= '0';
+		s_axi_rready <= '0';	
+		pause <= '0';
+		debug_i <= x"09";
+		preemp_counter_n <= preemp_counter;
+		PCfreeze <= PC;
+
+	when Sfetch_long =>											
+		state_n <= skip1;																	
+		ucode <= ops_REPLACE;									
+		timer <= 0;
+		PC_n <= PC;
+		MEMaddr_i <= TOS_r;										-- address now available in registered TOS					
+		MEM_WRQ_X_i <= '0';
+		MEMdataout_X <= NOS_r;
+		MEMsize_X_n <= "11";
+		accumulator <= (others=>'0');			
+		AuxControl_n(0 downto 0) <= "0";
+		AuxControl_n(1 downto 1) <= "0";
+		ReturnAddress_n <= PC_addr;
+		irq_n <= int_trig;
+		rti <= '0';
+		retrap_n <= retrap;
+		-- delayed_RTS_n <= delayed_RTS;
+		s_axi_awvalid <= '0';
+		s_axi_wdata <= NOS_r;
+		s_axi_wstrb <= "1111";
+		s_axi_wvalid <= '0';
+		s_axi_arvalid <= '0';
+		s_axi_rready <= '0';	
+		pause <= '0';
+		debug_i <= x"0a";
+		preemp_counter_n <= preemp_counter;
+		PCfreeze <= PC;
+		
+	when Sstore_long =>											
+		state_n <= SRAM_store;																	
+		ucode <= ops_drop;											
+		timer <= 0;
+		PC_n <= PC;
+		MEMaddr_i <= TOS_r;										-- address now available in registered TOS					
+		MEM_WRQ_X_i <= '1';
+		MEMdataout_X <= NOS_r;
+		MEMsize_X_n <= "11";										-- long								
+		accumulator <= (others=>'0');			
+		AuxControl_n(0 downto 0) <= "0";
+		AuxControl_n(1 downto 1) <= "0";
+		ReturnAddress_n <= PC_addr;
+		irq_n <= int_trig;
+		rti <= '0';
+		retrap_n <= retrap;
+		-- delayed_RTS_n <= delayed_RTS;
+		s_axi_awvalid <= '0';
+		s_axi_wdata <= NOS_r;
+		s_axi_wstrb <= "1111";
+		s_axi_wvalid <= '0';
+		s_axi_arvalid <= '0';
+		s_axi_rready <= '0';	
+		pause <= '0';
+		debug_i <= x"0b";
+		preemp_counter_n <= preemp_counter;
+		PCfreeze <= PC;
+		
+	when Sstore_word =>											
+		state_n <= SRAM_store;																	
+		ucode <= ops_drop;											
+		timer <= 0;
+		PC_n <= PC;
+		MEMaddr_i <= TOS_r;										-- address now available in registered TOS					
+		MEM_WRQ_X_i <= '1';
+		MEMdataout_X <= NOS_r;
+		MEMsize_X_n <= "10";										-- word							
+		accumulator <= (others=>'0');			
+		AuxControl_n(0 downto 0) <= "0";
+		AuxControl_n(1 downto 1) <= "0";
+		ReturnAddress_n <= PC_addr;
+		irq_n <= int_trig;
+		rti <= '0';
+		retrap_n <= retrap;
+		-- delayed_RTS_n <= delayed_RTS;
+		s_axi_awvalid <= '0';
+		s_axi_wdata <= NOS_r;
+		s_axi_wstrb <= "1111";
+		s_axi_wvalid <= '0';
+		s_axi_arvalid <= '0';
+		s_axi_rready <= '0';	
+		pause <= '0';
+		debug_i <= x"0c";
+		preemp_counter_n <= preemp_counter;
+		PCfreeze <= PC;
+		
+	when Sstore_byte =>											
+		state_n <= SRAM_store;																	
+		ucode <= ops_drop;											
+		timer <= 0;
+		PC_n <= PC;
+		MEMaddr_i <= TOS_r;										-- address now available in registered TOS					
+		MEM_WRQ_X_i <= '1';
+		MEMdataout_X <= NOS_r;
+		MEMsize_X_n <= "01";										-- byte								
+		accumulator <= (others=>'0');			
+		AuxControl_n(0 downto 0) <= "0";
+		AuxControl_n(1 downto 1) <= "0";
+		ReturnAddress_n <= PC_addr;
+		irq_n <= int_trig;
+		rti <= '0';
+		retrap_n <= retrap;
+		-- delayed_RTS_n <= delayed_RTS;
+		s_axi_awvalid <= '0';
+		s_axi_wdata <= NOS_r;
+		s_axi_wstrb <= "1111";
+		s_axi_wvalid <= '0';
+		s_axi_arvalid <= '0';
+		s_axi_rready <= '0';	
+		pause <= '0';
+		debug_i <= x"0d";
+		preemp_counter_n <= preemp_counter;
+		PCfreeze <= PC;
+		
+	when SRAM_store =>											
+		state_n <= common;		-- skip1																	
+		ucode <= ops_drop;											
+		timer <= 0;
+		PC_n <= PC_plus;			-- PC
+		MEMaddr_i <= PC_addr;	-- TOS_r				
+		MEM_WRQ_X_i <= '0';
+		MEMdataout_X <= NOS_r;
+		MEMsize_X_n <= "11";
+		accumulator <= (others=>'0');			
+		AuxControl_n(0 downto 0) <= "0";
+		AuxControl_n(1 downto 1) <= "0";
+		ReturnAddress_n <= PC_addr;
+		irq_n <= int_trig;
+		rti <= '0';
+		retrap_n <= retrap;
+		-- delayed_RTS_n <= delayed_RTS;
+		s_axi_awvalid <= '0';
+		s_axi_wdata <= NOS_r;
+		s_axi_wstrb <= "1111";
+		s_axi_wvalid <= '0';
+		s_axi_arvalid <= '0';
+		s_axi_rready <= '0';	
+		pause <= '0';
+		debug_i <= x"0e";
+		preemp_counter_n <= preemp_counter;
+		PCfreeze <= PC;
+
+	when Dfetch_long =>											
+		if s_axi_arready = '1' then
+			state_n <= Dfetch_long2;									
+		else
+			state_n <= Dfetch_long;	
+		end if;
+		ucode <= ops_NOP;
+		accumulator <= s_axi_rdata(7 downto 0) & s_axi_rdata(15 downto 8) &	s_axi_rdata(23 downto 16) & s_axi_rdata(31 downto 24);  -- big endian <-> AXI conversion	
+		timer <= 0;
+		PC_n <= PC;					
+		MEMaddr_i <= TOS_r;	
+		MEM_WRQ_X_i <= '0';
+		MEMdataout_X <= NOS_r;		
+		MEMsize_X_n <= "11";
+		AuxControl_n(0 downto 0) <= "0";
+		AuxControl_n(1 downto 1) <= "1";
+		ReturnAddress_n <= PC_addr;
+		irq_n <= int_trig;
+		rti <= '0';
+		retrap_n <= retrap;
+		-- delayed_RTS_n <= delayed_RTS;
+		s_axi_awvalid <= '0';
+		s_axi_wdata <= NOS_r;
+		s_axi_wstrb <= "1111";
+		s_axi_wvalid <= '0';
+		s_axi_rready <= '0';	
+		s_axi_arvalid <= '1';
+		pause <= '0';
+		debug_i <= x"0f";
+		preemp_counter_n <= preemp_counter;
+		PCfreeze <= PC;
+
+	when Dfetch_long2 =>	
+		if s_axi_rvalid = '1' then
+			state_n <= skip1;		
 			ucode <= ops_NOP;
-			accumulator <= (others=>'0');	
-			MEMaddr_i <= PC_addr;	
-			MEM_WRQ_X_i <= '0';
-			MEMdataout_X <= NOS_r;
-			MEMsize_X_n <= "11";
-			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
-			ReturnAddress_n <= PC_addr;
-			irq_n <= int_trig;
-			rti <= '0';
-			retrap_n <= retrap;
-			-- delayed_RTS_n <= delayed_RTS;
-			s_axi_awvalid <= '0';
-			s_axi_wdata <= NOS_r;
-			s_axi_wstrb <= "1111";
-			s_axi_wvalid <= '0';
-			s_axi_arvalid <= '0';
-			s_axi_rready <= '0';	
-			pause <= '0';
-			debug_i <= x"05";
-			preemp_counter_n <= preemp_counter;
-			PCfreeze <= PC;
-			
-		when sdivmod_load =>									-- signed division
-			state_n <= common;									
-			timer <= 0;  
-			PC_n <= PC_plus;
-			ucode <= ops_SDIVMOD; 								-- load TOS and NOS with results
-			accumulator <= (others=>'0');
-			MEMaddr_i <= PC_addr;	
-			MEM_WRQ_X_i <= '0';
-			MEMdataout_X <= NOS_r;
-			MEMsize_X_n <= "11";
-			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
-			ReturnAddress_n <= PC_addr;
-			irq_n <= int_trig;
-			rti <= '0';
-			retrap_n <= retrap;
-			-- delayed_RTS_n <= delayed_RTS;
-			s_axi_awvalid <= '0';
-			s_axi_wdata <= NOS_r;
-			s_axi_wstrb <= "1111";
-			s_axi_wvalid <= '0';
-			s_axi_arvalid <= '0';
-			s_axi_rready <= '0';	
-			pause <= '0';
-			debug_i <= x"06";
-			preemp_counter_n <= preemp_counter;
-			PCfreeze <= PC;
-	
-		when udivmod_load =>									-- unsigned division
-			state_n <= common;
-			timer <= 0;
-			PC_n <= PC_plus;
-			ucode <= ops_UDIVMOD;								-- load TOS and NOS with results
-			accumulator <= (others=>'0');
-			MEMaddr_i <= PC_addr;	
-			MEM_WRQ_X_i <= '0';
-			MEMdataout_X <= NOS_r;
-			MEMsize_X_n <= "11";
-			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
-			ReturnAddress_n <= PC_addr;
-			irq_n <= int_trig;
-			rti <= '0';
-			retrap_n <= retrap;
-			-- delayed_RTS_n <= delayed_RTS;
-			s_axi_awvalid <= '0';
-			s_axi_wdata <= NOS_r;
-			s_axi_wstrb <= "1111";
-			s_axi_wvalid <= '0';
-			s_axi_arvalid <= '0';
-			pause <= '0';
-			debug_i <= x"07";
-			preemp_counter_n <= preemp_counter;
-			PCfreeze <= PC;
-			
-		when Sfetch_byte =>											
-			state_n <= skip1;																	
-			ucode <= ops_REPLACE;											
-			timer <= 0;
-			PC_n <= PC;
-			MEMaddr_i <= TOS_r;										-- address now available in registered TOS					
-			MEM_WRQ_X_i <= '0';
-			MEMdataout_X <= NOS_r;
-			MEMsize_X_n <= "01";
-			accumulator <= (others=>'0');			
-			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
-			ReturnAddress_n <= PC_addr;
-			irq_n <= int_trig;
-			rti <= '0';
-			retrap_n <= retrap;
-			-- delayed_RTS_n <= delayed_RTS;
-			s_axi_awvalid <= '0';
-			s_axi_wdata <= NOS_r;
-			s_axi_wstrb <= "1111";
-			s_axi_wvalid <= '0';
-			s_axi_arvalid <= '0';
-			s_axi_rready <= '0';	
-			pause <= '0';
-			debug_i <= x"08";
-			preemp_counter_n <= preemp_counter;
-			PCfreeze <= PC;
-			
-		when Sfetch_word =>											
-			state_n <= skip1;																	
-			ucode <= ops_REPLACE;											
-			timer <= 0;
-			PC_n <= PC;
-			MEMaddr_i <= TOS_r;										-- address now available in registered TOS					
-			MEM_WRQ_X_i <= '0';
-			MEMdataout_X <= NOS_r;
-			MEMsize_X_n <= "10";
-			accumulator <= (others=>'0');			
-			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
-			ReturnAddress_n <= PC_addr;
-			irq_n <= int_trig;
-			rti <= '0';
-			retrap_n <= retrap;
-			-- delayed_RTS_n <= delayed_RTS;
-			s_axi_awvalid <= '0';
-			s_axi_wdata <= NOS_r;
-			s_axi_wstrb <= "1111";
-			s_axi_wvalid <= '0';
-			s_axi_arvalid <= '0';
-			s_axi_rready <= '0';	
-			pause <= '0';
-			debug_i <= x"09";
-			preemp_counter_n <= preemp_counter;
-			PCfreeze <= PC;
+		else
+			state_n <= Dfetch_long2;	
+			ucode <= ops_REPLACE;	
+		end if;	
+		accumulator <= s_axi_rdata(7 downto 0) & s_axi_rdata(15 downto 8) &	s_axi_rdata(23 downto 16) & s_axi_rdata(31 downto 24);  -- big endian <-> AXI conversion	
+		timer <= 0;
+		PC_n <= PC;				
+		MEMaddr_i <= TOS_r;				
+		MEM_WRQ_X_i <= '0';
+		MEMdataout_X <= NOS_r;
+		MEMsize_X_n <= "11";
+		AuxControl_n(0 downto 0) <= "0";
+		AuxControl_n(1 downto 1) <= "1";
+		ReturnAddress_n <= PC_addr;
+		irq_n <= int_trig;
+		rti <= '0';
+		retrap_n <= retrap;
+		-- delayed_RTS_n <= delayed_RTS;
+		s_axi_awvalid <= '0';
+		s_axi_wdata <= NOS_r;
+		s_axi_wstrb <= "1111";
+		s_axi_wvalid <= '0';
+		s_axi_arvalid <= '0';
+		s_axi_rready <= '1';	
+		pause <= '0';
+		debug_i <= x"10";
+		preemp_counter_n <= preemp_counter;
+		PCfreeze <= PC;
 
-		when Sfetch_long =>											
-			state_n <= skip1;																	
-			ucode <= ops_REPLACE;									
-			timer <= 0;
-			PC_n <= PC;
-			MEMaddr_i <= TOS_r;										-- address now available in registered TOS					
-			MEM_WRQ_X_i <= '0';
-			MEMdataout_X <= NOS_r;
-			MEMsize_X_n <= "11";
-			accumulator <= (others=>'0');			
-			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
-			ReturnAddress_n <= PC_addr;
-			irq_n <= int_trig;
-			rti <= '0';
-			retrap_n <= retrap;
-			-- delayed_RTS_n <= delayed_RTS;
-			s_axi_awvalid <= '0';
-			s_axi_wdata <= NOS_r;
-			s_axi_wstrb <= "1111";
-			s_axi_wvalid <= '0';
-			s_axi_arvalid <= '0';
-			s_axi_rready <= '0';	
-			pause <= '0';
-			debug_i <= x"0a";
-			preemp_counter_n <= preemp_counter;
-			PCfreeze <= PC;
+	when Dfetch_word =>											
+		if s_axi_arready = '1' then
+			state_n <= Dfetch_word2;									
+		else
+			state_n <= Dfetch_word;	
+		end if;
+		ucode <= ops_NOP;
+		if AXIADDR(1) = '0' then
+			accumulator <= "0000000000000000" & s_axi_rdata(7 downto 0) & s_axi_rdata(15 downto 8) ;  -- big endian <-> AXI conversion	
+		else
+			accumulator <= "0000000000000000" & s_axi_rdata(23 downto 16) & s_axi_rdata(31 downto 24) ;
+		end if;
+		timer <= 0;
+		PC_n <= PC;					
+		MEMaddr_i <= TOS_r;	
+		MEM_WRQ_X_i <= '0';
+		MEMdataout_X <= NOS_r;		
+		MEMsize_X_n <= "11";
+		AuxControl_n(0 downto 0) <= "0";
+		AuxControl_n(1 downto 1) <= "1";
+		ReturnAddress_n <= PC_addr;
+		irq_n <= int_trig;
+		rti <= '0';
+		retrap_n <= retrap;
+		-- delayed_RTS_n <= delayed_RTS;
+		s_axi_awvalid <= '0';
+		s_axi_wdata <= NOS_r;
+		s_axi_wstrb <= "1111";
+		s_axi_wvalid <= '0';
+		s_axi_rready <= '0';	
+		s_axi_arvalid <= '1';
+		pause <= '0';
+		debug_i <= x"11";
+		preemp_counter_n <= preemp_counter;
+		PCfreeze <= PC;
+
+	when Dfetch_word2 =>	
+		if s_axi_rvalid = '1' then
+			state_n <= skip1;		
+			ucode <= ops_NOP;	
+		else
+			state_n <= Dfetch_word2;	
+			ucode <= ops_REPLACE;	
+		end if;					
+		if AXIADDR(1) = '0' then
+			accumulator <= "0000000000000000" & s_axi_rdata(7 downto 0) & s_axi_rdata(15 downto 8) ;  -- big endian <-> AXI conversion	
+		else
+			accumulator <= "0000000000000000" & s_axi_rdata(23 downto 16) & s_axi_rdata(31 downto 24) ;
+		end if;
+		timer <= 0;
+		PC_n <= PC;				
+		MEMaddr_i <= TOS_r;				
+		MEM_WRQ_X_i <= '0';
+		MEMdataout_X <= NOS_r;
+		MEMsize_X_n <= "11";
+		AuxControl_n(0 downto 0) <= "0";
+		AuxControl_n(1 downto 1) <= "1";
+		ReturnAddress_n <= PC_addr;
+		irq_n <= int_trig;
+		rti <= '0';
+		retrap_n <= retrap;
+		-- delayed_RTS_n <= delayed_RTS;
+		s_axi_awvalid <= '0';
+		s_axi_wdata <= NOS_r;
+		s_axi_wstrb <= "1111";
+		s_axi_wvalid <= '0';
+		s_axi_arvalid <= '0';
+		s_axi_rready <= '1';	
+		pause <= '0';
+		debug_i <= x"12";
+		preemp_counter_n <= preemp_counter;
+		PCfreeze <= PC;
 			
-		when Sstore_long =>											
-			state_n <= SRAM_store;																	
-			ucode <= ops_drop;											
-			timer <= 0;
-			PC_n <= PC;
-			MEMaddr_i <= TOS_r;										-- address now available in registered TOS					
-			MEM_WRQ_X_i <= '1';
-			MEMdataout_X <= NOS_r;
-			MEMsize_X_n <= "11";										-- long								
-			accumulator <= (others=>'0');			
-			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
-			ReturnAddress_n <= PC_addr;
-			irq_n <= int_trig;
-			rti <= '0';
-			retrap_n <= retrap;
-			-- delayed_RTS_n <= delayed_RTS;
-			s_axi_awvalid <= '0';
-			s_axi_wdata <= NOS_r;
-			s_axi_wstrb <= "1111";
-			s_axi_wvalid <= '0';
-			s_axi_arvalid <= '0';
-			s_axi_rready <= '0';	
-			pause <= '0';
-			debug_i <= x"0b";
-			preemp_counter_n <= preemp_counter;
-			PCfreeze <= PC;
+	when Dfetch_byte =>											
+		if s_axi_arready = '1' then
+			state_n <= Dfetch_byte2;									
+		else
+			state_n <= Dfetch_byte;	
+		end if;
+		ucode <= ops_NOP;
+		if AXIADDR = "00" then
+			accumulator <= "000000000000000000000000" & s_axi_rdata(7 downto 0);			  -- big endian <-> AXI conversion	
+		elsif AXIADDR = "01" then
+			accumulator <= "000000000000000000000000" & s_axi_rdata(15 downto 8);
+		elsif AXIADDR = "10" then
+			accumulator <= "000000000000000000000000" & s_axi_rdata(23 downto 16);
+		else 
+			accumulator <= "000000000000000000000000" & s_axi_rdata(31 downto 24);			
+		end if;
+		timer <= 0;
+		PC_n <= PC;					
+		MEMaddr_i <= TOS_r;	
+		MEM_WRQ_X_i <= '0';
+		MEMdataout_X <= NOS_r;		
+		MEMsize_X_n <= "11";
+		AuxControl_n(0 downto 0) <= "0";
+		AuxControl_n(1 downto 1) <= "1";
+		ReturnAddress_n <= PC_addr;
+		irq_n <= int_trig;
+		rti <= '0';
+		retrap_n <= retrap;
+		-- delayed_RTS_n <= delayed_RTS;
+		s_axi_awvalid <= '0';
+		s_axi_wdata <= NOS_r;
+		s_axi_wstrb <= "1111";
+		s_axi_wvalid <= '0';
+		s_axi_rready <= '0';	
+		s_axi_arvalid <= '1';
+		pause <= '0';
+		debug_i <= x"13";
+		preemp_counter_n <= preemp_counter;
+		PCfreeze <= PC;
+
+	when Dfetch_byte2 =>	
+		if s_axi_rvalid = '1' then
+			state_n <= skip1;		
+			ucode <= ops_NOP;	
+		else
+			state_n <= Dfetch_byte2;
+			ucode <= ops_REPLACE;								
+		end if;		
+		if AXIADDR = "00" then
+			accumulator <= "000000000000000000000000" & s_axi_rdata(7 downto 0);			  -- big endian <-> AXI conversion	
+		elsif AXIADDR = "01" then
+			accumulator <= "000000000000000000000000" & s_axi_rdata(15 downto 8);
+		elsif AXIADDR = "10" then
+			accumulator <= "000000000000000000000000" & s_axi_rdata(23 downto 16);
+		else 
+			accumulator <= "000000000000000000000000" & s_axi_rdata(31 downto 24);			
+		end if;
+		timer <= 0;
+		PC_n <= PC;				
+		MEMaddr_i <= TOS_r;				
+		MEM_WRQ_X_i <= '0';
+		MEMdataout_X <= NOS_r;
+		MEMsize_X_n <= "11";
+		AuxControl_n(0 downto 0) <= "0";
+		AuxControl_n(1 downto 1) <= "1";
+		ReturnAddress_n <= PC_addr;
+		irq_n <= int_trig;
+		rti <= '0';
+		retrap_n <= retrap;
+		-- delayed_RTS_n <= delayed_RTS;
+		s_axi_awvalid <= '0';
+		s_axi_wdata <= NOS_r;
+		s_axi_wstrb <= "1111";
+		s_axi_wvalid <= '0';
+		s_axi_arvalid <= '0';
+		s_axi_rready <= '1';	
+		pause <= '0';
+		debug_i <= x"14";			
+		preemp_counter_n <= preemp_counter;
+		PCfreeze <= PC;
 			
-		when Sstore_word =>											
-			state_n <= SRAM_store;																	
-			ucode <= ops_drop;											
-			timer <= 0;
-			PC_n <= PC;
-			MEMaddr_i <= TOS_r;										-- address now available in registered TOS					
-			MEM_WRQ_X_i <= '1';
-			MEMdataout_X <= NOS_r;
-			MEMsize_X_n <= "10";										-- word							
-			accumulator <= (others=>'0');			
-			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
-			ReturnAddress_n <= PC_addr;
-			irq_n <= int_trig;
+	when Dstore_long =>										
+		if s_axi_awready = '1' and s_axi_wready = '1' then			-- CAUTION this will break if s_axi_awready and s_axi_wready do not signal concurrently!
+			state_n <= Dstore2;		
+			ucode <= ops_DROP;									
+		else
+			state_n <= Dstore_long;
+			ucode <= ops_NOP;	
+		end if;
+		timer <= 0;
+		PC_n <= PC;	
+		MEMaddr_i <= TOS_r;			
+		MEM_WRQ_X_i <= '0';
+		MEMdataout_X <= NOS_r;
+		MEMsize_X_n <= "11";
+		accumulator <= (others=>'0');			
+		AuxControl_n(0 downto 0) <= "0";
+		AuxControl_n(1 downto 1) <= "0";
+		ReturnAddress_n <= PC_addr;
+		irq_n <= int_trig;
+		rti <= '0';
+		retrap_n <= retrap;
+		-- delayed_RTS_n <= delayed_RTS;
+		s_axi_awvalid <= '1';
+		s_axi_wdata <= NOS_r(7 downto 0) & NOS_r(15 downto 8) & NOS_r(23 downto 16) & NOS_r(31 downto 24);  -- big endian <-> AXI conversion
+		s_axi_wstrb <= "1111";
+		s_axi_wvalid <= '1';
+		s_axi_arvalid <= '0';
+		s_axi_rready <= '0';	
+		pause <= '0';
+		debug_i <= x"15";		
+		preemp_counter_n <= preemp_counter;	
+		PCfreeze <= PC;			
+		
+	when Dstore_word =>										
+		if s_axi_awready = '1' and s_axi_wready = '1' then			-- CAUTION this will break if s_axi_awready and s_axi_wready do not signal concurrently!
+			state_n <= Dstore2;		
+			ucode <= ops_DROP;									
+		else
+			state_n <= Dstore_word;
+			ucode <= ops_NOP;	
+		end if;
+		if TOS(1) = '0' then
+			s_axi_wstrb <= "0011";
+		else
+			s_axi_wstrb <= "1100";
+		end if;
+		timer <= 0;
+		PC_n <= PC;	
+		MEMaddr_i <= TOS_r;			
+		MEM_WRQ_X_i <= '0';
+		MEMdataout_X <= NOS_r;
+		MEMsize_X_n <= "11";	
+		accumulator <= (others=>'0');			
+		AuxControl_n(0 downto 0) <= "0";
+		AuxControl_n(1 downto 1) <= "0";
+		ReturnAddress_n <= PC_addr;
+		irq_n <= int_trig;
+		rti <= '0';
+		retrap_n <= retrap;
+		-- delayed_RTS_n <= delayed_RTS;
+		s_axi_wdata <= NOS_r(7 downto 0) & NOS_r(15 downto 8) & NOS_r(7 downto 0) & NOS_r(15 downto 8);
+		s_axi_awvalid <= '1';
+		s_axi_wvalid <= '1';
+		s_axi_arvalid <= '0';
+		s_axi_rready <= '0';	
+		pause <= '0';
+		debug_i <= x"16";	
+		preemp_counter_n <= preemp_counter;
+		PCfreeze <= PC;
+
+	when Dstore_byte =>										
+		if s_axi_awready = '1' and s_axi_wready = '1' then			-- CAUTION this will break if s_axi_awready and s_axi_wready do not signal concurrently!
+			state_n <= Dstore2;		
+			ucode <= ops_DROP;									
+		else
+			state_n <= Dstore_byte;
+			ucode <= ops_NOP;	
+		end if;
+		if TOS(1 downto 0) = "00" then
+			s_axi_wstrb <= "0001";
+		elsif TOS(1 downto 0) = "01" then
+			s_axi_wstrb <= "0010";
+		elsif TOS(1 downto 0) = "10" then
+			s_axi_wstrb <= "0100";	
+		else
+			s_axi_wstrb <= "1000";				
+		end if;
+		timer <= 0;
+		PC_n <= PC;	
+		MEMaddr_i <= TOS_r;			
+		MEM_WRQ_X_i <= '0';
+		MEMdataout_X <= NOS_r;
+		MEMsize_X_n <= "11";	
+		accumulator <= (others=>'0');			
+		AuxControl_n(0 downto 0) <= "0";
+		AuxControl_n(1 downto 1) <= "0";
+		ReturnAddress_n <= PC_addr;
+		irq_n <= int_trig;
+		rti <= '0';
+		retrap_n <= retrap;
+		-- delayed_RTS_n <= delayed_RTS;
+		s_axi_wdata <= NOS_r(7 downto 0) & NOS_r(7 downto 0) & NOS_r(7 downto 0) & NOS_r(7 downto 0);
+		s_axi_awvalid <= '1';
+		s_axi_wvalid <= '1';
+		s_axi_arvalid <= '0';
+		s_axi_rready <= '0';	
+		pause <= '0';
+		debug_i <= x"17";	
+		preemp_counter_n <= preemp_counter;
+		PCfreeze <= PC;
+
+	when Dstore2 =>										
+		state_n <= skip1;
+		ucode <= ops_DROP;									-- drop address				
+		timer <= 0;
+		PC_n <= PC;					
+		MEMaddr_i <= PC_addr;				
+		MEM_WRQ_X_i <= '0';
+		MEMdataout_X <= NOS_r;
+		MEMsize_X_n <= "11";	
+		accumulator <= (others=>'0');
+		AuxControl_n(0 downto 0) <= "0";
+		AuxControl_n(1 downto 1) <= "0";
+		ReturnAddress_n <= PC_addr;
+		irq_n <= int_trig;
+		rti <= '0';
+		retrap_n <= retrap;
+		-- delayed_RTS_n <= delayed_RTS;
+		s_axi_awvalid <= '0';
+		s_axi_wdata <= NOS_r;
+		s_axi_wstrb <= "1111";
+		s_axi_wvalid <= '0';
+		s_axi_arvalid <= '0';
+		s_axi_rready <= '0';	
+		pause <= '0';
+		debug_i <= x"18";	
+		preemp_counter_n <= preemp_counter;
+		PCfreeze <= PC;
+		
+	when throw =>									
+		state_n <= common;							-- after changing PC, this wait state allows a memory read before execution of next instruction
+		timer <= 0;
+		PC_n <= PC_plus;
+		if equalzero_r = '0' then					-- throw on non-zero parameter
+			ucode <= ops_THROW2;		
+			rti <= '1';									-- THROW from interrupt will also cancel interrupt state
+		else
+			ucode <= ops_NOP;							-- no second cycle action on zero parameter
 			rti <= '0';
-			retrap_n <= retrap;
-			-- delayed_RTS_n <= delayed_RTS;
-			s_axi_awvalid <= '0';
-			s_axi_wdata <= NOS_r;
-			s_axi_wstrb <= "1111";
-			s_axi_wvalid <= '0';
-			s_axi_arvalid <= '0';
-			s_axi_rready <= '0';	
-			pause <= '0';
-			debug_i <= x"0c";
-			preemp_counter_n <= preemp_counter;
-			PCfreeze <= PC;
-			
-		when Sstore_byte =>											
-			state_n <= SRAM_store;																	
-			ucode <= ops_drop;											
-			timer <= 0;
-			PC_n <= PC;
-			MEMaddr_i <= TOS_r;										-- address now available in registered TOS					
-			MEM_WRQ_X_i <= '1';
-			MEMdataout_X <= NOS_r;
-			MEMsize_X_n <= "01";										-- byte								
-			accumulator <= (others=>'0');			
-			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
-			ReturnAddress_n <= PC_addr;
-			irq_n <= int_trig;
-			rti <= '0';
-			retrap_n <= retrap;
-			-- delayed_RTS_n <= delayed_RTS;
-			s_axi_awvalid <= '0';
-			s_axi_wdata <= NOS_r;
-			s_axi_wstrb <= "1111";
-			s_axi_wvalid <= '0';
-			s_axi_arvalid <= '0';
-			s_axi_rready <= '0';	
-			pause <= '0';
-			debug_i <= x"0d";
-			preemp_counter_n <= preemp_counter;
-			PCfreeze <= PC;
-			
-		when SRAM_store =>											
-			state_n <= common;		-- skip1																	
-			ucode <= ops_drop;											
-			timer <= 0;
-			PC_n <= PC_plus;			-- PC
-			MEMaddr_i <= PC_addr;	-- TOS_r				
-			MEM_WRQ_X_i <= '0';
-			MEMdataout_X <= NOS_r;
-			MEMsize_X_n <= "11";
-			accumulator <= (others=>'0');			
-			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
-			ReturnAddress_n <= PC_addr;
-			irq_n <= int_trig;
-			rti <= '0';
-			retrap_n <= retrap;
-			-- delayed_RTS_n <= delayed_RTS;
-			s_axi_awvalid <= '0';
-			s_axi_wdata <= NOS_r;
-			s_axi_wstrb <= "1111";
-			s_axi_wvalid <= '0';
-			s_axi_arvalid <= '0';
-			s_axi_rready <= '0';	
-			pause <= '0';
-			debug_i <= x"0e";
-			preemp_counter_n <= preemp_counter;
-			PCfreeze <= PC;
-	
-		when Dfetch_long =>											
-			if s_axi_arready = '1' then
-				state_n <= Dfetch_long2;									
-			else
-				state_n <= Dfetch_long;	
-			end if;
+		end if;
+		accumulator <= (others=>'0');
+		MEMaddr_i <= PC_addr;				
+		MEM_WRQ_X_i <= '0';
+		MEMsize_X_n <= "11";
+		MEMdataout_X <= NOS_r;	
+		AuxControl_n(0 downto 0) <= "0";
+		AuxControl_n(1 downto 1) <= "0";
+		ReturnAddress_n <= PC_addr;
+		irq_n <= int_trig;
+		retrap_n <= retrap;
+		-- delayed_RTS_n <= delayed_RTS;
+		s_axi_awvalid <= '0';
+		s_axi_wdata <= NOS_r;
+		s_axi_wstrb <= "1111";
+		s_axi_wvalid <= '0';
+		s_axi_arvalid <= '0';
+		s_axi_rready <= '0';	
+		pause <= '0';
+		debug_i <= x"19";
+		preemp_counter_n <= preemp_counter;
+		PCfreeze <= PC;
+		
+	when virtual_interrupt =>	
+		state_n <= skip1;
+		timer <= 0;
+		PC_n <= PC;
+		if SingleMulti = '1' then
+			ucode <= ops_JSL;
+		else
 			ucode <= ops_NOP;
-			accumulator <= s_axi_rdata(7 downto 0) & s_axi_rdata(15 downto 8) &	s_axi_rdata(23 downto 16) & s_axi_rdata(31 downto 24);  -- big endian <-> AXI conversion	
-			timer <= 0;
-			PC_n <= PC;					
-			MEMaddr_i <= TOS_r;	
-			MEM_WRQ_X_i <= '0';
-			MEMdataout_X <= NOS_r;		
-			MEMsize_X_n <= "11";
-			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "1";
-			ReturnAddress_n <= PC_addr;
-			irq_n <= int_trig;
-			rti <= '0';
-			retrap_n <= retrap;
-			-- delayed_RTS_n <= delayed_RTS;
-			s_axi_awvalid <= '0';
-			s_axi_wdata <= NOS_r;
-			s_axi_wstrb <= "1111";
-			s_axi_wvalid <= '0';
-			s_axi_rready <= '0';	
-			s_axi_arvalid <= '1';
-			pause <= '0';
-			debug_i <= x"0f";
-			preemp_counter_n <= preemp_counter;
-			PCfreeze <= PC;
+		end if;
+		ucode <= ops_JSL;								-- push the saved PC address onto the return stack		
+		accumulator <= (others=>'0');
+		MEMaddr_i <= PC_addr;				
+		MEM_WRQ_X_i <= '0';
+		MEMsize_X_n <= "11";
+		MEMdataout_X <= NOS_r;	
+		AuxControl_n(0 downto 0) <= "0";
+		AuxControl_n(1 downto 1) <= "0";
+		ReturnAddress_n <= "000000000000" & PCthaw_m1;
+		irq_n <= int_trig;
+		rti <= '0';
+		retrap_n <= retrap;
+		s_axi_awvalid <= '0';
+		s_axi_wdata <= NOS_r;
+		s_axi_wstrb <= "1111";
+		s_axi_wvalid <= '0';
+		s_axi_arvalid <= '0';
+		s_axi_rready <= '0';	
+		pause <= '0';
+		debug_i <= x"20";
+		preemp_counter_n <= preemp_counter;
+		PCfreeze <= PC;
+		
+	when others =>										-- skip1, but use default case for speed optimization
+		state_n <= common;							-- after changing PC, this wait state allows a memory read before execution of next instruction
+		timer <= 0;
+		PC_n <= PC_plus;
+		ucode <= ops_NOP;																			
+		accumulator <= (others=>'0');
+		MEMaddr_i <= PC_addr;				
+		MEM_WRQ_X_i <= '0';
+		MEMsize_X_n <= "11";
+		MEMdataout_X <= NOS_r;	
+		AuxControl_n(0 downto 0) <= "0";
+		AuxControl_n(1 downto 1) <= "0";
+		ReturnAddress_n <= PC_addr;
+		irq_n <= int_trig;
+		rti <= '0';
+		retrap_n <= retrap;
+		s_axi_awvalid <= '0';
+		s_axi_wdata <= NOS_r;
+		s_axi_wstrb <= "1111";
+		s_axi_wvalid <= '0';
+		s_axi_arvalid <= '0';
+		s_axi_rready <= '0';	
+		pause <= '0';
+		debug_i <= x"21";
+		preemp_counter_n <= preemp_counter;
+		PCfreeze <= PC;
 
-		when Dfetch_long2 =>	
-			if s_axi_rvalid = '1' then
-				state_n <= skip1;		
-				ucode <= ops_NOP;
-			else
-				state_n <= Dfetch_long2;	
-				ucode <= ops_REPLACE;	
-			end if;	
-			accumulator <= s_axi_rdata(7 downto 0) & s_axi_rdata(15 downto 8) &	s_axi_rdata(23 downto 16) & s_axi_rdata(31 downto 24);  -- big endian <-> AXI conversion	
-			timer <= 0;
-			PC_n <= PC;				
-			MEMaddr_i <= TOS_r;				
-			MEM_WRQ_X_i <= '0';
-			MEMdataout_X <= NOS_r;
-			MEMsize_X_n <= "11";
-			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "1";
-			ReturnAddress_n <= PC_addr;
-			irq_n <= int_trig;
-			rti <= '0';
-			retrap_n <= retrap;
-			-- delayed_RTS_n <= delayed_RTS;
-			s_axi_awvalid <= '0';
-			s_axi_wdata <= NOS_r;
-			s_axi_wstrb <= "1111";
-			s_axi_wvalid <= '0';
-			s_axi_arvalid <= '0';
-			s_axi_rready <= '1';	
-			pause <= '0';
-			debug_i <= x"10";
-			preemp_counter_n <= preemp_counter;
-			PCfreeze <= PC;
-	
-		when Dfetch_word =>											
-			if s_axi_arready = '1' then
-				state_n <= Dfetch_word2;									
-			else
-				state_n <= Dfetch_word;	
-			end if;
-			ucode <= ops_NOP;
-			if AXIADDR(1) = '0' then
-				accumulator <= "0000000000000000" & s_axi_rdata(7 downto 0) & s_axi_rdata(15 downto 8) ;  -- big endian <-> AXI conversion	
-			else
-				accumulator <= "0000000000000000" & s_axi_rdata(23 downto 16) & s_axi_rdata(31 downto 24) ;
-			end if;
-			timer <= 0;
-			PC_n <= PC;					
-			MEMaddr_i <= TOS_r;	
-			MEM_WRQ_X_i <= '0';
-			MEMdataout_X <= NOS_r;		
-			MEMsize_X_n <= "11";
-			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "1";
-			ReturnAddress_n <= PC_addr;
-			irq_n <= int_trig;
-			rti <= '0';
-			retrap_n <= retrap;
-			-- delayed_RTS_n <= delayed_RTS;
-			s_axi_awvalid <= '0';
-			s_axi_wdata <= NOS_r;
-			s_axi_wstrb <= "1111";
-			s_axi_wvalid <= '0';
-			s_axi_rready <= '0';	
-			s_axi_arvalid <= '1';
-			pause <= '0';
-			debug_i <= x"11";
-			preemp_counter_n <= preemp_counter;
-			PCfreeze <= PC;
-
-		when Dfetch_word2 =>	
-			if s_axi_rvalid = '1' then
-				state_n <= skip1;		
-				ucode <= ops_NOP;	
-			else
-				state_n <= Dfetch_word2;	
-				ucode <= ops_REPLACE;	
-			end if;					
-			if AXIADDR(1) = '0' then
-				accumulator <= "0000000000000000" & s_axi_rdata(7 downto 0) & s_axi_rdata(15 downto 8) ;  -- big endian <-> AXI conversion	
-			else
-				accumulator <= "0000000000000000" & s_axi_rdata(23 downto 16) & s_axi_rdata(31 downto 24) ;
-			end if;
-			timer <= 0;
-			PC_n <= PC;				
-			MEMaddr_i <= TOS_r;				
-			MEM_WRQ_X_i <= '0';
-			MEMdataout_X <= NOS_r;
-			MEMsize_X_n <= "11";
-			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "1";
-			ReturnAddress_n <= PC_addr;
-			irq_n <= int_trig;
-			rti <= '0';
-			retrap_n <= retrap;
-			-- delayed_RTS_n <= delayed_RTS;
-			s_axi_awvalid <= '0';
-			s_axi_wdata <= NOS_r;
-			s_axi_wstrb <= "1111";
-			s_axi_wvalid <= '0';
-			s_axi_arvalid <= '0';
-			s_axi_rready <= '1';	
-			pause <= '0';
-			debug_i <= x"12";
-			preemp_counter_n <= preemp_counter;
-			PCfreeze <= PC;
-				
-		when Dfetch_byte =>											
-			if s_axi_arready = '1' then
-				state_n <= Dfetch_byte2;									
-			else
-				state_n <= Dfetch_byte;	
-			end if;
-			ucode <= ops_NOP;
-			if AXIADDR = "00" then
-				accumulator <= "000000000000000000000000" & s_axi_rdata(7 downto 0);			  -- big endian <-> AXI conversion	
-			elsif AXIADDR = "01" then
-				accumulator <= "000000000000000000000000" & s_axi_rdata(15 downto 8);
-			elsif AXIADDR = "10" then
-				accumulator <= "000000000000000000000000" & s_axi_rdata(23 downto 16);
-			else 
-				accumulator <= "000000000000000000000000" & s_axi_rdata(31 downto 24);			
-			end if;
-			timer <= 0;
-			PC_n <= PC;					
-			MEMaddr_i <= TOS_r;	
-			MEM_WRQ_X_i <= '0';
-			MEMdataout_X <= NOS_r;		
-			MEMsize_X_n <= "11";
-			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "1";
-			ReturnAddress_n <= PC_addr;
-			irq_n <= int_trig;
-			rti <= '0';
-			retrap_n <= retrap;
-			-- delayed_RTS_n <= delayed_RTS;
-			s_axi_awvalid <= '0';
-			s_axi_wdata <= NOS_r;
-			s_axi_wstrb <= "1111";
-			s_axi_wvalid <= '0';
-			s_axi_rready <= '0';	
-			s_axi_arvalid <= '1';
-			pause <= '0';
-			debug_i <= x"13";
-			preemp_counter_n <= preemp_counter;
-			PCfreeze <= PC;
-
-		when Dfetch_byte2 =>	
-			if s_axi_rvalid = '1' then
-				state_n <= skip1;		
-				ucode <= ops_NOP;	
-			else
-				state_n <= Dfetch_byte2;
-				ucode <= ops_REPLACE;								
-			end if;		
-			if AXIADDR = "00" then
-				accumulator <= "000000000000000000000000" & s_axi_rdata(7 downto 0);			  -- big endian <-> AXI conversion	
-			elsif AXIADDR = "01" then
-				accumulator <= "000000000000000000000000" & s_axi_rdata(15 downto 8);
-			elsif AXIADDR = "10" then
-				accumulator <= "000000000000000000000000" & s_axi_rdata(23 downto 16);
-			else 
-				accumulator <= "000000000000000000000000" & s_axi_rdata(31 downto 24);			
-			end if;
-			timer <= 0;
-			PC_n <= PC;				
-			MEMaddr_i <= TOS_r;				
-			MEM_WRQ_X_i <= '0';
-			MEMdataout_X <= NOS_r;
-			MEMsize_X_n <= "11";
-			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "1";
-			ReturnAddress_n <= PC_addr;
-			irq_n <= int_trig;
-			rti <= '0';
-			retrap_n <= retrap;
-			-- delayed_RTS_n <= delayed_RTS;
-			s_axi_awvalid <= '0';
-			s_axi_wdata <= NOS_r;
-			s_axi_wstrb <= "1111";
-			s_axi_wvalid <= '0';
-			s_axi_arvalid <= '0';
-			s_axi_rready <= '1';	
-			pause <= '0';
-			debug_i <= x"14";			
-			preemp_counter_n <= preemp_counter;
-			PCfreeze <= PC;
-				
-		when Dstore_long =>										
-			if s_axi_awready = '1' and s_axi_wready = '1' then			-- CAUTION this will break if s_axi_awready and s_axi_wready do not signal concurrently!
-				state_n <= Dstore2;		
-				ucode <= ops_DROP;									
-			else
-				state_n <= Dstore_long;
-				ucode <= ops_NOP;	
-			end if;
-			timer <= 0;
-			PC_n <= PC;	
-			MEMaddr_i <= TOS_r;			
-			MEM_WRQ_X_i <= '0';
-			MEMdataout_X <= NOS_r;
-			MEMsize_X_n <= "11";
-			accumulator <= (others=>'0');			
-			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
-			ReturnAddress_n <= PC_addr;
-			irq_n <= int_trig;
-			rti <= '0';
-			retrap_n <= retrap;
-			-- delayed_RTS_n <= delayed_RTS;
-			s_axi_awvalid <= '1';
-			s_axi_wdata <= NOS_r(7 downto 0) & NOS_r(15 downto 8) & NOS_r(23 downto 16) & NOS_r(31 downto 24);  -- big endian <-> AXI conversion
-			s_axi_wstrb <= "1111";
-			s_axi_wvalid <= '1';
-			s_axi_arvalid <= '0';
-			s_axi_rready <= '0';	
-			pause <= '0';
-			debug_i <= x"15";		
-			preemp_counter_n <= preemp_counter;	
-			PCfreeze <= PC;			
-			
-		when Dstore_word =>										
-			if s_axi_awready = '1' and s_axi_wready = '1' then			-- CAUTION this will break if s_axi_awready and s_axi_wready do not signal concurrently!
-				state_n <= Dstore2;		
-				ucode <= ops_DROP;									
-			else
-				state_n <= Dstore_word;
-				ucode <= ops_NOP;	
-			end if;
-			if TOS(1) = '0' then
-				s_axi_wstrb <= "0011";
-			else
-				s_axi_wstrb <= "1100";
-			end if;
-			timer <= 0;
-			PC_n <= PC;	
-			MEMaddr_i <= TOS_r;			
-			MEM_WRQ_X_i <= '0';
-			MEMdataout_X <= NOS_r;
-			MEMsize_X_n <= "11";	
-			accumulator <= (others=>'0');			
-			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
-			ReturnAddress_n <= PC_addr;
-			irq_n <= int_trig;
-			rti <= '0';
-			retrap_n <= retrap;
-			-- delayed_RTS_n <= delayed_RTS;
-			s_axi_wdata <= NOS_r(7 downto 0) & NOS_r(15 downto 8) & NOS_r(7 downto 0) & NOS_r(15 downto 8);
-			s_axi_awvalid <= '1';
-			s_axi_wvalid <= '1';
-			s_axi_arvalid <= '0';
-			s_axi_rready <= '0';	
-			pause <= '0';
-			debug_i <= x"16";	
-			preemp_counter_n <= preemp_counter;
-			PCfreeze <= PC;
-
-		when Dstore_byte =>										
-			if s_axi_awready = '1' and s_axi_wready = '1' then			-- CAUTION this will break if s_axi_awready and s_axi_wready do not signal concurrently!
-				state_n <= Dstore2;		
-				ucode <= ops_DROP;									
-			else
-				state_n <= Dstore_byte;
-				ucode <= ops_NOP;	
-			end if;
-			if TOS(1 downto 0) = "00" then
-				s_axi_wstrb <= "0001";
-			elsif TOS(1 downto 0) = "01" then
-				s_axi_wstrb <= "0010";
-			elsif TOS(1 downto 0) = "10" then
-				s_axi_wstrb <= "0100";	
-			else
-				s_axi_wstrb <= "1000";				
-			end if;
-			timer <= 0;
-			PC_n <= PC;	
-			MEMaddr_i <= TOS_r;			
-			MEM_WRQ_X_i <= '0';
-			MEMdataout_X <= NOS_r;
-			MEMsize_X_n <= "11";	
-			accumulator <= (others=>'0');			
-			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
-			ReturnAddress_n <= PC_addr;
-			irq_n <= int_trig;
-			rti <= '0';
-			retrap_n <= retrap;
-			-- delayed_RTS_n <= delayed_RTS;
-			s_axi_wdata <= NOS_r(7 downto 0) & NOS_r(7 downto 0) & NOS_r(7 downto 0) & NOS_r(7 downto 0);
-			s_axi_awvalid <= '1';
-			s_axi_wvalid <= '1';
-			s_axi_arvalid <= '0';
-			s_axi_rready <= '0';	
-			pause <= '0';
-			debug_i <= x"17";	
-			preemp_counter_n <= preemp_counter;
-			PCfreeze <= PC;
-
-		when Dstore2 =>										
-			state_n <= skip1;
-			ucode <= ops_DROP;									-- drop address				
-			timer <= 0;
-			PC_n <= PC;					
-			MEMaddr_i <= PC_addr;				
-			MEM_WRQ_X_i <= '0';
-			MEMdataout_X <= NOS_r;
-			MEMsize_X_n <= "11";	
-			accumulator <= (others=>'0');
-			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
-			ReturnAddress_n <= PC_addr;
-			irq_n <= int_trig;
-			rti <= '0';
-			retrap_n <= retrap;
-			-- delayed_RTS_n <= delayed_RTS;
-			s_axi_awvalid <= '0';
-			s_axi_wdata <= NOS_r;
-			s_axi_wstrb <= "1111";
-			s_axi_wvalid <= '0';
-			s_axi_arvalid <= '0';
-			s_axi_rready <= '0';	
-			pause <= '0';
-			debug_i <= x"18";	
-			preemp_counter_n <= preemp_counter;
-			PCfreeze <= PC;
-			
-		when throw =>									
-			state_n <= common;							-- after changing PC, this wait state allows a memory read before execution of next instruction
-			timer <= 0;
-			PC_n <= PC_plus;
-			if equalzero_r = '0' then					-- throw on non-zero parameter
-				ucode <= ops_THROW2;		
-				rti <= '1';									-- THROW from interrupt will also cancel interrupt state
-			else
-				ucode <= ops_NOP;							-- no second cycle action on zero parameter
-				rti <= '0';
-			end if;
-			accumulator <= (others=>'0');
-			MEMaddr_i <= PC_addr;				
-			MEM_WRQ_X_i <= '0';
-			MEMsize_X_n <= "11";
-			MEMdataout_X <= NOS_r;	
-			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
-			ReturnAddress_n <= PC_addr;
-			irq_n <= int_trig;
-			retrap_n <= retrap;
-			-- delayed_RTS_n <= delayed_RTS;
-			s_axi_awvalid <= '0';
-			s_axi_wdata <= NOS_r;
-			s_axi_wstrb <= "1111";
-			s_axi_wvalid <= '0';
-			s_axi_arvalid <= '0';
-			s_axi_rready <= '0';	
-			pause <= '0';
-			debug_i <= x"19";
-			preemp_counter_n <= preemp_counter;
-			PCfreeze <= PC;
-			
-		when virtual_interrupt =>	
-			state_n <= skip1;
-			timer <= 0;
-			PC_n <= PC;
-			if SingleMulti = '1' then
-				ucode <= ops_JSL;
-			else
-				ucode <= ops_NOP;
-			end if;
-			ucode <= ops_JSL;								-- push the saved PC address onto the return stack		
-			accumulator <= (others=>'0');
-			MEMaddr_i <= PC_addr;				
-			MEM_WRQ_X_i <= '0';
-			MEMsize_X_n <= "11";
-			MEMdataout_X <= NOS_r;	
-			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
-			ReturnAddress_n <= "000000000000" & PCthaw_m1;
-			irq_n <= int_trig;
-			rti <= '0';
-			retrap_n <= retrap;
-			s_axi_awvalid <= '0';
-			s_axi_wdata <= NOS_r;
-			s_axi_wstrb <= "1111";
-			s_axi_wvalid <= '0';
-			s_axi_arvalid <= '0';
-			s_axi_rready <= '0';	
-			pause <= '0';
-			debug_i <= x"20";
-			preemp_counter_n <= preemp_counter;
-			PCfreeze <= PC;
-			
-		when others =>										-- skip1, but use default case for speed optimization
-			state_n <= common;							-- after changing PC, this wait state allows a memory read before execution of next instruction
-			timer <= 0;
-			PC_n <= PC_plus;
-			ucode <= ops_NOP;																			
-			accumulator <= (others=>'0');
-			MEMaddr_i <= PC_addr;				
-			MEM_WRQ_X_i <= '0';
-			MEMsize_X_n <= "11";
-			MEMdataout_X <= NOS_r;	
-			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
-			ReturnAddress_n <= PC_addr;
-			irq_n <= int_trig;
-			rti <= '0';
-			retrap_n <= retrap;
-			s_axi_awvalid <= '0';
-			s_axi_wdata <= NOS_r;
-			s_axi_wstrb <= "1111";
-			s_axi_wvalid <= '0';
-			s_axi_arvalid <= '0';
-			s_axi_rready <= '0';	
-			pause <= '0';
-			debug_i <= x"21";
-			preemp_counter_n <= preemp_counter;
-			PCfreeze <= PC;
-
-		end case;
-	end process;
+	end case;
+end process;
 end RTL;
 
 --Copyright and license

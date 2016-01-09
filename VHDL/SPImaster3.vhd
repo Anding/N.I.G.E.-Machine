@@ -6,19 +6,19 @@ use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.STD_LOGIC_UNSIGNED.ALL;
 
 entity SPImaster is
-    Port (	CLK : in STD_LOGIC;
-				CLKSPI : in STD_LOGIC;
-				RESET : in STD_LOGIC;
-				DATA_IN : out STD_LOGIC_VECTOR(7 downto 0);
-				WR : in STD_LOGIC;
-				TBE : out STD_LOGIC;
-				DATA_OUT : in STD_LOGIC_VECTOR(7 downto 0);
-				MOSI : out  STD_LOGIC;
-				MISO : in  STD_LOGIC;
-				SCK : out  STD_LOGIC;
-				mode : in STD_LOGIC_VECTOR(1 downto 0);
-				MOSI_def : in STD_LOGIC
-				);
+Port (	CLK : in STD_LOGIC;
+	RESET : in STD_LOGIC;
+	divide : in  STD_LOGIC_VECTOR (7 downto 0);
+	DATA_IN : out STD_LOGIC_VECTOR(7 downto 0);
+	WR : in STD_LOGIC;
+	TBE : out STD_LOGIC;
+	DATA_OUT : in STD_LOGIC_VECTOR(7 downto 0);
+	MOSI : out  STD_LOGIC;
+	MISO : in  STD_LOGIC;
+	SCK : out  STD_LOGIC;
+	mode : in STD_LOGIC_VECTOR(1 downto 0);
+	MOSI_def : in STD_LOGIC
+	);
 end SPImaster;
 
 architecture RTL of SPImaster is
@@ -30,7 +30,7 @@ signal SR : std_logic_vector(8 downto 0);
 signal count : std_logic_vector(2 downto 0) :=(others=>'0');
 signal SR_load, SR_shift, SR_latch : std_logic_vector(8 downto 0);
 signal SCK_en : std_logic;
-signal CLKSPI_m : std_logic;
+signal CLKSPI, CLKSPI_m : std_logic;
 
 begin
 
@@ -138,5 +138,12 @@ begin
 		
 	end case;
 end process;
+
+	
+inst_DIV: entity work.DIV PORT MAP(
+	CLKin => CLK,
+	divide => divide,
+	CLKout => CLKSPI
+);
 
 end RTL;

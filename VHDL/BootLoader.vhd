@@ -5,17 +5,17 @@ use IEEE.STD_LOGIC_UNSIGNED.ALL;
 
 entity BootLoader is
 
-    Port (
-		invReset : in std_logic;
-		clk	: in std_logic;
+Port (
+	reset	: in std_logic;
+	clk	: in std_logic;
 	-- RS232 data
-		RDA : in std_logic;
-		RXDATA : in std_logic_vector(7 downto 0);
+	RDA	: in std_logic;
+	RXDATA	: in std_logic_vector(7 downto 0);
 	-- RAM update signals
-      data  : out std_logic_vector(31 downto 0); 
-      addr  : out std_logic_vector(31 downto 2);  
-      we		: out std_logic_vector(0 downto 0)
-         );
+	data	: out std_logic_vector(31 downto 0); 
+	addr	: out std_logic_vector(31 downto 2);  
+	we	: out std_logic_vector(0 downto 0)
+);
 
 end BootLoader;
 
@@ -42,27 +42,24 @@ begin
 			addr_r <= addr_n;
 	end process;
 	
-	with state select
-		we <= "1" when writing,
-				"0" when others;
+	with state select we <= "1" when writing, "0" when others;
 	
 	process (addr_r, RDAtrig, state)
 	begin
 		if RDAtrig = '1' then
 			addr_n <= addr_r + 1;
 		elsif state = idle then
-			addr_n <= (others=>'1');--CONV_STD_LOGIC_VECTOR(32767,32);			-- start address minus 1
+			addr_n <= (others=>'1');
 		else
 			addr_n <= addr_r;
 		end if;
 	end process;
 	
-	data_n <= data_r(23 downto 0) & RXDATA when RDAtrig = '1' else 
-				data_r;
+	data_n <= data_r(23 downto 0) & RXDATA when RDAtrig = '1' else data_r;
 					
-	process (state, RDAtrig, addr_r, invReset)
+	process (state, RDAtrig, addr_r, reset)
 	begin
-		if invReset = '0' then
+		if reset = '1' then										-- Bootloader is active during reset phase
 			case state is
 				when reading =>
 					if addr_r(1 downto 0) = "10" and RDAtrig = '1' then

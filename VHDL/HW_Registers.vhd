@@ -68,7 +68,7 @@ entity HW_Registers is
            addr : in  STD_LOGIC_VECTOR (10 downto 0);				-- Low bits only of address bus.  Higher bits control "en"
            datain : in  STD_LOGIC_VECTOR (31 downto 0);			
            dataout : out  STD_LOGIC_VECTOR (31 downto 0);
-           wrq : in  STD_LOGIC_VECTOR (0 downto 0)
+           wrq : in  STD_LOGIC
 			  );
 end HW_Registers;
 
@@ -101,7 +101,7 @@ architecture Behavioral of HW_Registers is
 	signal en_r : std_logic :='0';
 	signal addr_r : std_logic_vector(7 downto 0) :=(others=>'0');
 	signal datain_r : std_logic_vector(31 downto 0) :=(others=>'0');
-	signal wrq_r : std_logic_vector (0 downto 0) :="0";
+	signal wrq_r : std_logic;
 	
 	-- pipeline registers for hardware read
 	signal RS232_rx_S0_r : std_logic_vector(7 downto 0);
@@ -175,7 +175,7 @@ begin
 			SMIaddr_r <= (others=>'0');
 			SMIdataWrite_r <= (others=>'0');
 			
-		elsif en_r = '1' and wrq_r = "1" then					-- writable registers
+		elsif en_r = '1' and wrq_r = '1' then					-- writable registers
 				case addr_r is			
 					when x"00" =>										-- TEXT_ZERO 
 						txt_zero_r <= datain_r(23 downto 0);
@@ -237,31 +237,31 @@ begin
 			end if;
 
 			-- write triggers
-			if en_r = '1' and wrq_r = "1" and addr_r = x"14" then					
+			if en_r = '1' and wrq_r = '1' and addr_r = x"14" then					
 				RS232_wr_S0 <= '1';	
 			else
 				RS232_wr_S0 <= '0';
 			end if;
 
-			if en_r = '1' and wrq_r = "1" and addr_r = x"38" then 
+			if en_r = '1' and wrq_r = '1' and addr_r = x"38" then 
 				SD_wr <= '1';	
 			else
 				SD_wr <= '0';
 			end if;
 			
-			if en_r = '1' and wrq_r = "1" and addr_r = x"70" then
+			if en_r = '1' and wrq_r = '1' and addr_r = x"70" then
 				MACweTX <= '1';	
 			else
 				MACweTX <= '0';
 			end if;
 			
-			if en_r = '1' and wrq_r = "1" and addr_r = x"74" then	
+			if en_r = '1' and wrq_r = '1' and addr_r = x"74" then	
 				MACtransmit_request <= '1';	
 			else
 				MACtransmit_request <= '0';
 			end if;		
 
-			if en_r = '1' and wrq_r = "1" and addr_r = x"7C" then	
+			if en_r = '1' and wrq_r = '1' and addr_r = x"7C" then	
 				SMIwrite_request <= '1';	
 			else
 				SMIwrite_request <= '0';

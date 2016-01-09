@@ -1,16 +1,16 @@
 ;	N.I.G.E. Machine test suite
-;	30us test time
-sub0		equ	hex 03F000
-env0		equ	hex 03F080
+;	40us test time
+sub0		equ	hex 03B000
+env0		equ	hex 03B080
 sevenseg	equ	hex 03F830
 PSDRAM		equ	hex 040000
 SRAM		equ	hex 001000
-USERRAM	equ	hex 03C000
-SingleMulti	equ	243712
-CurrentVM	equ	243716
-Interval	equ	243720
-TaskControl	equ	244224
-PCoverride 	equ	244736
+USERRAM	equ	hex 03E000
+SingleMulti	equ	hex 03F000
+CurrentVM	equ	hex 03F004
+Interval	equ	hex 03F008
+TaskControl	equ	hex 03F200
+PCoverride 	equ	hex 03F400
 		ds.l	2			; BLOCK RAM simulator bug
 ;
 		#.b	1			; task 0 switches to task 1

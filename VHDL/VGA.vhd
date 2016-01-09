@@ -27,9 +27,7 @@ entity VGA is
            VSync : out  STD_LOGIC;
 			  RGB : out  STD_LOGIC_VECTOR (11 downto 0);			  
 			  VBlank	: out STD_LOGIC;									-- vertical blank		  
---			  VGA_columns : out std_logic_vector(7 downto 0);	-- number of character columns less one
-			  FetchNextRow : out std_logic := '0'	;				-- signal that line has been displayed
-			  SW : in STD_LOGIC_VECTOR (15 downto 0)
+			  FetchNextRow : out std_logic := '0'					-- signal that line has been displayed
 			  );
 end VGA;
 
