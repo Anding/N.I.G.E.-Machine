@@ -11,7 +11,7 @@ entity SPIslave3 is
            MOSI : in  STD_LOGIC;
            MISO : out  STD_LOGIC;
            SCK : in  STD_LOGIC;
-			  mode : in STD_LOGIC_VECTOR(1 downto 0)
+	  mode : in STD_LOGIC_VECTOR(1 downto 0)
 			  );
 end SPIslave3;
 

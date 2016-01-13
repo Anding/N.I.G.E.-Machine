@@ -353,7 +353,7 @@ PORT MAP(
 	
 inst_DMAcontroller: entity work.DMAcontroller PORT MAP(
 	CLK => CLK_SYSTEM,
-	s_aresetn => s_aresetn,
+	RESET => reset,
 	s_axi_awaddr => s_axi_awaddr,
 	s_axi_awvalid => s_axi_awvalid,
 	s_axi_awready => s_axi_awready,

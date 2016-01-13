@@ -41,7 +41,7 @@ ARCHITECTURE behavior OF TestbenchBoard IS
 			  -- Board
 			  SW : in STD_LOGIC_VECTOR (15 downto 0);
 			  sevenseg : out STD_LOGIC_VECTOR (6 downto 0);
-			  anode : out STD_LOGIC_VECTOR (3 downto 0);
+			  anode : out STD_LOGIC_VECTOR (7 downto 0);
 			  RGB1_Red : out STD_LOGIC;
 			  -- Ethernet
 			  PHYMDC : out  STD_LOGIC;
@@ -53,8 +53,7 @@ ARCHITECTURE behavior OF TestbenchBoard IS
            PHYTXEN : out  STD_LOGIC;
            PHYTXD : out  STD_LOGIC_VECTOR (1 downto 0);
            PHYCLK50MHZ : out  STD_LOGIC;
-           PHYINTN : in  STD_LOGIC;
-			  JB : out  STD_LOGIC_VECTOR (7 downto 0)
+           PHYINTN : in  STD_LOGIC
 			  );
     END COMPONENT;
     
@@ -133,7 +132,7 @@ ARCHITECTURE behavior OF TestbenchBoard IS
 BEGIN
 
 	-- Instantiate the Unit Under Test (UUT)
-   prj: Board_Nexys4 PORT MAP (
+   uut: Board_Nexys4 PORT MAP (
           CLK_IN => CLK_IN,
           RGB => RGB,
           HSync => HSync,
@@ -173,8 +172,7 @@ BEGIN
           PHYTXEN => PHYTXEN,
           PHYTXD => PHYTXD,
           PHYCLK50MHZ => PHYCLK50MHZ,
-          PHYINTN => PHYINTN,
-			 JB => open
+          PHYINTN => PHYINTN
         );
 		  
   instCellRAM: entity work.cellram PORT MAP (
@@ -191,7 +189,7 @@ BEGIN
           dq => DATA_SDRAM
         );
 
-	Inst_SPIslave3: entity work. SPIslave3 PORT MAP(
+	Inst_SPIslave3: entity work.SPIslave3 PORT MAP(
 		CS => SD_CS,
 		MOSI => MOSI,
 		MISO => MISO,

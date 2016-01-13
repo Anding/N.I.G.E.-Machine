@@ -52,7 +52,7 @@ entity ControlUnit is
 --				s_axi_rresp : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
 				s_axi_rvalid : IN STD_LOGIC;
 				s_axi_rdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-				s_axi_rready : OUT STD_LOGIC;
+				--s_axi_rready : OUT STD_LOGIC;
 				-- virtualization
 				PCfreeze : out STD_LOGIC_VECTOR (19 downto 0);
 				PCthaw : in STD_LOGIC_VECTOR (19 downto 0);
@@ -123,7 +123,9 @@ type state_T is (common, ifdup, smult, umult, sdivmod, udivmod, sdivmod_load, ud
 						Dfetch_long, Dfetch_long2, Dfetch_word, Dfetch_byte, Dfetch_word2, Dfetch_byte2,
 						Dstore_long, Dstore_word, Dstore_byte, Dstore2,
 						throw, throw2, virtual_interrupt, skip1) ;					
-						
+type handshake_type is (pending, ready, done);
+signal s_axi_aw_state, s_axi_w_state : handshake_type;
+signal s_axi_aw_state_n, s_axi_w_state_n : handshake_type;						
 signal state, state_n  : state_T;										-- state machine
 signal PC, PC_n, PC_plus, PC_jsl, PC_branch, PC_m1, PC_skipbranch : std_logic_vector (19 downto 0);		-- program counter logic
 signal PC_plus_two, PC_plus_three, PC_plus_four : std_logic_vector (19 downto 0);	
@@ -196,11 +198,15 @@ begin
 	process																			
 	begin																		-- faster to separate next-state logic and eliminate shared resources
 		wait until rising_edge(clk);
-		if rst = '0' then																	
+		if rst = '0' then		
+			s_axi_aw_state <= s_axi_aw_state_n;
+			s_axi_w_state <= s_axi_w_state_n;																	
 			if (count >= timer) then 
 				state <= state_n;			
 			end if;	
 		else																	-- synchronous reset
+			s_axi_aw_state <= ready;
+			s_axi_w_state <= ready;
 			state <= skip1;	-- skip2
 		end if;
 	end process;
@@ -270,12 +276,9 @@ ReturnAddress_n <= PC_addr;
 irq_n <= int_trig;
 rti <= '0';
 retrap_n <= retrap;
-s_axi_awvalid <= '0';
 s_axi_wdata <= NOS_r;
 s_axi_wstrb <= "1111";
-s_axi_wvalid <= '0';
-s_axi_arvalid <= '0';
-s_axi_rready <= '0';	
+s_axi_arvalid <= '0';	
 pause <= '0';
 debug_i <= x"21";
 preemp_counter_n <= preemp_counter;
@@ -545,11 +548,8 @@ case state is
 		
 		-- AXI logic
 		s_axi_arvalid <= '0';
-		s_axi_awvalid <= '0';
 		s_axi_wdata <= NOS_r;
 		s_axi_wstrb <= "1111";
-		s_axi_wvalid <= '0';
-		s_axi_rready <= '0';	
 		
 		-- virtualization
 		if	int_trig = '0' and ((singleMulti = '1' and opcode = ops_PAUSE) or preempt = '1') then
@@ -594,12 +594,9 @@ case state is
 		rti <= '0';
 		retrap_n <= retrap;
 		-- delayed_RTS_n <= delayed_RTS;
-		s_axi_awvalid <= '0';
 		s_axi_wdata <= NOS_r;
 		s_axi_wstrb <= "1111";
-		s_axi_wvalid <= '0';
 		s_axi_arvalid <= '0';
-		s_axi_rready <= '0';	
 		pause <= '0';
 		debug_i <= x"01";
 		preemp_counter_n <= preemp_counter;
@@ -622,12 +619,9 @@ case state is
 		rti <= '0';
 		retrap_n <= retrap;
 		-- delayed_RTS_n <= delayed_RTS;
-		s_axi_awvalid <= '0';
 		s_axi_wdata <= NOS_r;
 		s_axi_wstrb <= "1111";
-		s_axi_wvalid <= '0';
-		s_axi_arvalid <= '0';
-		s_axi_rready <= '0';	
+		s_axi_arvalid <= '0';	
 		pause <= '0';
 		debug_i <= x"02";
 		preemp_counter_n <= preemp_counter;
@@ -650,12 +644,9 @@ case state is
 		rti <= '0';
 		retrap_n <= retrap;
 		-- delayed_RTS_n <= delayed_RTS;
-		s_axi_awvalid <= '0';
 		s_axi_wdata <= NOS_r;
 		s_axi_wstrb <= "1111";
-		s_axi_wvalid <= '0';
 		s_axi_arvalid <= '0';
-		s_axi_rready <= '0';	
 		pause <= '0';
 		debug_i <= x"03";
 		preemp_counter_n <= preemp_counter;
@@ -678,12 +669,9 @@ case state is
 		rti <= '0';
 		retrap_n <= retrap;
 		-- delayed_RTS_n <= delayed_RTS;
-		s_axi_awvalid <= '0';
 		s_axi_wdata <= NOS_r;
 		s_axi_wstrb <= "1111";
-		s_axi_wvalid <= '0';
 		s_axi_arvalid <= '0';
-		s_axi_rready <= '0';	
 		pause <= '0';
 		debug_i <= x"04";
 		preemp_counter_n <= preemp_counter;
@@ -706,12 +694,9 @@ case state is
 		rti <= '0';
 		retrap_n <= retrap;
 		-- delayed_RTS_n <= delayed_RTS;
-		s_axi_awvalid <= '0';
 		s_axi_wdata <= NOS_r;
 		s_axi_wstrb <= "1111";
-		s_axi_wvalid <= '0';
 		s_axi_arvalid <= '0';
-		s_axi_rready <= '0';	
 		pause <= '0';
 		debug_i <= x"05";
 		preemp_counter_n <= preemp_counter;
@@ -734,12 +719,9 @@ case state is
 		rti <= '0';
 		retrap_n <= retrap;
 		-- delayed_RTS_n <= delayed_RTS;
-		s_axi_awvalid <= '0';
 		s_axi_wdata <= NOS_r;
 		s_axi_wstrb <= "1111";
-		s_axi_wvalid <= '0';
 		s_axi_arvalid <= '0';
-		s_axi_rready <= '0';	
 		pause <= '0';
 		debug_i <= x"06";
 		preemp_counter_n <= preemp_counter;
@@ -762,10 +744,8 @@ case state is
 		rti <= '0';
 		retrap_n <= retrap;
 		-- delayed_RTS_n <= delayed_RTS;
-		s_axi_awvalid <= '0';
 		s_axi_wdata <= NOS_r;
 		s_axi_wstrb <= "1111";
-		s_axi_wvalid <= '0';
 		s_axi_arvalid <= '0';
 		pause <= '0';
 		debug_i <= x"07";
@@ -789,12 +769,9 @@ case state is
 		rti <= '0';
 		retrap_n <= retrap;
 		-- delayed_RTS_n <= delayed_RTS;
-		s_axi_awvalid <= '0';
 		s_axi_wdata <= NOS_r;
 		s_axi_wstrb <= "1111";
-		s_axi_wvalid <= '0';
 		s_axi_arvalid <= '0';
-		s_axi_rready <= '0';	
 		pause <= '0';
 		debug_i <= x"08";
 		preemp_counter_n <= preemp_counter;
@@ -817,12 +794,9 @@ case state is
 		rti <= '0';
 		retrap_n <= retrap;
 		-- delayed_RTS_n <= delayed_RTS;
-		s_axi_awvalid <= '0';
 		s_axi_wdata <= NOS_r;
 		s_axi_wstrb <= "1111";
-		s_axi_wvalid <= '0';
 		s_axi_arvalid <= '0';
-		s_axi_rready <= '0';	
 		pause <= '0';
 		debug_i <= x"09";
 		preemp_counter_n <= preemp_counter;
@@ -845,12 +819,9 @@ case state is
 		rti <= '0';
 		retrap_n <= retrap;
 		-- delayed_RTS_n <= delayed_RTS;
-		s_axi_awvalid <= '0';
 		s_axi_wdata <= NOS_r;
 		s_axi_wstrb <= "1111";
-		s_axi_wvalid <= '0';
-		s_axi_arvalid <= '0';
-		s_axi_rready <= '0';	
+		s_axi_arvalid <= '0';	
 		pause <= '0';
 		debug_i <= x"0a";
 		preemp_counter_n <= preemp_counter;
@@ -873,12 +844,9 @@ case state is
 		rti <= '0';
 		retrap_n <= retrap;
 		-- delayed_RTS_n <= delayed_RTS;
-		s_axi_awvalid <= '0';
 		s_axi_wdata <= NOS_r;
 		s_axi_wstrb <= "1111";
-		s_axi_wvalid <= '0';
 		s_axi_arvalid <= '0';
-		s_axi_rready <= '0';	
 		pause <= '0';
 		debug_i <= x"0b";
 		preemp_counter_n <= preemp_counter;
@@ -901,12 +869,9 @@ case state is
 		rti <= '0';
 		retrap_n <= retrap;
 		-- delayed_RTS_n <= delayed_RTS;
-		s_axi_awvalid <= '0';
 		s_axi_wdata <= NOS_r;
 		s_axi_wstrb <= "1111";
-		s_axi_wvalid <= '0';
 		s_axi_arvalid <= '0';
-		s_axi_rready <= '0';	
 		pause <= '0';
 		debug_i <= x"0c";
 		preemp_counter_n <= preemp_counter;
@@ -929,12 +894,9 @@ case state is
 		rti <= '0';
 		retrap_n <= retrap;
 		-- delayed_RTS_n <= delayed_RTS;
-		s_axi_awvalid <= '0';
 		s_axi_wdata <= NOS_r;
 		s_axi_wstrb <= "1111";
-		s_axi_wvalid <= '0';
 		s_axi_arvalid <= '0';
-		s_axi_rready <= '0';	
 		pause <= '0';
 		debug_i <= x"0d";
 		preemp_counter_n <= preemp_counter;
@@ -957,12 +919,9 @@ case state is
 		rti <= '0';
 		retrap_n <= retrap;
 		-- delayed_RTS_n <= delayed_RTS;
-		s_axi_awvalid <= '0';
 		s_axi_wdata <= NOS_r;
 		s_axi_wstrb <= "1111";
-		s_axi_wvalid <= '0';
 		s_axi_arvalid <= '0';
-		s_axi_rready <= '0';	
 		pause <= '0';
 		debug_i <= x"0e";
 		preemp_counter_n <= preemp_counter;
@@ -989,11 +948,8 @@ case state is
 		rti <= '0';
 		retrap_n <= retrap;
 		-- delayed_RTS_n <= delayed_RTS;
-		s_axi_awvalid <= '0';
 		s_axi_wdata <= NOS_r;
 		s_axi_wstrb <= "1111";
-		s_axi_wvalid <= '0';
-		s_axi_rready <= '0';	
 		s_axi_arvalid <= '1';
 		pause <= '0';
 		debug_i <= x"0f";
@@ -1022,12 +978,9 @@ case state is
 		rti <= '0';
 		retrap_n <= retrap;
 		-- delayed_RTS_n <= delayed_RTS;
-		s_axi_awvalid <= '0';
 		s_axi_wdata <= NOS_r;
 		s_axi_wstrb <= "1111";
-		s_axi_wvalid <= '0';
-		s_axi_arvalid <= '0';
-		s_axi_rready <= '1';	
+		s_axi_arvalid <= '0';	
 		pause <= '0';
 		debug_i <= x"10";
 		preemp_counter_n <= preemp_counter;
@@ -1058,11 +1011,8 @@ case state is
 		rti <= '0';
 		retrap_n <= retrap;
 		-- delayed_RTS_n <= delayed_RTS;
-		s_axi_awvalid <= '0';
 		s_axi_wdata <= NOS_r;
 		s_axi_wstrb <= "1111";
-		s_axi_wvalid <= '0';
-		s_axi_rready <= '0';	
 		s_axi_arvalid <= '1';
 		pause <= '0';
 		debug_i <= x"11";
@@ -1095,12 +1045,9 @@ case state is
 		rti <= '0';
 		retrap_n <= retrap;
 		-- delayed_RTS_n <= delayed_RTS;
-		s_axi_awvalid <= '0';
 		s_axi_wdata <= NOS_r;
 		s_axi_wstrb <= "1111";
-		s_axi_wvalid <= '0';
 		s_axi_arvalid <= '0';
-		s_axi_rready <= '1';	
 		pause <= '0';
 		debug_i <= x"12";
 		preemp_counter_n <= preemp_counter;
@@ -1135,11 +1082,8 @@ case state is
 		rti <= '0';
 		retrap_n <= retrap;
 		-- delayed_RTS_n <= delayed_RTS;
-		s_axi_awvalid <= '0';
 		s_axi_wdata <= NOS_r;
 		s_axi_wstrb <= "1111";
-		s_axi_wvalid <= '0';
-		s_axi_rready <= '0';	
 		s_axi_arvalid <= '1';
 		pause <= '0';
 		debug_i <= x"13";
@@ -1176,19 +1120,16 @@ case state is
 		rti <= '0';
 		retrap_n <= retrap;
 		-- delayed_RTS_n <= delayed_RTS;
-		s_axi_awvalid <= '0';
 		s_axi_wdata <= NOS_r;
 		s_axi_wstrb <= "1111";
-		s_axi_wvalid <= '0';
 		s_axi_arvalid <= '0';
-		s_axi_rready <= '1';	
 		pause <= '0';
 		debug_i <= x"14";			
 		preemp_counter_n <= preemp_counter;
 		PCfreeze <= PC;
 			
 	when Dstore_long =>										
-		if s_axi_awready = '1' and s_axi_wready = '1' then			-- CAUTION this will break if s_axi_awready and s_axi_wready do not signal concurrently!
+		if s_axi_aw_state_n = done and s_axi_w_state_n = done then
 			state_n <= Dstore2;		
 			ucode <= ops_DROP;									
 		else
@@ -1209,19 +1150,16 @@ case state is
 		rti <= '0';
 		retrap_n <= retrap;
 		-- delayed_RTS_n <= delayed_RTS;
-		s_axi_awvalid <= '1';
 		s_axi_wdata <= NOS_r(7 downto 0) & NOS_r(15 downto 8) & NOS_r(23 downto 16) & NOS_r(31 downto 24);  -- big endian <-> AXI conversion
 		s_axi_wstrb <= "1111";
-		s_axi_wvalid <= '1';
 		s_axi_arvalid <= '0';
-		s_axi_rready <= '0';	
 		pause <= '0';
 		debug_i <= x"15";		
 		preemp_counter_n <= preemp_counter;	
 		PCfreeze <= PC;			
 		
 	when Dstore_word =>										
-		if s_axi_awready = '1' and s_axi_wready = '1' then			-- CAUTION this will break if s_axi_awready and s_axi_wready do not signal concurrently!
+		if s_axi_aw_state_n = done and s_axi_w_state_n = done  then
 			state_n <= Dstore2;		
 			ucode <= ops_DROP;									
 		else
@@ -1248,17 +1186,14 @@ case state is
 		retrap_n <= retrap;
 		-- delayed_RTS_n <= delayed_RTS;
 		s_axi_wdata <= NOS_r(7 downto 0) & NOS_r(15 downto 8) & NOS_r(7 downto 0) & NOS_r(15 downto 8);
-		s_axi_awvalid <= '1';
-		s_axi_wvalid <= '1';
 		s_axi_arvalid <= '0';
-		s_axi_rready <= '0';	
 		pause <= '0';
 		debug_i <= x"16";	
 		preemp_counter_n <= preemp_counter;
 		PCfreeze <= PC;
 
 	when Dstore_byte =>										
-		if s_axi_awready = '1' and s_axi_wready = '1' then			-- CAUTION this will break if s_axi_awready and s_axi_wready do not signal concurrently!
+		if s_axi_aw_state_n = done and s_axi_w_state_n = done  then
 			state_n <= Dstore2;		
 			ucode <= ops_DROP;									
 		else
@@ -1289,10 +1224,7 @@ case state is
 		retrap_n <= retrap;
 		-- delayed_RTS_n <= delayed_RTS;
 		s_axi_wdata <= NOS_r(7 downto 0) & NOS_r(7 downto 0) & NOS_r(7 downto 0) & NOS_r(7 downto 0);
-		s_axi_awvalid <= '1';
-		s_axi_wvalid <= '1';
 		s_axi_arvalid <= '0';
-		s_axi_rready <= '0';	
 		pause <= '0';
 		debug_i <= x"17";	
 		preemp_counter_n <= preemp_counter;
@@ -1315,12 +1247,9 @@ case state is
 		rti <= '0';
 		retrap_n <= retrap;
 		-- delayed_RTS_n <= delayed_RTS;
-		s_axi_awvalid <= '0';
 		s_axi_wdata <= NOS_r;
 		s_axi_wstrb <= "1111";
-		s_axi_wvalid <= '0';
 		s_axi_arvalid <= '0';
-		s_axi_rready <= '0';	
 		pause <= '0';
 		debug_i <= x"18";	
 		preemp_counter_n <= preemp_counter;
@@ -1348,12 +1277,9 @@ case state is
 		irq_n <= int_trig;
 		retrap_n <= retrap;
 		-- delayed_RTS_n <= delayed_RTS;
-		s_axi_awvalid <= '0';
 		s_axi_wdata <= NOS_r;
 		s_axi_wstrb <= "1111";
-		s_axi_wvalid <= '0';
-		s_axi_arvalid <= '0';
-		s_axi_rready <= '0';	
+		s_axi_arvalid <= '0';	
 		pause <= '0';
 		debug_i <= x"19";
 		preemp_counter_n <= preemp_counter;
@@ -1380,12 +1306,9 @@ case state is
 		irq_n <= int_trig;
 		rti <= '0';
 		retrap_n <= retrap;
-		s_axi_awvalid <= '0';
 		s_axi_wdata <= NOS_r;
 		s_axi_wstrb <= "1111";
-		s_axi_wvalid <= '0';
 		s_axi_arvalid <= '0';
-		s_axi_rready <= '0';	
 		pause <= '0';
 		debug_i <= x"20";
 		preemp_counter_n <= preemp_counter;
@@ -1407,12 +1330,9 @@ case state is
 		irq_n <= int_trig;
 		rti <= '0';
 		retrap_n <= retrap;
-		s_axi_awvalid <= '0';
 		s_axi_wdata <= NOS_r;
 		s_axi_wstrb <= "1111";
-		s_axi_wvalid <= '0';
 		s_axi_arvalid <= '0';
-		s_axi_rready <= '0';	
 		pause <= '0';
 		debug_i <= x"21";
 		preemp_counter_n <= preemp_counter;
@@ -1420,6 +1340,57 @@ case state is
 
 	end case;
 end process;
+
+-- AXI4 write channel handshake control
+process (state_n, s_axi_aw_state, s_axi_awready, s_axi_w_state, s_axi_wready)
+begin
+	-- s_axi_aw
+	case s_axi_aw_state is
+	when ready =>
+		if state_n = Dstore_long or state_n = Dstore_word or state_n = Dstore_byte then
+			s_axi_aw_state_n <= pending;
+		else 
+			s_axi_aw_state_n <= ready;
+		end if;
+	when pending =>
+		if s_axi_awready = '1' then
+			s_axi_aw_state_n <= done;
+		else
+			s_axi_aw_state_n <= pending;
+		end if;		
+	when done =>
+		if state_n = common then
+			s_axi_aw_state_n <= ready;
+		else 
+			s_axi_aw_state_n <= done;
+		end if;		
+	end case;
+	
+	case s_axi_w_state is
+	when ready =>
+		if state_n = Dstore_long or state_n = Dstore_word or state_n = Dstore_byte then
+			s_axi_w_state_n <= pending;
+		else 
+			s_axi_w_state_n <= ready;
+		end if;
+	when pending =>
+		if s_axi_wready = '1' then
+			s_axi_w_state_n <= done;
+		else
+			s_axi_w_state_n <= pending;
+		end if;		
+	when done =>
+		if state_n = common then
+			s_axi_w_state_n <= ready;
+		else 
+			s_axi_w_state_n <= done;
+		end if;		
+	end case;
+end process;
+
+with s_axi_aw_state select s_axi_awvalid <= '1' when pending, '0' when others;
+with s_axi_w_state select s_axi_wvalid <= '1' when pending, '0' when others;
+
 end RTL;
 
 --Copyright and license
