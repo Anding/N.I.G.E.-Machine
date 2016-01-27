@@ -1,7 +1,7 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 
-entity Graphics is
+entity GraphicsDDR is
 
 Port ( 
 	clk_VGA	: in STD_LOGIC;
@@ -39,9 +39,9 @@ Port (
 	data_Color : in STD_LOGIC_VECTOR (15 downto 0);
 	addr_Color : out STD_LOGIC_VECTOR (7 downto 0)				
 	);
-end Graphics;
+end GraphicsDDR;
 
-architecture RTL of Graphics is
+architecture RTL of GraphicsDDR is
 
 signal DATA_OUT_VGA : std_logic_vector(7 downto 0) := (others=>'0');
 signal ADDR_VGA : std_logic_vector(8 downto 0);
@@ -54,7 +54,7 @@ begin
 
 VBlank <= VBlank_i;
 
-inst_VGAController: entity work.VGA PORT MAP(
+inst_VGAControllerDDR: entity work.VGA PORT MAP(
 	CLK_VGA => CLK_VGA,
 	reset => reset,
 	mode	=> mode,
@@ -77,9 +77,10 @@ inst_VGAController: entity work.VGA PORT MAP(
 	FetchNextRow => FetchNextRow
 );	
 	
-inst_TEXTbuffer: entity work.TEXTbuffer PORT MAP(
+inst_TEXTbufferDDR: entity work.TEXTbufferDDR PORT MAP(
 	clk_MEM => clk_MEM,
 	clk_VGA => clk_VGA,
+	reset => reset,
 	VGAcols => VGAcols,
 	VBlank => VBlank_i,
 	FetchNextRow => FetchNextRow,

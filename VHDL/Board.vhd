@@ -74,7 +74,7 @@ constant blank : std_logic_vector(31 downto 0) := (others =>'0');
 	
 signal counter_clk, counter_ms : std_logic_vector(31 downto 0) := (others =>'0');
 signal reset : std_logic;
-signal VGAclk25, VGAclk50, VGAclk75, VGAclk150, clk100MHZ, clk50MHZ : std_logic;
+signal VGAclk25, VGAclk50, VGAclk75, VGAclk150, clk100MHZ, clk50MHZ, clk200MHZ : std_logic;
 signal irq, rti, ms_irq : std_logic;
 signal irv : std_logic_vector(3 downto 0);
 signal irq_mask : std_logic_vector(15 downto 1);
@@ -172,6 +172,7 @@ port (
 	CLK_OUT4	: out std_logic;
 	CLK_OUT5	: out std_logic;
 	CLK_OUT6	: out std_logic;
+	CLK_OUT7	: out std_logic;
 	LOCKED		: out std_logic
 	 );
 end component;
@@ -189,6 +190,7 @@ inst_CLOCKMANAGER : CLOCKMANAGER
 		CLK_OUT4 => VGACLK150,	 
 		CLK_OUT5 => CLK100MHZ,
 		CLK_OUT6 => CLK50MHZ,
+		CLK_OUT7 => CLK200MHZ,
 		LOCKED => LOCKED
 	);
 	

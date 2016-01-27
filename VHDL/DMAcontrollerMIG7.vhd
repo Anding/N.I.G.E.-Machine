@@ -344,7 +344,7 @@ with s_axi_arlen_r1 select s_axi_rvalid <=  '0' when "0", app_rd_data_valid when
 --s_axi_rresp <= AXI_OKAY;
 with s_axi_rlanes select										-- place data onto 32bit bus according to lo bits of original read address
 	s_axi_rdata <= 	app_rd_data(31 downto 0)	when "00",
-				app_rd_data(63 downto 31)	when "01",
+				app_rd_data(63 downto 32)	when "01",
 				app_rd_data(95 downto 64)	when "10",
 				app_rd_data(127 downto 96)	when others;
 

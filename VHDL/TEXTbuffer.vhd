@@ -118,7 +118,7 @@ begin
 		-- 	organized by signal rather than by state for clarity
 									
 		with state select
-			axi_addr_n <= 	txt_zero - (VGAcols & "0") when blank,			-- this should not be necessary if state machine triggering is operating correcty.  Needs further investigation	
+			axi_addr_n <= 	txt_zero when blank,			-- this should not be necessary if state machine triggering is operating correcty.  Needs further investigation	
 								axi_addr + (VGAcols & "0") when switch_bank,	-- move through memory buffer incrementing by the 2 * number of characters in a column (memory format is word = data+color)words
 								axi_addr when others;
 								
@@ -136,7 +136,7 @@ begin
 									buffer_addr + 1 when (state = first_fill and t_axi_rvalid = '1') else 	-- increment the text buffer write address each time after valid data is presented 
 									buffer_addr;
 							
-		wea <=	"1" when (state = refill and t_axi_rvalid = '1') else "0";
+		wea <=	"1" when ((state = refill or state = first_fill) and t_axi_rvalid = '1') else "0";
 			
 	inst_BUFFER_TXT : entity work.BUFFER_TXT
 	PORT MAP (

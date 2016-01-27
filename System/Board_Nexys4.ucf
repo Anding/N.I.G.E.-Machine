@@ -121,6 +121,15 @@ NET "SD_RESET"		LOC = "E2"  |IOSTANDARD = "LVCMOS33";	# Drive low to pwr SD card
 ## RS232 on Pmod Header JC (lower row)
 NET "RXD_S0" 			LOC = "J2"	|IOSTANDARD = "LVCMOS33";
 NET "TXD_S0" 			LOC = "G6"	|IOSTANDARD = "LVCMOS33";
+## Pmod Header JC
+#NET "JC<0>"			LOC = "K2"	| IOSTANDARD = "LVCMOS33";		#Bank = 35, Pin name = IO_L23P_T3_35,						Sch name = JC1
+#NET "JC<1>"			LOC = "E7"	| IOSTANDARD = "LVCMOS33";		#Bank = 35, Pin name = IO_L6P_T0_35,						Sch name = JC2
+#NET "JC<2>"			LOC = "J3"	| IOSTANDARD = "LVCMOS33";		#Bank = 35, Pin name = IO_L22P_T3_35,						Sch name = JC3
+#NET "JC<3>"			LOC = "J4"	| IOSTANDARD = "LVCMOS33";		#Bank = 35, Pin name = IO_L21P_T3_DQS_35,					Sch name = JC4
+#NET "JC<4>"			LOC = "K1"	| IOSTANDARD = "LVCMOS33";		#Bank = 35, Pin name = IO_L23N_T3_35,						Sch name = JC7
+#NET "JC<5>"			LOC = "E6"	| IOSTANDARD = "LVCMOS33";		#Bank = 35, Pin name = IO_L5P_T0_AD13P_35,					Sch name = JC8
+#NET "JC<6>"			LOC = "J2"	| IOSTANDARD = "LVCMOS33";		#Bank = 35, Pin name = IO_L22N_T3_35,						Sch name = JC9
+#NET "JC<7>"			LOC = "G6"	| IOSTANDARD = "LVCMOS33";		#Bank = 35, Pin name = IO_L19P_T3_35,
 ## RS232 via USB
 #NET "RXD_S0" 			LOC = "C4"	| IOSTANDARD = "LVCMOS33";
 #NET "TXD_S0" 			LOC = "D4"	| IOSTANDARD = "LVCMOS33";
@@ -129,7 +138,7 @@ NET "TXD_S0" 			LOC = "G6"	|IOSTANDARD = "LVCMOS33";
 NET "PhyMdc"			LOC = "C9"	|IOSTANDARD = "LVCMOS33";		#Bank = 16, Pin name = IO_L11P_T1_SRCC_16,					Sch name = ETH_MDC
 NET "PhyMdio"			LOC = "A9"	|IOSTANDARD = "LVCMOS33";		#Bank = 16, Pin name = IO_L14N_T2_SRCC_16,					Sch name = ETH_MDIO
 NET "PhyRstn"			LOC = "B3"	|IOSTANDARD = "LVCMOS33";		#Bank = 35, Pin name = IO_L10P_T1_AD15P_35,					Sch name = ETH_RSTN
-NET "PhyRxErr"			LOC = "C10"	|IOSTANDARD = "LVCMOS33";		#Bank = 16, Pin name = IO_L13N_T2_MRCC_16,					Sch name = ETH_RXERR
+NET "PhyRxErr"		LOC = "C10"	|IOSTANDARD = "LVCMOS33";		#Bank = 16, Pin name = IO_L13N_T2_MRCC_16,					Sch name = ETH_RXERR
 NET "PhyClk50Mhz"		LOC = "D5"	|IOSTANDARD = "LVCMOS33";		#Bank = 35, Pin name = IO_L11P_T1_SRCC_35,					Sch name = ETH_REFCLK
 NET "PhyIntn"			LOC = "B8"	|IOSTANDARD = "LVCMOS33";		#Bank = 16, Pin name = IO_L12P_T1_MRCC_16,					Sch name = ETH_INTN
 NET "PhyCrs"			LOC = "D9"	| IOSTANDARD = "LVCMOS33";		#Bank = 16, Pin name = IO_L6N_T0_VREF_16,						Sch name = ETH_CRSDV
