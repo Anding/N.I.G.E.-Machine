@@ -20,18 +20,18 @@ entity DMAcontroller is
 				s_axi_wvalid : IN STD_LOGIC;
 				s_axi_wready : OUT STD_LOGIC;
 				-- write response
-				s_axi_bresp : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
-				s_axi_bvalid : OUT STD_LOGIC;
-				s_axi_bready : IN STD_LOGIC;
+--				s_axi_bresp : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
+--				s_axi_bvalid : OUT STD_LOGIC;
+--				s_axi_bready : IN STD_LOGIC;
 				-- address read
 				s_axi_araddr : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 				s_axi_arvalid : IN STD_LOGIC;
 				s_axi_arready : OUT STD_LOGIC;
 				-- read
 				s_axi_rdata : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-				s_axi_rresp : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
+--				s_axi_rresp : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
 				s_axi_rvalid : OUT STD_LOGIC;
-				s_axi_rready : IN STD_LOGIC;
+--				s_axi_rready : IN STD_LOGIC;
 				-- AIX4 connections to Text buffer
 				t_axi_araddr : IN  std_logic_vector(31 downto 0);
 				t_axi_arlen : IN  std_logic_vector(7 downto 0);				-- Burst length = value + 1
@@ -133,7 +133,7 @@ begin
 								s_axi_rdata_r when others;								
 	
 	s_axi_rdata <= s_axi_rdata_r;
-	s_axi_rresp	<= "00";
+--	s_axi_rresp	<= "00";
 	
 	-- write address, write, and write response channels
 	with state select
@@ -144,10 +144,10 @@ begin
 		s_axi_wready <=	'1' when write_AXI_a_handshake,														-- acknowledge only after entering write cycle
 								'0' when others;	
 
-	with state select
-		s_axi_bvalid <=	'1' when write_AXI_b_handshake,						
-								'0' when others;
-	s_axi_bresp	<= "00";
+--	with state select
+--		s_axi_bvalid <=	'1' when write_AXI_b_handshake,						
+--								'0' when others;
+--	s_axi_bresp	<= "00";
 	
 	-- AXI 4 read channel	
 	with state select
@@ -301,7 +301,7 @@ begin
 		);	
 	end generate;
  
-   NEXT_STATE_DECODE: process (state, s_axi_rready, s_axi_bready, s_axi_arvalid, s_axi_awvalid, s_axi_wvalid, ADDR_r, TOP_r,
+   NEXT_STATE_DECODE: process (state, s_axi_arvalid, s_axi_awvalid, s_axi_wvalid, ADDR_r, TOP_r,
 											t_axi_arvalid, t_axi_arsize, t_axi_arburst, s_axi_wstrb, wait_SDRAM, s_axi_wstrb_r)
    begin
       case (state) is
@@ -318,11 +318,11 @@ begin
 				
 			when read_AXI_handshake =>
 				timer <= (others=>'0');
-				if s_axi_rready = '1' then
+--				if s_axi_rready = '1' then
 					next_state <= idle;
-				else
-					next_state <= state;
-				end if;
+--				else
+--					next_state <= state;
+--				end if;
 				debug_i <= x"03";
 				
 			when write_AXI_a_handshake =>
@@ -355,11 +355,11 @@ begin
 
 			when write_AXI_b_handshake =>
 				timer <= (others=>'0');
-				if s_axi_bready = '1' then
+--				if s_axi_bready = '1' then
 					next_state <= idle;
-				else
-					next_state <= state;
-				end if;		
+--				else
+--					next_state <= state;
+--				end if;		
 				debug_i <= x"08";
 
 			when startup =>

@@ -52,18 +52,18 @@ entity CPU is
 				s_axi_wvalid : OUT STD_LOGIC;
 				s_axi_wready : IN STD_LOGIC;
 				-- write response
-				s_axi_bresp : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
-				s_axi_bvalid : IN STD_LOGIC;
-				s_axi_bready : OUT STD_LOGIC;
+--				s_axi_bresp : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
+--				s_axi_bvalid : IN STD_LOGIC;
+--				s_axi_bready : OUT STD_LOGIC;
 				-- address read
 				s_axi_araddr : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
 				s_axi_arvalid : OUT STD_LOGIC;
 				s_axi_arready : IN STD_LOGIC;
 				-- read
 				s_axi_rdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-				s_axi_rresp : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
+--				s_axi_rresp : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
 				s_axi_rvalid : IN STD_LOGIC;
-				s_axi_rready : OUT STD_LOGIC;
+--				s_axi_rready : OUT STD_LOGIC;
 				-- virtualization control
 				VM : OUT STD_LOGIC_VECTOR (vmp_w -1 downto 0);
 				vir_EN : IN STD_LOGIC;
@@ -183,16 +183,16 @@ begin
 		s_axi_wstrb => s_axi_wstrb,
 		s_axi_wvalid => s_axi_wvalid,
 		s_axi_wready => s_axi_wready,
-		s_axi_bresp => s_axi_bresp,
-		s_axi_bvalid => s_axi_bvalid,
-		s_axi_bready => s_axi_bready,
+--		s_axi_bresp => s_axi_bresp,
+--		s_axi_bvalid => s_axi_bvalid,
+--		s_axi_bready => s_axi_bready,
 		s_axi_araddr => s_axi_araddr,
 		s_axi_arvalid => s_axi_arvalid,
 		s_axi_arready => s_axi_arready,
 		s_axi_rdata => s_axi_rdata, 
-		s_axi_rresp => s_axi_rresp,
+--		s_axi_rresp => s_axi_rresp,
 		s_axi_rvalid => s_axi_rvalid,
-		s_axi_rready => s_axi_rready,
+--		s_axi_rready => s_axi_rready,
 		pause => pause,
 		SingleMulti => SingleMulti,
 		PCfreeze => PCfreeze,
