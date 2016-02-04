@@ -35,15 +35,15 @@ entity DMAcontroller is
 				-- AIX4 connections to Text buffer
 				t_axi_araddr : IN  std_logic_vector(31 downto 0);
 				t_axi_arlen : IN  std_logic_vector(7 downto 0);				-- Burst length = value + 1
-				t_axi_arsize : IN  std_logic_vector(2 downto 0);			-- Size in bytes: "01" = 2 bytes, "10" = 4 bytes
-				t_axi_arburst : IN  std_logic_vector(1 downto 0);			-- Type: "01" = INCR
+--				t_axi_arsize : IN  std_logic_vector(2 downto 0);			-- Size in bytes: "01" = 2 bytes, "10" = 4 bytes
+--				t_axi_arburst : IN  std_logic_vector(1 downto 0);			-- Type: "01" = INCR
 				t_axi_arvalid : IN  std_logic;
 				t_axi_arready : OUT  std_logic;
-				t_axi_rdata : OUT  std_logic_vector(31 downto 0);
+				t_axi_rdata : OUT  std_logic_vector(15 downto 0);
 				t_axi_rresp : OUT  std_logic_vector(1 downto 0);			
 				t_axi_rlast : OUT  std_logic;										-- Set high on last data item
 				t_axi_rvalid : OUT  std_logic;
-				t_axi_rready : IN  std_logic;
+--				t_axi_rready : IN  std_logic;
 				-- PSDRAM connections
 				ADDR_SDRAM : out  STD_LOGIC_VECTOR (23 downto 1);		-- SDRAM connections to CellularRAM
 				DATA_SDRAM : inout  STD_LOGIC_VECTOR (15 downto 0);
@@ -82,7 +82,7 @@ signal ADDR_r, ADDR_n : std_logic_vector(23 downto 1);
 signal TOP_r, TOP_n : std_logic_vector(23 downto 1);
 signal t_axi_araddr_r : std_logic_vector(31 downto 0);
 signal WAIT_SDRAM_m1 : std_logic;
-signal t_axi_rdata_r, t_axi_rdata_n : std_logic_vector(31 downto 0);
+signal t_axi_rdata_r, t_axi_rdata_n : std_logic_vector(15 downto 0);
 signal debug_i : std_logic_vector(7 downto 0);
 	
 begin
@@ -172,7 +172,7 @@ begin
 	TOP_n <= 	(t_axi_arlen(7 downto 0) + t_axi_araddr_r(23 downto 1)) when init_burst2,
 					TOP_r when others;
 				
-	t_axi_rdata_n <= 	DATA_IN_SDRAM & DATA_IN_SDRAM;								
+	t_axi_rdata_n <= 	DATA_IN_SDRAM;								
 	
 	
 	
@@ -302,7 +302,7 @@ begin
 	end generate;
  
    NEXT_STATE_DECODE: process (state, s_axi_arvalid, s_axi_awvalid, s_axi_wvalid, ADDR_r, TOP_r,
-											t_axi_arvalid, t_axi_arsize, t_axi_arburst, s_axi_wstrb, wait_SDRAM, s_axi_wstrb_r)
+											t_axi_arvalid, s_axi_wstrb, wait_SDRAM, s_axi_wstrb_r)
    begin
       case (state) is
 		
@@ -463,7 +463,7 @@ begin
                next_state <= read_pagemode_lo;
 				elsif (s_axi_awvalid = '1' and s_axi_wvalid = '1') then
 					next_state <= write_AXI_a_handshake;
-				elsif t_axi_arvalid = '1' and t_axi_arsize = "001" and t_axi_arburst = "01" then
+				elsif t_axi_arvalid = '1' then --and t_axi_arsize = "001" and t_axi_arburst = "01" then
 					next_state <= init_burst1;
 				else
 					next_state <= state;

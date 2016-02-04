@@ -181,7 +181,7 @@ signal s_axi_rdata : std_logic_vector(31 downto 0);
 signal s_axi_rresp : std_logic_vector(1 downto 0);
 signal s_axi_rvalid : std_logic;
 signal t_axi_arready : std_logic;
-signal t_axi_rdata : std_logic_vector(31 downto 0);
+signal t_axi_rdata : std_logic_vector(15 downto 0);
 signal t_axi_rresp : std_logic_vector(1 downto 0);
 signal t_axi_rlast : std_logic;
 signal t_axi_rvalid : std_logic;
@@ -687,15 +687,15 @@ begin
 --		s_axi_rready => s_axi_rready,
 		t_axi_araddr => t_axi_araddr,
 		t_axi_arlen => t_axi_arlen,
-		t_axi_arsize => t_axi_arsize,
-		t_axi_arburst => t_axi_arburst,
+--		t_axi_arsize => t_axi_arsize,
+--		t_axi_arburst => t_axi_arburst,
 		t_axi_arvalid => t_axi_arvalid,
 		t_axi_arready => t_axi_arready,
 		t_axi_rdata => t_axi_rdata,
 		t_axi_rresp => t_axi_rresp,
 		t_axi_rlast => t_axi_rlast,
 		t_axi_rvalid => t_axi_rvalid,
-		t_axi_rready => t_axi_rready,
+--		t_axi_rready => t_axi_rready,
 		ADDR_SDRAM => ADDR_SDRAM,
 		DATA_SDRAM => DATA_SDRAM,
 		OE_SDRAM => OE_SDRAM ,
@@ -753,15 +753,15 @@ begin
 		DATA_TEXT => DATA_TEXT,
 		t_axi_araddr => t_axi_araddr,
 		t_axi_arlen => t_axi_arlen,
-		t_axi_arsize => t_axi_arsize,
-		t_axi_arburst => t_axi_arburst,
+--		t_axi_arsize => t_axi_arsize,
+--		t_axi_arburst => t_axi_arburst,
 		t_axi_arvalid => t_axi_arvalid,
 		t_axi_arready => t_axi_arready,
 		t_axi_rdata => t_axi_rdata,
 		t_axi_rresp => t_axi_rresp,
 		t_axi_rlast => t_axi_rlast,
-		t_axi_rvalid => t_axi_rvalid,
-		t_axi_rready => t_axi_rready
+		t_axi_rvalid => t_axi_rvalid
+--		t_axi_rready => t_axi_rready
 	);
 	
 		Inst_Interrupt: entity work.Interrupt PORT MAP(

@@ -18,15 +18,15 @@ entity TEXTbuffer is port
 			-- AXI burst read channel
 			t_axi_araddr : OUT  std_logic_vector(31 downto 0);
 			t_axi_arlen : OUT  std_logic_vector(7 downto 0);			-- Burst length = value + 1.  Set directly from VGA_columns
-			t_axi_arsize : OUT  std_logic_vector(2 downto 0);			-- Size in bytes: "001" = 2 bytes, "010" = 4 bytes
-			t_axi_arburst : OUT  std_logic_vector(1 downto 0);			-- Type: "01" = INCR
+--			t_axi_arsize : OUT  std_logic_vector(2 downto 0);			-- Size in bytes: "001" = 2 bytes, "010" = 4 bytes
+--			t_axi_arburst : OUT  std_logic_vector(1 downto 0);			-- Type: "01" = INCR
 			t_axi_arvalid : OUT  std_logic;
 			t_axi_arready : IN  std_logic;
-			t_axi_rdata : IN  std_logic_vector(31 downto 0);
+			t_axi_rdata : IN  std_logic_vector(15 downto 0);
 			t_axi_rresp : IN  std_logic_vector(1 downto 0);			
 			t_axi_rlast : IN  std_logic;										-- Set high on last data item
-			t_axi_rvalid : IN  std_logic;
-			t_axi_rready : OUT  std_logic
+			t_axi_rvalid : IN  std_logic
+--			t_axi_rready : OUT  std_logic
 			);
 end TEXTbuffer;
 
@@ -48,13 +48,13 @@ signal line_count, line_count_n : std_logic_vector(2 downto 0);
 begin
 		t_axi_araddr <= "00000000" & axi_addr;		-- current start of row position in PSDRAM screen buffer 
 		t_axi_arlen  <= VGAcols - 1;					-- number of words to read is the number of characters in a row (AXI4 starts counting 0 = one)
-		t_axi_arsize <= "001";							-- readsize is word (16 bits)
-		t_axi_arburst <= "01";							-- Type: "01" = INCR
-		t_axi_rready <= '1';								-- The text buffer is always ready to read data
+--		t_axi_arsize <= "001";							-- readsize is word (16 bits)
+--		t_axi_arburst <= "01";							-- Type: "01" = INCR
+--		t_axi_rready <= '1';								-- The text buffer is always ready to read data
 		
 		addra <= (not bank) & buffer_addr;																							-- concatenate the active bank for writing with the current write address
 		addrb <= bank & ADDR_TEXT;																										-- concatenate the active bank for reading with the current read address
-		dina <= t_axi_rdata(31 downto 16) when buffer_addr(0) = '1' else t_axi_rdata(15 downto 0);				-- select WORD from longword bus		
+		dina <= t_axi_rdata;	
 			
 		process				-- cross clock domain signals
 		begin
