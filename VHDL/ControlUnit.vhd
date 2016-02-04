@@ -123,7 +123,7 @@ type state_T is (common, ifdup, smult, umult, sdivmod, udivmod, sdivmod_load, ud
 						Sfetch_long, Sfetch_word, Sfetch_byte,
 						Dfetch_long, Dfetch_long2, Dfetch_word, Dfetch_byte, Dfetch_word2, Dfetch_byte2,
 						Dstore_long, Dstore_word, Dstore_byte, Dstore2,
-						throw, throw2, virtual_interrupt, skip1) ;					
+						throw0, throw, virtual_interrupt, skip1) ;					
 						
 signal state, state_n  : state_T;										-- state machine
 signal PC, PC_n, PC_plus, PC_jsl, PC_branch, PC_m1, PC_skipbranch : std_logic_vector (19 downto 0);		-- program counter logic
@@ -282,7 +282,7 @@ begin
 			elsif (opcode = ops_PAUSE OR preempt = '1') then	-- virtual interrupt
 				state_n <= virtual_interrupt;
 			elsif opcode = ops_throw then
-				state_n <= throw;
+				state_n <= throw0;
 			elsif opcode = ops_lfetch then
 				if chip_RAM = '1' then
 					state_n <= Sfetch_long;	
@@ -388,11 +388,7 @@ begin
 							when ops_CATCH =>
 								PC_n <= TOS(19 downto 0);
 							when ops_THROW =>
-								if equalzero = '0' then
-									PC_n <= ExceptionAddress(19 downto 0);
-								else
-									PC_n <= PC;
-								end if;
+								PC_n <= PC;
 							when ops_word =>
 								PC_n <= PC_plus_two;
 							when ops_long =>
@@ -465,11 +461,7 @@ begin
 							when ops_UDIVMOD =>	
 								ucode <= ops_NOP;	
 							when ops_THROW =>
-								if equalzero = '0' then
-									ucode <= opcode;
-								else
-									ucode <= ops_drop;
-								end if;
+								ucode <= ops_NOP;
 							when ops_PAUSE =>
 								if SingleMulti = '1' then
 									ucode <= opcode;
@@ -1310,11 +1302,43 @@ begin
 			preemp_counter_n <= preemp_counter;
 			PCfreeze <= PC;
 			
+		when throw0 =>
+			state_n <= throw;							
+			timer <= 0;
+			if equalzero_r = '0' then							
+				PC_n <= ExceptionAddress(19 downto 0);
+				ucode <= ops_THROW;
+			else
+				PC_n <= PC;
+				ucode <= ops_drop;
+			end if;																			
+			accumulator <= (others=>'0');
+			MEMaddr_i <= PC_addr;				
+			MEM_WRQ_X_i <= '0';
+			MEMsize_X_n <= "11";
+			MEMdataout_X <= NOS_r;	
+			AuxControl_n(0 downto 0) <= "0";
+			AuxControl_n(1 downto 1) <= "0";
+			ReturnAddress_n <= PC_addr;
+			irq_n <= int_trig;
+			rti <= '0';
+			retrap_n <= retrap;
+--			s_axi_awvalid <= '0';
+			s_axi_wdata <= NOS_r;
+			s_axi_wstrb <= "1111";
+--			s_axi_wvalid <= '0';
+--			s_axi_arvalid <= '0';
+--			s_axi_rready <= '0';	
+			pause <= '0';
+			debug_i <= x"21";
+			preemp_counter_n <= preemp_counter;
+			PCfreeze <= PC;
+			
 		when throw =>									
 			state_n <= common;							-- after changing PC, this wait state allows a memory read before execution of next instruction
 			timer <= 0;
 			PC_n <= PC_plus;
-			if equalzero_r = '0' then					-- throw on non-zero parameter
+			if equalzero_r = '0' then						-- throw on non-zero parameter
 				ucode <= ops_THROW2;		
 				rti <= '1';									-- THROW from interrupt will also cancel interrupt state
 			else
