@@ -278,7 +278,6 @@ port map
 	clk_system <= clk100;
 	clk_MEM <= clk100;
 	invReset <= not reset;
-	s_aresetn <= not RESET;
 	trig <= not CPUreset;
 	
 -----------------------------------------------------------------------------------------------------------------------------------
@@ -366,7 +365,6 @@ port map
 	wea_sysram <= wea_sysram_s when Boot_we = "0" else "1111";			-- splice IOExpansion data ahead of the SRAM
 	dina_sysram <= dina_sysram_s when Boot_we = "0" else boot_data;
 	addra_sysram <= addra_sysram_s when Boot_we = "0" else boot_addr;	
-	ram_en <= ena_sysram or reset;
 
 -----------------------------------------------------------------------------------------------------------------------------------
 -- SD card connections
@@ -418,7 +416,7 @@ PORT MAP(
 Inst_DMAcontroller: entity work.DMAcontroller 
 PORT MAP(
 	CLK => CLK_SYSTEM,
-	s_aresetn => s_aresetn,
+	reset => reset,
 	s_axi_awaddr => s_axi_awaddr,
 	s_axi_awvalid => s_axi_awvalid,
 	s_axi_awready => s_axi_awready,

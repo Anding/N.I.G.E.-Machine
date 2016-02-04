@@ -9,7 +9,7 @@ use UNISIM.vcomponents.all;
 entity DMAcontroller is
     Port (	CLK : 	IN STD_LOGIC;												-- 100MHz
 				-- AXI4 lite connections to CPU
-				s_aresetn : in STD_LOGIC;												-- Active low.  Hold until memory warm up is complete
+				reset : in STD_LOGIC;
 				-- address write
 				s_axi_awaddr : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 				s_axi_awvalid : IN STD_LOGIC;
@@ -90,7 +90,7 @@ begin
    SYNC_PROC: process 
    begin
       wait until rising_edge(CLK);
-         if (s_aresetn = '0') then
+         if (reset = '1') then
 				state <= startup;
 				debug <= (others=>'0');
          else
