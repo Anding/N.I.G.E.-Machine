@@ -7,66 +7,68 @@ use UNISIM.vcomponents.all;
 
 entity Board_Nexys4 is
 
-	 Generic (	vmp_w : integer := 5;
-					psp_w : integer := 8;
-					rsp_w : integer := 7;
-					ssp_w : integer := 7;
-					esp_w : integer := 4
-					);
+Generic (	
+	vmp_w : integer := 5;
+	psp_w : integer := 8;
+	rsp_w : integer := 7;
+	ssp_w : integer := 7;
+	esp_w : integer := 4
+	);
 					
-    Port ( CLK_IN : in  STD_LOGIC;
-			  RGB : out  STD_LOGIC_VECTOR (11 downto 0);
-           HSync : out  STD_LOGIC;
-           VSync : out  STD_LOGIC;
-			  ADDR_SDRAM : out  STD_LOGIC_VECTOR (23 downto 1);		
-           DATA_SDRAM : inout  STD_LOGIC_VECTOR (15 downto 0);
-           OE_SDRAM : out  STD_LOGIC;
-           WE_SDRAM : out  STD_LOGIC;
-           ADV_SDRAM : out  STD_LOGIC;
-           CLK_SDRAM : out STD_LOGIC;
-           UB_SDRAM : out STD_LOGIC;
-           LB_SDRAM : out  STD_LOGIC;
-           CE_SDRAM : out  STD_LOGIC;
-           CRE_SDRAM : out  STD_LOGIC;
-           WAIT_SDRAM : in  STD_LOGIC;
-			  RXD_S0 : in STD_LOGIC;
-			  TXD_S0 : out STD_LOGIC;
-			  PS2C : in STD_LOGIC;
-			  PS2D : in STD_LOGIC;
-			  -- Board
-			  SW : in STD_LOGIC_VECTOR (15 downto 0);
-			  sevenseg : out STD_LOGIC_VECTOR (6 downto 0);
-			  anode : out STD_LOGIC_VECTOR (7 downto 0);	
-			  CPUreset : in STD_LOGIC;
-			  RGB1_Red : out STD_LOGIC;				  -- useful for debugging but do not drive high continuously
-			  RGB1_Green : out STD_LOGIC;
-			  RGB1_Blue : out STD_LOGIC;
-			  -- SPI
-			  SCK : out STD_LOGIC;
-			  MOSI : out STD_LOGIC;
-			  MISO : in STD_LOGIC;
-			  SD_CS : out STD_LOGIC;
-			  SD_CD : in STD_LOGIC;
-			  -- Ethernet
-			  PHYMDC : out  STD_LOGIC;
-           PHYMDIO : inout  STD_LOGIC;
-           PHYRSTN : out  STD_LOGIC;
-           PHYCRS : in  STD_LOGIC;
-           PHYRXERR : in  STD_LOGIC;
-           PHYRXD : in  STD_LOGIC_VECTOR (1 downto 0);
-           PHYTXEN : out  STD_LOGIC;
-           PHYTXD : out  STD_LOGIC_VECTOR (1 downto 0);
-           PHYCLK50MHZ : out  STD_LOGIC;
-           PHYINTN : in  STD_LOGIC;
-			  JB : out  STD_LOGIC_VECTOR (7 downto 0);
-			  --SD_WP : In STD_LOGIC
-			  SD_RESET : out STD_LOGIC
-			  );
+Port ( 	
+	CLK_IN : in  STD_LOGIC;
+	RGB : out  STD_LOGIC_VECTOR (11 downto 0);
+	HSync : out  STD_LOGIC;
+	VSync : out  STD_LOGIC;
+	ADDR_SDRAM : out  STD_LOGIC_VECTOR (23 downto 1);		
+	DATA_SDRAM : inout  STD_LOGIC_VECTOR (15 downto 0);
+	OE_SDRAM : out  STD_LOGIC;
+	WE_SDRAM : out  STD_LOGIC;
+	ADV_SDRAM : out  STD_LOGIC;
+	CLK_SDRAM : out STD_LOGIC;
+	UB_SDRAM : out STD_LOGIC;
+	LB_SDRAM : out  STD_LOGIC;
+	CE_SDRAM : out  STD_LOGIC;
+	CRE_SDRAM : out  STD_LOGIC;
+	WAIT_SDRAM : in  STD_LOGIC;
+	RXD_S0 : in STD_LOGIC;
+	TXD_S0 : out STD_LOGIC;
+	PS2C : in STD_LOGIC;
+	PS2D : in STD_LOGIC;
+	-- Board
+	SW : in STD_LOGIC_VECTOR (15 downto 0);
+	sevenseg : out STD_LOGIC_VECTOR (6 downto 0);
+	anode : out STD_LOGIC_VECTOR (7 downto 0);	
+	CPUreset : in STD_LOGIC;
+	RGB1_Red : out STD_LOGIC;
+	RGB1_Green : out STD_LOGIC;
+	RGB1_Blue : out STD_LOGIC;
+	-- SPI
+	SCK : out STD_LOGIC;
+	MOSI : out STD_LOGIC;
+	MISO : in STD_LOGIC;
+	SD_CS : out STD_LOGIC;
+	SD_CD : in STD_LOGIC;
+	-- Ethernet
+	PHYMDC : out  STD_LOGIC;
+	PHYMDIO : inout  STD_LOGIC;
+	PHYRSTN : out  STD_LOGIC;
+	PHYCRS : in  STD_LOGIC;
+	PHYRXERR : in  STD_LOGIC;
+	PHYRXD : in  STD_LOGIC_VECTOR (1 downto 0);
+	PHYTXEN : out  STD_LOGIC;
+	PHYTXD : out  STD_LOGIC_VECTOR (1 downto 0);
+	PHYCLK50MHZ : out  STD_LOGIC;
+	PHYINTN : in  STD_LOGIC;
+	JB : out  STD_LOGIC_VECTOR (7 downto 0);
+	--SD_WP : In STD_LOGIC
+	SD_RESET : out STD_LOGIC
+	);
 end Board_Nexys4;
 
 architecture RTL of Board_Nexys4 is
 
-type bank_t is (Sys, Char, Color, Reg, Stack_access, User, Vir);--, Pstack, Rstack);
+type bank_t is (Sys, Char, Color, Reg, Stack_access, User, Vir);
 constant blank : std_logic_vector(31 downto 0) := (others =>'0');
 signal SD_WP : std_logic;
 signal bank, bank_n : bank_t;	
@@ -138,7 +140,6 @@ signal web_sysram : std_logic_vector(3 downto 0);
 signal addrb_sysram : std_logic_vector(31 downto 2);
 signal dinb_sysram : std_logic_vector(31 downto 0);
 signal ena_sysram, enb_sysram : std_logic;
-
 signal addra_userram : std_logic_vector(31 downto 2);
 signal douta_userram : std_logic_vector(31 downto 0);
 signal doutb_userram : std_logic_vector(31 downto 0);          
@@ -150,13 +151,11 @@ signal web_userram : std_logic_vector(3 downto 0);
 signal ena_userram, enb_userram : std_logic;
 signal addra_userram_all : std_logic_vector(31 downto 2);
 signal addrb_userram_all : std_logic_vector(31 downto 2);
-
 signal MEMdata_Sys, MEMdata_Sys_plus : std_logic_vector(31 downto 0);
 signal MEMdata_Sys_quick : std_logic_vector(31 downto 0);
 signal MEMsize_X, MEMsize_Xp : std_logic_vector(1 downto 0);
 signal ram_en : std_logic;
 signal VBLANK : std_logic;
-
 signal s_axi_awaddr : std_logic_vector(31 downto 0);
 signal s_axi_awvalid : std_logic;
 signal s_axi_wdata : std_logic_vector(31 downto 0);
@@ -221,38 +220,26 @@ signal SMIwrite_request :  std_logic;
 signal SMIdataRead :  std_logic_vector(15 downto 0);
 signal SMIready :  std_logic;
 
--- debug
---signal PHYCRS_i :  STD_LOGIC;
---signal PHYRXD_i :  STD_LOGIC_VECTOR (1 downto 0);
---signal PHYTXEN_i :  STD_LOGIC;
---signal PHYTXD_i :  STD_LOGIC_VECTOR (1 downto 0);
-
-	component CLOCKMANAGER
-	port
-	 (-- Clock in ports
-	  CLK_IN1           : in     std_logic;
-	  -- Clock out ports
-	  CLK_OUT1          : out    std_logic;
-	  CLK_OUT2          : out    std_logic;
-	  CLK_OUT3          : out    std_logic;
-	  CLK_OUT4          : out    std_logic;
-	  CLK_OUT5          : out    std_logic;
-	  CLK_OUT6			  : out    std_logic	  
-	 );
-	end component;
+component CLOCKMANAGER
+port (	-- Clock in ports
+	CLK_IN1	: in     std_logic;
+	-- Clock out ports
+	CLK_OUT1	: out    std_logic;
+	CLK_OUT2	: out    std_logic;
+	CLK_OUT3	: out    std_logic;
+	CLK_OUT4	: out    std_logic;
+	CLK_OUT5	: out    std_logic;
+	CLK_OUT6	: out    std_logic	  
+ );
+end component;
 		
 begin
 
---	-- debug
---	
---PHYCRS_i <= PHYTXEN_i;
---PHYRXD_i <= PHYTXD_i;
---
---PHYTXEN <= '0';
---PHYTXD <= "00";
+-----------------------------------------------------------------------------------------------------------------------------------
+-- Debugging connections
+-----------------------------------------------------------------------------------------------------------------------------------	
 
 	-- Ethernet
-
 	JB(0) <= PHYCRS;
 	JB(1) <= '0';
 	JB(2) <= '0';
@@ -262,52 +249,64 @@ begin
 	JB(6) <= '0';
 	JB(7) <= '0';
 	
-	-- debug and monitoring
-		-- use these connections for debugging but do not drive high continuously (use PWM)
+	-- Debug and monitoring
+	-- do not drive high continuously (use PWM)
 	RGB1_Red <= '0';
 	RGB1_Green <= '0';
 	RGB1_Blue <= RS232_RDA_S0;
 	
-		-- can route to sevenseg display
+	-- can route to sevenseg display
 	debug <= "0000000000000000" & debug_DMAcontroller & debug_CPU;
+
+-----------------------------------------------------------------------------------------------------------------------------------
+-- Global clocking and reset
+-----------------------------------------------------------------------------------------------------------------------------------	
 	
-	inst_CLOCKMANAGER : CLOCKMANAGER
-  port map
-   (-- Clock in ports
-    CLK_IN1 => CLK_IN,
-    -- Clock out ports
-	 CLK_OUT1 => VGACLK25,
-    CLK_OUT2 => VGACLK50,
-    CLK_OUT3 => VGACLK75,
-    CLK_OUT4 => VGACLK150,	 
-	 CLK_OUT5 => CLK100,
-	 CLK_OUT6 => CLK50MHZ);								
-	 
-	-- System and memory clock selector
-	clk_system <= clk100;								-- Note above 100MHz vs. 95MHz
+inst_CLOCKMANAGER : CLOCKMANAGER
+port map
+(	-- Clock in ports
+	CLK_IN1 => CLK_IN,
+	-- Clock out ports
+	CLK_OUT1 => VGACLK25,
+	CLK_OUT2 => VGACLK50,
+	CLK_OUT3 => VGACLK75,
+	CLK_OUT4 => VGACLK150,	 
+	CLK_OUT5 => CLK100,
+	CLK_OUT6 => CLK50MHZ
+);								
+
+	clk_system <= clk100;
 	clk_MEM <= clk100;
+	invReset <= not reset;
+	s_aresetn <= not RESET;
+	trig <= not CPUreset;
 	
-	-- VGA clock selector
-		-- gated clocks are not good design practice in general but here we explicitly assume 
-		-- that the VGA clock domain is not synchronized with the SYSTEM clock domain
-		-- do not use these clocks to drive modules aside from VGA since they are be not timing constrained
+-----------------------------------------------------------------------------------------------------------------------------------
+-- VGA clock selector
+-----------------------------------------------------------------------------------------------------------------------------------	
+
 	with mode(2 downto 0) select
-			clk_VGA <= VGAclk25  when "001",
-						  VGAclk75  when "011",	
-						  VGAclk150 when "100",
-						  VGAclk50  when others; --"010"
+		clk_VGA <= 	VGAclk25  when "001",
+				VGAclk75  when "011",	
+				VGAclk150 when "100",
+				VGAclk50  when others; --"010"
+	-- gated clocks are not good design practice in general but here we explicitly assume 
+	-- that the VGA clock domain is not synchronized with the SYSTEM clock domain
+	-- do not use these clocks to drive modules aside from VGA since they are be not timing constrained
 	 
-	-- global counters
+-----------------------------------------------------------------------------------------------------------------------------------
+-- Global counters and timers
+-----------------------------------------------------------------------------------------------------------------------------------	
 	process														 
 	begin
-		wait until rising_edge(clk_system);					-- system clock rate
-			counter_clk <= counter_clk + 1;
+	wait until rising_edge(clk_system);					-- system clock rate
+		counter_clk <= counter_clk + 1;
 	end process;
 	
 	-- ms interrupt
 	process														
 	begin
-		wait until rising_edge(clk100);						-- 100MHz clock
+	wait until rising_edge(clk100);						-- 100MHz clock
 		if timer_ms = CONV_STD_LOGIC_VECTOR(100000,32) then
 			timer_ms <=(others =>'0');
 			counter_ms <= counter_ms + 1;
@@ -316,582 +315,569 @@ begin
 		end if;
 	end process;
 	
-	ms_irq <= '1' when timer_ms = "0000000000000000" else '0';
-	--ms_irq <= '1' when timer_ms(5 downto 0) = "100000" else '0';  -- for debugging interupt handling
-	
-	-- board level memory logic  
-	 MEM_WRQ_XX(0) <= MEM_WRQ_X;	
+	ms_irq <= '1' when timer_ms = "0000000000000000" else '0'; 
+
+-----------------------------------------------------------------------------------------------------------------------------------
+-- Memory module multiplexing
+-----------------------------------------------------------------------------------------------------------------------------------	
 	
 	process
 	begin
-		wait until rising_edge(clk_system);
+	wait until rising_edge(clk_system);
 		bank <= bank_n;	
 	end process;
 	 
 	with MEMaddr(17 downto 11) select
-		bank_n <= Stack_access 	when "1110110",
-					 Color 			when "1110111",		
-					 Char 			when "1111000", 	-- must be aligned on 8k boundary
-					 Char 			when "1111001",
-					 Char 			when "1111010",
-					 Char				when "1111011",
-					 User 			when "1111100",	-- must be aligned on 4k boundary
-					 User 			when "1111101",					  
-					 Vir				when "1111110",
-					 Reg 				when "1111111",
-					 Sys 				when others;
-				
-	 Vir_EN <= '1' when bank_n = Vir else '0';
-	 User_EN <= '1' when bank_n = User else '0';
-	 Stack_access_EN <= '1' when bank_n = Stack_access else '0';
-	 Color_EN <= '1' when bank_n = Color else '0';
-	 Char_EN <= '1' when bank_n = Char else '0';
-	 Reg_EN <= '1' when bank_n = Reg else '0';
-	 Sys_EN <= '1' when bank_n = Sys else '0'; 
+		bank_n <=	Stack_access 	when "1110110",
+				Color 		when "1110111",		
+				Char 		when "1111000", 	-- must be aligned on 8k boundary
+				Char 		when "1111001",
+				Char 		when "1111010",
+				Char		when "1111011",
+				User 		when "1111100",	-- must be aligned on 4k boundary
+				User 		when "1111101",					  
+				Vir		when "1111110",
+				Reg 		when "1111111",
+				Sys 		when others;
+					
+	 Vir_EN <= '1' 		when bank_n = Vir else '0';
+	 User_EN <= '1' 		when bank_n = User else '0';
+	 Stack_access_EN <= '1' 	when bank_n = Stack_access else '0';
+	 Color_EN <= '1'		when bank_n = Color else '0';
+	 Char_EN <= '1' 		when bank_n = Char else '0';
+	 Reg_EN <= '1' 		when bank_n = Reg else '0';
+	 Sys_EN <= '1' 		when bank_n = Sys else '0'; 
 	 
-	 with bank select														-- one cycle delayed to switch output
-	  MEMdatain_Xi <=	"0000000000000000" & MEMdata_Char when Char,
-							"0000000000000000" & MEMdata_Color when Color,
-							MEMdata_Reg when Reg,
-							Memdata_stack_access when stack_access,
-							MEMdata_User when user,
-							MEMdata_Vir when vir,
-							MEMdata_Sys when others;
-							
-	-- splice IOExpansion data ahead of the SRAM
-	 wea_sysram <= wea_sysram_s when Boot_we = "0" else "1111";
-	 dina_sysram <= dina_sysram_s when Boot_we = "0" else boot_data;
-	 addra_sysram <= addra_sysram_s when Boot_we = "0" else boot_addr;	
-	 ram_en <= ena_sysram or reset;
+	 with bank select										-- one cycle delayed to switch output
+		MEMdatain_Xi <=	"0000000000000000" & MEMdata_Char	when Char,
+					"0000000000000000" & MEMdata_Color when Color,
+					MEMdata_Reg 				when Reg,
+					Memdata_stack_access 		when stack_access,
+					MEMdata_User 				when user,
+					MEMdata_Vir 				when vir,
+					MEMdata_Sys 				when others;
+					
+					
+	MEM_WRQ_XX(0) <= MEM_WRQ_X;				
+	douta_sysram_i <= douta_sysram;
+	doutb_sysram_i <= doutb_sysram;
+	addra_userram_all(vmp_w + 10 downto 2) <= VM & addra_userram(10 downto 2);
+	addrb_userram_all(vmp_w + 10 downto 2) <= VM & addrb_userram(10 downto 2); 						
+	wea_sysram <= wea_sysram_s when Boot_we = "0" else "1111";			-- splice IOExpansion data ahead of the SRAM
+	dina_sysram <= dina_sysram_s when Boot_we = "0" else boot_data;
+	addra_sysram <= addra_sysram_s when Boot_we = "0" else boot_addr;	
+	ram_en <= ena_sysram or reset;
 
-	  inst_SYS_RAM : entity work.Sys_RAM
-	  PORT MAP (
-		 clka => clk_system,
-		 ena => ram_en,
-		 wea => wea_sysram,
-		 addra => addra_sysram (16 downto 2),					-- 64K write depth 16384, 15downto2. 128K write depth 32768, 16 downto 2. 256K write depth 62976, 17downto2
-		 dina => dina_sysram,
-		 douta => douta_sysram,
-		 clkb => clk_system,
-		 enb => enb_sysram,
-		 web => web_sysram,
-		 addrb => addrb_sysram (16 downto 2),
-		 dinb => dinb_sysram,
-		 doutb => doutb_sysram
-	  );
+-----------------------------------------------------------------------------------------------------------------------------------
+-- SD card connections
+-----------------------------------------------------------------------------------------------------------------------------------	
+
+	SD_WP <= '0';		-- available on PMOD SD card adapter but not Nexys 4 microSD card clot
+	SD_RESET <= reset;	-- Nexys 4 microSD card slot needs SD_RESET driven low to power the SD card
+	SD_CS <= SD_control(0);
+	SD_status(1) <= SD_CD;
+	SD_status(2) <= SD_WP;
+	SD_status(3) <= MISO;
+
+-----------------------------------------------------------------------------------------------------------------------------------
+-- Module instantiations
+-----------------------------------------------------------------------------------------------------------------------------------
+
+--Inst_SYS_RAM : entity work.Sys_RAM
+--PORT MAP (
+--	clka => clk_system,
+--	ena => ram_en,
+--	wea => wea_sysram,
+--	addra => addra_sysram (16 downto 2),
+--	dina => dina_sysram,
+--	douta => douta_sysram,
+--	clkb => clk_system,
+--	enb => enb_sysram,
+--	web => web_sysram,
+--	addrb => addrb_sysram (16 downto 2),
+--	dinb => dinb_sysram,
+--	doutb => doutb_sysram
+--	);
   
---	Inst_RAM_for_Testbench: entity work.RAM_for_Testbench PORT MAP(
---		rst => reset,
---		clk => clk_system,
---		enA => ena_sysram,
---		enB => enb_sysram,
---		weA => wea_sysram,
---		weB => web_sysram,
---		addressA => addra_sysram (16 downto 2),
---		data_inA => dina_sysram,
---		data_outA => douta_sysram,
---		addressB => addrb_sysram (16 downto 2),
---		data_inB => dinb_sysram,
---		data_outB => doutb_sysram
---	);
+Inst_RAM_for_Testbench: entity work.RAM_for_Testbench 
+PORT MAP(
+	rst => reset,
+	clk => clk_system,
+	enA => ena_sysram,
+	enB => enb_sysram,
+	weA => wea_sysram,
+	weB => web_sysram,
+	addressA => addra_sysram (16 downto 2),
+	data_inA => dina_sysram,
+	data_outA => douta_sysram,
+	addressB => addrb_sysram (16 downto 2),
+	data_inB => dinb_sysram,
+	data_outB => doutb_sysram
+	);
 
-	  douta_sysram_i <= douta_sysram;
-	  doutb_sysram_i <= doutb_sysram;
+Inst_DMAcontroller: entity work.DMAcontroller 
+PORT MAP(
+	CLK => CLK_SYSTEM,
+	s_aresetn => s_aresetn,
+	s_axi_awaddr => s_axi_awaddr,
+	s_axi_awvalid => s_axi_awvalid,
+	s_axi_awready => s_axi_awready,
+	s_axi_wdata => s_axi_wdata,
+	s_axi_wstrb => s_axi_wstrb,
+	s_axi_wvalid => s_axi_wvalid,
+	s_axi_wready => s_axi_wready,
+	s_axi_araddr => s_axi_araddr,
+	s_axi_arvalid => s_axi_arvalid,
+	s_axi_arready => s_axi_arready,
+	s_axi_rdata => s_axi_rdata,
+	s_axi_rvalid => s_axi_rvalid,
+	t_axi_araddr => t_axi_araddr,
+	t_axi_arlen => t_axi_arlen,
+	t_axi_arvalid => t_axi_arvalid,
+	t_axi_arready => t_axi_arready,
+	t_axi_rdata => t_axi_rdata,
+	t_axi_rresp => t_axi_rresp,
+	t_axi_rlast => t_axi_rlast,
+	t_axi_rvalid => t_axi_rvalid,
+	ADDR_SDRAM => ADDR_SDRAM,
+	DATA_SDRAM => DATA_SDRAM,
+	OE_SDRAM => OE_SDRAM ,
+	WE_SDRAM => WE_SDRAM,
+	ADV_SDRAM => ADV_SDRAM ,
+	CLK_SDRAM => CLK_SDRAM,
+	UB_SDRAM => UB_SDRAM,
+	LB_SDRAM => LB_SDRAM,
+	CE_SDRAM => CE_SDRAM,
+	CRE_SDRAM => CRE_SDRAM,
+	WAIT_SDRAM => WAIT_SDRAM,
+	debug => debug_DMAcontroller
+	);
 
-		Inst_SRAM_controller: entity work.SRAM_controller PORT MAP(
-		RST => reset,
-		CLK => clk_system,
-		en => SYS_EN,
-		ADDR => MEMaddr,
-		size => MEMsize_X,
-		WE => MEM_WRQ_XX,
-		DATA_in => MEMdataout_X,
-		DATA_out => MEMdata_Sys,
-		DATA_out_quick => MEMdata_Sys_quick,
-		wea => wea_sysram_s,
-		addra => addra_sysram_s,
-		dina => dina_sysram_s,
-		douta => douta_sysram_i,
-		web => web_sysram,
-		addrb => addrb_sysram,
-		dinb => dinb_sysram,
-		doutb => doutb_sysram_i,
-		en_a => ena_sysram,
-		en_b => enb_sysram
+Inst_TEXTbuffer: entity work.TEXTbuffer 
+PORT MAP(
+	clk_MEM => clk_MEM,
+	clk_VGA => clk_VGA,
+	VGAcols => VGAcols,
+	VBlank => VBlank,
+	FetchNextRow => FetchNextRow,
+	txt_zero => txt_zero,
+	ADDR_TEXT => ADDR_TEXT,
+	DATA_TEXT => DATA_TEXT,
+	t_axi_araddr => t_axi_araddr,
+	t_axi_arlen => t_axi_arlen,
+	t_axi_arvalid => t_axi_arvalid,
+	t_axi_arready => t_axi_arready,
+	t_axi_rdata => t_axi_rdata,
+	t_axi_rresp => t_axi_rresp,
+	t_axi_rlast => t_axi_rlast,
+	t_axi_rvalid => t_axi_rvalid
 	);
-	
-		Inst_SRAM_controller_USER: entity work.SRAM_controller PORT MAP(
-		RST => reset,
-		CLK => clk_system,
-		en => USER_EN,
-		ADDR => MEMaddr,
-		size => MEMsize_X,
-		WE => MEM_WRQ_XX,
-		DATA_in => MEMdataout_X,
-		DATA_out => MEMdata_User,
-		DATA_out_quick => open,
-		wea => wea_userram,
-		addra => addra_userram,
-		dina => dina_userram,
-		douta => douta_userram,
-		web => web_userram,
-		addrb => addrb_userram,
-		dinb => dinb_userram,
-		doutb => doutb_userram,
-		en_a => ena_userram,
-		en_b => enb_userram
-	);
-	
-		addra_userram_all(vmp_w + 10 downto 2) <= VM & addra_userram(10 downto 2);  -- blank(4 - vmp_w downto 0) & 
-		addrb_userram_all(vmp_w + 10 downto 2) <= VM & addrb_userram(10 downto 2);  -- blank(4 - vmp_w downto 0) & 	
-	
-	 inst_USER_RAM : entity work.USER_RAM
-	  PORT MAP (
-		 clka => clk_system,
-		 ena => ena_userram,
-		 wea => wea_userram,
-		 addra => addra_userram_all(vmp_w + 10 downto 2),
-		 dina => dina_userram,
-		 douta => douta_userram,
-		 clkb => clk_system,
-		 enb => enb_userram,
-		 web => web_userram,
-		 addrb => addrb_userram_all(vmp_w + 10 downto 2),
-		 dinb => dinb_userram,
-		 doutb => doutb_userram
-	  );
-	
-	  inst_Char_RAM : entity work.Char_RAM
-	  PORT MAP (
-		 clka => clk_VGA,
-		 wea => "0",
-		 addra => addr_Char,
-		 dina => (others=>'0'),
-		 douta => data_Char,
-		 clkb => clk_system,
-		 enb => Char_EN,
-		 web => MEM_WRQ_XX,
-		 addrb => MEMaddr(12 downto 1),
-		 dinb => MEMdataout_X(15 downto 0),
-		 doutb => MEMdata_Char
-	  );		
 
-	  inst_Color_RAM : entity work.Color_RAM
-	  PORT MAP (
-		 clka => clk_VGA,
-		 ena => '1',
-		 wea => "0",
-		 addra => addr_Color,
-		 dina => (others=>'0'),
-		 douta => data_Color,
-		 clkb => clk_system,
-		 enb => Color_EN,
-		 web => MEM_WRQ_XX,
-		 addrb => MEMaddr(8 downto 1),
-		 dinb => MEMdataout_X(15 downto 0),
-		 doutb => MEMdata_Color
-	  );
-	
-		-- Pstack_RAM must be configured as WRITE FIRST
-	  	inst_Pstack_RAM : entity work.Pstack_RAM
-	  PORT MAP (
-		 clka => clk_system,
-		 wea => PSw,
-		 addra => PSaddr,
-		 dina => PSdataOUT,
-		 douta => PSdataIN
-	  );
-	  
-	  -- Rstack_RAM must be configured as WRITE FIRST
-	  inst_Rstack_RAM : entity work.Rstack_RAM
-	  PORT MAP (
-		 clka => clk_system,
-		 wea => RSw,
-		 addra => RSaddr,
-		 dina => RSdataOUT,
-		 douta => RSdataIN
-	  );
-	  
-		-- Sstack_RAM must be configured as WRITE FIRST
-		inst_Sstack_RAM : entity work.Sstack_RAM
-		PORT MAP (
-		clka => clk_system,
-		wea => SSw,
-		addra => SSaddr,
-		dina => SSdataOUT,
-		douta => SSdataIN
-		);
-		
-		-- Estack_RAM must be configured as WRITE FIRST
-		inst_Estack_RAM : entity work.Estack_RAM
-		PORT MAP (
-		clka => clk_system,
-		wea => ESw,
-		addra => ESaddr,
-		dina => ESdataOUT,
-		douta => ESdataIN
-		);
-	    
-	  inst_HW_Registers: entity work.HW_Registers PORT MAP(
-		clk => CLK_SYSTEM,
-		rst => reset,
-		irq_mask => irq_mask,
-		txt_zero => txt_zero,
-		mode => mode,
-		background => background,
-		interlace => interlace,
-		charHeight => charHeight,
-		charWidth => charWidth, 
-		VGArows => 	VGArows,	  
-		VGAcols => VGAcols,
-		en => reg_en,
-		addr => MEMaddr(10 downto 0),
-		datain => MEMdataout_X,
-		dataout => MEMdata_Reg,
-		wrq => MEM_WRQ_XX,
-		RS232_rx_S0 => RS232_rx_S0,
-		RS232_tx_S0 => RS232_tx_S0,
-		RS232_wr_S0 => RS232_wr_S0,
-		RS232_TBE_S0 => RS232_TBE_S0,
-		RS232_RDA_S0 => RS232_RDA_S0,
-		RS232_DIVIDE_S0 => RS232_DIVIDE_S0,		
-		PS2_data => PS2_data,
-		counter_clk => counter_clk,
-		counter_ms => counter_ms,
-		ssData => ssData,
-		SW => SW,
-		SD_dataout => SD_dataout,
-		SD_datain => SD_datain,
-		SD_status => SD_status,
-		SD_control => SD_control,
-		SD_wr => SD_wr,
-		SD_divide => SD_divide,
-		MACreadyRX => MACreadyRX,
-		MACdataRX => MACdataRX,
-		MACread_enable => MACread_enable,
-		MACchecksum_err => MACchecksum_err,
-		MACdataTX => MACdataTX,
-		MACreadyTX => MACreadyTX,
-		MACtransmit_request => MACtransmit_request,
-		MACweTX => MACweTX,
-		SMIaddr => SMIaddr,
-		SMIdataWrite => SMIdataWrite,
-		SMIread_request => SMIread_request,
-		SMIwrite_request => SMIwrite_request,    
-		SMIdataRead => SMIdataRead,
-		SMIready => SMIready,
-		VBLANK => VBLANK
-	);  
-			  
-		Inst_stack_access: entity work.stack_access PORT MAP(
-		clk => CLK_SYSTEM,
-		rst => reset,
-		SSdatain => SSdatain(319 downto 0),
-		SSdataout => SSdataout(319 downto 0),
-		SSw => SSw(39 downto 0),
-		SSwSignal => SSw(40),
-		ESdatain => ESdatain(255 downto 0),
-		ESdataout => ESdataout(255 downto 0),
-		ESw => ESw(31 downto 0),
-		ESwSignal => ESw(32),
-		en => stack_access_en,
-		addr => MEMaddr(10 downto 0),
-		datain => MEMdataout_X,
-		dataout => MEMdata_stack_access,
-		wrq => MEM_WRQ_XX
+Inst_SRAM_controller: entity work.SRAM_controller 
+PORT MAP(
+	RST => reset,
+	CLK => clk_system,
+	en => SYS_EN,
+	ADDR => MEMaddr,
+	size => MEMsize_X,
+	WE => MEM_WRQ_XX,
+	DATA_in => MEMdataout_X,
+	DATA_out => MEMdata_Sys,
+	DATA_out_quick => MEMdata_Sys_quick,
+	wea => wea_sysram_s,
+	addra => addra_sysram_s,
+	dina => dina_sysram_s,
+	douta => douta_sysram_i,
+	web => web_sysram,
+	addrb => addrb_sysram,
+	dinb => dinb_sysram,
+	doutb => doutb_sysram_i,
+	en_a => ena_sysram,
+	en_b => enb_sysram
 	);
-	
-	
-		inst_CPU: entity work.CPU 
-		GENERIC MAP(
-		vmp_w => vmp_w,
-		psp_w => psp_w,
-		rsp_w => rsp_w,
-		ssp_w => ssp_w,
-		esp_w => esp_w
-		)
-		PORT MAP(
-		rst => reset,
-		clk => CLK_SYSTEM,
-		irq => irq,
-		rti => rti,
-		irv => irv,
-		PSaddr => PSaddr,
-		PSdatain => PSdatain,
-		PSdataout => PSdataout,
-		PSw => PSw,
-		RSaddr => RSaddr,
-		RSdatain => RSdatain,
-		RSdataout => RSdataout,
-		RSw => RSw,
-		SSaddr => SSaddr,
-		SSdatain => SSdatain(351 downto 320),	
-		SSdataout => SSdataout(351 downto 320),
-		SSw => SSw(43 downto 40),
-		ESaddr => ESaddr,
-		ESdatain => ESdatain(303 downto 256),
-		ESdataout => ESdataout(303 downto 256),
-		ESw => ESw(37 downto 32),
-		MEMaddr => MEMaddr,
-		MEMdatain_X => MEMdatain_Xi,
-		MEMdatain_X_quick => MEMdata_Sys_quick,
-		MEMdataout_X => MEMdataout_X,
-		MEMsize_X => MEMsize_X,
-		MEM_WRQ_X => MEM_WRQ_X,
-		s_axi_awaddr => s_axi_awaddr,
-		s_axi_awvalid => s_axi_awvalid,
-		s_axi_awready => s_axi_awready,
-		s_axi_wdata => s_axi_wdata,
-		s_axi_wstrb => s_axi_wstrb,
-		s_axi_wvalid => s_axi_wvalid,
-		s_axi_wready => s_axi_wready,
---		s_axi_bresp => s_axi_bresp,
---		s_axi_bvalid => s_axi_bvalid,
---		s_axi_bready => s_axi_bready,
-		s_axi_araddr => s_axi_araddr,
-		s_axi_arvalid => s_axi_arvalid,
-		s_axi_arready => s_axi_arready,
-		s_axi_rdata => s_axi_rdata,
---		s_axi_rresp => s_axi_rresp,
-		s_axi_rvalid => s_axi_rvalid,
---		s_axi_rready => s_axi_rready,
-		VM => VM,
-		vir_EN => vir_EN,
-		MEMdata_vir => MEMdata_vir,
-		debug => debug_CPU,
-		blocked => blocked
-	);
-	
 
-	s_aresetn <= not RESET;
-		
-	Inst_DMAcontroller: entity work.DMAcontroller PORT MAP(
-		CLK => CLK_SYSTEM,
-		s_aresetn => s_aresetn,
-		s_axi_awaddr => s_axi_awaddr,
-		s_axi_awvalid => s_axi_awvalid,
-		s_axi_awready => s_axi_awready,
-		s_axi_wdata => s_axi_wdata,
-		s_axi_wstrb => s_axi_wstrb,
-		s_axi_wvalid => s_axi_wvalid,
-		s_axi_wready => s_axi_wready,
---		s_axi_bresp => s_axi_bresp,
---		s_axi_bvalid => s_axi_bvalid,
---		s_axi_bready => s_axi_bready,
-		s_axi_araddr => s_axi_araddr,
-		s_axi_arvalid => s_axi_arvalid,
-		s_axi_arready => s_axi_arready,
-		s_axi_rdata => s_axi_rdata,
---		s_axi_rresp => s_axi_rresp,
-		s_axi_rvalid => s_axi_rvalid,
---		s_axi_rready => s_axi_rready,
-		t_axi_araddr => t_axi_araddr,
-		t_axi_arlen => t_axi_arlen,
---		t_axi_arsize => t_axi_arsize,
---		t_axi_arburst => t_axi_arburst,
-		t_axi_arvalid => t_axi_arvalid,
-		t_axi_arready => t_axi_arready,
-		t_axi_rdata => t_axi_rdata,
-		t_axi_rresp => t_axi_rresp,
-		t_axi_rlast => t_axi_rlast,
-		t_axi_rvalid => t_axi_rvalid,
---		t_axi_rready => t_axi_rready,
-		ADDR_SDRAM => ADDR_SDRAM,
-		DATA_SDRAM => DATA_SDRAM,
-		OE_SDRAM => OE_SDRAM ,
-		WE_SDRAM => WE_SDRAM,
-		ADV_SDRAM => ADV_SDRAM ,
-		CLK_SDRAM => CLK_SDRAM,
-		UB_SDRAM => UB_SDRAM,
-		LB_SDRAM => LB_SDRAM,
-		CE_SDRAM => CE_SDRAM,
-		CRE_SDRAM => CRE_SDRAM,
-		WAIT_SDRAM => WAIT_SDRAM,
-		debug => debug_DMAcontroller
-	);
-	
-		trig <= not CPUreset;
-		
-		Inst_Controller: entity work.Controller PORT MAP(
-		clk => CLK_SYSTEM,
-		trig => trig,
-		reset => reset
-	);
-		
-		Inst_VGAController: entity work.VGA PORT MAP(
-		CLK_VGA => CLK_VGA,
-		reset => reset,
-		mode	=> mode,
-		background => background,
-		data_Text => DATA_TEXT,
-		addr_Text => ADDR_TEXT,
-		data_Char => data_Char,
-		addr_Char => addr_Char,
-		data_Color => data_Color,
-		addr_Color => addr_Color,		
-		HSync => HSync,
-		VSync => VSync,
-		VBLANK => VBLANK,
-		RGB => RGB,
-		interlace => interlace,
-		charHeight => charHeight,
-		charWidth => charWidth, 
-		VGArows => 	VGArows,	  
-		VGAcols => VGAcols,
-		FetchNextRow => FetchNextRow,
-		SW => SW
+Inst_SRAM_controller_USER: entity work.SRAM_controller 
+PORT MAP(
+	RST => reset,
+	CLK => clk_system,
+	en => USER_EN,
+	ADDR => MEMaddr,
+	size => MEMsize_X,
+	WE => MEM_WRQ_XX,
+	DATA_in => MEMdataout_X,
+	DATA_out => MEMdata_User,
+	DATA_out_quick => open,
+	wea => wea_userram,
+	addra => addra_userram,
+	dina => dina_userram,
+	douta => douta_userram,
+	web => web_userram,
+	addrb => addrb_userram,
+	dinb => dinb_userram,
+	doutb => doutb_userram,
+	en_a => ena_userram,
+	en_b => enb_userram
 	);	
-	
-		Inst_TEXTbuffer: entity work.TEXTbuffer PORT MAP(
-		clk_MEM => clk_MEM,
-		clk_VGA => clk_VGA,
-		VGAcols => VGAcols,
-		VBlank => VBlank,
-		FetchNextRow => FetchNextRow,
-		txt_zero => txt_zero,
-		ADDR_TEXT => ADDR_TEXT,
-		DATA_TEXT => DATA_TEXT,
-		t_axi_araddr => t_axi_araddr,
-		t_axi_arlen => t_axi_arlen,
---		t_axi_arsize => t_axi_arsize,
---		t_axi_arburst => t_axi_arburst,
-		t_axi_arvalid => t_axi_arvalid,
-		t_axi_arready => t_axi_arready,
-		t_axi_rdata => t_axi_rdata,
-		t_axi_rresp => t_axi_rresp,
-		t_axi_rlast => t_axi_rlast,
-		t_axi_rvalid => t_axi_rvalid
---		t_axi_rready => t_axi_rready
-	);
-	
-		Inst_Interrupt: entity work.Interrupt PORT MAP(
-		clk => CLK_SYSTEM,
-		rst => reset,
-		irq_mask => irq_mask,
-		RS232_RDA_S0 => RS232_RDA_S0,
-		RS232_TBE_S0 => RS232_TBE_S0,
-		PS2_irq => PS2_irq,
-		ms_irq => ms_irq,
-		rti => rti,
-		irq => irq,
-		irv => irv,
-		blocked => blocked
-	);
-	
-		Inst_UART: entity work.UART PORT MAP(
-		RXD => RXD_S0,
-		TXD => TXD_S0,
-		DIVIDE => RS232_DIVIDE_S0,
-		TXDATA => RS232_tx_S0,
-		RXDATA => RS232_rx_S0,
-		RDA => RS232_RDA_S0,
-		WR => RS232_WR_S0,
-		TBE => RS232_TBE_S0,
-		CLK => CLK_SYSTEM
-	);
-	
-		Inst_PS2KeyboardDecoder: entity work.PS2KeyboardDecoder PORT MAP(
-		clk => CLK_SYSTEM,
-		PS2C => PS2C,
-		PS2D => PS2D,
-		irq => PS2_irq,
-		data => PS2_data
+
+inst_USER_RAM : entity work.USER_RAM
+PORT MAP (
+	clka => clk_system,
+	ena => ena_userram,
+	wea => wea_userram,
+	addra => addra_userram_all(vmp_w + 10 downto 2),
+	dina => dina_userram,
+	douta => douta_userram,
+	clkb => clk_system,
+	enb => enb_userram,
+	web => web_userram,
+	addrb => addrb_userram_all(vmp_w + 10 downto 2),
+	dinb => dinb_userram,
+	doutb => doutb_userram
 	);
 
-		invReset <= not reset;
-		
-		Inst_BootLoader: entity work.BootLoader PORT MAP(
-		invReset => invReset,
-		clk => clk_system,
-		RDA => RS232_RDA_S0,
-		RXDATA => RS232_rx_S0,
-		data => Boot_data,
-		addr => Boot_addr,
-		we => Boot_we
+inst_Char_RAM : entity work.Char_RAM
+PORT MAP (
+	clka => clk_VGA,
+	wea => "0",
+	addra => addr_Char,
+	dina => (others=>'0'),
+	douta => data_Char,
+	clkb => clk_system,
+	enb => Char_EN,
+	web => MEM_WRQ_XX,
+	addrb => MEMaddr(12 downto 1),
+	dinb => MEMdataout_X(15 downto 0),
+	doutb => MEMdata_Char
+	);		
+
+inst_Color_RAM : entity work.Color_RAM
+PORT MAP (
+	clka => clk_VGA,
+	ena => '1',
+	wea => "0",
+	addra => addr_Color,
+	dina => (others=>'0'),
+	douta => data_Color,
+	clkb => clk_system,
+	enb => Color_EN,
+	web => MEM_WRQ_XX,
+	addrb => MEMaddr(8 downto 1),
+	dinb => MEMdataout_X(15 downto 0),
+	doutb => MEMdata_Color
 	);
-		
-		Inst_ByteHEXdisplay: entity work.ByteHEXdisplay PORT MAP(
-		ssData => ssData,
-		clk => CLK_SYSTEM,
-		count => counter_clk(15 downto 13),
-		sevenseg => sevenseg,
-		anode => anode
+
+-- Pstack_RAM must be configured as WRITE FIRST
+inst_Pstack_RAM : entity work.Pstack_RAM
+PORT MAP (
+	clka => clk_system,
+	wea => PSw,
+	addra => PSaddr,
+	dina => PSdataOUT,
+	douta => PSdataIN
 	);
-	
-		Inst_SPImaster: entity work.SPImaster PORT MAP(
-		CLK => CLK_SYSTEM,
-		CLKSPI => CLKSPI,
-		RESET => reset,
-		DATA_IN => SD_datain,
-		WR => SD_wr,
-		TBE => SD_status(0),
-		DATA_OUT => SD_dataout,
-		MOSI => MOSI,
-		MISO => MISO,
-		SCK => SCK,
-		mode => SD_control(3 downto 2),
-		MOSI_def => SD_control(1)
+
+-- Rstack_RAM must be configured as WRITE FIRST
+inst_Rstack_RAM : entity work.Rstack_RAM
+PORT MAP (
+	clka => clk_system,
+	wea => RSw,
+	addra => RSaddr,
+	dina => RSdataOUT,
+	douta => RSdataIN
 	);
-	
-		SD_WP <= '0';				-- available on PMOD SD card adapter but not Nexys 4 microSD card clot
-		SD_RESET <= reset;		-- Nexys 4 microSD card slot needs SD_RESET driven low to power the SD card
-	
-		SD_CS <= SD_control(0);
-		SD_status(1) <= SD_CD;
-		SD_status(2) <= SD_WP;
-		SD_status(3) <= MISO;
-	
-		Inst_DIV: entity work.DIV PORT MAP(
-		CLKin => CLK_SYSTEM,
-		divide => SD_divide,
-		CLKout => CLKSPI
+
+-- Sstack_RAM must be configured as WRITE FIRST
+inst_Sstack_RAM : entity work.Sstack_RAM
+PORT MAP (
+	clka => clk_system,
+	wea => SSw,
+	addra => SSaddr,
+	dina => SSdataOUT,
+	douta => SSdataIN
 	);
-	
---		Inst_PHYBuffer: entity work.PHYBUFFER PORT MAP(
---		CLK100MHZ => CLK_SYSTEM,
---		PHYCRS => PHYCRS,
---		PHYRXERR => PHYRXERR,
---		PHYRXD => PHYRXD,
---		PHYCLK50MHZ => PHYCLK50MHZ,
---		data => MACdata,
---		ready => MACready,
---		read_enable => MACread_enable,
---		checksum_err => MACchecksum_err
---	);
-	
-		Inst_MediaAccessController: entity work.MediaAccessController PORT MAP(
-		CLK50MHZ => CLK50MHZ,
-		CLK100MHZ => CLK_SYSTEM,
-		reset => reset,
-		PHYCRS => PHYCRS,
-		PHYRXERR => PHYRXERR,
-		PHYRXD => PHYRXD,
-		PHYCLK50MHZ => PHYCLK50MHZ,
-		PHYRSTN => PHYRSTN,
-		PHYTXEN => PHYTXEN,
-		PHYTXD => PHYTXD,
-		PHYINTN => PHYINTN,
-		dataRX => MACdataRX,
-		readyRX => MACreadyRX,
-		read_enable => MACread_enable,
-		Ethernet_IRQ => open,
-		checksum_err => MACchecksum_err,
-		dataTX => MACdataTX,
-		weTX => MACweTX,
-		readyTX => MACreadyTX,
-		transmit_request => MACtransmit_request
+
+-- Estack_RAM must be configured as WRITE FIRST
+inst_Estack_RAM : entity work.Estack_RAM
+PORT MAP (
+	clka => clk_system,
+	wea => ESw,
+	addra => ESaddr,
+	dina => ESdataOUT,
+	douta => ESdataIN
 	);
-	
-		Inst_SMI: entity work.SMI PORT MAP(
-		CLK100MHz => CLK_SYSTEM,
-		addr => SMIaddr,
-		dataRead => SMIdataRead,
-		dataWrite => SMIdataWrite,
-		read_request => SMIread_request,
-		write_request => SMIwrite_request,
-		ready => SMIready,
-		MDC => PHYMDC,
-		MDIO => PHYMDIO
+
+inst_HW_Registers: entity work.HW_Registers 
+PORT MAP(
+	clk => CLK_SYSTEM,
+	rst => reset,
+	irq_mask => irq_mask,
+	txt_zero => txt_zero,
+	mode => mode,
+	background => background,
+	interlace => interlace,
+	charHeight => charHeight,
+	charWidth => charWidth, 
+	VGArows => 	VGArows,	  
+	VGAcols => VGAcols,
+	en => reg_en,
+	addr => MEMaddr(10 downto 0),
+	datain => MEMdataout_X,
+	dataout => MEMdata_Reg,
+	wrq => MEM_WRQ_XX,
+	RS232_rx_S0 => RS232_rx_S0,
+	RS232_tx_S0 => RS232_tx_S0,
+	RS232_wr_S0 => RS232_wr_S0,
+	RS232_TBE_S0 => RS232_TBE_S0,
+	RS232_RDA_S0 => RS232_RDA_S0,
+	RS232_DIVIDE_S0 => RS232_DIVIDE_S0,		
+	PS2_data => PS2_data,
+	counter_clk => counter_clk,
+	counter_ms => counter_ms,
+	ssData => ssData,
+	SW => SW,
+	SD_dataout => SD_dataout,
+	SD_datain => SD_datain,
+	SD_status => SD_status,
+	SD_control => SD_control,
+	SD_wr => SD_wr,
+	SD_divide => SD_divide,
+	MACreadyRX => MACreadyRX,
+	MACdataRX => MACdataRX,
+	MACread_enable => MACread_enable,
+	MACchecksum_err => MACchecksum_err,
+	MACdataTX => MACdataTX,
+	MACreadyTX => MACreadyTX,
+	MACtransmit_request => MACtransmit_request,
+	MACweTX => MACweTX,
+	SMIaddr => SMIaddr,
+	SMIdataWrite => SMIdataWrite,
+	SMIread_request => SMIread_request,
+	SMIwrite_request => SMIwrite_request,    
+	SMIdataRead => SMIdataRead,
+	SMIready => SMIready,
+	VBLANK => VBLANK
+	);  
+
+inst_CPU: entity work.CPU 
+GENERIC MAP(
+	vmp_w => vmp_w,
+	psp_w => psp_w,
+	rsp_w => rsp_w,
+	ssp_w => ssp_w,
+	esp_w => esp_w
+	)
+PORT MAP(
+	rst => reset,
+	clk => CLK_SYSTEM,
+	irq => irq,
+	rti => rti,
+	irv => irv,
+	PSaddr => PSaddr,
+	PSdatain => PSdatain,
+	PSdataout => PSdataout,
+	PSw => PSw,
+	RSaddr => RSaddr,
+	RSdatain => RSdatain,
+	RSdataout => RSdataout,
+	RSw => RSw,
+	SSaddr => SSaddr,
+	SSdatain => SSdatain(351 downto 320),	
+	SSdataout => SSdataout(351 downto 320),
+	SSw => SSw(43 downto 40),
+	ESaddr => ESaddr,
+	ESdatain => ESdatain(303 downto 256),
+	ESdataout => ESdataout(303 downto 256),
+	ESw => ESw(37 downto 32),
+	MEMaddr => MEMaddr,
+	MEMdatain_X => MEMdatain_Xi,
+	MEMdatain_X_quick => MEMdata_Sys_quick,
+	MEMdataout_X => MEMdataout_X,
+	MEMsize_X => MEMsize_X,
+	MEM_WRQ_X => MEM_WRQ_X,
+	s_axi_awaddr => s_axi_awaddr,
+	s_axi_awvalid => s_axi_awvalid,
+	s_axi_awready => s_axi_awready,
+	s_axi_wdata => s_axi_wdata,
+	s_axi_wstrb => s_axi_wstrb,
+	s_axi_wvalid => s_axi_wvalid,
+	s_axi_wready => s_axi_wready,
+	s_axi_araddr => s_axi_araddr,
+	s_axi_arvalid => s_axi_arvalid,
+	s_axi_arready => s_axi_arready,
+	s_axi_rdata => s_axi_rdata,
+	s_axi_rvalid => s_axi_rvalid,
+	VM => VM,
+	vir_EN => vir_EN,
+	MEMdata_vir => MEMdata_vir,
+	debug => debug_CPU,
+	blocked => blocked
+	);
+
+Inst_stack_access: entity work.stack_access 
+PORT MAP(
+	clk => CLK_SYSTEM,
+	rst => reset,
+	SSdatain => SSdatain(319 downto 0),
+	SSdataout => SSdataout(319 downto 0),
+	SSw => SSw(39 downto 0),
+	SSwSignal => SSw(40),
+	ESdatain => ESdatain(255 downto 0),
+	ESdataout => ESdataout(255 downto 0),
+	ESw => ESw(31 downto 0),
+	ESwSignal => ESw(32),
+	en => stack_access_en,
+	addr => MEMaddr(10 downto 0),
+	datain => MEMdataout_X,
+	dataout => MEMdata_stack_access,
+	wrq => MEM_WRQ_XX
+	);
+
+Inst_Controller: entity work.Controller 
+PORT MAP(
+	clk => CLK_SYSTEM,
+	trig => trig,
+	reset => reset
+	);
+
+Inst_VGAController: entity work.VGA 
+PORT MAP(
+	CLK_VGA => CLK_VGA,
+	reset => reset,
+	mode	=> mode,
+	background => background,
+	data_Text => DATA_TEXT,
+	addr_Text => ADDR_TEXT,
+	data_Char => data_Char,
+	addr_Char => addr_Char,
+	data_Color => data_Color,
+	addr_Color => addr_Color,		
+	HSync => HSync,
+	VSync => VSync,
+	VBLANK => VBLANK,
+	RGB => RGB,
+	interlace => interlace,
+	charHeight => charHeight,
+	charWidth => charWidth, 
+	VGArows => 	VGArows,	  
+	VGAcols => VGAcols,
+	FetchNextRow => FetchNextRow,
+	SW => SW
+	);	
+
+Inst_Interrupt: entity work.Interrupt 
+PORT MAP(
+	clk => CLK_SYSTEM,
+	rst => reset,
+	irq_mask => irq_mask,
+	RS232_RDA_S0 => RS232_RDA_S0,
+	RS232_TBE_S0 => RS232_TBE_S0,
+	PS2_irq => PS2_irq,
+	ms_irq => ms_irq,
+	rti => rti,
+	irq => irq,
+	irv => irv,
+	blocked => blocked
+	);
+
+Inst_UART: entity work.UART 
+PORT MAP(
+	RXD => RXD_S0,
+	TXD => TXD_S0,
+	DIVIDE => RS232_DIVIDE_S0,
+	TXDATA => RS232_tx_S0,
+	RXDATA => RS232_rx_S0,
+	RDA => RS232_RDA_S0,
+	WR => RS232_WR_S0,
+	TBE => RS232_TBE_S0,
+	CLK => CLK_SYSTEM
+	);
+
+Inst_PS2KeyboardDecoder: entity work.PS2KeyboardDecoder 
+PORT MAP(
+	clk => CLK_SYSTEM,
+	PS2C => PS2C,
+	PS2D => PS2D,
+	irq => PS2_irq,
+	data => PS2_data
+	);
+
+Inst_BootLoader: entity work.BootLoader 
+PORT MAP(
+	invReset => invReset,
+	clk => clk_system,
+	RDA => RS232_RDA_S0,
+	RXDATA => RS232_rx_S0,
+	data => Boot_data,
+	addr => Boot_addr,
+	we => Boot_we
+	);
+
+Inst_ByteHEXdisplay: entity work.ByteHEXdisplay 
+PORT MAP(
+	ssData => ssData,
+	clk => CLK_SYSTEM,
+	count => counter_clk(15 downto 13),
+	sevenseg => sevenseg,
+	anode => anode
+	);
+
+Inst_SPImaster: entity work.SPImaster 
+PORT MAP(
+	CLK => CLK_SYSTEM,
+	CLKSPI => CLKSPI,
+	RESET => reset,
+	DATA_IN => SD_datain,
+	WR => SD_wr,
+	TBE => SD_status(0),
+	DATA_OUT => SD_dataout,
+	MOSI => MOSI,
+	MISO => MISO,
+	SCK => SCK,
+	mode => SD_control(3 downto 2),
+	MOSI_def => SD_control(1)
+	);
+
+Inst_DIV: entity work.DIV PORT MAP(
+	CLKin => CLK_SYSTEM,
+	divide => SD_divide,
+	CLKout => CLKSPI
+);
+
+Inst_MediaAccessController: entity work.MediaAccessController 
+PORT MAP(
+	CLK50MHZ => CLK50MHZ,
+	CLK100MHZ => CLK_SYSTEM,
+	reset => reset,
+	PHYCRS => PHYCRS,
+	PHYRXERR => PHYRXERR,
+	PHYRXD => PHYRXD,
+	PHYCLK50MHZ => PHYCLK50MHZ,
+	PHYRSTN => PHYRSTN,
+	PHYTXEN => PHYTXEN,
+	PHYTXD => PHYTXD,
+	PHYINTN => PHYINTN,
+	dataRX => MACdataRX,
+	readyRX => MACreadyRX,
+	read_enable => MACread_enable,
+	Ethernet_IRQ => open,
+	checksum_err => MACchecksum_err,
+	dataTX => MACdataTX,
+	weTX => MACweTX,
+	readyTX => MACreadyTX,
+	transmit_request => MACtransmit_request
+	);
+
+Inst_SMI: entity work.SMI 
+PORT MAP(
+	CLK100MHz => CLK_SYSTEM,
+	addr => SMIaddr,
+	dataRead => SMIdataRead,
+	dataWrite => SMIdataWrite,
+	read_request => SMIread_request,
+	write_request => SMIwrite_request,
+	ready => SMIready,
+	MDC => PHYMDC,
+	MDIO => PHYMDIO
 	);
 		
 end RTL;
