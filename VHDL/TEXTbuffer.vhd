@@ -23,7 +23,7 @@ entity TEXTbuffer is port
 			t_axi_arvalid : OUT  std_logic;
 			t_axi_arready : IN  std_logic;
 			t_axi_rdata : IN  std_logic_vector(15 downto 0);
-			t_axi_rresp : IN  std_logic_vector(1 downto 0);			
+--			t_axi_rresp : IN  std_logic_vector(1 downto 0);			
 			t_axi_rlast : IN  std_logic;										-- Set high on last data item
 			t_axi_rvalid : IN  std_logic
 --			t_axi_rready : OUT  std_logic
