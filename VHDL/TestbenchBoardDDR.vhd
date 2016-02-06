@@ -159,7 +159,7 @@ END COMPONENT;
 BEGIN
 
 	-- Instantiate the Unit Under Test (UUT)
-   uut: Board_Nexys4DDR PORT MAP (
+   prj: Board_Nexys4DDR PORT MAP (
           CLK_IN => CLK_IN,
           RGB => RGB,
           HSync => HSync,

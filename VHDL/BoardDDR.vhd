@@ -76,6 +76,9 @@ architecture RTL of Board_Nexys4DDR is
 
 type bank_t is (Sys, Char, Color, Reg, Stack_access, User, Vir);
 constant blank : std_logic_vector(31 downto 0) := (others =>'0');
+constant l : std_logic := '1';
+constant o : std_logic_vector(0 downto 0) := "0";
+
 signal SD_WP : std_logic;
 signal bank, bank_n : bank_t;	
 signal counter_clk, counter_ms : std_logic_vector(31 downto 0) := (others =>'0');
@@ -225,6 +228,40 @@ signal SMIread_request :  std_logic;
 signal SMIwrite_request :  std_logic;       
 signal SMIdataRead :  std_logic_vector(15 downto 0);
 signal SMIready :  std_logic;
+-- MIG7 user interface signals
+signal sys_clk_i		: std_logic;				-- in: 200MHZ CLOCK
+signal sys_rst		: std_logic;				-- in: active lo reset
+-- user command information
+signal app_en               : std_logic;				-- in: user holds app_en high with a valid app_cmd until app_rdy is asserted
+signal app_cmd              : std_logic_vector(2 downto 0);	-- in: see VDHL constants
+signal app_rdy              : std_logic;				-- out MIG7 registers a command provided rdy is high
+signal app_addr             : std_logic_vector(26 downto 0);	-- in: true byte addressing
+									-- addr needs to be incremented for each new command
+-- write information
+	-- write data must preceed WRITE command or follow within 2 clock cycles
+signal app_wdf_data         : std_logic_vector(127 downto 0);	-- in: 64 bit data since 16 ddr2 lines and 2:1 MIG7 clocking
+signal app_wdf_mask         : std_logic_vector(15 downto 0);	-- in: active high byte mask for the data (note this is a mask not a write strobe)	
+signal app_wdf_wren         : std_logic;				-- in: user holds high throughout transfer to indicate valid data
+signal app_wdf_rdy          : std_logic;				-- out MIG registers data provided rdy is high
+signal app_wdf_end          : std_logic;				-- in: set high to indicate last data word
+-- read information
+signal app_rd_data          : std_logic_vector(127 downto 0);	-- out
+signal app_rd_data_end      : std_logic;				-- out signals end of burst (not needed in handshake logic)
+signal app_rd_data_valid    : std_logic;				-- out valid read data is on the bus
+-- user
+signal app_sr_req           : std_logic;				-- in: tie to '0'
+signal app_sr_active        : std_logic;				-- out: disregard
+-- user controlled DRAM refresh
+signal app_ref_req          : std_logic;				-- in: tie to '0'
+signal app_ref_ack          : std_logic;				-- out disregard
+-- user controllerd ZQ calibration
+signal app_zq_req           : std_logic;				-- in: tie to '0'
+signal app_zq_ack           : std_logic;				-- out disregard
+-- user interface
+signal ui_clk               : std_logic;				-- out CLOCK
+signal ui_clk_sync_rst      : std_logic;				-- out reset
+-- calibration complete		
+signal init_calib_complete  : std_logic;				-- out MIG7 requires 50-60uS to complete calibraton in simulator
 
 component CLOCKMANAGER
 port (	-- Clock in ports
@@ -238,6 +275,51 @@ port (	-- Clock in ports
 	CLK_OUT6	: out    std_logic;	  
 	CLK_OUT7	: out	  std_logic
  );
+end component;
+
+component MIG7
+   port (
+      -- Inouts
+      ddr2_dq              : inout std_logic_vector(15 downto 0);
+      ddr2_dqs_p           : inout std_logic_vector(1 downto 0);
+      ddr2_dqs_n           : inout std_logic_vector(1 downto 0);
+      -- Outputs
+      ddr2_addr            : out   std_logic_vector(12 downto 0);
+      ddr2_ba              : out   std_logic_vector(2 downto 0);
+      ddr2_ras_n           : out   std_logic;
+      ddr2_cas_n           : out   std_logic;
+      ddr2_we_n            : out   std_logic;
+      ddr2_ck_p            : out   std_logic_vector(0 downto 0);
+      ddr2_ck_n            : out   std_logic_vector(0 downto 0);
+      ddr2_cke             : out   std_logic_vector(0 downto 0);
+      ddr2_cs_n            : out   std_logic_vector(0 downto 0);
+      ddr2_dm              : out   std_logic_vector(1 downto 0);
+      ddr2_odt             : out   std_logic_vector(0 downto 0);
+      -- Inputs
+      sys_clk_i	      : in	std_logic;     
+      -- user interface signals
+      app_addr             : in    std_logic_vector(26 downto 0);
+      app_cmd              : in    std_logic_vector(2 downto 0);
+      app_en               : in    std_logic;
+      app_wdf_data         : in    std_logic_vector(127 downto 0);
+      app_wdf_end          : in    std_logic;
+      app_wdf_mask         : in    std_logic_vector(15 downto 0);
+      app_wdf_wren         : in    std_logic;
+      app_rd_data          : out   std_logic_vector(127 downto 0);
+      app_rd_data_end      : out   std_logic;
+      app_rd_data_valid    : out   std_logic;
+      app_rdy              : out   std_logic;
+      app_wdf_rdy          : out   std_logic;
+      app_sr_req           : in    std_logic;
+      app_sr_active        : out   std_logic;
+      app_ref_req          : in    std_logic;
+      app_ref_ack          : out   std_logic;
+      app_zq_req           : in    std_logic;
+      app_zq_ack           : out   std_logic;
+      ui_clk               : out   std_logic;
+      ui_clk_sync_rst      : out   std_logic;
+      init_calib_complete  : out   std_logic;
+      sys_rst		      : in	std_logic);
 end component;
 		
 begin
@@ -445,21 +527,69 @@ PORT MAP(
 	t_axi_rdata => t_axi_rdata,
 	t_axi_rlast => t_axi_rlast,
 	t_axi_rvalid => t_axi_rvalid,
-	ddr2_dq => ddr2_dq,
-	ddr2_dqs_p => ddr2_dqs_p,
-	ddr2_dqs_n => ddr2_dqs_n,
-	ddr2_addr => ddr2_addr,
-	ddr2_ba => ddr2_ba,
-	ddr2_ras_n => ddr2_ras_n,
-	ddr2_cas_n => ddr2_cas_n,
-	ddr2_we_n => ddr2_we_n,
-	ddr2_ck_p => ddr2_ck_p,
-	ddr2_ck_n => ddr2_ck_n,
-	ddr2_cke => ddr2_cke,
-	ddr2_cs_n => ddr2_cs_n,
-	ddr2_dm => ddr2_dm,
-	ddr2_odt => ddr2_odt
+	app_addr             => app_addr,
+	app_cmd              => app_cmd,
+	app_en               => app_en,
+	app_wdf_data         => app_wdf_data,
+	app_wdf_end          => app_wdf_end,
+	app_wdf_mask         => app_wdf_mask,
+	app_wdf_wren         => app_wdf_wren,
+	app_rd_data          => app_rd_data,
+	app_rd_data_end      => app_rd_data_end,
+	app_rd_data_valid    => app_rd_data_valid,
+	app_rdy              => app_rdy,
+	app_wdf_rdy          => app_wdf_rdy,
+	app_sr_req           => app_sr_req,
+	app_sr_active        => app_sr_active,
+	app_ref_req          => app_ref_req,
+	app_ref_ack          => app_ref_ack,
+	app_zq_req           => app_zq_req,
+	app_zq_ack           => app_zq_ack,
+	ui_clk               => ui_clk,
+	ui_clk_sync_rst      => ui_clk_sync_rst,    
+	init_calib_complete  => init_calib_complete
 	);
+
+inst_MIG7: MIG7
+port map (
+	ddr2_dq              => ddr2_dq,
+	ddr2_dqs_p           => ddr2_dqs_p,
+	ddr2_dqs_n           => ddr2_dqs_n,
+	ddr2_addr            => ddr2_addr,
+	ddr2_ba              => ddr2_ba,
+	ddr2_ras_n           => ddr2_ras_n,
+	ddr2_cas_n           => ddr2_cas_n,
+	ddr2_we_n            => ddr2_we_n,
+	ddr2_ck_p            => ddr2_ck_p,
+	ddr2_ck_n            => ddr2_ck_n,
+	ddr2_cke             => ddr2_cke,
+	ddr2_cs_n            => ddr2_cs_n,
+	ddr2_dm              => ddr2_dm,
+	ddr2_odt             => ddr2_odt,
+	sys_clk_i 	     	=> CLK200MHZ,
+	app_addr             => app_addr,
+	app_cmd              => app_cmd,
+	app_en               => app_en,
+	app_wdf_data         => app_wdf_data,
+	app_wdf_end          => app_wdf_end,
+	app_wdf_mask         => app_wdf_mask,
+	app_wdf_wren         => app_wdf_wren,
+	app_rd_data          => app_rd_data,
+	app_rd_data_end      => app_rd_data_end,
+	app_rd_data_valid    => app_rd_data_valid,
+	app_rdy              => app_rdy,
+	app_wdf_rdy          => app_wdf_rdy,
+	app_sr_req           => app_sr_req,
+	app_sr_active        => app_sr_active,
+	app_ref_req          => app_ref_req,
+	app_ref_ack          => app_ref_ack,
+	app_zq_req           => app_zq_req,
+	app_zq_ack           => app_zq_ack,
+	ui_clk               => ui_clk,
+	ui_clk_sync_rst      => ui_clk_sync_rst,    
+	init_calib_complete  => init_calib_complete,
+	sys_rst => invRESET
+     );
 
 Inst_TEXTbufferDDR: entity work.TEXTbufferDDR 
 PORT MAP(
@@ -546,9 +676,9 @@ PORT MAP (
 inst_Char_RAM : entity work.Char_RAM
 PORT MAP (
 	clka => clk_VGA,
-	wea => "0",
+	wea => o,
 	addra => addr_Char,
-	dina => (others=>'0'),
+	dina => blank(15 downto 0),
 	douta => data_Char,
 	clkb => clk_system,
 	enb => Char_EN,
@@ -561,10 +691,10 @@ PORT MAP (
 inst_Color_RAM : entity work.Color_RAM
 PORT MAP (
 	clka => clk_VGA,
-	ena => '1',
-	wea => "0",
+	ena => l,
+	wea => o,
 	addra => addr_Color,
-	dina => (others=>'0'),
+	dina => blank(15 downto 0),
 	douta => data_Color,
 	clkb => clk_system,
 	enb => Color_EN,

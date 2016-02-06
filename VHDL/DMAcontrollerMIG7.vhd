@@ -55,23 +55,28 @@ entity DMAcontrollerMIG7 is
 	t_axi_rlast : OUT  std_logic;					-- set high to indicate last data word
 	t_axi_rvalid : OUT  std_logic;
 	--t_axi_rready : IN  std_logic;
-	-- DDR2 memory connections -------------------------------------
-      	-- Inouts
-	ddr2_dq              : inout std_logic_vector(15 downto 0);
-	ddr2_dqs_p           : inout std_logic_vector(1 downto 0);
-	ddr2_dqs_n           : inout std_logic_vector(1 downto 0);
-	-- Outputs
-	ddr2_addr            : out   std_logic_vector(12 downto 0);
-	ddr2_ba              : out   std_logic_vector(2 downto 0);
-	ddr2_ras_n           : out   std_logic;
-	ddr2_cas_n           : out   std_logic;
-	ddr2_we_n            : out   std_logic;
-	ddr2_ck_p            : out   std_logic_vector(0 downto 0);
-	ddr2_ck_n            : out   std_logic_vector(0 downto 0);
-	ddr2_cke             : out   std_logic_vector(0 downto 0);
-	ddr2_cs_n            : out   std_logic_vector(0 downto 0);
-	ddr2_dm              : out   std_logic_vector(1 downto 0);
-	ddr2_odt             : out   std_logic_vector(0 downto 0)
+	-- MIG connections -------------------------------------
+      app_addr             : out	std_logic_vector(26 downto 0);
+      app_cmd              : out    std_logic_vector(2 downto 0);
+      app_en               : out    std_logic;
+      app_wdf_data         : out   std_logic_vector(127 downto 0);
+      app_wdf_end          : out    std_logic;
+      app_wdf_mask         : out    std_logic_vector(15 downto 0);
+      app_wdf_wren         : out    std_logic;
+      app_rd_data          : in   std_logic_vector(127 downto 0);
+      app_rd_data_end      : in   std_logic;
+      app_rd_data_valid    : in   std_logic;
+      app_rdy              : in   std_logic;
+      app_wdf_rdy          : in   std_logic;
+      app_sr_req           : out    std_logic;
+      app_sr_active        : in   std_logic;
+      app_ref_req          : out std_logic;
+      app_ref_ack          : in   std_logic;
+      app_zq_req           : out    std_logic;
+      app_zq_ack           : in   std_logic;
+      ui_clk               : in   std_logic;
+      ui_clk_sync_rst      : in   std_logic;
+      init_calib_complete  : in	std_logic
 	);			
 end DMAcontrollerMIG7;
 
@@ -87,85 +92,40 @@ end DMAcontrollerMIG7;
 
 architecture RTL of DMAcontrollerMIG7 is
 
-component MIG7
-   port (
-      -- Inouts
-      ddr2_dq              : inout std_logic_vector(15 downto 0);
-      ddr2_dqs_p           : inout std_logic_vector(1 downto 0);
-      ddr2_dqs_n           : inout std_logic_vector(1 downto 0);
-      -- Outputs
-      ddr2_addr            : out   std_logic_vector(12 downto 0);
-      ddr2_ba              : out   std_logic_vector(2 downto 0);
-      ddr2_ras_n           : out   std_logic;
-      ddr2_cas_n           : out   std_logic;
-      ddr2_we_n            : out   std_logic;
-      ddr2_ck_p            : out   std_logic_vector(0 downto 0);
-      ddr2_ck_n            : out   std_logic_vector(0 downto 0);
-      ddr2_cke             : out   std_logic_vector(0 downto 0);
-      ddr2_cs_n            : out   std_logic_vector(0 downto 0);
-      ddr2_dm              : out   std_logic_vector(1 downto 0);
-      ddr2_odt             : out   std_logic_vector(0 downto 0);
-      -- Inputs
-      sys_clk_i	      : in	std_logic;     
-      -- user interface signals
-      app_addr             : in    std_logic_vector(26 downto 0);
-      app_cmd              : in    std_logic_vector(2 downto 0);
-      app_en               : in    std_logic;
-      app_wdf_data         : in    std_logic_vector(127 downto 0);
-      app_wdf_end          : in    std_logic;
-      app_wdf_mask         : in    std_logic_vector(15 downto 0);
-      app_wdf_wren         : in    std_logic;
-      app_rd_data          : out   std_logic_vector(127 downto 0);
-      app_rd_data_end      : out   std_logic;
-      app_rd_data_valid    : out   std_logic;
-      app_rdy              : out   std_logic;
-      app_wdf_rdy          : out   std_logic;
-      app_sr_req           : in    std_logic;
-      app_sr_active        : out   std_logic;
-      app_ref_req          : in    std_logic;
-      app_ref_ack          : out   std_logic;
-      app_zq_req           : in    std_logic;
-      app_zq_ack           : out   std_logic;
-      ui_clk               : out   std_logic;
-      ui_clk_sync_rst      : out   std_logic;
-      init_calib_complete  : out   std_logic;
-      sys_rst		      : in	std_logic);
-end component;
-
--- MIG7 user interface signals
-signal sys_clk_i		: std_logic;				-- in: 200MHZ CLOCK
-signal sys_rst		: std_logic;				-- in: active lo reset
--- user command information
-signal app_en               : std_logic;				-- in: user holds app_en high with a valid app_cmd until app_rdy is asserted
-signal app_cmd              : std_logic_vector(2 downto 0);	-- in: see VDHL constants
-signal app_rdy              : std_logic;				-- out MIG7 registers a command provided rdy is high
-signal app_addr             : std_logic_vector(26 downto 0);	-- in: true byte addressing
-									-- addr needs to be incremented for each new command
--- write information
-	-- write data must preceed WRITE command or follow within 2 clock cycles
-signal app_wdf_data         : std_logic_vector(127 downto 0);	-- in: 64 bit data since 16 ddr2 lines and 2:1 MIG7 clocking
-signal app_wdf_mask         : std_logic_vector(15 downto 0);	-- in: active high byte mask for the data (note this is a mask not a write strobe)	
-signal app_wdf_wren         : std_logic;				-- in: user holds high throughout transfer to indicate valid data
-signal app_wdf_rdy          : std_logic;				-- out MIG registers data provided rdy is high
-signal app_wdf_end          : std_logic;				-- in: set high to indicate last data word
--- read information
-signal app_rd_data          : std_logic_vector(127 downto 0);	-- out
-signal app_rd_data_end      : std_logic;				-- out signals end of burst (not needed in handshake logic)
-signal app_rd_data_valid    : std_logic;				-- out valid read data is on the bus
--- user
-signal app_sr_req           : std_logic;				-- in: tie to '0'
-signal app_sr_active        : std_logic;				-- out: disregard
--- user controlled DRAM refresh
-signal app_ref_req          : std_logic;				-- in: tie to '0'
-signal app_ref_ack          : std_logic;				-- out disregard
--- user controllerd ZQ calibration
-signal app_zq_req           : std_logic;				-- in: tie to '0'
-signal app_zq_ack           : std_logic;				-- out disregard
--- user interface
-signal ui_clk               : std_logic;				-- out CLOCK
-signal ui_clk_sync_rst      : std_logic;				-- out reset
--- calibration complete		
-signal init_calib_complete  : std_logic;				-- out MIG7 requires 50-60uS to complete calibraton in simulator
+---- MIG7 user interface signals
+--signal sys_clk_i		: std_logic;				-- in: 200MHZ CLOCK
+--signal sys_rst		: std_logic;				-- in: active lo reset
+---- user command information
+--signal app_en               : std_logic;				-- in: user holds app_en high with a valid app_cmd until app_rdy is asserted
+--signal app_cmd              : std_logic_vector(2 downto 0);	-- in: see VDHL constants
+--signal app_rdy              : std_logic;				-- out MIG7 registers a command provided rdy is high
+--signal app_addr             : std_logic_vector(26 downto 0);	-- in: true byte addressing
+--									-- addr needs to be incremented for each new command
+---- write information
+--	-- write data must preceed WRITE command or follow within 2 clock cycles
+--signal app_wdf_data         : std_logic_vector(127 downto 0);	-- in: 64 bit data since 16 ddr2 lines and 2:1 MIG7 clocking
+--signal app_wdf_mask         : std_logic_vector(15 downto 0);	-- in: active high byte mask for the data (note this is a mask not a write strobe)	
+--signal app_wdf_wren         : std_logic;				-- in: user holds high throughout transfer to indicate valid data
+--signal app_wdf_rdy          : std_logic;				-- out MIG registers data provided rdy is high
+--signal app_wdf_end          : std_logic;				-- in: set high to indicate last data word
+---- read information
+--signal app_rd_data          : std_logic_vector(127 downto 0);	-- out
+--signal app_rd_data_end      : std_logic;				-- out signals end of burst (not needed in handshake logic)
+--signal app_rd_data_valid    : std_logic;				-- out valid read data is on the bus
+---- user
+--signal app_sr_req           : std_logic;				-- in: tie to '0'
+--signal app_sr_active        : std_logic;				-- out: disregard
+---- user controlled DRAM refresh
+--signal app_ref_req          : std_logic;				-- in: tie to '0'
+--signal app_ref_ack          : std_logic;				-- out disregard
+---- user controllerd ZQ calibration
+--signal app_zq_req           : std_logic;				-- in: tie to '0'
+--signal app_zq_ack           : std_logic;				-- out disregard
+---- user interface
+--signal ui_clk               : std_logic;				-- out CLOCK
+--signal ui_clk_sync_rst      : std_logic;				-- out reset
+---- calibration complete		
+--signal init_calib_complete  : std_logic;				-- out MIG7 requires 50-60uS to complete calibraton in simulator
 
 -- MIG7 user interface app_cmd commands
 constant MIG_WRITE               : std_logic_vector(2 downto 0) := "000";
@@ -192,8 +152,8 @@ begin
 
 
 -- MIG7 overall control
-sys_clk_i <= CLK200MHZ;
-sys_rst <= not RESET;
+--sys_clk_i <= CLK200MHZ;
+--sys_rst <= not RESET;
 app_sr_req <= '0';
 app_ref_req <= '0';
 app_zq_req <= '0';
@@ -381,48 +341,6 @@ app_wdf_data <= s_axi_wdata & s_axi_wdata & s_axi_wdata & s_axi_wdata;			-- repl
 	
 app_wdf_wren <= '1' when arbiter = s_axi_write and s_axi_w_state = pending else '0';	-- enable a write to the MIG7 when arbiter indictes a channel request and it has not yet been satisfied
 app_wdf_end <= '1' when arbiter = s_axi_write and s_axi_w_state = pending else '0';
-
-
-inst_MIG7: MIG7
-  port map (
-     ddr2_dq              => ddr2_dq,
-     ddr2_dqs_p           => ddr2_dqs_p,
-     ddr2_dqs_n           => ddr2_dqs_n,
-     ddr2_addr            => ddr2_addr,
-     ddr2_ba              => ddr2_ba,
-     ddr2_ras_n           => ddr2_ras_n,
-     ddr2_cas_n           => ddr2_cas_n,
-     ddr2_we_n            => ddr2_we_n,
-     ddr2_ck_p            => ddr2_ck_p,
-     ddr2_ck_n            => ddr2_ck_n,
-     ddr2_cke             => ddr2_cke,
-     ddr2_cs_n            => ddr2_cs_n,
-     ddr2_dm              => ddr2_dm,
-     ddr2_odt             => ddr2_odt,
-     sys_clk_i 	     => sys_clk_i,
-     app_addr             => app_addr,
-     app_cmd              => app_cmd,
-     app_en               => app_en,
-     app_wdf_data         => app_wdf_data,
-     app_wdf_end          => app_wdf_end,
-     app_wdf_mask         => app_wdf_mask,
-     app_wdf_wren         => app_wdf_wren,
-     app_rd_data          => app_rd_data,
-     app_rd_data_end      => app_rd_data_end,
-     app_rd_data_valid    => app_rd_data_valid,
-     app_rdy              => app_rdy,
-     app_wdf_rdy          => app_wdf_rdy,
-     app_sr_req           => app_sr_req,
-     app_sr_active        => app_sr_active,
-     app_ref_req          => app_ref_req,
-     app_ref_ack          => app_ref_ack,
-     app_zq_req           => app_zq_req,
-     app_zq_ack           => app_zq_ack,
-     ui_clk               => ui_clk,
-     ui_clk_sync_rst      => ui_clk_sync_rst,    
-     init_calib_complete  => init_calib_complete,
-     sys_rst => sys_rst
-     );
 
 end RTL;
 

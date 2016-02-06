@@ -70,6 +70,9 @@ architecture RTL of Board_Nexys4 is
 
 type bank_t is (Sys, Char, Color, Reg, Stack_access, User, Vir);
 constant blank : std_logic_vector(31 downto 0) := (others =>'0');
+constant l : std_logic := '1';
+constant o : std_logic_vector(0 downto 0) := "0";
+
 signal SD_WP : std_logic;
 signal bank, bank_n : bank_t;	
 signal counter_clk, counter_ms : std_logic_vector(31 downto 0) := (others =>'0');
@@ -219,6 +222,7 @@ signal SMIread_request :  std_logic;
 signal SMIwrite_request :  std_logic;       
 signal SMIdataRead :  std_logic_vector(15 downto 0);
 signal SMIready :  std_logic;
+
 
 component CLOCKMANAGER
 port (	-- Clock in ports
@@ -468,7 +472,6 @@ PORT MAP(
 	t_axi_arvalid => t_axi_arvalid,
 	t_axi_arready => t_axi_arready,
 	t_axi_rdata => t_axi_rdata,
-	t_axi_rresp => t_axi_rresp,
 	t_axi_rlast => t_axi_rlast,
 	t_axi_rvalid => t_axi_rvalid
 	);
@@ -538,9 +541,9 @@ PORT MAP (
 inst_Char_RAM : entity work.Char_RAM
 PORT MAP (
 	clka => clk_VGA,
-	wea => "0",
+	wea => o,
 	addra => addr_Char,
-	dina => (others=>'0'),
+	dina => blank(15 downto 0),
 	douta => data_Char,
 	clkb => clk_system,
 	enb => Char_EN,
@@ -553,10 +556,10 @@ PORT MAP (
 inst_Color_RAM : entity work.Color_RAM
 PORT MAP (
 	clka => clk_VGA,
-	ena => '1',
-	wea => "0",
+	ena => l,
+	wea => o,
 	addra => addr_Color,
-	dina => (others=>'0'),
+	dina => blank(15 downto 0),
 	douta => data_Color,
 	clkb => clk_system,
 	enb => Color_EN,
