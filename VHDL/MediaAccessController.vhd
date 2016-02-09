@@ -39,7 +39,7 @@ architecture RTL of MediaAccessController is
 COMPONENT FIFO8
   PORT (
     clk : IN STD_LOGIC;
-	 srst : IN STD_LOGIC;
+    srst : IN STD_LOGIC;
     din : IN STD_LOGIC_VECTOR(7 DOWNTO 0);
     wr_en : IN STD_LOGIC;
     rd_en : IN STD_LOGIC;
@@ -47,6 +47,15 @@ COMPONENT FIFO8
     full : OUT STD_LOGIC;
     empty : OUT STD_LOGIC
   );
+END COMPONENT;
+
+COMPONENT CRC32calc
+PORT(
+	clk : IN std_logic;
+	reset : IN std_logic;
+	data : IN std_logic;          
+	checksum : OUT std_logic_vector(31 downto 0)
+	);
 END COMPONENT;
 
 -- registered I/O     
@@ -103,7 +112,7 @@ INST_FIFO_RX : FIFO8
     dout => dataRX,
     full => fullRX,
     empty => emptyRX,
-	 srst => reset
+	srst => reset
 	 );
   
 INST_FIFO_TX : FIFO8
@@ -118,7 +127,7 @@ INST_FIFO_TX : FIFO8
 	 srst => reset
   );
   
-Inst_CRC32calc_RX: entity work.CRC32calc 
+Inst_CRC32calc_RX: CRC32calc 
 	PORT MAP(
 		clk => CLK100MHZ,
 		reset => reset_CRC_RX,
@@ -126,7 +135,7 @@ Inst_CRC32calc_RX: entity work.CRC32calc
 		checksum => checksum_RX
 	);
 	
-Inst_CRC32calc_TX: entity work.CRC32calc 
+Inst_CRC32calc_TX: CRC32calc 
 	PORT MAP(
 		clk => CLK100MHZ,
 		reset => reset_CRC_TX,

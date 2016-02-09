@@ -68,7 +68,7 @@ end Board_Nexys4;
 
 architecture RTL of Board_Nexys4 is
 
-type bank_t is (Sys, Char, Color, Reg, Stack_access, User, Vir);
+type bank_t is (Sys, Char, Color, Reg, Stacks, User, Vir);
 constant blank : std_logic_vector(31 downto 0) := (others =>'0');
 constant l : std_logic := '1';
 constant o : std_logic_vector(0 downto 0) := "0";
@@ -237,7 +237,506 @@ port (	-- Clock in ports
 	CLK_OUT7	: out	  std_logic
  );
 end component;
+
+COMPONENT SYS_RAM
+  PORT (
+    clka : IN STD_LOGIC;
+    ena : IN STD_LOGIC;
+    wea : IN STD_LOGIC_VECTOR(3 DOWNTO 0);
+    addra : IN STD_LOGIC_VECTOR(14 DOWNTO 0);
+    dina : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+    douta : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+    clkb : IN STD_LOGIC;
+    enb : IN STD_LOGIC;
+    web : IN STD_LOGIC_VECTOR(3 DOWNTO 0);
+    addrb : IN STD_LOGIC_VECTOR(14 DOWNTO 0);
+    dinb : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+    doutb : OUT STD_LOGIC_VECTOR(31 DOWNTO 0)
+  );
+END COMPONENT;
+
+COMPONENT RAM_for_Testbench
+PORT(
+	rst : IN std_logic;
+	clk : IN std_logic;
+	weA : IN std_logic_vector(3 downto 0);
+	weB : IN std_logic_vector(3 downto 0);
+	enA : IN std_logic;
+	enB : IN std_logic;
+	addressA : IN std_logic_vector(16 downto 2);
+	data_inA : IN std_logic_vector(31 downto 0);
+	addressB : IN std_logic_vector(16 downto 2);
+	data_inB : IN std_logic_vector(31 downto 0);          
+	data_outA : OUT std_logic_vector(31 downto 0);
+	data_outB : OUT std_logic_vector(31 downto 0)
+	);
+END COMPONENT;
+
+COMPONENT DMAcontroller
+PORT(
+	CLK : IN std_logic;
+	reset : IN std_logic;
+	s_axi_awaddr : IN std_logic_vector(31 downto 0);
+	s_axi_awvalid : IN std_logic;
+	s_axi_wdata : IN std_logic_vector(31 downto 0);
+	s_axi_wstrb : IN std_logic_vector(3 downto 0);
+	s_axi_wvalid : IN std_logic;
+	s_axi_araddr : IN std_logic_vector(31 downto 0);
+	s_axi_arvalid : IN std_logic;
+	t_axi_araddr : IN std_logic_vector(31 downto 0);
+	t_axi_arlen : IN std_logic_vector(7 downto 0);
+	t_axi_arvalid : IN std_logic;
+	WAIT_SDRAM : IN std_logic;    
+	DATA_SDRAM : INOUT std_logic_vector(15 downto 0);      
+	s_axi_awready : OUT std_logic;
+	s_axi_wready : OUT std_logic;
+	s_axi_arready : OUT std_logic;
+	s_axi_rdata : OUT std_logic_vector(31 downto 0);
+	s_axi_rvalid : OUT std_logic;
+	t_axi_arready : OUT std_logic;
+	t_axi_rdata : OUT std_logic_vector(15 downto 0);
+	t_axi_rresp : OUT std_logic_vector(1 downto 0);
+	t_axi_rlast : OUT std_logic;
+	t_axi_rvalid : OUT std_logic;
+	ADDR_SDRAM : OUT std_logic_vector(23 downto 1);
+	OE_SDRAM : OUT std_logic;
+	WE_SDRAM : OUT std_logic;
+	ADV_SDRAM : OUT std_logic;
+	CLK_SDRAM : OUT std_logic;
+	UB_SDRAM : OUT std_logic;
+	LB_SDRAM : OUT std_logic;
+	CE_SDRAM : OUT std_logic;
+	CRE_SDRAM : OUT std_logic;
+	debug : OUT std_logic_vector(7 downto 0)
+	);
+END COMPONENT;
+
+COMPONENT TEXTbuffer
+PORT(
+	clk_MEM : IN std_logic;
+	clk_VGA : IN std_logic;
+	VGAcols : IN std_logic_vector(7 downto 0);
+	VBlank : IN std_logic;
+	FetchNextRow : IN std_logic;
+	txt_zero : IN std_logic_vector(23 downto 0);
+	ADDR_TEXT : IN std_logic_vector(7 downto 0);
+	t_axi_arready : IN std_logic;
+	t_axi_rdata : IN std_logic_vector(15 downto 0);
+	t_axi_rlast : IN std_logic;
+	t_axi_rvalid : IN std_logic;          
+	DATA_TEXT : OUT std_logic_vector(15 downto 0);
+	t_axi_araddr : OUT std_logic_vector(31 downto 0);
+	t_axi_arlen : OUT std_logic_vector(7 downto 0);
+	t_axi_arvalid : OUT std_logic
+	);
+END COMPONENT;
+
+COMPONENT SRAM_controller
+PORT(
+	RST : IN std_logic;
+	CLK : IN std_logic;
+	en : IN std_logic;
+	ADDR : IN std_logic_vector(31 downto 0);
+	size : IN std_logic_vector(1 downto 0);
+	WE : IN std_logic_vector(0 to 0);
+	DATA_in : IN std_logic_vector(31 downto 0);
+	douta : IN std_logic_vector(31 downto 0);
+	doutb : IN std_logic_vector(31 downto 0);          
+	DATA_out : OUT std_logic_vector(31 downto 0);
+	DATA_out_quick : OUT std_logic_vector(31 downto 0);
+	wea : OUT std_logic_vector(3 downto 0);
+	addra : OUT std_logic_vector(31 downto 2);
+	dina : OUT std_logic_vector(31 downto 0);
+	web : OUT std_logic_vector(3 downto 0);
+	addrb : OUT std_logic_vector(31 downto 2);
+	dinb : OUT std_logic_vector(31 downto 0);
+	en_a : OUT std_logic;
+	en_b : OUT std_logic
+	);
+END COMPONENT;
+
+COMPONENT USER_RAM
+  PORT (
+    clka : IN STD_LOGIC;
+    ena : IN STD_LOGIC;
+    wea : IN STD_LOGIC_VECTOR(3 DOWNTO 0);
+    addra : IN STD_LOGIC_VECTOR(13 DOWNTO 0);
+    dina : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+    douta : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+    clkb : IN STD_LOGIC;
+    enb : IN STD_LOGIC;
+    web : IN STD_LOGIC_VECTOR(3 DOWNTO 0);
+    addrb : IN STD_LOGIC_VECTOR(13 DOWNTO 0);
+    dinb : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+    doutb : OUT STD_LOGIC_VECTOR(31 DOWNTO 0)
+  );
+END COMPONENT;
+
+COMPONENT Char_RAM
+  PORT (
+    clka : IN STD_LOGIC;
+    wea : IN STD_LOGIC_VECTOR(0 DOWNTO 0);
+    addra : IN STD_LOGIC_VECTOR(11 DOWNTO 0);
+    dina : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
+    douta : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
+    clkb : IN STD_LOGIC;
+    enb : IN STD_LOGIC;
+    web : IN STD_LOGIC_VECTOR(0 DOWNTO 0);
+    addrb : IN STD_LOGIC_VECTOR(11 DOWNTO 0);
+    dinb : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
+    doutb : OUT STD_LOGIC_VECTOR(15 DOWNTO 0)
+  );
+END COMPONENT;
+
+COMPONENT Color_RAM
+  PORT (
+    clka : IN STD_LOGIC;
+    wea : IN STD_LOGIC_VECTOR(0 DOWNTO 0);
+    addra : IN STD_LOGIC_VECTOR(7 DOWNTO 0);
+    dina : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
+    douta : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
+    clkb : IN STD_LOGIC;
+    enb : IN STD_LOGIC;
+    web : IN STD_LOGIC_VECTOR(0 DOWNTO 0);
+    addrb : IN STD_LOGIC_VECTOR(7 DOWNTO 0);
+    dinb : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
+    doutb : OUT STD_LOGIC_VECTOR(15 DOWNTO 0)
+  );
+END COMPONENT;
+
+-- must be configured as WRITE FIRST
+COMPONENT Pstack_RAM
+  PORT (
+    clka : IN STD_LOGIC;
+    wea : IN STD_LOGIC_VECTOR(0 DOWNTO 0);
+    addra : IN STD_LOGIC_VECTOR(12 DOWNTO 0);
+    dina : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+    douta : OUT STD_LOGIC_VECTOR(31 DOWNTO 0)
+  );
+END COMPONENT;
+
+-- must be configured as WRITE FIRST
+COMPONENT Rstack_RAM
+  PORT (
+    clka : IN STD_LOGIC;
+    wea : IN STD_LOGIC_VECTOR(0 DOWNTO 0);
+    addra : IN STD_LOGIC_VECTOR(11 DOWNTO 0);
+    dina : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+    douta : OUT STD_LOGIC_VECTOR(31 DOWNTO 0)
+  );
+END COMPONENT;
+
+-- must be configured as WRITE FIRST
+COMPONENT Sstack_RAM
+  PORT (
+    clka : IN STD_LOGIC;
+    wea : IN STD_LOGIC_VECTOR(43 DOWNTO 0);
+    addra : IN STD_LOGIC_VECTOR(11 DOWNTO 0);
+    dina : IN STD_LOGIC_VECTOR(351 DOWNTO 0);
+    douta : OUT STD_LOGIC_VECTOR(351 DOWNTO 0)
+  );
+END COMPONENT;
+
+-- must be configured as WRITE FIRST
+COMPONENT Estack_RAM
+  PORT (
+    clka : IN STD_LOGIC;
+    wea : IN STD_LOGIC_VECTOR(37 DOWNTO 0);
+    addra : IN STD_LOGIC_VECTOR(8 DOWNTO 0);
+    dina : IN STD_LOGIC_VECTOR(303 DOWNTO 0);
+    douta : OUT STD_LOGIC_VECTOR(303 DOWNTO 0)
+  );
+END COMPONENT;
+
+COMPONENT HW_Registers
+PORT(
+	clk : IN std_logic;
+	rst : IN std_logic;
+	SD_datain : IN std_logic_vector(7 downto 0);
+	SD_status : IN std_logic_vector(3 downto 0);
+	VBLANK : IN std_logic;
+	RS232_rx_S0 : IN std_logic_vector(7 downto 0);
+	RS232_TBE_S0 : IN std_logic;
+	RS232_RDA_S0 : IN std_logic;
+	PS2_data : IN std_logic_vector(7 downto 0);
+	counter_ms : IN std_logic_vector(31 downto 0);
+	counter_clk : IN std_logic_vector(31 downto 0);
+	MACreadyRX : IN std_logic;
+	MACchecksum_err : IN std_logic;
+	MACdataRX : IN std_logic_vector(7 downto 0);
+	MACreadyTX : IN std_logic;
+	SMIdataRead : IN std_logic_vector(15 downto 0);
+	SMIready : IN std_logic;
+	SW : IN std_logic_vector(15 downto 0);
+	en : IN std_logic;
+	addr : IN std_logic_vector(10 downto 0);
+	datain : IN std_logic_vector(31 downto 0);
+	wrq : IN std_logic_vector(0 to 0);          
+	SD_dataout : OUT std_logic_vector(7 downto 0);
+	SD_control : OUT std_logic_vector(3 downto 0);
+	SD_wr : OUT std_logic;
+	SD_divide : OUT std_logic_vector(7 downto 0);
+	txt_zero : OUT std_logic_vector(23 downto 0);
+	mode : OUT std_logic_vector(4 downto 0);
+	background : OUT std_logic_vector(15 downto 0);
+	interlace : OUT std_logic_vector(3 downto 0);
+	charHeight : OUT std_logic_vector(3 downto 0);
+	charWidth : OUT std_logic_vector(3 downto 0);
+	VGArows : OUT std_logic_vector(7 downto 0);
+	VGAcols : OUT std_logic_vector(7 downto 0);
+	irq_mask : OUT std_logic_vector(15 downto 1);
+	RS232_tx_S0 : OUT std_logic_vector(7 downto 0);
+	RS232_wr_S0 : OUT std_logic;
+	RS232_DIVIDE_S0 : OUT std_logic_vector(31 downto 0);
+	MACread_enable : OUT std_logic;
+	MACdataTX : OUT std_logic_vector(7 downto 0);
+	MACweTX : OUT std_logic;
+	MACtransmit_request : OUT std_logic;
+	SMIaddr : OUT std_logic_vector(9 downto 0);
+	SMIdataWrite : OUT std_logic_vector(15 downto 0);
+	SMIread_request : OUT std_logic;
+	SMIwrite_request : OUT std_logic;
+	ssData : OUT std_logic_vector(31 downto 0);
+	dataout : OUT std_logic_vector(31 downto 0)
+	);
+END COMPONENT;
+
+COMPONENT CPU
+Generic(
+	vmp_w : integer;
+	psp_w : integer;
+	rsp_w : integer;
+	ssp_w : integer;
+	esp_w : integer
+	);
+PORT(
+	rst : IN std_logic;
+	clk : IN std_logic;
+	irq : IN std_logic;
+	irv : IN std_logic_vector(3 downto 0);
+	blocked : IN std_logic;
+	PSdatain : IN std_logic_vector(31 downto 0);
+	RSdatain : IN std_logic_vector(31 downto 0);
+	SSdatain : IN std_logic_vector(351 downto 320);
+	ESdatain : IN std_logic_vector(303 downto 256);
+	MEMdatain_X : IN std_logic_vector(31 downto 0);
+	MEMdatain_X_quick : IN std_logic_vector(31 downto 0);
+	s_axi_awready : IN std_logic;
+	s_axi_wready : IN std_logic;
+	s_axi_arready : IN std_logic;
+	s_axi_rdata : IN std_logic_vector(31 downto 0);
+	s_axi_rvalid : IN std_logic;
+	vir_EN : IN std_logic;          
+	rti : OUT std_logic;
+	PSaddr : OUT std_logic_vector(vmp_w + psp_w -1 downto 0);
+	PSdataout : OUT std_logic_vector(31 downto 0);
+	PSw : OUT std_logic_vector(0 to 0);
+	RSaddr : OUT std_logic_vector(vmp_w + rsp_w -1  downto 0);
+	RSdataout : OUT std_logic_vector(31 downto 0);
+	RSw : OUT std_logic_vector(0 to 0);
+	SSaddr : out STD_LOGIC_VECTOR (vmp_w + ssp_w -1 downto 0);
+	SSdataout : OUT std_logic_vector(351 downto 320);
+	SSw : OUT std_logic_vector(43 downto 40);
+	ESaddr : out STD_LOGIC_VECTOR (vmp_w + esp_w -1  downto 0);	
+	ESdataout : OUT std_logic_vector(303 downto 256);
+	ESw : OUT std_logic_vector(37 downto 32);
+	MEMaddr : OUT std_logic_vector(31 downto 0);
+	MEMdataout_X : OUT std_logic_vector(31 downto 0);
+	MEM_WRQ_X : OUT std_logic;
+	MEMsize_X : OUT std_logic_vector(1 downto 0);
+	s_axi_awaddr : OUT std_logic_vector(31 downto 0);
+	s_axi_awvalid : OUT std_logic;
+	s_axi_wdata : OUT std_logic_vector(31 downto 0);
+	s_axi_wstrb : OUT std_logic_vector(3 downto 0);
+	s_axi_wvalid : OUT std_logic;
+	s_axi_araddr : OUT std_logic_vector(31 downto 0);
+	s_axi_arvalid : OUT std_logic;
+	VM : OUT STD_LOGIC_VECTOR (vmp_w -1 downto 0);
+	MEMdata_vir : OUT std_logic_vector(31 downto 0);
+	debug : OUT std_logic_vector(7 downto 0)
+	);
+END COMPONENT;
+
+COMPONENT stack_access
+PORT(
+	clk : IN std_logic;
+	rst : IN std_logic;
+	SSdatain : IN std_logic_vector(319 downto 0);
+	SSwSignal : IN std_logic;
+	ESdatain : IN std_logic_vector(255 downto 0);
+	ESwSignal : IN std_logic;
+	en : IN std_logic;
+	addr : IN std_logic_vector(10 downto 0);
+	datain : IN std_logic_vector(31 downto 0);
+	wrq : IN std_logic_vector(0 to 0);          
+	SSdataout : OUT std_logic_vector(319 downto 0);
+	SSw : OUT std_logic_vector(39 downto 0);
+	ESdataout : OUT std_logic_vector(255 downto 0);
+	ESw : OUT std_logic_vector(31 downto 0);
+	dataout : OUT std_logic_vector(31 downto 0)
+	);
+END COMPONENT;
+
+COMPONENT Controller
+PORT(
+	clk : IN std_logic;
+	trig : IN std_logic;          
+	reset : OUT std_logic
+	);
+END COMPONENT;
+
+COMPONENT VGA
+PORT(
+	clk_VGA : IN std_logic;
+	reset : IN std_logic;
+	mode : IN std_logic_vector(4 downto 0);
+	background : IN std_logic_vector(15 downto 0);
+	interlace : IN std_logic_vector(3 downto 0);
+	charHeight : IN std_logic_vector(3 downto 0);
+	charWidth : IN std_logic_vector(3 downto 0);
+	VGArows : IN std_logic_vector(7 downto 0);
+	VGAcols : IN std_logic_vector(7 downto 0);
+	data_Text : IN std_logic_vector(15 downto 0);
+	data_Char : IN std_logic_vector(15 downto 0);
+	data_Color : IN std_logic_vector(15 downto 0);
+	SW : IN std_logic_vector(15 downto 0);          
+	addr_Text : OUT std_logic_vector(7 downto 0);
+	addr_Char : OUT std_logic_vector(11 downto 0);
+	addr_Color : OUT std_logic_vector(7 downto 0);
+	HSync : OUT std_logic;
+	VSync : OUT std_logic;
+	RGB : OUT std_logic_vector(11 downto 0);
+	VBlank : OUT std_logic;
+	FetchNextRow : OUT std_logic
+	);
+END COMPONENT;
+
+COMPONENT Interrupt
+PORT(
+	clk : IN std_logic;
+	rst : IN std_logic;
+	irq_mask : IN std_logic_vector(15 downto 1);
+	RS232_RDA_S0 : IN std_logic;
+	RS232_TBE_S0 : IN std_logic;
+	PS2_irq : IN std_logic;
+	ms_irq : IN std_logic;
+	rti : IN std_logic;          
+	irq : OUT std_logic;
+	irv : OUT std_logic_vector(3 downto 0);
+	blocked : OUT std_logic
+	);
+END COMPONENT;
+
+COMPONENT UART
+PORT(
+	RXD : IN std_logic;
+	DIVIDE : IN std_logic_vector(31 downto 0);
+	TXDATA : IN std_logic_vector(7 downto 0);
+	WR : IN std_logic;
+	CLK : IN std_logic;          
+	TXD : OUT std_logic;
+	RXDATA : OUT std_logic_vector(7 downto 0);
+	RDA : OUT std_logic;
+	TBE : OUT std_logic
+	);
+END COMPONENT;
+
+COMPONENT PS2KeyboardDecoder
+PORT(
+	clk : IN std_logic;
+	PS2C : IN std_logic;
+	PS2D : IN std_logic;          
+	irq : OUT std_logic;
+	data : OUT std_logic_vector(7 downto 0)
+	);
+END COMPONENT;
+
+COMPONENT BootLoader
+PORT(
+	invReset : IN std_logic;
+	clk : IN std_logic;
+	RDA : IN std_logic;
+	RXDATA : IN std_logic_vector(7 downto 0);          
+	data : OUT std_logic_vector(31 downto 0);
+	addr : OUT std_logic_vector(31 downto 2);
+	we : OUT std_logic_vector(0 to 0)
+	);
+END COMPONENT;
+
+COMPONENT ByteHEXdisplay
+PORT(
+	ssData : IN std_logic_vector(31 downto 0);
+	clk : IN std_logic;
+	count : IN std_logic_vector(15 downto 13);          
+	sevenseg : OUT std_logic_vector(6 downto 0);
+	anode : OUT std_logic_vector(7 downto 0)
+	);
+END COMPONENT;
+
+COMPONENT SPImaster
+PORT(
+	CLK : IN std_logic;
+	CLKSPI : IN std_logic;
+	RESET : IN std_logic;
+	WR : IN std_logic;
+	DATA_OUT : IN std_logic_vector(7 downto 0);
+	MISO : IN std_logic;
+	mode : IN std_logic_vector(1 downto 0);
+	MOSI_def : IN std_logic;          
+	DATA_IN : OUT std_logic_vector(7 downto 0);
+	TBE : OUT std_logic;
+	MOSI : OUT std_logic;
+	SCK : OUT std_logic
+	);
+END COMPONENT;
+
+COMPONENT DIV
+PORT(
+	CLKin : IN std_logic;
+	divide : IN std_logic_vector(7 downto 0);          
+	CLKout : OUT std_logic
+	);
+END COMPONENT;
+
+COMPONENT MediaAccessController
+PORT(
+	CLK100MHZ : IN std_logic;
+	CLK50MHZ : IN std_logic;
+	reset : IN std_logic;
+	PHYCRS : IN std_logic;
+	PHYRXERR : IN std_logic;
+	PHYRXD : IN std_logic_vector(1 downto 0);
+	PHYINTN : IN std_logic;
+	read_enable : IN std_logic;
+	dataTX : IN std_logic_vector(7 downto 0);
+	weTX : IN std_logic;
+	transmit_request : IN std_logic;          
+	PHYCLK50MHZ : OUT std_logic;
+	PHYRSTN : OUT std_logic;
+	PHYTXEN : OUT std_logic;
+	PHYTXD : OUT std_logic_vector(1 downto 0);
+	dataRX : OUT std_logic_vector(7 downto 0);
+	readyRX : OUT std_logic;
+	Ethernet_IRQ : OUT std_logic;
+	checksum_err : OUT std_logic;
+	readyTX : OUT std_logic
+	);
+END COMPONENT;
 		
+COMPONENT SMI
+PORT(
+	CLK100MHz : IN std_logic;
+	addr : IN std_logic_vector(9 downto 0);
+	dataWrite : IN std_logic_vector(15 downto 0);
+	read_request : IN std_logic;
+	write_request : IN std_logic;    
+	MDIO : INOUT std_logic;      
+	dataRead : OUT std_logic_vector(15 downto 0);
+	ready : OUT std_logic;
+	MDC : OUT std_logic
+	);
+END COMPONENT;
+	
 begin
 
 -----------------------------------------------------------------------------------------------------------------------------------
@@ -265,21 +764,7 @@ begin
 
 -----------------------------------------------------------------------------------------------------------------------------------
 -- Global clocking and reset
------------------------------------------------------------------------------------------------------------------------------------	
-	
-inst_CLOCKMANAGER : CLOCKMANAGER
-port map
-(	-- Clock in ports
-	CLK_IN1 => CLK_IN,
-	-- Clock out ports
-	CLK_OUT1 => VGACLK25,
-	CLK_OUT2 => VGACLK50,
-	CLK_OUT3 => VGACLK75,
-	CLK_OUT4 => VGACLK150,	 
-	CLK_OUT5 => CLK100,
-	CLK_OUT6 => CLK50MHZ,
-	CLK_OUT7 => CLK200MHZ
-);								
+-----------------------------------------------------------------------------------------------------------------------------------						
 
 	clk_system <= clk100;
 	clk_MEM <= clk100;
@@ -333,7 +818,7 @@ port map
 	end process;
 	 
 	with MEMaddr(17 downto 11) select
-		bank_n <=	Stack_access 	when "1110110",
+		bank_n <=	Stacks 	when "1110110",
 				Color 		when "1110111",		
 				Char 		when "1111000", 	-- must be aligned on 8k boundary
 				Char 		when "1111001",
@@ -347,7 +832,7 @@ port map
 					
 	 Vir_EN <= '1' 		when bank_n = Vir else '0';
 	 User_EN <= '1' 		when bank_n = User else '0';
-	 Stack_access_EN <= '1' 	when bank_n = Stack_access else '0';
+	 Stack_access_EN <= '1' 	when bank_n = Stacks else '0';
 	 Color_EN <= '1'		when bank_n = Color else '0';
 	 Char_EN <= '1' 		when bank_n = Char else '0';
 	 Reg_EN <= '1' 		when bank_n = Reg else '0';
@@ -357,7 +842,7 @@ port map
 		MEMdatain_Xi <=	"0000000000000000" & MEMdata_Char	when Char,
 					"0000000000000000" & MEMdata_Color when Color,
 					MEMdata_Reg 				when Reg,
-					Memdata_stack_access 		when stack_access,
+					Memdata_stack_access 		when stacks,
 					MEMdata_User 				when user,
 					MEMdata_Vir 				when vir,
 					MEMdata_Sys 				when others;
@@ -367,7 +852,8 @@ port map
 	douta_sysram_i <= douta_sysram;
 	doutb_sysram_i <= doutb_sysram;
 	addra_userram_all(vmp_w + 10 downto 2) <= VM & addra_userram(10 downto 2);
-	addrb_userram_all(vmp_w + 10 downto 2) <= VM & addrb_userram(10 downto 2); 						
+	addrb_userram_all(vmp_w + 10 downto 2) <= VM & addrb_userram(10 downto 2); 		
+	-- ISSUE THAT port A of SRAM is always enabled.  This could lead to overwrite problems - to be investigated
 	wea_sysram <= wea_sysram_s when Boot_we = "0" else "1111";			-- splice IOExpansion data ahead of the SRAM
 	dina_sysram <= dina_sysram_s when Boot_we = "0" else boot_data;
 	addra_sysram <= addra_sysram_s when Boot_we = "0" else boot_addr;	
@@ -386,40 +872,54 @@ port map
 -----------------------------------------------------------------------------------------------------------------------------------
 -- Module instantiations
 -----------------------------------------------------------------------------------------------------------------------------------
+	
+inst_CLOCKMANAGER: CLOCKMANAGER
+port map
+(	-- Clock in ports
+	CLK_IN1 => CLK_IN,
+	-- Clock out ports
+	CLK_OUT1 => VGACLK25,
+	CLK_OUT2 => VGACLK50,
+	CLK_OUT3 => VGACLK75,
+	CLK_OUT4 => VGACLK150,	 
+	CLK_OUT5 => CLK100,
+	CLK_OUT6 => CLK50MHZ,
+	CLK_OUT7 => CLK200MHZ
+);	
 
---Inst_SYS_RAM : entity work.Sys_RAM
---PORT MAP (
---	clka => clk_system,
---	ena => ram_en,
---	wea => wea_sysram,
---	addra => addra_sysram (16 downto 2),
---	dina => dina_sysram,
---	douta => douta_sysram,
---	clkb => clk_system,
---	enb => enb_sysram,
---	web => web_sysram,
---	addrb => addrb_sysram (16 downto 2),
---	dinb => dinb_sysram,
---	doutb => doutb_sysram
+--Inst_RAM_for_Testbench: RAM_for_Testbench 
+--PORT MAP(
+--	rst => reset,
+--	clk => clk_system,
+--	enA => ena_sysram,
+--	enB => enb_sysram,
+--	weA => wea_sysram,
+--	weB => web_sysram,
+--	addressA => addra_sysram (16 downto 2),
+--	data_inA => dina_sysram,
+--	data_outA => douta_sysram,
+--	addressB => addrb_sysram (16 downto 2),
+--	data_inB => dinb_sysram,
+--	data_outB => doutb_sysram
 --	);
-  
-Inst_RAM_for_Testbench: entity work.RAM_for_Testbench 
-PORT MAP(
-	rst => reset,
-	clk => clk_system,
-	enA => ena_sysram,
-	enB => enb_sysram,
-	weA => wea_sysram,
-	weB => web_sysram,
-	addressA => addra_sysram (16 downto 2),
-	data_inA => dina_sysram,
-	data_outA => douta_sysram,
-	addressB => addrb_sysram (16 downto 2),
-	data_inB => dinb_sysram,
-	data_outB => doutb_sysram
+	
+Inst_SYS_RAM: SYS_RAM
+PORT MAP (
+	clka => clk_system,
+	ena => '1',
+	wea => wea_sysram,
+	addra => addra_sysram (16 downto 2),
+	dina => dina_sysram,
+	douta => douta_sysram,
+	clkb => clk_system,
+	enb => enb_sysram,
+	web => web_sysram,
+	addrb => addrb_sysram (16 downto 2),
+	dinb => dinb_sysram,
+	doutb => doutb_sysram
 	);
 
-Inst_DMAcontroller: entity work.DMAcontroller 
+Inst_DMAcontroller: DMAcontroller 
 PORT MAP(
 	CLK => CLK_SYSTEM,
 	reset => reset,
@@ -457,7 +957,7 @@ PORT MAP(
 	debug => debug_DMAcontroller
 	);
 
-Inst_TEXTbuffer: entity work.TEXTbuffer 
+Inst_TEXTbuffer: TEXTbuffer 
 PORT MAP(
 	clk_MEM => clk_MEM,
 	clk_VGA => clk_VGA,
@@ -476,7 +976,7 @@ PORT MAP(
 	t_axi_rvalid => t_axi_rvalid
 	);
 
-Inst_SRAM_controller: entity work.SRAM_controller 
+Inst_SRAM_controller: SRAM_controller 
 PORT MAP(
 	RST => reset,
 	CLK => clk_system,
@@ -499,7 +999,7 @@ PORT MAP(
 	en_b => enb_sysram
 	);
 
-Inst_SRAM_controller_USER: entity work.SRAM_controller 
+Inst_SRAM_controller_USER: SRAM_controller 
 PORT MAP(
 	RST => reset,
 	CLK => clk_system,
@@ -522,7 +1022,7 @@ PORT MAP(
 	en_b => enb_userram
 	);	
 
-inst_USER_RAM : entity work.USER_RAM
+inst_USER_RAM : USER_RAM
 PORT MAP (
 	clka => clk_system,
 	ena => ena_userram,
@@ -538,10 +1038,10 @@ PORT MAP (
 	doutb => doutb_userram
 	);
 
-inst_Char_RAM : entity work.Char_RAM
+inst_Char_RAM : Char_RAM
 PORT MAP (
 	clka => clk_VGA,
-	wea => o,
+	wea => blank(0 downto 0),
 	addra => addr_Char,
 	dina => blank(15 downto 0),
 	douta => data_Char,
@@ -553,11 +1053,10 @@ PORT MAP (
 	doutb => MEMdata_Char
 	);		
 
-inst_Color_RAM : entity work.Color_RAM
+inst_Color_RAM : Color_RAM
 PORT MAP (
 	clka => clk_VGA,
-	ena => l,
-	wea => o,
+	wea => blank(0 downto 0),
 	addra => addr_Color,
 	dina => blank(15 downto 0),
 	douta => data_Color,
@@ -570,7 +1069,7 @@ PORT MAP (
 	);
 
 -- Pstack_RAM must be configured as WRITE FIRST
-inst_Pstack_RAM : entity work.Pstack_RAM
+inst_Pstack_RAM : Pstack_RAM
 PORT MAP (
 	clka => clk_system,
 	wea => PSw,
@@ -580,7 +1079,7 @@ PORT MAP (
 	);
 
 -- Rstack_RAM must be configured as WRITE FIRST
-inst_Rstack_RAM : entity work.Rstack_RAM
+inst_Rstack_RAM : Rstack_RAM
 PORT MAP (
 	clka => clk_system,
 	wea => RSw,
@@ -590,7 +1089,7 @@ PORT MAP (
 	);
 
 -- Sstack_RAM must be configured as WRITE FIRST
-inst_Sstack_RAM : entity work.Sstack_RAM
+inst_Sstack_RAM : Sstack_RAM
 PORT MAP (
 	clka => clk_system,
 	wea => SSw,
@@ -600,7 +1099,7 @@ PORT MAP (
 	);
 
 -- Estack_RAM must be configured as WRITE FIRST
-inst_Estack_RAM : entity work.Estack_RAM
+inst_Estack_RAM : Estack_RAM
 PORT MAP (
 	clka => clk_system,
 	wea => ESw,
@@ -609,7 +1108,7 @@ PORT MAP (
 	douta => ESdataIN
 	);
 
-inst_HW_Registers: entity work.HW_Registers 
+inst_HW_Registers: HW_Registers 
 PORT MAP(
 	clk => CLK_SYSTEM,
 	rst => reset,
@@ -661,7 +1160,7 @@ PORT MAP(
 	VBLANK => VBLANK
 	);  
 
-inst_CPU: entity work.CPU 
+inst_CPU: CPU 
 GENERIC MAP(
 	vmp_w => vmp_w,
 	psp_w => psp_w,
@@ -716,7 +1215,7 @@ PORT MAP(
 	blocked => blocked
 	);
 
-Inst_stack_access: entity work.stack_access 
+Inst_stack_access: stack_access 
 PORT MAP(
 	clk => CLK_SYSTEM,
 	rst => reset,
@@ -735,14 +1234,14 @@ PORT MAP(
 	wrq => MEM_WRQ_XX
 	);
 
-Inst_Controller: entity work.Controller 
+Inst_Controller: Controller 
 PORT MAP(
 	clk => CLK_SYSTEM,
 	trig => trig,
 	reset => reset
 	);
 
-Inst_VGAController: entity work.VGA 
+Inst_VGAController: VGA 
 PORT MAP(
 	CLK_VGA => CLK_VGA,
 	reset => reset,
@@ -767,7 +1266,7 @@ PORT MAP(
 	SW => SW
 	);	
 
-Inst_Interrupt: entity work.Interrupt 
+Inst_Interrupt: Interrupt 
 PORT MAP(
 	clk => CLK_SYSTEM,
 	rst => reset,
@@ -782,7 +1281,7 @@ PORT MAP(
 	blocked => blocked
 	);
 
-Inst_UART: entity work.UART 
+Inst_UART: UART 
 PORT MAP(
 	RXD => RXD_S0,
 	TXD => TXD_S0,
@@ -795,7 +1294,7 @@ PORT MAP(
 	CLK => CLK_SYSTEM
 	);
 
-Inst_PS2KeyboardDecoder: entity work.PS2KeyboardDecoder 
+Inst_PS2KeyboardDecoder: PS2KeyboardDecoder 
 PORT MAP(
 	clk => CLK_SYSTEM,
 	PS2C => PS2C,
@@ -804,7 +1303,7 @@ PORT MAP(
 	data => PS2_data
 	);
 
-Inst_BootLoader: entity work.BootLoader 
+Inst_BootLoader: BootLoader 
 PORT MAP(
 	invReset => invReset,
 	clk => clk_system,
@@ -815,7 +1314,7 @@ PORT MAP(
 	we => Boot_we
 	);
 
-Inst_ByteHEXdisplay: entity work.ByteHEXdisplay 
+Inst_ByteHEXdisplay: ByteHEXdisplay 
 PORT MAP(
 	ssData => ssData,
 	clk => CLK_SYSTEM,
@@ -824,7 +1323,7 @@ PORT MAP(
 	anode => anode
 	);
 
-Inst_SPImaster: entity work.SPImaster 
+Inst_SPImaster: SPImaster 
 PORT MAP(
 	CLK => CLK_SYSTEM,
 	CLKSPI => CLKSPI,
@@ -840,13 +1339,14 @@ PORT MAP(
 	MOSI_def => SD_control(1)
 	);
 
-Inst_DIV: entity work.DIV PORT MAP(
+Inst_DIV: DIV 
+PORT MAP(
 	CLKin => CLK_SYSTEM,
 	divide => SD_divide,
 	CLKout => CLKSPI
 );
 
-Inst_MediaAccessController: entity work.MediaAccessController 
+Inst_MediaAccessController: MediaAccessController 
 PORT MAP(
 	CLK50MHZ => CLK50MHZ,
 	CLK100MHZ => CLK_SYSTEM,
@@ -870,7 +1370,7 @@ PORT MAP(
 	transmit_request => MACtransmit_request
 	);
 
-Inst_SMI: entity work.SMI 
+Inst_SMI: SMI 
 PORT MAP(
 	CLK100MHz => CLK_SYSTEM,
 	addr => SMIaddr,

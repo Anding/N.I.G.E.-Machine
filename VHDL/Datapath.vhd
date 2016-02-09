@@ -99,56 +99,56 @@ component unsigned_mult
 	p: OUT std_logic_VECTOR(63 downto 0));
 end component;
 
----- ISE
---
---component signed_divider
---	port (
---	clk: IN std_logic;
---	rfd: OUT std_logic;
---	dividend: IN std_logic_VECTOR(31 downto 0);
---	divisor: IN std_logic_VECTOR(31 downto 0);
---	quotient: OUT std_logic_VECTOR(31 downto 0);
---	fractional: OUT std_logic_VECTOR(31 downto 0));
---end component;
---
---component unsigned_divider
---	port (
---	clk: IN std_logic;
---	rfd: OUT std_logic;
---	dividend: IN std_logic_VECTOR(31 downto 0);
---	divisor: IN std_logic_VECTOR(31 downto 0);
---	quotient: OUT std_logic_VECTOR(31 downto 0);
---	fractional: OUT std_logic_VECTOR(31 downto 0));
---end component;
+-- ISE
 
--- VIDADO
 component signed_divider
-  PORT (
-  aclk : IN STD_LOGIC;
-  s_axis_divisor_tvalid : IN STD_LOGIC;
-  s_axis_divisor_tready : OUT STD_LOGIC;
-  s_axis_divisor_tdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-  s_axis_dividend_tvalid : IN STD_LOGIC;
-  s_axis_dividend_tready : OUT STD_LOGIC;
-  s_axis_dividend_tdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-  m_axis_dout_tvalid : OUT STD_LOGIC;
-  m_axis_dout_tdata : OUT STD_LOGIC_VECTOR(63 DOWNTO 0)
-);
+	port (
+	clk: IN std_logic;
+	rfd: OUT std_logic;
+	dividend: IN std_logic_VECTOR(31 downto 0);
+	divisor: IN std_logic_VECTOR(31 downto 0);
+	quotient: OUT std_logic_VECTOR(31 downto 0);
+	fractional: OUT std_logic_VECTOR(31 downto 0));
 end component;
 
 component unsigned_divider
-  PORT (
-  aclk : IN STD_LOGIC;
-  s_axis_divisor_tvalid : IN STD_LOGIC;
-  s_axis_divisor_tready : OUT STD_LOGIC;
-  s_axis_divisor_tdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-  s_axis_dividend_tvalid : IN STD_LOGIC;
-  s_axis_dividend_tready : OUT STD_LOGIC;
-  s_axis_dividend_tdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-  m_axis_dout_tvalid : OUT STD_LOGIC;
-  m_axis_dout_tdata : OUT STD_LOGIC_VECTOR(63 DOWNTO 0)
-);
+	port (
+	clk: IN std_logic;
+	rfd: OUT std_logic;
+	dividend: IN std_logic_VECTOR(31 downto 0);
+	divisor: IN std_logic_VECTOR(31 downto 0);
+	quotient: OUT std_logic_VECTOR(31 downto 0);
+	fractional: OUT std_logic_VECTOR(31 downto 0));
 end component;
+
+---- VIDADO
+--component signed_divider
+--  PORT (
+--  aclk : IN STD_LOGIC;
+--  s_axis_divisor_tvalid : IN STD_LOGIC;
+--  s_axis_divisor_tready : OUT STD_LOGIC;
+--  s_axis_divisor_tdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+--  s_axis_dividend_tvalid : IN STD_LOGIC;
+--  s_axis_dividend_tready : OUT STD_LOGIC;
+--  s_axis_dividend_tdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+--  m_axis_dout_tvalid : OUT STD_LOGIC;
+--  m_axis_dout_tdata : OUT STD_LOGIC_VECTOR(63 DOWNTO 0)
+--);
+--end component;
+--
+--component unsigned_divider
+--  PORT (
+--  aclk : IN STD_LOGIC;
+--  s_axis_divisor_tvalid : IN STD_LOGIC;
+--  s_axis_divisor_tready : OUT STD_LOGIC;
+--  s_axis_divisor_tdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+--  s_axis_dividend_tvalid : IN STD_LOGIC;
+--  s_axis_dividend_tready : OUT STD_LOGIC;
+--  s_axis_dividend_tdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+--  m_axis_dout_tvalid : OUT STD_LOGIC;
+--  m_axis_dout_tdata : OUT STD_LOGIC_VECTOR(63 DOWNTO 0)
+--);
+--end component;
 
 constant dont_care : std_logic_vector(31 downto 0) := "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
 constant blank : std_logic_vector(8 downto 0) := (others=>'0');
@@ -422,57 +422,57 @@ begin
 		b => TOS_i,
 		p => unsigned_product);	
 		
----- ISE
---	inst_signed_divider : signed_divider
---	port map (
---		clk => clk,
---		rfd => open,
---		dividend => NOS_i,
---		divisor => TOS_i,
---		quotient => signed_quotient,
---		fractional => signed_remainder);	
---
---	inst_unsigned_divider : unsigned_divider
---	port map (
---		clk => clk,
---		rfd => open,
---		dividend => NOS_i,
---		divisor => TOS_i,
---		quotient => unsigned_quotient,
---		fractional => unsigned_remainder);	
-		
--- Vivado 	
+-- ISE
 	inst_signed_divider : signed_divider
-		port map (
-			aclk => clk,
-			s_axis_dividend_tdata => NOS_i,
-			s_axis_dividend_tvalid => '1',
-			s_axis_dividend_tready => open,
-			s_axis_divisor_tdata => TOS_i,
-			s_axis_divisor_tvalid => '1',
-			s_axis_divisor_tready => open,
-			m_axis_dout_tvalid => open,
-			m_axis_dout_tdata => m_axis_quotient_signed
-			);	
-			
-	signed_quotient <= m_axis_quotient_signed(63 downto 32);
-	signed_remainder <= m_axis_quotient_signed(31 downto 0);
-		
-		inst_unsigned_divider : unsigned_divider
-		port map (
-			aclk => clk,
-			s_axis_dividend_tdata => NOS_i,
-			s_axis_dividend_tvalid => '1',
-			s_axis_dividend_tready => open,
-			s_axis_divisor_tdata => TOS_i,
-			s_axis_divisor_tvalid => '1',
-			s_axis_divisor_tready => open,
-			m_axis_dout_tvalid => open,
-			m_axis_dout_tdata => m_axis_quotient_unsigned
-			);	
+	port map (
+		clk => clk,
+		rfd => open,
+		dividend => NOS_i,
+		divisor => TOS_i,
+		quotient => signed_quotient,
+		fractional => signed_remainder);	
 
-	unsigned_quotient <= m_axis_quotient_unsigned(63 downto 32);
-	unsigned_remainder <= m_axis_quotient_unsigned(31 downto 0);
+	inst_unsigned_divider : unsigned_divider
+	port map (
+		clk => clk,
+		rfd => open,
+		dividend => NOS_i,
+		divisor => TOS_i,
+		quotient => unsigned_quotient,
+		fractional => unsigned_remainder);	
+		
+---- Vivado 	
+--	inst_signed_divider : signed_divider
+--		port map (
+--			aclk => clk,
+--			s_axis_dividend_tdata => NOS_i,
+--			s_axis_dividend_tvalid => '1',
+--			s_axis_dividend_tready => open,
+--			s_axis_divisor_tdata => TOS_i,
+--			s_axis_divisor_tvalid => '1',
+--			s_axis_divisor_tready => open,
+--			m_axis_dout_tvalid => open,
+--			m_axis_dout_tdata => m_axis_quotient_signed
+--			);	
+--			
+--	signed_quotient <= m_axis_quotient_signed(63 downto 32);
+--	signed_remainder <= m_axis_quotient_signed(31 downto 0);
+--		
+--		inst_unsigned_divider : unsigned_divider
+--		port map (
+--			aclk => clk,
+--			s_axis_dividend_tdata => NOS_i,
+--			s_axis_dividend_tvalid => '1',
+--			s_axis_dividend_tready => open,
+--			s_axis_divisor_tdata => TOS_i,
+--			s_axis_divisor_tvalid => '1',
+--			s_axis_divisor_tready => open,
+--			m_axis_dout_tvalid => open,
+--			m_axis_dout_tdata => m_axis_quotient_unsigned
+--			);	
+--
+--	unsigned_quotient <= m_axis_quotient_unsigned(63 downto 32);
+--	unsigned_remainder <= m_axis_quotient_unsigned(31 downto 0);
 
 end RTL;
 

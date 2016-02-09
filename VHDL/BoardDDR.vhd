@@ -474,7 +474,7 @@ port map
 Inst_SYS_RAM : entity work.Sys_RAM
 PORT MAP (
 	clka => clk_system,
-	ena => ram_en,
+	ena => l,
 	wea => wea_sysram,
 	addra => addra_sysram (16 downto 2),
 	dina => dina_sysram,

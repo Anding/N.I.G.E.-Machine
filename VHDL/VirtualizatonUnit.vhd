@@ -50,6 +50,53 @@ signal trueSwitch : STD_LOGIC;
 signal reg_interval : STD_LOGIC_VECTOR(15 downto 0) := (others=>'0');
 signal pauseDelay : STD_LOGIC_VECTOR(4 downto 0);
 
+COMPONENT Freezer_RAM
+  PORT (
+    a : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
+    d : IN STD_LOGIC_VECTOR(115 DOWNTO 0);
+    dpra : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
+    clk : IN STD_LOGIC;
+    we : IN STD_LOGIC;
+    qdpo : OUT STD_LOGIC_VECTOR(115 DOWNTO 0)
+  );
+END COMPONENT;
+
+COMPONENT TaskControl_RAM
+  PORT (
+    a : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
+    d : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
+    dpra : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
+    clk : IN STD_LOGIC;
+    we : IN STD_LOGIC;
+    qspo : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
+    qdpo : OUT STD_LOGIC_VECTOR(15 DOWNTO 0)
+  );
+END COMPONENT;
+
+COMPONENT PCoveride_RAM
+  PORT (
+    a : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
+    d : IN STD_LOGIC_VECTOR(19 DOWNTO 0);
+    dpra : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
+    clk : IN STD_LOGIC;
+    we : IN STD_LOGIC;
+    qspo : OUT STD_LOGIC_VECTOR(19 DOWNTO 0);
+    qdpo : OUT STD_LOGIC_VECTOR(19 DOWNTO 0)
+  );
+END COMPONENT;
+
+COMPONENT VirtualInterrupt_RAM
+  PORT (
+    a : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
+    d : IN STD_LOGIC_VECTOR(19 DOWNTO 0);
+    dpra : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
+    clk : IN STD_LOGIC;
+    we : IN STD_LOGIC;
+    qspo : OUT STD_LOGIC_VECTOR(19 DOWNTO 0);
+    qdpo : OUT STD_LOGIC_VECTOR(19 DOWNTO 0)
+  );
+END COMPONENT;
+
 begin
 
 -- virtual machine update
@@ -136,7 +183,7 @@ with addr_m	select
 			
 -- distributed RAM modules
 
-Inst_Freezer_RAM : entity work.Freezer_RAM
+Inst_Freezer_RAM: Freezer_RAM
   PORT MAP (
     a => currentVM,
     d => CPUfreeze,
@@ -146,7 +193,7 @@ Inst_Freezer_RAM : entity work.Freezer_RAM
     qdpo => CPUthaw
   );
 
-Inst_TaskControl_RAM : entity work.TaskControl_RAM					-- dual port RAM, depth 32, width 16
+Inst_TaskControl_RAM: TaskControl_RAM					-- dual port RAM, depth 32, width 16
   PORT MAP (
     clk => clk,  
     a => addr(vmp_w +1 downto 2),
@@ -158,7 +205,7 @@ Inst_TaskControl_RAM : entity work.TaskControl_RAM					-- dual port RAM, depth 3
   );
 
   
- Inst_PCOveride_RAM : entity work.PCOveride_RAM  					-- dual port RAM, depth 32, width 20
+ Inst_PCOveride_RAM: PCOveride_RAM  					-- dual port RAM, depth 32, width 20
   PORT MAP (
     clk => clk,  
     a => addr_local,
@@ -169,7 +216,7 @@ Inst_TaskControl_RAM : entity work.TaskControl_RAM					-- dual port RAM, depth 3
     qdpo => PCOverride
   );
 
- Inst_VirtualInterrupt_RAM : entity work.VirtualInterrupt_RAM	-- dual port RAM, depth 32, width 20
+ Inst_VirtualInterrupt_RAM: VirtualInterrupt_RAM	-- dual port RAM, depth 32, width 20
   PORT MAP (
     clk => clk,
     a => addr_local,

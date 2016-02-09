@@ -66,14 +66,6 @@ end ControlUnit;
 
 architecture RTL of ControlUnit is
 
---COMPONENT Microcode_ROM															-- storage of microcode in BLOCK RAM
---  PORT (
---    clka : IN STD_LOGIC;
---    addra : IN STD_LOGIC_VECTOR(5 DOWNTO 0);
---    douta : OUT STD_LOGIC_VECTOR(20 DOWNTO 0)
---  );
---END COMPONENT;
-
 -- opcodes (bits 6 downto 0) of the instructions
 constant ops_NOP : std_logic_vector(6 downto 0):= "0000000";
 constant ops_DROP : std_logic_vector(6 downto 0) := "0000001";
@@ -159,9 +151,17 @@ signal s_axi_rvalid_r : STD_LOGIC;
 
 alias signbit is MEMdatain_X(29);
 
+COMPONENT Microcode_ROM
+  PORT (
+    clka : IN STD_LOGIC;
+    addra : IN STD_LOGIC_VECTOR(6 DOWNTO 0);
+    douta : OUT STD_LOGIC_VECTOR(22 DOWNTO 0)
+  );
+END COMPONENT;
+
 begin
 
-	inst_Microcode_ROM : entity work.Microcode_ROM										-- microcode BLOCK RAM
+	inst_Microcode_ROM: Microcode_ROM										-- microcode BLOCK RAM
 	PORT MAP (
 	 clka => clk,
 	 addra => ucode,

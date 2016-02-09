@@ -45,6 +45,18 @@ signal addra, addrb : STD_LOGIC_VECTOR(8 DOWNTO 0);
 signal bank, bank_n : std_logic :='0';
 signal line_count, line_count_n : std_logic_vector(2 downto 0);
 
+COMPONENT BUFFER_TXT
+  PORT (
+    clka : IN STD_LOGIC;
+    wea : IN STD_LOGIC_VECTOR(0 DOWNTO 0);
+    addra : IN STD_LOGIC_VECTOR(8 DOWNTO 0);
+    dina : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
+    clkb : IN STD_LOGIC;
+    addrb : IN STD_LOGIC_VECTOR(8 DOWNTO 0);
+    doutb : OUT STD_LOGIC_VECTOR(15 DOWNTO 0)
+  );
+END COMPONENT;
+
 begin
 		t_axi_araddr <= "00000000" & axi_addr;		-- current start of row position in PSDRAM screen buffer 
 		t_axi_arlen  <= VGAcols - 1;					-- number of words to read is the number of characters in a row (AXI4 starts counting 0 = one)
@@ -138,16 +150,16 @@ begin
 							
 		wea <=	"1" when ((state = refill or state = first_fill) and t_axi_rvalid = '1') else "0";
 			
-	inst_BUFFER_TXT : entity work.BUFFER_TXT
-	PORT MAP (
-	 clka => CLK_MEM,
-	 wea => wea,
-	 addra => addra,
-	 dina => dina,
-	 clkb => CLK_VGA,
-	 addrb => addrb,
-	 doutb => DATA_TEXT
-	);
+inst_BUFFER_TXT: BUFFER_TXT
+PORT MAP (
+ clka => CLK_MEM,
+ wea => wea,
+ addra => addra,
+ dina => dina,
+ clkb => CLK_VGA,
+ addrb => addrb,
+ doutb => DATA_TEXT
+);
 
 end Behavioral;
 
