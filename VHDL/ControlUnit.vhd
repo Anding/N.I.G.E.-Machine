@@ -264,7 +264,7 @@ begin
 	process (state, state_n, PC, PC_n, PC_plus, PC_jsl, PC_branch, PC_skipbranch, PC_m1, PC_addr, delta, PC_plus_two, PC_plus_three, PC_plus_four,
 				ucode, equalzero, equalzero_r, branch, opcode, chip_RAM, MEMdatain_X, retrap, s_axi_rvalid_r, s_axi_rdata, axiaddr, preempt,
 				TOS, TOS_r, NOS_r, TORS, int_trig, int_vector_ext, int_vector_ext_i, branch, opcode, ExceptionAddress, virtualInterrupt, SingleMulti, PCthaw, PCthaw_m1, preemp_counter, preemp_counter_n,
-				s_axi_aw_state, s_axi_w_state)
+				s_axi_ar_state, s_axi_aw_state, s_axi_w_state)
 	begin																					-- combinational section of state machine
 		case state is
 
