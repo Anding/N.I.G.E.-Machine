@@ -971,37 +971,37 @@ port map
 	CLK_OUT7 => CLK200MHZ
 );	
 
-Inst_RAM_for_Testbench: RAM_for_Testbench 
-PORT MAP(
-	rst => reset,
-	clk => clk_system,
-	enA => ena_sysram,
-	enB => enb_sysram,
-	weA => wea_sysram,
-	weB => web_sysram,
-	addressA => addra_sysram (16 downto 2),
-	data_inA => dina_sysram,
-	data_outA => douta_sysram,
-	addressB => addrb_sysram (16 downto 2),
-	data_inB => dinb_sysram,
-	data_outB => doutb_sysram
-	);
-	
---Inst_SYS_RAM: SYS_RAM
---PORT MAP (
---	clka => clk_system,
---	ena => '1',
---	wea => wea_sysram,
---	addra => addra_sysram (16 downto 2),
---	dina => dina_sysram,
---	douta => douta_sysram,
---	clkb => clk_system,
---	enb => enb_sysram,
---	web => web_sysram,
---	addrb => addrb_sysram (16 downto 2),
---	dinb => dinb_sysram,
---	doutb => doutb_sysram
+--Inst_RAM_for_Testbench: RAM_for_Testbench 
+--PORT MAP(
+--	rst => reset,
+--	clk => clk_system,
+--	enA => ena_sysram,
+--	enB => enb_sysram,
+--	weA => wea_sysram,
+--	weB => web_sysram,
+--	addressA => addra_sysram (16 downto 2),
+--	data_inA => dina_sysram,
+--	data_outA => douta_sysram,
+--	addressB => addrb_sysram (16 downto 2),
+--	data_inB => dinb_sysram,
+--	data_outB => doutb_sysram
 --	);
+	
+Inst_SYS_RAM: SYS_RAM
+PORT MAP (
+	clka => clk_system,
+	ena => '1',
+	wea => wea_sysram,
+	addra => addra_sysram (16 downto 2),
+	dina => dina_sysram,
+	douta => douta_sysram,
+	clkb => clk_system,
+	enb => enb_sysram,
+	web => web_sysram,
+	addrb => addrb_sysram (16 downto 2),
+	dinb => dinb_sysram,
+	doutb => doutb_sysram
+	);
 
 Inst_DMAcontrollerMIG7: DMAcontrollerMIG7
 PORT MAP(
