@@ -48,6 +48,18 @@ signal line_count, line_count_n : std_logic_vector(2 downto 0);
 signal VGAcols_div8 : std_logic_vector(7 downto 0);
 signal write_buffer : std_logic_vector(255 downto 0);
 
+COMPONENT BUFFER_TXT_DDR
+  PORT (
+    clka : IN STD_LOGIC;
+    wea : IN STD_LOGIC_VECTOR(0 DOWNTO 0);
+    addra : IN STD_LOGIC_VECTOR(5 DOWNTO 0);
+    dina : IN STD_LOGIC_VECTOR(127 DOWNTO 0);
+    clkb : IN STD_LOGIC;
+    addrb : IN STD_LOGIC_VECTOR(8 DOWNTO 0);
+    doutb : OUT STD_LOGIC_VECTOR(15 DOWNTO 0)
+  );
+END COMPONENT;
+
 begin
 	t_axi_araddr <= "00000000" & axi_addr;		-- current start of row position in PSDRAM screen buffer 
 	VGAcols_div8 <= "000" & VGAcols(7 downto 3);	
@@ -170,7 +182,7 @@ begin
 			buffer_addr;
 							
 			
-	inst_BUFFER_TXT_DDR : entity work.BUFFER_TXT_DDR
+	inst_BUFFER_TXT_DDR : BUFFER_TXT_DDR
 	PORT MAP (
 	 clka => CLK_MEM,
 	 wea => wea,
