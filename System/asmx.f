@@ -903,15 +903,15 @@
 	fileid !
 	
 	\ open output files
-	C" E:\N.I.G.E.-Machine\System\SRAM.bin" count w/o create-file
+	C" SRAM.bin" count w/o create-file
 	abort" Error opening output file .bin"	( fileid-w)
 	fileid-w3 !					( fileid-w)
 	
-	C" E:\N.I.G.E.-Machine\System\SRAM.txt" count w/o create-file
+	C" SRAM.txt" count w/o create-file
 	abort" Error opening output file .txt"	( fileid-w)
 	fileid-w2 !					( fileid-w)
 	
-	C" E:\N.I.G.E.-Machine\System\SRAM.coe" count w/o create-file
+	C" SRAM.coe" count w/o create-file
 	abort" Error opening output file .coe"	( fileid-w)
 	fileid-w1 !					( fileid-w)	
 	S" memory_initialization_radix=16;" fileid-w1 @ write-line drop ( fileid-w)
