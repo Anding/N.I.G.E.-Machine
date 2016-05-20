@@ -21,20 +21,21 @@ Port (
 	HSync : out  STD_LOGIC;
 	VSync : out  STD_LOGIC;
 	-- DDR RAM
-	ddr2_dq	: inout std_logic_vector(15 downto 0);
-	ddr2_dqs_p	: inout std_logic_vector(1 downto 0);
-	ddr2_dqs_n	: inout std_logic_vector(1 downto 0);
-	ddr2_addr	: out   std_logic_vector(12 downto 0);
-	ddr2_ba	: out   std_logic_vector(2 downto 0);
-	ddr2_ras_n	: out   std_logic;
-	ddr2_cas_n	: out   std_logic;
-	ddr2_we_n	: out   std_logic;
-	ddr2_ck_p	: out   std_logic_vector(0 downto 0);
-	ddr2_ck_n	: out   std_logic_vector(0 downto 0);
-	ddr2_cke	: out   std_logic_vector(0 downto 0);
-	ddr2_cs_n	: out   std_logic_vector(0 downto 0);
-	ddr2_dm	: out   std_logic_vector(1 downto 0);
-	ddr2_odt	: out   std_logic_vector(0 downto 0);
+	SDRAM_A : out std_logic_vector(13 downto 0);
+	SDRAM_BA : out std_logic_vector(2 downto 0);
+	SDRAM_CKE      : out std_logic;
+	SDRAM_CK       : out std_logic;
+	SDRAM_nCK	   : out std_logic;
+	SDRAM_DQ       : inout std_logic_vector(15 downto 0);  
+	SDRAM_DQS	   : inout std_logic_vector(1 downto 0);
+	--SDRAM_nDQS	   : inout std_logic_vector(1 downto 0);
+	SDRAM_UDQM    : out std_logic;
+	SDRAM_LDQM    : out std_logic;
+	SDRAM_nCAS     : out std_logic;
+	SDRAM_nCS      : out std_logic;
+	SDRAM_nRAS     : out std_logic;
+	SDRAM_nWE      : out std_logic;
+	SDRAM_ODT      : out std_logic;
 	-- RS232
 	RXD_S0 : in STD_LOGIC;
 	TXD_S0 : out STD_LOGIC;
@@ -84,7 +85,7 @@ signal bank, bank_n : bank_t;
 signal counter_clk, counter_ms : std_logic_vector(31 downto 0) := (others =>'0');
 signal timer_ms : std_logic_vector(31 downto 0) := (others =>'0');	
 signal reset, invReset, trig : std_logic;
-signal VGAclk25, VGAclk50, VGAclk75, VGAclk150, clk100, CLK200MHZ: std_logic;
+signal VGAclk25, VGAclk50, VGAclk75, VGAclk150, clk100, CLK100_130: std_logic;
 signal irq, rti, ms_irq : std_logic;
 signal irv : std_logic_vector(3 downto 0);
 signal irq_mask : std_logic_vector(15 downto 1);
@@ -228,29 +229,20 @@ signal SMIread_request :  std_logic;
 signal SMIwrite_request :  std_logic;       
 signal SMIdataRead :  std_logic_vector(15 downto 0);
 signal SMIready :  std_logic;
-signal sys_clk_i		: std_logic;				-- in: 200MHZ CLOCK
-signal sys_rst		: std_logic;				-- in: active lo reset
-signal app_en               : std_logic;				-- in: user holds app_en high with a valid app_cmd until app_rdy is asserted
-signal app_cmd              : std_logic_vector(2 downto 0);	-- in: see VDHL constants
-signal app_rdy              : std_logic;				-- out MIG7 registers a command provided rdy is high
-signal app_addr             : std_logic_vector(26 downto 0);	-- in: true byte addressing
-signal app_wdf_data         : std_logic_vector(127 downto 0);	-- in: 64 bit data since 16 ddr2 lines and 2:1 MIG7 clocking
-signal app_wdf_mask         : std_logic_vector(15 downto 0);	-- in: active high byte mask for the data (note this is a mask not a write strobe)	
-signal app_wdf_wren         : std_logic;				-- in: user holds high throughout transfer to indicate valid data
-signal app_wdf_rdy          : std_logic;				-- out MIG registers data provided rdy is high
-signal app_wdf_end          : std_logic;				-- in: set high to indicate last data word
-signal app_rd_data          : std_logic_vector(127 downto 0);	-- out
-signal app_rd_data_end      : std_logic;				-- out signals end of burst (not needed in handshake logic)
-signal app_rd_data_valid    : std_logic;				-- out valid read data is on the bus
-signal app_sr_req           : std_logic;				-- in: tie to '0'
-signal app_sr_active        : std_logic;				-- out: disregard
-signal app_ref_req          : std_logic;				-- in: tie to '0'
-signal app_ref_ack          : std_logic;				-- out disregard
-signal app_zq_req           : std_logic;				-- in: tie to '0'
-signal app_zq_ack           : std_logic;				-- out disregard
-signal ui_clk               : std_logic;				-- out CLOCK
-signal ui_clk_sync_rst      : std_logic;				-- out reset	
-signal init_calib_complete  : std_logic;				-- out MIG7 requires 50-60uS to complete calibraton in simulator
+
+signal wrrd_ba_add : std_logic_vector(2 downto 0);
+signal wrrd_ras_add : std_logic_vector(12 downto 0);
+signal wrrd_cas_add : std_logic_vector(8 downto 0);
+signal wr_we : std_logic_vector(3 downto 0);
+signal wr_add : std_logic_vector(25 downto 0);
+signal wr_dat : std_logic_vector(31 downto 0);
+signal wr_ack : std_logic;
+signal rd_re : std_logic;
+signal rd_add : std_logic_vector(25 downto 0);
+signal rd_dat : std_logic_vector(31 downto 0);
+signal rd_ack : std_logic;
+signal rd_valid : std_logic; 
+signal SDRAM_DM : std_logic_vector(1 downto 0);
 
 
 component CLOCKMANAGER
@@ -263,54 +255,79 @@ port (	-- Clock in ports
 	CLK_OUT4	: out    std_logic;
 	CLK_OUT5	: out    std_logic;
 	CLK_OUT6	: out    std_logic;
-	CLK_OUT7	: out	  std_logic
+	CLK_OUT7	: out	 std_logic
  );
 end component;
 
-component MIG7
-   port (
-      -- Inouts
-      ddr2_dq              : inout std_logic_vector(15 downto 0);
-      ddr2_dqs_p           : inout std_logic_vector(1 downto 0);
-      ddr2_dqs_n           : inout std_logic_vector(1 downto 0);
-      -- Outputs
-      ddr2_addr            : out   std_logic_vector(12 downto 0);
-      ddr2_ba              : out   std_logic_vector(2 downto 0);
-      ddr2_ras_n           : out   std_logic;
-      ddr2_cas_n           : out   std_logic;
-      ddr2_we_n            : out   std_logic;
-      ddr2_ck_p            : out   std_logic_vector(0 downto 0);
-      ddr2_ck_n            : out   std_logic_vector(0 downto 0);
-      ddr2_cke             : out   std_logic_vector(0 downto 0);
-      ddr2_cs_n            : out   std_logic_vector(0 downto 0);
-      ddr2_dm              : out   std_logic_vector(1 downto 0);
-      ddr2_odt             : out   std_logic_vector(0 downto 0);
-      -- Inputs
-      sys_clk_i	      : in	std_logic;     
-      -- user interface signals
-      app_addr             : in    std_logic_vector(26 downto 0);
-      app_cmd              : in    std_logic_vector(2 downto 0);
-      app_en               : in    std_logic;
-      app_wdf_data         : in    std_logic_vector(127 downto 0);
-      app_wdf_end          : in    std_logic;
-      app_wdf_mask         : in    std_logic_vector(15 downto 0);
-      app_wdf_wren         : in    std_logic;
-      app_rd_data          : out   std_logic_vector(127 downto 0);
-      app_rd_data_end      : out   std_logic;
-      app_rd_data_valid    : out   std_logic;
-      app_rdy              : out   std_logic;
-      app_wdf_rdy          : out   std_logic;
-      app_sr_req           : in    std_logic;
-      app_sr_active        : out   std_logic;
-      app_ref_req          : in    std_logic;
-      app_ref_ack          : out   std_logic;
-      app_zq_req           : in    std_logic;
-      app_zq_ack           : out   std_logic;
-      ui_clk               : out   std_logic;
-      ui_clk_sync_rst      : out   std_logic;
-      init_calib_complete  : out   std_logic;
-      sys_rst		      : in	std_logic);
+component DDR_SDRAM_CTRL is 
+port (
+	CLK			: in  std_logic;
+	CLK_130		: in std_logic;
+    reset		: in  std_logic; 
+
+	wrrd_ba_add	: in std_logic_vector(2 downto 0);
+	wrrd_ras_add : in std_logic_vector(12 downto 0);
+	wrrd_cas_add : in std_logic_vector(8 downto 0);
+	wr_we		: in std_logic_vector(3 downto 0);
+	wr_dat		: in std_logic_vector(31 downto 0);
+	wr_ack		: out std_logic;
+	rd_re		: in std_logic;
+	rd_dat		: out std_logic_vector(31 downto 0);
+	rd_ack		: out std_logic;
+	rd_valid	: out std_logic;
+
+	SDRAM_A		: out std_logic_vector(13 downto 0);
+	SDRAM_BA	: out std_logic_vector(2 downto 0);
+	SDRAM_CKE	: out std_logic;
+	SDRAM_CK	: out std_logic;
+	SDRAM_nCK	: out std_logic;
+	SDRAM_DQ	: inout std_logic_vector(15 downto 0); 
+	SDRAM_DQS	: inout std_logic_vector(1 downto 0);
+	--SDRAM_nDQS	: inout std_logic_vector(1 downto 0);
+	SDRAM_DM	: out std_logic_vector(1 downto 0);
+	SDRAM_nCAS	: out std_logic;
+	SDRAM_nCS	: out std_logic;
+	SDRAM_nRAS	: out std_logic;
+	SDRAM_nWE	: out std_logic);
+
 end component;
+
+COMPONENT DMAcontrollerDDR
+PORT(
+	CLK : IN std_logic;
+	reset : IN std_logic;
+	s_axi_awaddr : IN std_logic_vector(31 downto 0);
+	s_axi_awvalid : IN std_logic;
+	s_axi_wdata : IN std_logic_vector(31 downto 0);
+	s_axi_wstrb : IN std_logic_vector(3 downto 0);
+	s_axi_wvalid : IN std_logic;
+	s_axi_araddr : IN std_logic_vector(31 downto 0);
+	s_axi_arvalid : IN std_logic;
+	t_axi_araddr : IN std_logic_vector(31 downto 0);
+	t_axi_arlen : IN std_logic_vector(7 downto 0);
+	t_axi_arvalid : IN std_logic;     
+	s_axi_awready : OUT std_logic;
+	s_axi_wready : OUT std_logic;
+	s_axi_arready : OUT std_logic;
+	s_axi_rdata : OUT std_logic_vector(31 downto 0);
+	s_axi_rvalid : OUT std_logic;
+	t_axi_arready : OUT std_logic;
+	t_axi_rdata : OUT std_logic_vector(127 downto 0);
+	t_axi_rlast : OUT std_logic;
+	t_axi_rvalid : OUT std_logic;
+	
+	wrrd_ba_add	: out std_logic_vector(2 downto 0);
+	wrrd_ras_add : out std_logic_vector(12 downto 0);
+	wrrd_cas_add : out std_logic_vector(8 downto 0);
+	wr_we		: out std_logic_vector(3 downto 0);
+	wr_dat		: out std_logic_vector(31 downto 0);
+	wr_ack		: in std_logic;
+	rd_re		: out std_logic;
+	rd_dat		: in std_logic_vector(31 downto 0);
+	rd_ack		: in std_logic;
+	rd_valid	: in std_logic
+	);
+END COMPONENT;
 
 COMPONENT SYS_RAM
   PORT (
@@ -343,54 +360,6 @@ PORT(
 	data_inB : IN std_logic_vector(31 downto 0);          
 	data_outA : OUT std_logic_vector(31 downto 0);
 	data_outB : OUT std_logic_vector(31 downto 0)
-	);
-END COMPONENT;
-
-COMPONENT DMAcontrollerMIG7
-PORT(
-	CLK100MHZ	: IN STD_LOGIC;
-	CLK200MHZ	: IN STD_LOGIC;
-	reset : IN std_logic;
-	s_axi_awaddr : IN std_logic_vector(31 downto 0);
-	s_axi_awvalid : IN std_logic;
-	s_axi_wdata : IN std_logic_vector(31 downto 0);
-	s_axi_wstrb : IN std_logic_vector(3 downto 0);
-	s_axi_wvalid : IN std_logic;
-	s_axi_araddr : IN std_logic_vector(31 downto 0);
-	s_axi_arvalid : IN std_logic;
-	t_axi_araddr : IN std_logic_vector(31 downto 0);
-	t_axi_arlen : IN std_logic_vector(7 downto 0);
-	t_axi_arvalid : IN std_logic;   
-	s_axi_awready : OUT std_logic;
-	s_axi_wready : OUT std_logic;
-	s_axi_arready : OUT std_logic;
-	s_axi_rdata : OUT std_logic_vector(31 downto 0);
-	s_axi_rvalid : OUT std_logic;
-	t_axi_arready : OUT std_logic;
-	t_axi_rdata : OUT std_logic_vector(127 downto 0);
-	t_axi_rlast : OUT std_logic;
-	t_axi_rvalid : OUT std_logic;
-      app_addr             : out	std_logic_vector(26 downto 0);
-      app_cmd              : out    std_logic_vector(2 downto 0);
-      app_en               : out    std_logic;
-      app_wdf_data         : out   std_logic_vector(127 downto 0);
-      app_wdf_end          : out    std_logic;
-      app_wdf_mask         : out    std_logic_vector(15 downto 0);
-      app_wdf_wren         : out    std_logic;
-      app_rd_data          : in   std_logic_vector(127 downto 0);
-      app_rd_data_end      : in   std_logic;
-      app_rd_data_valid    : in   std_logic;
-      app_rdy              : in   std_logic;
-      app_wdf_rdy          : in   std_logic;
-      app_sr_req           : out    std_logic;
-      app_sr_active        : in   std_logic;
-      app_ref_req          : out std_logic;
-      app_ref_ack          : in   std_logic;
-      app_zq_req           : out    std_logic;
-      app_zq_ack           : in   std_logic;
-      ui_clk               : in   std_logic;
-      ui_clk_sync_rst      : in   std_logic;
-      init_calib_complete  : in	std_logic
 	);
 END COMPONENT;
 
@@ -952,7 +921,15 @@ begin
 	SD_status(1) <= SD_CD;
 	SD_status(2) <= SD_WP;
 	SD_status(3) <= MISO;
+	
+-----------------------------------------------------------------------------------------------------------------------------------
+-- DDR SDRAM connections
+-----------------------------------------------------------------------------------------------------------------------------------		
 
+	SDRAM_ODT <= '0';   
+	SDRAM_UDQM <= SDRAM_DM(1);
+	SDRAM_LDQM <= SDRAM_DM(0);
+	
 -----------------------------------------------------------------------------------------------------------------------------------
 -- Module instantiations
 -----------------------------------------------------------------------------------------------------------------------------------
@@ -968,7 +945,7 @@ port map
 	CLK_OUT4 => VGACLK150,	 
 	CLK_OUT5 => CLK100,
 	CLK_OUT6 => CLK50MHZ,
-	CLK_OUT7 => CLK200MHZ
+	CLK_OUT7 => CLK100_130
 );	
 
 --Inst_RAM_for_Testbench: RAM_for_Testbench 
@@ -1002,11 +979,10 @@ PORT MAP (
 	dinb => dinb_sysram,
 	doutb => doutb_sysram
 	);
-
-Inst_DMAcontrollerMIG7: DMAcontrollerMIG7
+	
+Inst_DMAcontrollerDDR: DMAcontrollerDDR 
 PORT MAP(
-	CLK100MHZ => CLK100,
-	CLK200MHZ => CLK200MHZ,
+	CLK => CLK_SYSTEM,
 	reset => reset,
 	s_axi_awaddr => s_axi_awaddr,
 	s_axi_awvalid => s_axi_awvalid,
@@ -1019,7 +995,6 @@ PORT MAP(
 	s_axi_arvalid => s_axi_arvalid,
 	s_axi_arready => s_axi_arready,
 	s_axi_rdata => s_axi_rdata,
-	s_axi_rvalid => s_axi_rvalid,
 	t_axi_araddr => t_axi_araddr,
 	t_axi_arlen => t_axi_arlen,
 	t_axi_arvalid => t_axi_arvalid,
@@ -1027,69 +1002,50 @@ PORT MAP(
 	t_axi_rdata => t_axi_rdata,
 	t_axi_rlast => t_axi_rlast,
 	t_axi_rvalid => t_axi_rvalid,
-	app_addr             => app_addr,
-	app_cmd              => app_cmd,
-	app_en               => app_en,
-	app_wdf_data         => app_wdf_data,
-	app_wdf_end          => app_wdf_end,
-	app_wdf_mask         => app_wdf_mask,
-	app_wdf_wren         => app_wdf_wren,
-	app_rd_data          => app_rd_data,
-	app_rd_data_end      => app_rd_data_end,
-	app_rd_data_valid    => app_rd_data_valid,
-	app_rdy              => app_rdy,
-	app_wdf_rdy          => app_wdf_rdy,
-	app_sr_req           => app_sr_req,
-	app_sr_active        => app_sr_active,
-	app_ref_req          => app_ref_req,
-	app_ref_ack          => app_ref_ack,
-	app_zq_req           => app_zq_req,
-	app_zq_ack           => app_zq_ack,
-	ui_clk               => ui_clk,
-	ui_clk_sync_rst      => ui_clk_sync_rst,    
-	init_calib_complete  => init_calib_complete
-	);
-
-inst_MIG7: MIG7
+	wrrd_ba_add => wrrd_ba_add,
+	wrrd_ras_add => wrrd_ras_add,
+	wrrd_cas_add => wrrd_cas_add,
+	wr_we => wr_we,
+	wr_dat => wr_dat,
+	wr_ack => wr_ack,
+	rd_re => rd_re,
+	rd_dat => rd_dat,
+	rd_ack => rd_ack,  
+	rd_valid => rd_valid
+);
+	
+Inst_DDR_SDRAM_CTRL: DDR_SDRAM_CTRL 
 port map (
-	ddr2_dq              => ddr2_dq,
-	ddr2_dqs_p           => ddr2_dqs_p,
-	ddr2_dqs_n           => ddr2_dqs_n,
-	ddr2_addr            => ddr2_addr,
-	ddr2_ba              => ddr2_ba,
-	ddr2_ras_n           => ddr2_ras_n,
-	ddr2_cas_n           => ddr2_cas_n,
-	ddr2_we_n            => ddr2_we_n,
-	ddr2_ck_p            => ddr2_ck_p,
-	ddr2_ck_n            => ddr2_ck_n,
-	ddr2_cke             => ddr2_cke,
-	ddr2_cs_n            => ddr2_cs_n,
-	ddr2_dm              => ddr2_dm,
-	ddr2_odt             => ddr2_odt,
-	sys_clk_i 	     	=> CLK200MHZ,
-	app_addr             => app_addr,
-	app_cmd              => app_cmd,
-	app_en               => app_en,
-	app_wdf_data         => app_wdf_data,
-	app_wdf_end          => app_wdf_end,
-	app_wdf_mask         => app_wdf_mask,
-	app_wdf_wren         => app_wdf_wren,
-	app_rd_data          => app_rd_data,
-	app_rd_data_end      => app_rd_data_end,
-	app_rd_data_valid    => app_rd_data_valid,
-	app_rdy              => app_rdy,
-	app_wdf_rdy          => app_wdf_rdy,
-	app_sr_req           => app_sr_req,
-	app_sr_active        => app_sr_active,
-	app_ref_req          => app_ref_req,
-	app_ref_ack          => app_ref_ack,
-	app_zq_req           => app_zq_req,
-	app_zq_ack           => app_zq_ack,
-	ui_clk               => ui_clk,
-	ui_clk_sync_rst      => ui_clk_sync_rst,    
-	init_calib_complete  => init_calib_complete,
-	sys_rst => invRESET
-     );
+	CLK   => clk_system,
+	CLK_130 => clk100_130,
+	reset => reset,  
+
+	wrrd_ba_add => wrrd_ba_add,
+	wrrd_ras_add => wrrd_ras_add,
+	wrrd_cas_add => wrrd_cas_add,
+	
+	wr_we => wr_we,
+	wr_dat => wr_dat,
+	wr_ack => wr_ack,
+	rd_re => rd_re,
+	rd_dat => rd_dat,
+	rd_ack => rd_ack,  
+	rd_valid => rd_valid,
+
+	SDRAM_A 		=> SDRAM_A,
+	SDRAM_BA 		=> SDRAM_BA,
+	SDRAM_CKE      	=> SDRAM_CKE,
+	SDRAM_CK        => SDRAM_CK,
+	SDRAM_nCK	    => SDRAM_nCK,
+	SDRAM_DQ       	=> SDRAM_DQ,
+	SDRAM_DQS	    => SDRAM_DQS,
+	--SDRAM_nDQS	    => SDRAM_nDQS,
+	SDRAM_DM    	=> SDRAM_DM,
+	SDRAM_nCAS     	=> SDRAM_nCAS,
+	SDRAM_nCS      	=> SDRAM_nCS,
+	SDRAM_nRAS     	=> SDRAM_nRAS,
+	SDRAM_nWE      	=> SDRAM_nWE
+);
 
 Inst_TEXTbufferDDR: TEXTbufferDDR 
 PORT MAP(
