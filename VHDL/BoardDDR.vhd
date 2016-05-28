@@ -239,7 +239,7 @@ signal wr_dat : std_logic_vector(31 downto 0);
 signal wr_ack : std_logic;
 signal rd_re : std_logic;
 signal rd_add : std_logic_vector(25 downto 0);
-signal rd_dat : std_logic_vector(31 downto 0);
+signal rd_dat : std_logic_vector(63 downto 0);
 signal rd_ack : std_logic;
 signal rd_valid : std_logic; 
 signal SDRAM_DM : std_logic_vector(1 downto 0);
@@ -272,7 +272,7 @@ port (
 	wr_dat		: in std_logic_vector(31 downto 0);
 	wr_ack		: out std_logic;
 	rd_re		: in std_logic;
-	rd_dat		: out std_logic_vector(31 downto 0);
+	rd_dat		: out std_logic_vector(63 downto 0);
 	rd_ack		: out std_logic;
 	rd_valid	: out std_logic;
 
@@ -323,7 +323,7 @@ PORT(
 	wr_dat		: out std_logic_vector(31 downto 0);
 	wr_ack		: in std_logic;
 	rd_re		: out std_logic;
-	rd_dat		: in std_logic_vector(31 downto 0);
+	rd_dat		: in std_logic_vector(63 downto 0);
 	rd_ack		: in std_logic;
 	rd_valid	: in std_logic
 	);
@@ -995,6 +995,7 @@ PORT MAP(
 	s_axi_arvalid => s_axi_arvalid,
 	s_axi_arready => s_axi_arready,
 	s_axi_rdata => s_axi_rdata,
+	s_axi_rvalid => s_axi_rvalid,
 	t_axi_araddr => t_axi_araddr,
 	t_axi_arlen => t_axi_arlen,
 	t_axi_arvalid => t_axi_arvalid,

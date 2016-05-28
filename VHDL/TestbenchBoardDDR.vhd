@@ -16,20 +16,22 @@ ARCHITECTURE behavior OF TestbenchBoardDDR IS
            HSync : out  STD_LOGIC;
            VSync : out  STD_LOGIC;
 	    --
-	ddr2_dq	: inout std_logic_vector(15 downto 0);
-	ddr2_dqs_p	: inout std_logic_vector(1 downto 0);
-	ddr2_dqs_n	: inout std_logic_vector(1 downto 0);
-	ddr2_addr	: out   std_logic_vector(12 downto 0);
-	ddr2_ba	: out   std_logic_vector(2 downto 0);
-	ddr2_ras_n	: out   std_logic;
-	ddr2_cas_n	: out   std_logic;
-	ddr2_we_n	: out   std_logic;
-	ddr2_ck_p	: out   std_logic_vector(0 downto 0);
-	ddr2_ck_n	: out   std_logic_vector(0 downto 0);
-	ddr2_cke	: out   std_logic_vector(0 downto 0);
-	ddr2_cs_n	: out   std_logic_vector(0 downto 0);
-	ddr2_dm	: out   std_logic_vector(1 downto 0);
-	ddr2_odt	: out   std_logic_vector(0 downto 0);
+	-- DDR RAM
+	    SDRAM_A : out std_logic_vector(13 downto 0);
+	    SDRAM_BA : out std_logic_vector(2 downto 0);
+	    SDRAM_CKE      : out std_logic;
+	    SDRAM_CK       : out std_logic;
+	    SDRAM_nCK	   : out std_logic;
+	    SDRAM_DQ       : inout std_logic_vector(15 downto 0);  
+	    SDRAM_DQS	   : inout std_logic_vector(1 downto 0);
+	    --SDRAM_nDQS	   : inout std_logic_vector(1 downto 0);
+	    SDRAM_UDQM    : out std_logic;
+	    SDRAM_LDQM    : out std_logic;
+	    SDRAM_nCAS     : out std_logic;
+	    SDRAM_nCS      : out std_logic;
+	    SDRAM_nRAS     : out std_logic;
+	    SDRAM_nWE      : out std_logic;
+	    SDRAM_ODT      : out std_logic;
 	    --
 	  RXD_S0 : in STD_LOGIC;
 	  TXD_S0 : out STD_LOGIC;
@@ -101,23 +103,24 @@ END COMPONENT;
 	signal PHYRXD : STD_LOGIC_VECTOR (1 downto 0) := (others=>'0');
 	signal PHYINTN : STD_LOGIC := '0';
 	
-	--BiDirs
-   signal ddr2_dq : std_logic_vector(15 downto 0);
-   signal ddr2_dqs_p : std_logic_vector(1 downto 0);
-   signal ddr2_dqs_n : std_logic_vector(1 downto 0);
-
- 	--Outputs
-   signal ddr2_addr : std_logic_vector(12 downto 0);
-   signal ddr2_ba : std_logic_vector(2 downto 0);
-   signal ddr2_ras_n : std_logic;
-   signal ddr2_cas_n : std_logic;
-   signal ddr2_we_n : std_logic;
-   signal ddr2_ck_p : std_logic_vector(0 downto 0);
-   signal ddr2_ck_n : std_logic_vector(0 downto 0);
-   signal ddr2_cke : std_logic_vector(0 downto 0);
-   signal ddr2_cs_n : std_logic_vector(0 downto 0);
-   signal ddr2_dm : std_logic_vector(1 downto 0);
-   signal ddr2_odt : std_logic_vector(0 downto 0);	
+	signal SDRAM_A 	: std_logic_vector(13 downto 0);
+	signal SDRAM_BA 	: std_logic_vector(2 downto 0);
+	signal SDRAM_CK      : std_logic;  
+	signal SDRAM_nCK     : std_logic;
+	signal SDRAM_DQ       : std_logic_vector(15 downto 0);   
+	signal SDRAM_DM       : std_logic_vector(1 downto 0);   
+	signal SDRAM_DQS      : std_logic_vector(1 downto 0);
+	signal SDRAM_nDQS     : std_logic_vector(1 downto 0); 
+	signal SDRAM_nRDQS    : std_logic_vector(1 downto 0);
+	signal SDRAM_UDQM    : std_logic;
+	signal SDRAM_LDQM    : std_logic;
+	signal SDRAM_nCAS     : std_logic;
+	signal SDRAM_nCS      : std_logic;
+	signal SDRAM_nRAS     : std_logic;
+	signal SDRAM_nWE      : std_logic; 
+	
+	signal SDRAM_CKE      : std_logic;      
+	signal SDRAM_ODT      : std_logic;	
    
 	--BiDirs
    signal DATA_SDRAM : std_logic_vector(15 downto 0);
@@ -127,16 +130,7 @@ END COMPONENT;
    signal RGB : std_logic_vector(11 downto 0);
    signal HSync : std_logic;
    signal VSync : std_logic;
-   signal ADDR_SDRAM : std_logic_vector(23 downto 1);
-	signal addr : std_logic_vector(22 downto 0);
-   signal OE_SDRAM : std_logic;
-   signal WE_SDRAM : std_logic;
-   signal ADV_SDRAM : std_logic;
-   signal CLK_SDRAM : std_logic;
-   signal UB_SDRAM : std_logic;
-   signal LB_SDRAM : std_logic;
-   signal CE_SDRAM : std_logic;
-   signal CRE_SDRAM : std_logic;
+
 	signal TXD_S0 : std_logic;
 	signal RGB1_Red : std_logic;
 	signal SCK : STD_LOGIC;
@@ -164,20 +158,20 @@ BEGIN
           RGB => RGB,
           HSync => HSync,
           VSync => VSync,
-          ddr2_dq => ddr2_dq,
-          ddr2_dqs_p => ddr2_dqs_p,
-          ddr2_dqs_n => ddr2_dqs_n,
-          ddr2_addr => ddr2_addr,
-          ddr2_ba => ddr2_ba,
-          ddr2_ras_n => ddr2_ras_n,
-          ddr2_cas_n => ddr2_cas_n,
-          ddr2_we_n => ddr2_we_n,
-          ddr2_ck_p => ddr2_ck_p,
-          ddr2_ck_n => ddr2_ck_n,
-          ddr2_cke => ddr2_cke,
-          ddr2_cs_n => ddr2_cs_n,
-          ddr2_dm => ddr2_dm,
-          ddr2_odt => ddr2_odt,
+	    SDRAM_A => SDRAM_A,
+          SDRAM_BA => SDRAM_BA,
+          SDRAM_CKE => SDRAM_CKE,
+          SDRAM_CK => SDRAM_CK,
+          SDRAM_nCK => SDRAM_nCK,
+          SDRAM_DQ  => SDRAM_DQ,
+          SDRAM_DQS => SDRAM_DQS,
+          SDRAM_UDQM => SDRAM_UDQM,
+          SDRAM_LDQM => SDRAM_LDQM,
+          SDRAM_nCAS => SDRAM_nCAS,
+          SDRAM_nCS => SDRAM_nCS,
+          SDRAM_nRAS => SDRAM_nRAS,
+          SDRAM_nWE => SDRAM_nWE,
+          SDRAM_ODT => SDRAM_ODT,
 			 TXD_S0 => TXD_S0,  
 			 RXD_S0 => RXD_S0,	-- RXD_S0
 			 PS2C => PS2C,
@@ -207,21 +201,21 @@ BEGIN
 	 
 	inst_ddr2: ddr2
 	PORT MAP (
-		ck => ddr2_ck_p(0),
-		ck_n => ddr2_ck_n(0),
-		cke => ddr2_cke(0),
-		cs_n => ddr2_cs_n(0),
-		ras_n => ddr2_ras_n,
-		cas_n => ddr2_cas_n,
-		we_n => ddr2_we_n,
-		dm_rdqs => ddr2_dm,
-		ba => ddr2_ba,
-		addr => ddr2_addr,
-		dq => ddr2_dq,
-		dqs => ddr2_dqs_p,
-		dqs_n => ddr2_dqs_n,
-		rdqs_n => open,
-		odt => ddr2_odt(0)
+    ck => SDRAM_CK, 
+	ck_n => SDRAM_nCK, 
+	cke => SDRAM_CKE, 
+	cs_n => SDRAM_nCS, 
+	ras_n => SDRAM_nRAS, 
+	cas_n => SDRAM_nCAS, 
+	we_n => SDRAM_nWE, 
+	dm_rdqs => SDRAM_DM, 
+	ba => SDRAM_BA, 
+	addr => SDRAM_A(12 downto 0), 
+	dq => SDRAM_DQ, 
+	dqs => SDRAM_DQS,
+	dqs_n => SDRAM_nDQS,
+	rdqs_n => SDRAM_nRDQS,
+	odt => SDRAM_ODT
 	);		
 
 	Inst_SPIslave3: entity work.SPIslave3 PORT MAP(
@@ -232,7 +226,6 @@ BEGIN
 		mode => "00"
 		);
 	
-	addr <= ADDR_SDRAM;
 	RXD_S0 <= tx_line;
 	PS2C <= PS2C_line;
 	PS2D <= PS2D_line;
@@ -240,6 +233,9 @@ BEGIN
 	-- Ethernet loopback test
    PHYCRS <= PHYTXEN;
    PHYRXD <= PHYTXD;
+   
+   SDRAM_DM(0) <= SDRAM_LDQM;
+   SDRAM_DM(1) <= SDRAM_UDQM; 
 	
    -- Clock process definitions
    CLK_IN_process :process

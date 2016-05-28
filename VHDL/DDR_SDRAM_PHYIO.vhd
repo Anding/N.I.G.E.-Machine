@@ -21,7 +21,7 @@ port (
 	wr_dat : in std_logic_vector(31 downto 0);			-- write data
 	wr_ack : out std_logic;								-- hold write request until wr_ack goes high
 	rd_re : in std_logic;								-- set high to request read
-	rd_dat : out std_logic_vector(31 downto 0);			-- read data
+	rd_dat : out std_logic_vector(63 downto 0);			-- read data
 	rd_ack : out std_logic;   							-- hold read request until rd_ack goes high
 	rd_valid : out std_logic;							-- accept read rd_dat during the same cycle that rd_valid is high
 	refresh : in std_logic;								-- cycle refresh high to allow periodic SDRAM refresh (driven by SDRAM_CTRL)
@@ -374,7 +374,7 @@ end generate;
 
 wr_dat_64 <= x"01234567" & wr_dat;
 wr_we_8 <= "0000" & wr_we;
-rd_dat <= rd_dat_r(31 downto 0);
+rd_dat <= rd_dat_r(63 downto 0);
 
 --process
 --begin
@@ -674,8 +674,8 @@ when idle =>
 		 	   	SDRAM_BA <= wrrd_ba_add;				-- Bank address in BA[2:0] (8) - 1Gb_DDR2 p2
 				COMMAND <= CMD_ACTIVATE;
 				state <= bank_0;
-				bank_active <= wrrd_ba_add; 			-- save the activating bank (to detect a change)
-				bank_row_active <= '0' & wrrd_ras_add;  -- save the activating row (to detect a change)
+--				bank_active <= wrrd_ba_add; 			-- save the activating bank (to detect a change)
+--				bank_row_active <= '0' & wrrd_ras_add;  -- save the activating row (to detect a change)
 														-- ACTIVE to PRECHARGE delay tRAS = 70us MAX (p36) : has this been considered?
 		 	end if;
 -----------------------------------------------------
@@ -684,6 +684,8 @@ when idle =>
 when bank_0 => 									-- first state after activating a bank
 			COMMAND <= CMD_NOP;		
 			SDRAM_A <= "00000000000000";
+			bank_active <= wrrd_ba_add; 			-- save the activating bank (to detect a change)
+			bank_row_active <= '0' & wrrd_ras_add;  -- save the activating row (to detect a change)			
 			if (counter = ct_RCD) then
 				state <= active;
 				counter <= 0;

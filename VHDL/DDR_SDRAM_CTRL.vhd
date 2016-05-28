@@ -24,7 +24,7 @@ port (
 	wr_ack : out std_logic;
 
 	rd_re : in std_logic;
-	rd_dat : out std_logic_vector(31 downto 0);
+	rd_dat : out std_logic_vector(63 downto 0);
 	rd_ack : out std_logic;   
 	rd_valid : out std_logic;
 
@@ -62,7 +62,7 @@ port (
 	wr_ack : out std_logic;
 
 	rd_re : in std_logic;
-	rd_dat : out std_logic_vector(31 downto 0);
+	rd_dat : out std_logic_vector(63 downto 0);
 	rd_ack : out std_logic;
 	rd_valid : out std_logic;        
 	
