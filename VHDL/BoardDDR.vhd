@@ -190,7 +190,7 @@ signal s_axi_rdata : std_logic_vector(31 downto 0);
 signal s_axi_rresp : std_logic_vector(1 downto 0);
 signal s_axi_rvalid : std_logic;
 signal t_axi_arready : std_logic;
-signal t_axi_rdata : std_logic_vector(127 downto 0);
+signal t_axi_rdata : std_logic_vector(15 downto 0);
 signal t_axi_rresp : std_logic_vector(1 downto 0);
 signal t_axi_rlast : std_logic;
 signal t_axi_rvalid : std_logic;
@@ -312,7 +312,7 @@ PORT(
 	s_axi_rdata : OUT std_logic_vector(31 downto 0);
 	s_axi_rvalid : OUT std_logic;
 	t_axi_arready : OUT std_logic;
-	t_axi_rdata : OUT std_logic_vector(127 downto 0);
+	t_axi_rdata : OUT std_logic_vector(15 downto 0);
 	t_axi_rlast : OUT std_logic;
 	t_axi_rvalid : OUT std_logic;
 	
@@ -363,18 +363,17 @@ PORT(
 	);
 END COMPONENT;
 
-COMPONENT TEXTbufferDDR
+COMPONENT TEXTbuffer
 PORT(
 	clk_MEM : IN std_logic;
 	clk_VGA : IN std_logic;
-	reset : in std_logic;
 	VGAcols : IN std_logic_vector(7 downto 0);
 	VBlank : IN std_logic;
 	FetchNextRow : IN std_logic;
 	txt_zero : IN std_logic_vector(23 downto 0);
 	ADDR_TEXT : IN std_logic_vector(7 downto 0);
 	t_axi_arready : IN std_logic;
-	t_axi_rdata : IN std_logic_vector(127 downto 0);
+	t_axi_rdata : IN std_logic_vector(15 downto 0);
 	t_axi_rlast : IN std_logic;
 	t_axi_rvalid : IN std_logic;          
 	DATA_TEXT : OUT std_logic_vector(15 downto 0);
@@ -1048,9 +1047,8 @@ port map (
 	SDRAM_nWE      	=> SDRAM_nWE
 );
 
-Inst_TEXTbufferDDR: TEXTbufferDDR 
+Inst_TEXTbuffer: TEXTbuffer 
 PORT MAP(
-	reset => reset,
 	clk_MEM => clk_MEM,
 	clk_VGA => clk_VGA,
 	VGAcols => VGAcols,

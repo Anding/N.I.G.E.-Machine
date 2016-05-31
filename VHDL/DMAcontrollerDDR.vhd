@@ -38,7 +38,7 @@ entity DMAcontrollerDDR is
 	t_axi_arlen : IN  std_logic_vector(7 downto 0);			-- No. beats = axi_arlen + 1
 	t_axi_arvalid : IN  std_logic;
 	t_axi_arready : OUT  std_logic;
-	t_axi_rdata : OUT  std_logic_vector(127 downto 0);	
+	t_axi_rdata : OUT  std_logic_vector(15 downto 0);	
 	t_axi_rlast : OUT  std_logic;					-- set high to indicate last data word
 	t_axi_rvalid : OUT  std_logic;
 
@@ -69,7 +69,18 @@ end DMAcontrollerDDR;
 architecture RTL of DMAcontrollerDDR is
 
 type arbiter_type is (s_axi_read, s_axi_write, t_axi_read, t_axi_read_seq, none);
+type sequencer_type is (idle, read_request, read_wait, output, finish);
+
 signal arbiter, arbiter_n : arbiter_type;
+signal sequencer, sequencer_n : sequencer_type;
+signal sequencer_rd_re : std_logic;
+signal sequencer_rvalid : std_logic;
+signal sequencer_rlast : std_logic;
+signal sequencer_arready : std_logic;
+signal sequencer_addr,  sequencer_addr_n : std_logic_vector(31 downto 0);
+signal sequencer_count, sequencer_count_n : std_logic_vector(7 downto 0);
+signal sequencer_bytes, sequencer_bytes_n : std_logic_vector(1 downto 0);
+signal sequencer_data, sequencer_data_n : std_logic_vector(63 downto 0);
 
 begin
 
@@ -79,13 +90,23 @@ begin
 	wait until rising_edge(CLK);
 	if RESET = '1' then	
 		arbiter <= none;	
+		sequencer <= idle;
+		sequencer_addr <= (others=>'0');
+		sequencer_count <= (others=>'0');
+		sequencer_bytes <= (others=>'0');
+		sequencer_data <= (others=>'0');
 	else
 		arbiter <= arbiter_n;		
+		sequencer <= sequencer_n;
+		sequencer_addr <= sequencer_addr_n;
+		sequencer_count <= sequencer_count_n;
+		sequencer_bytes <= sequencer_bytes_n;
+		sequencer_data <= sequencer_data_n;
 	end if;
 end process;
 
--- next state process
-process (arbiter, rd_ack, rd_valid, wr_ack, s_axi_awvalid, s_axi_wvalid, s_axi_arvalid, t_axi_arvalid)
+-- arbiter next state process
+process (arbiter, rd_ack, rd_valid, wr_ack, s_axi_awvalid, s_axi_wvalid, s_axi_arvalid, t_axi_arvalid, sequencer)
 begin
 	arbiter_n <= arbiter;
 	case arbiter is
@@ -94,6 +115,8 @@ begin
 				arbiter_n <= s_axi_write;
 			elsif s_axi_arvalid = '1' then
 				arbiter_n <= s_axi_read;
+--			elsif t_axi_arvalid = '1' then
+--				arbiter_n <= t_axi_read;
 			end if;
 		
 		when s_axi_write =>
@@ -106,14 +129,17 @@ begin
 				arbiter_n <= none;
 			end if;
 			
-		when others =>
-			null;
+		when others =>							-- t_axi_read
+			if sequencer = finish then
+				arbiter_n <= none;
+			end if;
 			
 	end case ;
 end process;
 
--- output process
-process (rd_dat, s_axi_awaddr, s_axi_wdata, wr_ack, s_axi_awvalid, s_axi_wvalid, s_axi_wstrb, rd_ack, rd_valid, s_axi_arvalid, s_axi_araddr, arbiter)
+-- arbiter output process
+process (rd_dat, s_axi_awaddr, s_axi_wdata, wr_ack, s_axi_awvalid, s_axi_wvalid, s_axi_wstrb, rd_ack, rd_valid, s_axi_arvalid, s_axi_araddr, arbiter,
+		sequencer_arready, sequencer_rvalid, sequencer_data, sequencer_rlast, sequencer_rd_re, sequencer_addr)
 begin
 	case arbiter is
 		when none =>
@@ -124,7 +150,7 @@ begin
 			s_axi_rvalid	<= '0';
 			t_axi_arready	<= '0';
 			t_axi_rvalid	<= '0';
-			t_axi_rdata		<= (others => '0');
+			t_axi_rdata		<= sequencer_data(15 downto 0);
 			t_axi_rlast		<= '0';
 			rd_re			<= '0';
 			wr_we			<= (others=>'0');
@@ -141,7 +167,7 @@ begin
 			s_axi_rvalid	<= '0';
 			t_axi_arready	<= '0';
 			t_axi_rvalid	<= '0';
-			t_axi_rdata		<= (others => '0');
+			t_axi_rdata		<= sequencer_data(15 downto 0);
 			t_axi_rlast		<= '0';
 			rd_re			<= '0';
 			if (s_axi_awvalid = '1' and s_axi_wvalid = '1') then
@@ -162,7 +188,7 @@ begin
 			s_axi_rvalid	<= rd_valid;
 			t_axi_arready	<= '0';
 			t_axi_rvalid	<= '0';
-			t_axi_rdata		<= (others => '0');
+			t_axi_rdata		<= sequencer_data(15 downto 0);
 			t_axi_rlast		<= '0';
 			rd_re			<= s_axi_arvalid;
 			wr_we			<= (others=>'0');
@@ -171,25 +197,104 @@ begin
 			wrrd_ba_add		<= s_axi_araddr(25 downto 23);
 			wr_dat			<= s_axi_wdata;		
 
-		when others =>
+		when others =>											-- t_axi_read
 			s_axi_awready	<= '0';
 			s_axi_wready	<= '0';
 			s_axi_arready	<= '0';
 			s_axi_rdata 	<= rd_dat(31 downto 0);
 			s_axi_rvalid	<= '0';
-			t_axi_arready	<= '0';
-			t_axi_rvalid	<= '0';
-			t_axi_rdata		<= (others=>'0');
-			t_axi_rlast		<= '0';
-			rd_re			<= '0';
+			t_axi_arready	<= sequencer_arready;
+			t_axi_rvalid	<= sequencer_rvalid;
+			t_axi_rdata		<= sequencer_data(15 downto 0);
+			t_axi_rlast		<= sequencer_rlast;
+			rd_re			<= sequencer_rd_re;
 			wr_we			<= (others=>'0');
-			wrrd_cas_add	<= s_axi_awaddr(9 downto 1);
-			wrrd_ras_add	<= s_axi_awaddr(22 downto 10);
-			wrrd_ba_add		<= s_axi_awaddr(25 downto 23);
+			wrrd_cas_add	<= sequencer_addr(9 downto 1);
+			wrrd_ras_add	<= sequencer_addr(22 downto 10);
+			wrrd_ba_add		<= sequencer_addr(25 downto 23);
 			wr_dat			<= s_axi_wdata;					
 			
 		end case;
 end process;
 
+-- sequencer next state process
+process (sequencer, arbiter, rd_ack, rd_valid, sequencer_count, sequencer_bytes)
+begin
+	sequencer_n <= sequencer;
+	case sequencer is
+	
+	when idle =>
+		if arbiter = t_axi_read then
+			sequencer_n <= read_request;
+		end if;
+		
+	when read_request =>
+		if rd_ack = '1' then 
+			sequencer_n <= read_wait;
+		end if;
+		
+	when read_wait =>
+		if rd_valid = '1' then 
+			sequencer_n <= output;
+		end if;
+		
+	when output =>
+		if sequencer_count = 0 then
+			sequencer_n <= finish;
+		elsif sequencer_bytes = 0 then
+			sequencer_n <= read_request;
+		end if;
+		
+	when others =>							-- finish
+		sequencer_n <= idle;
+
+	end case;
+end process;
+
+-- sequencer output process
+process (sequencer, sequencer_addr, sequencer_count, sequencer_bytes, sequencer_data, t_axi_araddr, t_axi_arlen, rd_dat, rd_valid)
+begin
+
+	sequencer_rd_re <= '0';
+	sequencer_rvalid <= '0';
+	sequencer_rlast <= '0';
+	sequencer_arready <= '0';
+	sequencer_addr_n <= sequencer_addr;
+	sequencer_count_n <= sequencer_count;
+	sequencer_bytes_n <= sequencer_bytes;
+	sequencer_data_n <= sequencer_data;
+	
+	case sequencer is
+	
+	when idle =>
+		sequencer_addr_n <= t_axi_araddr;
+		sequencer_count_n <= t_axi_arlen;
+		
+	when read_request =>
+		sequencer_rd_re <= '1';
+		sequencer_arready <= '1';
+		sequencer_bytes_n <= "11";
+				
+	when read_wait =>
+		if rd_valid = '1' then 
+			sequencer_data_n <= rd_dat;
+		end if;
+		
+	when output =>
+		sequencer_rvalid <= '1';
+		sequencer_addr_n <= sequencer_addr + 2;
+		sequencer_count_n <= sequencer_count - 1;
+		sequencer_bytes_n <= sequencer_bytes - 1;
+		sequencer_data_n <= "0000000000000000" & sequencer_data(63 downto 16);
+		if sequencer_count = 0 then
+			sequencer_rlast <= '1';
+		end if;
+		
+	when others	=>							-- finish
+		null;
+		
+	end case;
+end process;
+	
 end RTL;
 
