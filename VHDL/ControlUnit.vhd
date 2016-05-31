@@ -174,8 +174,8 @@ begin
 	AuxControl <= AuxControl_i;			  
 	
 	-- AXI interface constant settings
-	s_axi_awaddr <= TOS(31 downto 2) & "00";
-	s_axi_araddr <= TOS(31 downto 2) & "00";	
+	s_axi_awaddr <= TOS_r(31 downto 2) & "00";
+	s_axi_araddr <= TOS_r(31 downto 2) & "00";	
 --	s_axi_bready <= '1';	
 
 	int_trig <= irq or irq_m1;
