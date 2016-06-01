@@ -647,10 +647,10 @@ when init_mode_1_3_done =>
 			SDRAM_A <= "00000000000000";
 			COMMAND <= CMD_NOP;
 			if (counter = 20) then				-- tMRD timing requirement is 2 clock cycles (p37)
-				if (wr_we /= "0000") then
-					state <= idle; --write_0;
-					counter <= 0;
-				end if;
+				--if (wr_we /= "0000") then
+				state <= idle; --write_0;
+				counter <= 0;
+				--end if;
 			else
 				counter <= counter + 1;
 			end if;	             
