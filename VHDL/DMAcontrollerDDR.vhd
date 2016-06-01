@@ -115,8 +115,8 @@ begin
 				arbiter_n <= s_axi_write;
 			elsif s_axi_arvalid = '1' then
 				arbiter_n <= s_axi_read;
---			elsif t_axi_arvalid = '1' then
---				arbiter_n <= t_axi_read;
+			elsif t_axi_arvalid = '1' then
+				arbiter_n <= t_axi_read;
 			end if;
 		
 		when s_axi_write =>
