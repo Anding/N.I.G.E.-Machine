@@ -710,7 +710,7 @@ when active =>									-- Command to Bank n, 1Gb_DDDR2 p71
 			SDRAM_dq_out <= wr_dat_64(31 downto 0);			
 			counter <= 0;
 			SDRAM_A <= "00000000000000";
-			SDRAM_A <= "0000" & wrrd_cas_add(8 downto 0) & '0';	  	-- For READ/WRITE column address in A[9:0] (1K) - MT47H64M16HR-25E is WORD addressable- 1Gb_DDR2 p2 
+			SDRAM_A <= "00000" & wrrd_cas_add(8 downto 0) ;	  	-- For READ/WRITE column address in A[9:0] (1K) - MT47H64M16HR-25E is WORD addressable- 1Gb_DDR2 p2 
 																	-- For a PRECHARGE operation only A[10] is significant and we require A[10] = '0' for single bank
 			-----------------------------------------------------
 			--	Refresh handling

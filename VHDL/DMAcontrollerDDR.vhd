@@ -154,7 +154,7 @@ begin
 			t_axi_rlast		<= '0';
 			rd_re			<= '0';
 			wr_we			<= (others=>'0');
-			wrrd_cas_add	<= s_axi_awaddr(9 downto 1);
+			wrrd_cas_add	<= s_axi_awaddr(9 downto 1);			-- column address is a WORD address, while awaddr is a BYTE address
 			wrrd_ras_add	<= s_axi_awaddr(22 downto 10);
 			wrrd_ba_add		<= s_axi_awaddr(25 downto 23);
 			wr_dat			<= s_axi_wdata;
