@@ -161,7 +161,7 @@ begin
 			SD_divide_r <= "11111111";								-- divide by 254	
 			DIVIDE_r_S0 <= CONV_STD_LOGIC_VECTOR(1736,32);		-- 10416 = 9600 BAUD at 100 MHz		
 			irq_mask_r <= "000000000000111";						-- "000000000000111";
-			txt_zero_r <= X"040600";									
+			txt_zero_r <= X"040000";									
 			background_r <= X"0000";
 			mode_r <= "11010";										-- 11010
 			interlace_r <= X"2";
