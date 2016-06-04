@@ -293,7 +293,7 @@ START.0	dc.s	******************************
 		dc.s	******************************		
 		dc.b 	EOL		
 		dc.b	EOL
-		dc.s	PSDRAM 16 MB, SRAM
+		dc.s	DRAM 16/128 MiB, SRAM
 		dc.b	32
 START.1	dc.s	bytes free
 		dc.b	EOL EOL
@@ -5222,14 +5222,16 @@ DUMP.CF	over	( addr n addr)
 		drop		
 DUMP.Z		drop,rts			
 ;	
-; .S ( -- non destructive stack print)
+; .S ( -- non destructive stack print - limited to 32 items)
 DOTS.LF	dc.l	DUMP.NF
 DOTS.NF	dc.b	2 128 +
-		dc.b	char S char .
+		dc.s	.S
 DOTS.SF	dc.w	DOTS.Z DOTS.CF del
 DOTS.CF	PSP@		( xn ... x1 x0 n)
 		?dup		( xn ... x1 x0 n n | 0)
 		IF		( xn ... x1 x0 n)
+			#.b	32
+			jsl	min.cf
 			dup		( xn ... x1 x0 n n)
 			#.l	local0					; save a copy of n in local0
 			store.l	( xn ... x1 x0 n)				
