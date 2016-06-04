@@ -23,8 +23,8 @@ entity VGA is
 			  addr_Char : out STD_LOGIC_VECTOR (11 downto 0);  -- UPDATE to (11 downto 0) for 16 bit wide
 			  data_Color : in STD_LOGIC_VECTOR (15 downto 0);	-- color memory
 			  addr_Color : out STD_LOGIC_VECTOR (7 downto 0);			  
-           HSync : out  STD_LOGIC;									-- VGA adapter connections
-           VSync : out  STD_LOGIC;
+          	  HSync : out  STD_LOGIC;									-- VGA adapter connections
+              VSync : out  STD_LOGIC;
 			  RGB : out  STD_LOGIC_VECTOR (11 downto 0);			  
 			  VBlank	: out STD_LOGIC;									-- vertical blank		  
 --			  VGA_columns : out std_logic_vector(7 downto 0);	-- number of character columns less one
@@ -89,9 +89,9 @@ begin
 			Hb <= CONV_STD_LOGIC_VECTOR(2048,12);
 			Hc <= CONV_STD_LOGIC_VECTOR(2398,12);
 			Hd <= CONV_STD_LOGIC_VECTOR(1919,12);
-			Va <= CONV_STD_LOGIC_VECTOR(1135,12);
-			Vb <= CONV_STD_LOGIC_VECTOR(1086,12);
-			Vc <= CONV_STD_LOGIC_VECTOR(1094,12);
+			Va <= CONV_STD_LOGIC_VECTOR(1125,12);
+			Vb <= CONV_STD_LOGIC_VECTOR(1084,12);
+			Vc <= CONV_STD_LOGIC_VECTOR(1089,12);
 			Vd <= CONV_STD_LOGIC_VECTOR(1079,12);
 			--COLUMNS <= CONV_STD_LOGIC_VECTOR(239,8);			
 		elsif mode_r(2 downto 0) = "011" then				-- XGA mode 1024*768
@@ -99,7 +99,7 @@ begin
 			Hb <= CONV_STD_LOGIC_VECTOR(1048,12);
 			Hc <= CONV_STD_LOGIC_VECTOR(1184,12);
 			Hd <= CONV_STD_LOGIC_VECTOR(1023,12);
-			Va <= CONV_STD_LOGIC_VECTOR(821,12);
+			Va <= CONV_STD_LOGIC_VECTOR(806,12);
 			Vb <= CONV_STD_LOGIC_VECTOR(771,12);
 			Vc <= CONV_STD_LOGIC_VECTOR(777,12);
 			Vd <= CONV_STD_LOGIC_VECTOR(767,12);
@@ -119,7 +119,7 @@ begin
 			Hb <= CONV_STD_LOGIC_VECTOR(656,12);				-- beginning of horizontal front porch (Hsync begins)
 			Hc <= CONV_STD_LOGIC_VECTOR(752,12);				-- end of horizontal front porch (Hsync ends)
 			Hd <= CONV_STD_LOGIC_VECTOR(639,12);				-- last visible horizontal pixel
-			Va <= CONV_STD_LOGIC_VECTOR(527,12);				-- last vertical pixel on the full screen
+			Va <= CONV_STD_LOGIC_VECTOR(525,12);				-- last vertical pixel on the full screen
 			Vb <= CONV_STD_LOGIC_VECTOR(490,12);				-- beginning of vertical front porch (Vsync begins)
 			Vc <= CONV_STD_LOGIC_VECTOR(492,12);				-- end of vertical front porch (Vsync ends)
 			Vd <= CONV_STD_LOGIC_VECTOR(479,12);				-- last visible vertical pixel
@@ -268,7 +268,7 @@ begin
 		end if;
 		
 		-- Drive pixel to output
-		if reset = '0' and VBLANK_i(4) = '0' and HBLANK_i(5) = '0' and mode_r(2 downto 0) /= "000" then
+		if reset = '0' and VBLANK_i(3) = '0' and HBLANK_i(5) = '0' and mode_r(2 downto 0) /= "000" then
 																	-- VBLANK and HBLANK need to synchronize with the logic pipeline, hence a tuneable delay
 			if char_pixels(15) = '1' then	            -- replace with 7/15	
 				RGB_i <= text_f;
