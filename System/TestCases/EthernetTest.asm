@@ -39,7 +39,7 @@ SMIdataRead		equ	hex 03f888
 ;
 ; example Ethernet frame
 frame1	dc.l	42			; number of bytes
-	dc.b	hex	FF
+	dc.b	hex	00
 	dc.b	hex	FF
 	dc.b	hex	FF
 	dc.b	hex	FF

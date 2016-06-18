@@ -166,13 +166,13 @@ BEGIN
 	if PHYCLKout = '0' then			-- rising edge of 50MHz clock
 		PHYCLKout <= '1';
 		valid_flag <= PHYCRS_i;		-- synchronize trigger with update of shift register		
-		PHYTXEN <= PHYTXEN_i;	
 		
 	else
 		PHYCLKout <= '0';
 		-- register outputs in falling edge (these signals will be read by the PHY chip on the rising edge)
-
+		PHYTXEN <= PHYTXEN_i;	
 		PHYTXD <= PHYTXD_i;
+		
 	end if;
 	 
 	-- Receiver logic
@@ -295,7 +295,7 @@ begin
 		
 		when preamble =>
 			state_ethernet_TX_n <= start_of_frame;
-			state_ethernet_TX_timer <= 55;							-- transition after 7 bytes ( 7 bytes * (8 bits per byte / 2 bits per nibble) * (100MHz/50Mhz) - 1 = 55 ) 
+			state_ethernet_TX_timer <= 55;								-- transition after 7 bytes ( 7 bytes * (8 bits per byte / 2 bits per nibble) * (100MHz/50Mhz) - 1 = 55 ) 
 																				--  minus 1 since counter begins at zero
 		when start_of_frame =>
 			state_ethernet_TX_n <= payloadTX;
@@ -336,9 +336,7 @@ begin
 	case state_ethernet_RX is
 		when waiting =>											-- physical layer sends a high bit
 			if valid_flag = '1' then 
-				-- debug
-				--state_ethernet_RX_n <= preamble_0;
-				state_ethernet_RX_n <= payload_init;
+				state_ethernet_RX_n <= preamble_0;
 			else
 				state_ethernet_RX_n <= waiting;
 			end if;
@@ -451,6 +449,8 @@ with PHYCLKout select
 with state_ethernet_TX select
 	next_byte <= "01010101" when preamble,
 					 "11010101" when start_of_frame,			-- remember, this is transmitted LSB first
+--	next_byte <= "10101010" when preamble,
+--					 "11101010" when start_of_frame,			-- remember, this is transmitted LSB first
 					 dataTX_out when payloadTX,				-- from FIFO
 					 "00000000" when others;					-- including pad
 
@@ -459,12 +459,12 @@ read_enableTX <= '1' when (PHYCLKout = '0' and state_ethernet_TX = payloadTX and
 				 
 -- connect low bits of shift register to PHY data lanes using a multiplexer
 with output_multiplexer select
-PHYTXD_i(0) <= checksum_TX(30) when checksum_direct,			-- first bits of checksum needs as soon as they are calulcated, no time to register
+PHYTXD_i(1) <= checksum_TX(30) when checksum_direct,			-- first bits of checksum needs as soon as they are calulcated, no time to register
 				 checksum_TX_r(30) when checksum_registered,		
 				 SR_TX(1) when others;									-- shift register for payload and pad
 				 
 with output_multiplexer select
-PHYTXD_i(1) <= checksum_TX(31) when checksum_direct,
+PHYTXD_i(0) <= checksum_TX(31) when checksum_direct,
 				 checksum_TX_r(31) when checksum_registered,
 				 SR_TX(0) when others;
 					
