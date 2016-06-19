@@ -722,10 +722,10 @@ set_property PACKAGE_PIN U13 [get_ports {ADDR_SDRAM[23]}]
 	set_property IOSTANDARD LVCMOS33 [get_ports {ADDR_SDRAM[23]}]
 	
 #OFFSET = IN 10 ns VALID 10 ns BEFORE "CLK_IN" RISING;
-set_input_delay -clock CLK_OUT5_CLOCKMANAGER 2 [all_inputs]
+#set_input_delay -clock CLK_OUT5_CLOCKMANAGER 2 [all_inputs]
 
 #OFFSET = OUT 10 ns AFTER "CLK_IN";
-set_output_delay -clock CLK_OUT5_CLOCKMANAGER 10 [all_outputs]
+#set_output_delay -clock CLK_OUT5_CLOCKMANAGER 10 [all_outputs]
 
 # unconstrain paths between system clock and VGA clock
 set_false_path -from CLK_OUT5_CLOCKMANAGER -to CLK_OUT1_CLOCKMANAGER
