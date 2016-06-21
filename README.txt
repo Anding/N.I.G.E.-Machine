@@ -65,7 +65,7 @@ Suggested experience
 Hardware
 --------
 
-The system currently runs on a Digilent Nexys 4 development board.  A port to the Nexys4-DDR is planned but has not yet been implemented.  Prior versions (available in this repository) are available for the Nexys 2, 1200k gates and 500k gate boards - please see below.  
+The system currently runs on a Digilent Nexys 4 and Nexys 4 DDR development boards.  Prior versions (available in this repository) are available for the Nexys 2, 1200k gates and 500k gate boards - please see below.  
 
 
 Software
