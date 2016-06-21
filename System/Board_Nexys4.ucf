@@ -1,3 +1,10 @@
+## RS232 on Pmod Header JC (lower row)
+NET "RXD_S0" 			LOC = "J2"	|IOSTANDARD = "LVCMOS33";
+NET "TXD_S0" 			LOC = "G6"	|IOSTANDARD = "LVCMOS33";
+## RS232 via USB
+#NET "RXD_S0" 			LOC = "C4"	| IOSTANDARD = "LVCMOS33";
+#NET "TXD_S0" 			LOC = "D4"	| IOSTANDARD = "LVCMOS33";
+#
 NET "CLK_IN" 		LOC = "E3"	|IOSTANDARD = "LVCMOS33";
 NET "HSync" 		LOC = "B11"	|IOSTANDARD = "LVCMOS33";
 NET "VSync" 		LOC = "B12"	|IOSTANDARD = "LVCMOS33";
@@ -117,13 +124,6 @@ NET "MISO" 			LOC = "C2"	|IOSTANDARD = "LVCMOS33";
 NET "SCK" 			LOC = "B1"	|IOSTANDARD = "LVCMOS33";
 NET "SD_CD" 		LOC = "A1"	|IOSTANDARD = "LVCMOS33";
 NET "SD_RESET"		LOC = "E2"  |IOSTANDARD = "LVCMOS33";	# Drive low to pwr SD card (connect to system reset)
-#
-## RS232 on Pmod Header JC (lower row)
-NET "RXD_S0" 			LOC = "J2"	|IOSTANDARD = "LVCMOS33";
-NET "TXD_S0" 			LOC = "G6"	|IOSTANDARD = "LVCMOS33";
-## RS232 via USB
-#NET "RXD_S0" 			LOC = "C4"	| IOSTANDARD = "LVCMOS33";
-#NET "TXD_S0" 			LOC = "D4"	| IOSTANDARD = "LVCMOS33";
 #
 # SMSC Ethernet PHY
 NET "PhyMdc"			LOC = "C9"	|IOSTANDARD = "LVCMOS33";		#Bank = 16, Pin name = IO_L11P_T1_SRCC_16,					Sch name = ETH_MDC

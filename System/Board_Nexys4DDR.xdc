@@ -9,6 +9,18 @@ set_property PACKAGE_PIN E3 [get_ports CLK_IN]
 set_property IOSTANDARD LVCMOS33 [get_ports CLK_IN]
 #	create_clock -add -name CLK_IN -period 10.00 -waveform {0 5} [get_ports CLK_IN]
 
+## RS232 on Pmod Header JC (lower row)
+set_property PACKAGE_PIN J4 [get_ports RXD_S0]
+set_property IOSTANDARD LVCMOS33 [get_ports RXD_S0]
+set_property PACKAGE_PIN E6 [get_ports TXD_S0]
+set_property IOSTANDARD LVCMOS33 [get_ports TXD_S0]
+
+## RS232 via USB
+#set_property PACKAGE_PIN C4 [get_ports RXD_S0]
+#set_property IOSTANDARD LVCMOS33 [get_ports RXD_S0]
+#set_property PACKAGE_PIN D4 [get_ports TXD_S0]
+#set_property IOSTANDARD LVCMOS33 [get_ports TXD_S0]
+
 # Switches
 #Bank = 34, Pin name = IO_L21P_T3_DQS_34,					Sch name = SW0
 set_property PACKAGE_PIN J15 [get_ports {SW[0]}]
@@ -285,12 +297,6 @@ set_property IOSTANDARD LVCMOS33 [get_ports {JB[7]}]
 #set_property PACKAGE_PIN E6 [get_ports {JC[5]}]
 #set_property IOSTANDARD LVCMOS33 [get_ports {JC[5]}]
 #Bank = 35, Pin name = IO_L22N_T3_35,						Sch name = JC9
-set_property PACKAGE_PIN J4 [get_ports RXD_S0]
-set_property IOSTANDARD LVCMOS33 [get_ports RXD_S0]
-#Bank = 35, Pin name = IO_L19P_T3_35,						Sch name = JC10
-set_property PACKAGE_PIN E6 [get_ports TXD_S0]
-set_property IOSTANDARD LVCMOS33 [get_ports TXD_S0]
-
 
 
 ##Pmod Header JD
@@ -472,8 +478,6 @@ set_property IOSTANDARD LVCMOS33 [get_ports SD_CS]
 #set_property PACKAGE_PIN F5 [get_ports micLRSel]
 #set_property IOSTANDARD LVCMOS33 [get_ports micLRSel]
 
-
-
 ##PWM Audio Amplifier
 ##Bank = 15, Pin name = IO_L4N_T0_15,						Sch name = AUD_PWM
 #set_property PACKAGE_PIN A11 [get_ports ampPWM]
@@ -481,23 +485,6 @@ set_property IOSTANDARD LVCMOS33 [get_ports SD_CS]
 ##Bank = 15, Pin name = IO_L6P_T0_15,						Sch name = AUD_SD
 #set_property PACKAGE_PIN D12 [get_ports ampSD]
 #set_property IOSTANDARD LVCMOS33 [get_ports ampSD]
-
-
-##USB-RS232 Interface
-##Bank = 35, Pin name = IO_L7P_T1_AD6P_35,					Sch name = UART_TXD_IN
-#set_property PACKAGE_PIN C4 [get_ports RsRx]
-#set_property IOSTANDARD LVCMOS33 [get_ports RsRx]
-##Bank = 35, Pin name = IO_L11N_T1_SRCC_35,					Sch name = UART_RXD_OUT
-#set_property PACKAGE_PIN D4 [get_ports RsTx]
-#set_property IOSTANDARD LVCMOS33 [get_ports RsTx]
-##Bank = 35, Pin name = IO_L12N_T1_MRCC_35,					Sch name = UART_CTS
-#set_property PACKAGE_PIN D3 [get_ports RsCts]
-#set_property IOSTANDARD LVCMOS33 [get_ports RsCts]
-##Bank = 35, Pin name = IO_L5N_T0_AD13N_35,					Sch name = UART_RTS
-#set_property PACKAGE_PIN E5 [get_ports RsRts]
-#set_property IOSTANDARD LVCMOS33 [get_ports RsRts]
-
-
 
 #USB HID (PS/2)
 #Bank = 35, Pin name = IO_L13P_T2_MRCC_35,					Sch name = PS2_CLK
@@ -508,8 +495,6 @@ set_property PULLUP true [get_ports PS2C]
 set_property PACKAGE_PIN B2 [get_ports PS2D]
 set_property IOSTANDARD LVCMOS33 [get_ports PS2D]
 set_property PULLUP true [get_ports PS2D]
-
-
 
 #SMSC Ethernet PHY
 #Bank = 16, Pin name = IO_L11P_T1_SRCC_16,					Sch name = ETH_MDC
