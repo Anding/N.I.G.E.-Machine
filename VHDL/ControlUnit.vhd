@@ -350,97 +350,95 @@ begin
 				MEMsize_X_n <= "11";
 			end if;
 															
-			MEMaddr_i <= PC_addr;											
+			MEMaddr_i <= PC_addr;								
 					
-			-- Program counter logic					-- This logic is a timing constraint!  Maybe flatten into a less hierachical structure.
-			if int_trig = '1' then
-				PC_n <= int_vector_ext;												-- PC from external interrupt vector
-			elsif retrap(0) = '1' then
-				PC_n <= int_vector_TRAP;											-- PC from internal interrupt vector	
-			elsif preempt = '1' then 
-				if virtualInterrupt = 0 then
-					PC_n <= PCthaw;
+			-- Program counter logic					-- This logic has been hand balanced to minimize timimg	
+			if int_trig = '1' or retrap(0) = '1' or preempt = '1' or branch /="000" then		
+				if int_trig = '1' then		
+						PC_n <= int_vector_ext;												-- PC from external interrupt vector
+				elsif retrap(0) = '1' then
+						PC_n <= int_vector_TRAP;											-- PC from internal interrupt vector	
+				elsif preempt = '1' then 
+					if virtualInterrupt = 0 then
+						PC_n <= PCthaw;
+					else
+						PC_n <= virtualInterrupt;
+					end if;
 				else
-					PC_n <= virtualInterrupt;
-				end if;
-			else
-			   case branch is 
-					when bps_BEQ =>
-						if equalzero = '1' then
-							PC_n <= PC_branch;
-						else
-							PC_n <= PC_plus;		
-						end if;	
-					when bps_BRA =>
-						PC_n <= PC_branch;	
-					when bps_RTS =>
+					case branch is 
+						when bps_BEQ =>
+							if equalzero = '1' then
+								PC_n <= PC_branch;
+							else
+								PC_n <= PC_plus;		
+							end if;	
+						when bps_BRA =>
+							PC_n <= PC_branch;	
+						when others =>													-- bps_RTS
 						PC_n <= TORS(19 downto 0);									-- PC from Top Of Return Stack (also covers RTI and RETRAP, which include RTS by default)	
+					end case;				
+				end if;
+							
+			elsif opcode = ops_toR or opcode = ops_Rfrom then
+				if MEMdatain_X(23 downto 22) = "01" then	`						-- delay RTS by one cycle after R> or >R
+					PC_n <= PC;
+				else
+					PC_n <= PC_plus;
+				end if;	
+	
+			else
+				case opcode is								
+					when ops_JSR =>
+						PC_n <= TOS(19 downto 0);		
+					when ops_JMP =>
+						PC_n <= TOS(19 downto 0);	
+					when ops_CATCH =>
+						PC_n <= TOS(19 downto 0);
+					when ops_JSL =>
+							PC_n <= PC_jsl;							
+					when ops_TRAP =>
+						PC_n <= int_vector_TRAP;							-- PC from internal interrupt vector
+					when ops_PAUSE =>			
+						if SingleMulti = '1' then
+							if virtualInterrupt = 0 then
+								PC_n <= PCthaw;
+							else
+								PC_n <= virtualInterrupt;
+							end if;
+						else
+							PC_n <= PC;
+						end if;
+					when ops_word =>
+						PC_n <= PC_plus_two;
+					when ops_long =>
+						PC_n <= PC_plus_four;
+					when ops_THROW =>
+						PC_n <= PC;					
+					when ops_CFETCH =>
+						PC_n <= PC;											-- PC update is done on the final cycle of multi-cycle instructions
+					when ops_WFETCH =>
+						PC_n <= PC;
+					when ops_LFETCH =>
+						PC_n <= PC;
+					when ops_CSTORE =>
+						PC_n <= PC;
+					when ops_WSTORE =>
+						PC_n <= PC;
+					when ops_LSTORE =>
+						PC_n <= PC;
+					when ops_SDIVMOD =>
+						PC_n <= PC;
+					when ops_UDIVMOD =>
+						PC_n <= PC;	
+					when ops_SMULT =>
+						PC_n <= PC;
+					when ops_UMULT =>
+						PC_n <= PC;		
+					when ops_IFDUP =>
+						PC_n <= PC;	
 					when others =>
-						case opcode is
-							when ops_TRAP =>
-								PC_n <= int_vector_TRAP;							-- PC from internal interrupt vector
-							when ops_JSL =>
-								PC_n <= PC_jsl;	
-							when ops_JSR =>
-								PC_n <= TOS(19 downto 0);		
-							when ops_JMP =>
-								PC_n <= TOS(19 downto 0);	
-							when ops_CATCH =>
-								PC_n <= TOS(19 downto 0);
-							when ops_THROW =>
-								PC_n <= PC;
-							when ops_word =>
-								PC_n <= PC_plus_two;
-							when ops_long =>
-								PC_n <= PC_plus_four;
-							when ops_CFETCH =>
-								PC_n <= PC;											-- PC update is done on the final cycle of multi-cycle instructions
-							when ops_WFETCH =>
-								PC_n <= PC;
-							when ops_LFETCH =>
-								PC_n <= PC;
-							when ops_CSTORE =>
-								PC_n <= PC;
-							when ops_WSTORE =>
-								PC_n <= PC;
-							when ops_LSTORE =>
-								PC_n <= PC;
-							when ops_SDIVMOD =>
-								PC_n <= PC;
-							when ops_UDIVMOD =>
-								PC_n <= PC;	
-							when ops_SMULT =>
-								PC_n <= PC;
-							when ops_UMULT =>
-								PC_n <= PC;		
-							when ops_IFDUP =>
-								PC_n <= PC;	
-							when ops_toR =>												-- insert one cycle delay between >R or R> and RTS
-								if MEMdatain_X(23 downto 22) = "01" then
-									PC_n <= PC;
-								else
-									PC_n <= PC_plus;
-								end if;
-							when ops_Rfrom =>												-- insert one cycle delay between >R or R> and RTS
-								if MEMdatain_X(23 downto 22) = "01" then
-									PC_n <= PC;
-								else
-									PC_n <= PC_plus;
-								end if;	
-							when ops_PAUSE =>
-								if SingleMulti = '1' then
-									if virtualInterrupt = 0 then
-										PC_n <= PCthaw;
-									else
-										PC_n <= virtualInterrupt;
-									end if;
-								else
-									PC_n <= PC;
-								end if;
-							when others =>
-								PC_n <= PC_plus;
-							end case;
-				end case;
+						PC_n <= PC_plus;
+					end case;
 			end if;
 				
 			-- Microcode logic
