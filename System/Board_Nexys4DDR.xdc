@@ -3,6 +3,7 @@
 ## - uncomment the lines corresponding to used pins
 ## - rename the used ports (in each line, after get_ports) according to the top level signal names in the project
 
+
 # Clock signal
 #Bank = 35, Pin name = IO_L12P_T1_MRCC_35,					Sch name = CLK100MHZ
 set_property PACKAGE_PIN E3 [get_ports CLK_IN]
@@ -681,6 +682,24 @@ set_property IOSTANDARD LVCMOS33 [get_ports PHYINTN]
 
 #OFFSET = OUT 10 ns AFTER "CLK_IN";
 #set_output_delay -clock CLK_OUT5_CLOCKMANAGER 10 [all_outputs]
+set_input_delay -clock CLK_IN 0 [all_inputs]
+set_output_delay -clock CLK_IN 0 [all_outputs]
+
+# unconstrain paths between external clock and internal clock
+set_false_path -from CLK_IN -to CLK_OUT1_CLOCKMANAGER
+set_false_path -from CLK_IN -to CLK_OUT2_CLOCKMANAGER
+set_false_path -from CLK_IN -to CLK_OUT3_CLOCKMANAGER
+set_false_path -from CLK_IN -to CLK_OUT4_CLOCKMANAGER
+set_false_path -from CLK_IN -to CLK_OUT5_CLOCKMANAGER
+#set_false_path -from CLK_IN -to CLK_OUT6_CLOCKMANAGER
+set_false_path -from CLK_IN -to CLK_OUT7_CLOCKMANAGER
+set_false_path -from CLK_OUT1_CLOCKMANAGER -to CLK_IN
+set_false_path -from CLK_OUT2_CLOCKMANAGER -to CLK_IN
+set_false_path -from CLK_OUT3_CLOCKMANAGER -to CLK_IN
+set_false_path -from CLK_OUT4_CLOCKMANAGER -to CLK_IN
+set_false_path -from CLK_OUT5_CLOCKMANAGER -to CLK_IN
+#set_false_path -from CLK_OUT6_CLOCKMANAGER -to CLK_IN
+set_false_path -from CLK_OUT7_CLOCKMANAGER -to CLK_IN
 
 # unconstrain paths between system clock and VGA clock
 set_false_path -from CLK_OUT5_CLOCKMANAGER -to CLK_OUT1_CLOCKMANAGER
