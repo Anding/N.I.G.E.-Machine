@@ -380,7 +380,7 @@ begin
 				end if;
 							
 			elsif opcode = ops_toR or opcode = ops_Rfrom then
-				if MEMdatain_X(23 downto 22) = "01" then	`						-- delay RTS by one cycle after R> or >R
+				if MEMdatain_X(23 downto 22) = "01" then							-- delay RTS by one cycle after R> or >R
 					PC_n <= PC;
 				else
 					PC_n <= PC_plus;
