@@ -11,16 +11,16 @@ set_property IOSTANDARD LVCMOS33 [get_ports CLK_IN]
 #	create_clock -add -name CLK_IN -period 10.00 -waveform {0 5} [get_ports CLK_IN]
 
 ## RS232 on Pmod Header JC (lower row)
-#set_property PACKAGE_PIN J4 [get_ports RXD_S0]
-#set_property IOSTANDARD LVCMOS33 [get_ports RXD_S0]
-#set_property PACKAGE_PIN E6 [get_ports TXD_S0]
-#set_property IOSTANDARD LVCMOS33 [get_ports TXD_S0]
+set_property PACKAGE_PIN J4 [get_ports RXD_S0]
+set_property IOSTANDARD LVCMOS33 [get_ports RXD_S0]
+set_property PACKAGE_PIN E6 [get_ports TXD_S0]
+set_property IOSTANDARD LVCMOS33 [get_ports TXD_S0]
 
 ## RS232 via USB
-set_property PACKAGE_PIN C4 [get_ports RXD_S0]
-set_property IOSTANDARD LVCMOS33 [get_ports RXD_S0]
-set_property PACKAGE_PIN D4 [get_ports TXD_S0]
-set_property IOSTANDARD LVCMOS33 [get_ports TXD_S0]
+#set_property PACKAGE_PIN C4 [get_ports RXD_S0]
+#set_property IOSTANDARD LVCMOS33 [get_ports RXD_S0]
+#set_property PACKAGE_PIN D4 [get_ports TXD_S0]
+#set_property IOSTANDARD LVCMOS33 [get_ports TXD_S0]
 
 # Switches
 #Bank = 34, Pin name = IO_L21P_T3_DQS_34,					Sch name = SW0
