@@ -7002,7 +7002,7 @@ GET-ORDER.CF		#.l	WID.COUNT
 			store.b		( n)
 			#.l	WID.order	( n addr-gnd)
 			+			( addr-top)
-			1+			( addr-top+1)
+;			1+			( addr-top+1)
 			BEGIN
 				1-			( addr~)
 				dup			( addr addr)
