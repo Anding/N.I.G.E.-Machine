@@ -27,11 +27,6 @@ forget-tt
 
 marker forget-tt 
 
-\ fix get-order for now
-
-: get-order  get-order 1+ ;
-
-
 wordlist constant tetris
 
 get-order tetris swap 1+ set-order 
@@ -57,7 +52,7 @@ decimal
 
 : blank ( c-addr u -- ) bl fill ;
 
-27 Constant #esc
+27 constant #esc
 
 : ansi-at-xy ( x y -- )
    #esc emit   [char] [ emit   
@@ -240,7 +235,8 @@ def-pit pit
 		30 17 at-xy ." Pieces:"
 		30 18 at-xy ." Levels:"
 		 0 22 at-xy ."  ==== This program was written 1994 in pure dpANS Forth by Dirk Uwe Zoller ===="
-		 0 23 at-xy ."  =================== Copy it, port it, play it, enjoy it! =====================" ;
+		 0 23 at-xy ."  ==== Ported to N.I.G.E, ANSI terminal & color support by Ulrich Hoffmann  ===="
+		 0 24 at-xy ."  =================== Copy it, port it, play it, enjoy it! =====================" ;
 
 : update-score	\ --- ; display current score
         gamecolor
@@ -479,7 +475,16 @@ forth-wordlist set-current
 		    play-game
 		    s"  Again? " bottom-msg key to-upper [char] Y =
 		while  initialize  repeat
-		0 23 at-xy cr ;
+		0 24 at-xy cr ;
 
 
 get-order nip 1- set-order
+
+cr .( Tetris on N.I.G.E. )
+cr .( Usage: )
+cr .(    nige tt     play on N.I.G.E. vga )
+cr .(    ansi tt     play on serial line )
+cr .(    forget-tt   done playing, remove game from dictionary )
+cr 
+cr .( May the Forth be with you. Have fun. )
+cr
