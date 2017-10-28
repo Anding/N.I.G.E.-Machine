@@ -56,8 +56,8 @@ decimal
 
 : ansi-at-xy ( x y -- )
    #esc emit   [char] [ emit   
-   <# u#s u#> type   [char] ; emit   
-   <# u#s u#> type   [char] H emit ;
+   1+ <# u#s u#> type   [char] ; emit   
+   1+ <# u#s u#> type   [char] H emit ;
 
 ' csr-y 7 + constant 'csr-y
 ' csr-x 7 + constant 'csr-x
