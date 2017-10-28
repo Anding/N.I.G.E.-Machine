@@ -69,22 +69,24 @@ decimal
 
 : nige-at-xy ( x y -- )  'csr-y !  'csr-x ! ;
 
- 0 Constant #black
- 1 Constant #grey
- 2 Constant #silver
- 3 Constant #white
- 4 Constant #red
- 5 Constant #yellow
- 6 Constant #green
- 7 Constant #cyan
- 8 Constant #blue
- 9 Constant #magenta
-10 Constant #maroon
-11 Constant #olive
-12 Constant #darkgreen
-13 Constant #teal
-14 Constant #amigablue
-15 Constant #purple
+ 0 constant #black
+ 1 constant #grey
+ 2 constant #silver
+ 3 constant #white
+ 4 constant #red
+ 5 constant #yellow
+ 6 constant #green
+ 7 constant #cyan
+ 8 constant #blue
+ 9 constant #magenta
+10 constant #maroon
+11 constant #olive
+12 constant #darkgreen
+13 constant #teal
+14 constant #amigablue
+15 constant #purple
+19 constant #brightyellow
+48 constant #brightgreen
 
 : nige-set-color ( c -- ) ink c! ;
 
@@ -162,7 +164,18 @@ hex 10450405 Constant generator decimal
 
 \ Drawing primitives:
 
-: 2emit		emit emit ;
+: piece-color ( c -- )
+	dup [char] # = IF drop #red           EXIT THEN
+	dup [char] < = IF drop #brightyellow  EXIT THEN
+	dup [char] { = IF drop #brightgreen   EXIT THEN
+	dup [char] ( = IF drop #cyan          EXIT THEN
+	dup [char] [ = IF drop #blue          EXIT THEN
+	dup [char] @ = IF drop #magenta       EXIT THEN
+	dup [char] % = IF drop #olive         EXIT THEN
+	drop #white ;
+
+
+: 2emit	( c1 c2 -- )	dup piece-color set-color   emit emit ;
 
 : position	\ row col --- ; cursor to the position in the pit
 		2* col0 + swap row0 + at-xy ;
@@ -241,47 +254,47 @@ def-pit pit
 
 \ Define shapes of bricks:
 
-: def-brick	create does>	rot 4 * rot + 2* + 1+ ;
+: def-brick	create does>	rot 4 * rot + 2* + ;
 
 : _" ( ccc" -- )  [char] " parse  dup >r here swap move r> allot ;
 
-def-brick brick1 #red c,	
+def-brick brick1	
 			_"         "
 			_" ######  "
 			_"   ##    "
 			_"         "
 
-def-brick brick2  #yellow c,	
+def-brick brick2	
 			_"         "
 			_" <><><><>"
 			_"         "
 			_"         "
 
-def-brick brick3  #green c,	
+def-brick brick3	
 			_"         "
 			_"   {}{}{}"
 			_"   {}    "
 			_"         "
 
-def-brick brick4  #cyan c,	
+def-brick brick4	
 			_"         "
 			_" ()()()  "
 			_"     ()  "
 			_"         "
 
-def-brick brick5  #blue c,	
+def-brick brick5	
 			_"         "
 			_"   [][]  "
 			_"   [][]  "
 			_"         "
 
-def-brick brick6 #magenta c,	
+def-brick brick6	
 			_"         "
 			_" @@@@    "
 			_"   @@@@  "
 			_"         "
 
-def-brick brick7  #olive c,	
+def-brick brick7
 			_"         "
 			_"   %%%%  "
 			_" %%%%    "
@@ -307,7 +320,7 @@ create bricks	' brick1 ,  ' brick2 ,  ' brick3 ,  ' brick4 ,
 create brick-val 1 c, 2 c, 3 c, 3 c, 4 c, 5 c, 5 c,
 
 : is-brick	\ brick --- ; activate a shape of brick
-		>body ['] brick >body 33 move ;
+		>body ['] brick >body 32 move ;
 
 : new-brick	\ --- ; select a new brick by random, count it
 		1 pieces +!  7 random
@@ -315,21 +328,18 @@ create brick-val 1 c, 2 c, 3 c, 3 c, 4 c, 5 c, 5 c,
 		brick-val swap chars + c@ score +! ;
 
 : rotleft
-        ['] brick >body c@ ['] scratch >body c!	
         4 0 do 4 0 do
 		    j i brick 2c@  3 i - j scratch 2c!
 		loop loop
 		['] scratch is-brick ;
 
 : rotright
-        ['] brick >body c@ ['] scratch >body c!		
         4 0 do 4 0 do
 		    j i brick 2c@  i 3 j - scratch 2c!
 		loop loop
 		['] scratch is-brick ;
 
 : draw-brick	\ row col ---
-        ['] brick >body c@ set-color
 		4 0 do 4 0 do
 		    j i brick 2c@  empty d<>
 		    if  over j + over i +  position
@@ -472,4 +482,4 @@ forth-wordlist set-current
 		0 23 at-xy cr ;
 
 
-get-order nip 1- set-order 
+get-order nip 1- set-order
