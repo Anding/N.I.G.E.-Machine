@@ -9,13 +9,109 @@
 \
 \		Thank you.
 \
+\ Adapted for N.I.G.E by Ulrich Hoffmann <uho@xlerb.de> 2017-10-24
 
-only forth also definitions
-[ifdef] forget-tt forget-tt [then] marker forget-tt
 
-vocabulary tetris  tetris also definitions
+\ make a clean start: if forget-tt exists, remove tetris game first
+
+marker (tetris)
+
+: \needs ( <name> -- ) bl word find nip IF postpone \ THEN ; immediate
+
+\needs forget-tt   (tetris)   marker forget-tt
+
+forget-tt 
+
+
+\ now define game. Use forget-tt if done playing.
+
+marker forget-tt 
+
+\ fix get-order for now
+
+: get-order  get-order 1+ ;
+
+
+wordlist constant tetris
+
+get-order tetris swap 1+ set-order 
+
+tetris set-current
+
 
 decimal
+
+: 2constant ( x1 x2 -- )  Create , , does> ( -- x1 x2 ) 2@ ;
+
+: d0= ( d -- f ) or 0= ;
+: d= ( d1 d2 -- f )  d- d0= ;
+
+: value ( x -- )  Create , Does> @ ;
+
+: >body ( a1 -- a2 ) 10 + ;
+
+: off ( a -- )  0 swap ! ;
+: on  ( a -- ) -1 swap ! ;
+
+: >= ( n1 n2 -- f ) < 0= ;
+
+: blank ( c-addr u -- ) bl fill ;
+
+27 Constant #esc
+
+: ansi-at-xy ( x y -- )
+   #esc emit   [char] [ emit   
+   <# u#s u#> type   [char] ; emit   
+   <# u#s u#> type   [char] H emit ;
+
+' csr-y 7 + constant 'csr-y
+' csr-x 7 + constant 'csr-x
+
+: nige-at-xy ( x y -- )  'csr-y !  'csr-x ! ;
+
+ 0 Constant #black
+ 1 Constant #grey
+ 2 Constant #silver
+ 3 Constant #white
+ 4 Constant #red
+ 5 Constant #yellow
+ 6 Constant #green
+ 7 Constant #cyan
+ 8 Constant #blue
+ 9 Constant #magenta
+10 Constant #maroon
+11 Constant #olive
+12 Constant #darkgreen
+13 Constant #teal
+14 Constant #amigablue
+15 Constant #purple
+
+: nige-set-color ( c -- ) ink c! ;
+
+: ansi-page ( -- ) #esc emit ." [2J" 0 0 ansi-at-xy ;
+
+
+variable 'page       : page ( -- )        'page  @ execute ;
+variable 'at-xy      : at-xy ( x y -- )   'at-xy @ execute ;
+variable 'set-color  : set-color ( c -- ) 'set-color @ execute ;
+
+forth-wordlist set-current
+
+: ansi ( -- ) 
+   ['] ansi-page  'page !
+   ['] ansi-at-xy 'at-xy ! 
+   ['] drop       'set-color ! ;
+
+: nige ( -- )
+   ['] cls 'page !
+   ['] nige-at-xy 'at-xy !
+   ['] nige-set-color 'set-color ! ;
+
+tetris set-current
+
+nige
+
+: gamecolor ( -- ) #white set-color ;
 
 \ Variables, constants
 
@@ -48,19 +144,13 @@ variable bcol
 
 variable seed
 
-: randomize	time&date + + + + + seed ! ;
+:  randomize   counter seed ! ;
 
-1 cells 4 = [IF]
-$10450405 Constant generator
+hex 10450405 Constant generator decimal
 
 : rnd  ( -- n )  seed @ generator um* drop 1+ dup seed ! ;
 
 : random ( n -- 0..n-1 )  rnd um* nip ;
-[ELSE]
-: random	\ max --- n ; return random number < max
-		seed @ 13 * [ hex ] 07FFF [ decimal ] and
-		dup seed !  swap mod ;
-[THEN]
 
 \ Access pairs of characters in memory:
 
@@ -107,7 +197,7 @@ def-pit pit
 		loop  draw-bottom ;
 
 : bottom-msg	\ addr cnt --- ; output a message in the bottom of the pit
-		deep over 2/ wide swap - 2/ position type ;
+		deep over 2/ wide swap - 2/ position gamecolor type ;
 
 : draw-line	\ line ---
 		dup 0 position  wide 0 do  dup i pit 2c@ 2emit  loop  drop ;
@@ -140,94 +230,106 @@ def-pit pit
 		 0 23 at-xy ."  =================== Copy it, port it, play it, enjoy it! =====================" ;
 
 : update-score	\ --- ; display current score
+        gamecolor
 		38 16 at-xy score @ 3 .r
 		38 17 at-xy pieces @ 3 .r
 		38 18 at-xy levels @ 3 .r ;
 
 : refresh	\ --- ; redraw everything on screen
-		page draw-frame draw-pit show-help update-score ;
+		page gamecolor draw-frame draw-pit show-help update-score ;
 
 
 \ Define shapes of bricks:
 
-: def-brick	create	4 0 do
-			    ' execute  0 do  dup i chars + c@ c,  loop drop
-			    refill drop
-			loop
-		does>	rot 4 * rot + 2* + ;
+: def-brick	create does>	rot 4 * rot + 2* + 1+ ;
 
-def-brick brick1	s"         "
-			s" ######  "
-			s"   ##    "
-			s"         "
+: _" ( ccc" -- )  [char] " parse  dup >r here swap move r> allot ;
 
-def-brick brick2	s"         "
-			s" <><><><>"
-			s"         "
-			s"         "
+def-brick brick1 #red c,	
+			_"         "
+			_" ######  "
+			_"   ##    "
+			_"         "
 
-def-brick brick3	s"         "
-			s"   {}{}{}"
-			s"   {}    "
-			s"         "
+def-brick brick2  #yellow c,	
+			_"         "
+			_" <><><><>"
+			_"         "
+			_"         "
 
-def-brick brick4	s"         "
-			s" ()()()  "
-			s"     ()  "
-			s"         "
+def-brick brick3  #green c,	
+			_"         "
+			_"   {}{}{}"
+			_"   {}    "
+			_"         "
 
-def-brick brick5	s"         "
-			s"   [][]  "
-			s"   [][]  "
-			s"         "
+def-brick brick4  #cyan c,	
+			_"         "
+			_" ()()()  "
+			_"     ()  "
+			_"         "
 
-def-brick brick6	s"         "
-			s" @@@@    "
-			s"   @@@@  "
-			s"         "
+def-brick brick5  #blue c,	
+			_"         "
+			_"   [][]  "
+			_"   [][]  "
+			_"         "
 
-def-brick brick7	s"         "
-			s"   %%%%  "
-			s" %%%%    "
-			s"         "
+def-brick brick6 #magenta c,	
+			_"         "
+			_" @@@@    "
+			_"   @@@@  "
+			_"         "
+
+def-brick brick7  #olive c,	
+			_"         "
+			_"   %%%%  "
+			_" %%%%    "
+			_"         "
 
 \ this brick is actually in use:
 
-def-brick brick		s"         "
-			s"         "
-			s"         "
-			s"         "
+def-brick brick 0 c,
+			_"         "
+			_"         "
+			_"         "
+			_"         "
 
-def-brick scratch	s"         "
-			s"         "
-			s"         "
-			s"         "
+def-brick scratch 0 c,
+			_"         "
+			_"         "
+			_"         "
+			_"         "
 
 create bricks	' brick1 ,  ' brick2 ,  ' brick3 ,  ' brick4 ,
 		' brick5 ,  ' brick6 ,  ' brick7 ,
 
 create brick-val 1 c, 2 c, 3 c, 3 c, 4 c, 5 c, 5 c,
 
-
 : is-brick	\ brick --- ; activate a shape of brick
-		>body ['] brick >body 32 cmove ;
+		>body ['] brick >body 33 move ;
 
 : new-brick	\ --- ; select a new brick by random, count it
 		1 pieces +!  7 random
 		bricks over cells + @ is-brick
 		brick-val swap chars + c@ score +! ;
 
-: rotleft	4 0 do 4 0 do
+: rotleft
+        ['] brick >body c@ ['] scratch >body c!	
+        4 0 do 4 0 do
 		    j i brick 2c@  3 i - j scratch 2c!
 		loop loop
 		['] scratch is-brick ;
 
-: rotright	4 0 do 4 0 do
+: rotright
+        ['] brick >body c@ ['] scratch >body c!		
+        4 0 do 4 0 do
 		    j i brick 2c@  i 3 j - scratch 2c!
 		loop loop
 		['] scratch is-brick ;
 
 : draw-brick	\ row col ---
+        ['] brick >body c@ set-color
 		4 0 do 4 0 do
 		    j i brick 2c@  empty d<>
 		    if  over j + over i +  position
@@ -286,13 +388,13 @@ create brick-val 1 c, 2 c, 3 c, 3 c, 4 c, 5 c, 5 c,
 		2dup test-brick
 		if  2dup bcol ! brow !
 		    2dup put-brick  draw-brick  true
-		else  false  then ;
+		else  2drop false  then ;
 
 : drop-brick	\ --- ; move brick down fast
 		begin  1 0 move-brick 0=  until ;
 
 : move-line	\ from to ---
-		over 0 pit  over 0 pit  wide 2*  cmove  draw-line
+		over 0 pit  over 0 pit  wide 2*  move  draw-line
 		dup 0 pit  wide 2*  blank  draw-line ;
 
 : line-full	\ line-no --- flag
@@ -358,7 +460,7 @@ create brick-val 1 c, 2 c, 3 c, 3 c, 4 c, 5 c, 5 c,
 		    adjust-delay
 		repeat ;
 
-forth definitions
+forth-wordlist set-current
 
 : tt		\ --- ; play the tetris game
 		initialize
@@ -369,4 +471,5 @@ forth definitions
 		while  initialize  repeat
 		0 23 at-xy cr ;
 
-only forth also definitions
+
+get-order nip 1- set-order 
