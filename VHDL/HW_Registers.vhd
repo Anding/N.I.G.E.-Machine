@@ -26,7 +26,9 @@ entity HW_Registers is
 			  charWidth: out	STD_LOGIC_VECTOR (3 downto 0);		-- width of a character in pixels LESS ONE
 			  VGArows : out STD_LOGIC_VECTOR (7 downto 0);			-- number of complete character columns displayed on the screen					  
 			  VGAcols : out STD_LOGIC_VECTOR (7 downto 0);			-- number of complete character columns displayed on the screen
-			  VBLANK : in std_logic;										-- VGA vertical blank			
+			  VBLANK : in std_logic;								-- VGA vertical blank	
+			  Ha, Hb, Hc, Hd : out std_logic_vector(11 downto 0);
+			  Va, Vb, Vc, Vd : out std_logic_vector(11 downto 0);		
 			  -- interrupt controller
 			  irq_mask : out STD_LOGIC_VECTOR(15 downto 1);			-- mask for interrupt controller
 			  -- RS232 port
@@ -88,7 +90,9 @@ architecture Behavioral of HW_Registers is
 	signal charHeight_r: STD_LOGIC_VECTOR (3 downto 0);
 	signal charWidth_r: STD_LOGIC_VECTOR (3 downto 0);	
 	signal VGArows_r : STD_LOGIC_VECTOR (7 downto 0);						  
-	signal VGAcols_r : STD_LOGIC_VECTOR (7 downto 0);		
+	signal VGAcols_r : STD_LOGIC_VECTOR (7 downto 0);
+	signal Ha_r, Hb_r, Hc_r, Hd_r, He_r : std_logic_vector(11 downto 0);
+	signal Va_r, Vb_r, Vc_r, Vd_r, Ve_r : std_logic_vector(11 downto 0);		
 	signal ssData_r : std_logic_vector(31 downto 0);
 	signal MACdataTX_r :  std_logic_vector(7 downto 0);
 	signal SMIaddr_r : std_logic_vector(9 downto 0);
@@ -140,6 +144,8 @@ begin
 	MACdataTX <= MACdataTX_r;
 	SMIaddr <= SMIaddr_r;
 	SMIdataWrite <= SMIdataWrite_r;
+	Ha <= Ha_r ; Hb <= Hb_r ; Hc <= Hc_r ; Hd <= Hd_r;
+	Va <= Va_r ; Vb <= Vb_r ; Vc <= Vc_r ; Vd <= Vd_r;
 	
 	-- update writable registers
 	
@@ -163,7 +169,15 @@ begin
 			irq_mask_r <= "000000000000111";						-- "000000000000111";
 			txt_zero_r <= X"040000";									
 			background_r <= X"0000";
-			mode_r <= "11010";										-- 11010
+			mode_r <= "11001";										-- 11001
+			Ha_r <= CONV_STD_LOGIC_VECTOR(799,12);
+			Hb_r <= CONV_STD_LOGIC_VECTOR(656,12);
+			Hc_r <= CONV_STD_LOGIC_VECTOR(752,12);
+			Hd_r <= CONV_STD_LOGIC_VECTOR(639,12);
+			Va_r <= CONV_STD_LOGIC_VECTOR(525,12);
+			Vb_r <= CONV_STD_LOGIC_VECTOR(490,12);
+			Vc_r <= CONV_STD_LOGIC_VECTOR(492,12);		
+			Vd_r <= CONV_STD_LOGIC_VECTOR(479,12);
 			interlace_r <= X"2";
 			charHeight_r <= X"7";
 			charWidth_r <= X"7";	
@@ -174,6 +188,7 @@ begin
 			MACdataTX_r <= (others=>'0');
 			SMIaddr_r <= (others=>'0');
 			SMIdataWrite_r <= (others=>'0');
+			
 			
 		elsif en_r = '1' and wrq_r = "1" then					-- writable registers
 				case addr_r is			
@@ -230,6 +245,30 @@ begin
 					
 					when x"7C" =>										-- MAC SMI: write data
 						SMIdataWrite_r <= datain_r(15 downto 0);
+						
+					when x"8C" =>										-- VGA horizontal
+						Ha_r <= datain_r(11 downto 0);
+						
+					when x"90" =>										-- VGA horizontal
+						Hb_r <= datain_r(11 downto 0);						
+						
+					when x"94" =>										-- VGA horizontal
+						Hc_r <= datain_r(11 downto 0);						
+						
+					when x"98" =>										-- VGA horizontal
+						Hd_r <= datain_r(11 downto 0);						
+
+					when x"9C" =>										-- VGA vertical
+						Va_r <= datain_r(11 downto 0);
+						
+					when x"A0" =>										-- VGA vertical
+						Vb_r <= datain_r(11 downto 0);						
+						
+					when x"A5" =>										-- VGA vertical
+						Vc_r <= datain_r(11 downto 0);						
+						
+					when x"A8" =>										-- VGA vertical
+						Vd_r <= datain_r(11 downto 0);										
 						
 					when others =>
 						null;	

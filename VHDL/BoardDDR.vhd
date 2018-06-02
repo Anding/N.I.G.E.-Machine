@@ -220,6 +220,8 @@ signal charHeight: STD_LOGIC_VECTOR (3 downto 0);
 signal charWidth: STD_LOGIC_VECTOR (3 downto 0);	
 signal VGArows : STD_LOGIC_VECTOR (7 downto 0);					  
 signal VGAcols : STD_LOGIC_VECTOR (7 downto 0);
+signal Ha, Hb, Hc, Hd : std_logic_vector(11 downto 0);
+signal Va, Vb, Vc, Vd : std_logic_vector(11 downto 0);
 signal MACdataRX, MACdataTX : STD_LOGIC_VECTOR(7 DOWNTO 0);
 signal MACreadyRX, MACreadyTX, MACread_enable, MACchecksum_err, MACweTX, MACtransmit_request  : STD_LOGIC;
 signal CLK50MHZ : STD_LOGIC;
@@ -536,6 +538,8 @@ PORT(
 	charWidth : OUT std_logic_vector(3 downto 0);
 	VGArows : OUT std_logic_vector(7 downto 0);
 	VGAcols : OUT std_logic_vector(7 downto 0);
+	Ha, Hb, Hc, Hd : OUT std_logic_vector(11 downto 0);
+	Va, Vb, Vc, Vd : OUT std_logic_vector(11 downto 0);
 	irq_mask : OUT std_logic_vector(15 downto 1);
 	RS232_tx_S0 : OUT std_logic_vector(7 downto 0);
 	RS232_wr_S0 : OUT std_logic;
@@ -648,6 +652,8 @@ PORT(
 	charWidth : IN std_logic_vector(3 downto 0);
 	VGArows : IN std_logic_vector(7 downto 0);
 	VGAcols : IN std_logic_vector(7 downto 0);
+	Ha, Hb, Hc, Hd : IN std_logic_vector(11 downto 0);
+	Va, Vb, Vc, Vd : IN std_logic_vector(11 downto 0);
 	data_Text : IN std_logic_vector(15 downto 0);
 	data_Char : IN std_logic_vector(15 downto 0);
 	data_Color : IN std_logic_vector(15 downto 0);
@@ -1211,6 +1217,8 @@ PORT MAP(
 	charWidth => charWidth, 
 	VGArows => 	VGArows,	  
 	VGAcols => VGAcols,
+	Ha => Ha, Hb => Hb, Hc => Hc, Hd => Hd,
+	Va => Va, Vb => Vb, Vc => Vc, Vd => Vd,	
 	en => reg_en,
 	addr => MEMaddr(10 downto 0),
 	datain => MEMdataout_X,
@@ -1352,6 +1360,8 @@ PORT MAP(
 	charWidth => charWidth, 
 	VGArows => 	VGArows,	  
 	VGAcols => VGAcols,
+	Ha => Ha, Hb => Hb, Hc => Hc, Hd => Hd,
+	Va => Va, Vb => Vb, Vc => Vc, Vd => Vd,	
 	FetchNextRow => FetchNextRow,
 	SW => SW
 	);	
