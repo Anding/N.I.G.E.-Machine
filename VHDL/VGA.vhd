@@ -44,8 +44,8 @@ signal addressText : std_logic_vector(7 downto 0):= (others=>'0');		  		-- Colum
 signal addressChar : std_logic_vector(11 downto 0):= (others=>'0');		  		-- Char RAM lookup of current character
 signal addressColor : std_logic_vector(7 downto 0):= (others=>'0');	
 
-signal VBlank_i : std_logic_vector(8 downto 0) := (others=>'1');
-signal HBlank_i : std_logic_vector(8 downto 0) := (others=>'1');						-- Signals video blank period
+signal VBlank_i : std_logic;
+signal HBlank_i : std_logic;
 signal pixelGFX0, pixelGFX1, pixelGFX2 : std_logic_vector(7 downto 0);			-- Graphics pixel pipeline
 signal char_pixels : STD_LOGIC_VECTOR(15 downto 0);										-- Character shift register.  8 or 16 bit depending on character width
 signal char_color : STD_LOGIC_VECTOR(11 downto 0);										-- Colour data for current character
@@ -53,7 +53,7 @@ signal back_color : STD_LOGIC_VECTOR(11 downto 0);
 signal Ha_r, Hb_r, Hc_r, Hd_r, He_r : std_logic_vector(11 downto 0);
 signal Va_r, Vb_r, Vc_r, Vd_r, Ve_r : std_logic_vector(11 downto 0);
 signal COLUMNS : std_logic_vector(7 downto 0);
-signal Hsync_i, Vsync_i : std_logic;
+signal Hsync_i, Vsync_i : std_logic_vector(7 downto 0);
 signal RGB_i :  STD_LOGIC_VECTOR (11 downto 0);
 signal mode_r: STD_LOGIC_VECTOR (4 downto 0);
 
@@ -66,14 +66,14 @@ begin
 	begin
 		wait until rising_edge(clk_VGA);
 		RGB <= RGB_i;
-		Hsync <= Hsync_i;
-		Vsync <= Vsync_i;
+		Hsync <= Hsync_i(2);
+		Vsync <= Vsync_i(2);
 	end process;
 
 	addr_Text <= addressText;
 	addr_Char <= addressChar; --"01000001" & addressChar(3 downto 0); --addressChar;
 	addr_Color <= addressColor;
-	VBLANK <= VBLANK_i(0);
+	VBLANK <= VBLANK_i;
 --	VGA_COLUMNS <= (others=>'0');
 	
 	-- set the character sizes 
@@ -138,81 +138,73 @@ begin
 		mode_r <= mode;
 		Ha_r <= Ha; Hb_r <= Hb; Hc_r <= Hc; Hd_r <= Hd;
 		Va_r <= Va; Vb_r <= Vb; Vc_r <= Vc; Vd_r <= Vd;	
+		
+		HSync_i(7 downto 1) <= HSync_i(6 downto 0); 
+		VSync_i(7 downto 1) <= VSync_i(6 downto 0);  -- pipleline "generation side" sync signals to "output side" to match pipeline on RGB from generation side to output side
 	
-		-- Horizontal pixel clock		
-		if Hcount = Ha_r then 					-- counts between 0 and the last horizontal pixel on the full line
+		-- Horizontal pixel clock				-- count pixels 0 ... (whole_line - 1), inclusive
+		if Hcount = Hd_r then
 			Hcount <= (others => '0');	
 		else
 			Hcount <= Hcount + 1;			
 		end if;	
 		
-		-- Horizontal sync signal
-		if Hcount = Hb_r then
-			HSync_i <= '0';
-		elsif Hcount = Hc_r then
-			HSync_i <= '1';			
+		-- Horizontal sync signal				-- sync signals are active low
+		if Hcount = Hd_r then
+			HSync_i(0) <= '0';
+		elsif Hcount = Ha_r then
+			HSync_i(0) <= '1';			
 		end if;
 		
-		-- Horizontal blank signals
-		if Hcount = Hd_r then
-			HBLANK_i(0) <= '1';				-- Horizonal blank begins after the last visible pixel
-		elsif Hcount = Ha_r then
-			HBLANK_i(0) <= '0';					-- and ends after the last pixel on the full line
+		-- Horizontal blank signals				-- blank signals are active high
+		if Hcount = Hc_r then
+			HBLANK_i <= '1';
+		elsif Hcount = Hb_r then
+			HBLANK_i <= '0';
 		end if;
-		HBLANK_i(8 downto 1) <= HBLANK_i(7 downto 0);	-- a horizontal blank signal is used to shutter the pixel output
-																			-- need a "tunable" delay to synchronize with the pipeline to output the first and last pixels
 		
 		-- Vertical counters
 		if Hcount = Hd_r then				-- Vertical counters are updated at the last horizontal pixel of each line
 		
 			-- Vertical pixel count
-			if Vcount = Va_r then				--	counts between 0 and the last vertical pixel on the full screen
+			if Vcount = Vd_r then
 				Vcount <= (others => '0');				
 			else
 				Vcount <= Vcount + 1;		
 			end if;
-			
-			-- text Vertical count				counts from 0 through the lines of the character and the interlace lines
-			if Vcount = Va_r or tVcount = height then		
+
+			-- text Vertical count
+			if Vcount = Vd_r or tVcount = height then		
 				tVcount <= (others=>'0');
 			else
 				tVcount <= tVcount + 1;
-			end if;			
+			end if;	
+				
+			-- Vertical sync signal
+			if Vcount = Vd_r then
+				VSync_i(0) <= '0';			
+			elsif Vcount = Va_R then
+				VSync_i(0) <= '1';			
+			end if;		
 			
 			-- Vertical blank signals
-			if (Vcount > Va_r - 4)  or (Vcount < Vd_r - 4) then
-				VBLANK_i(0) <= '0';			-- Vertical blank is triggered a few rows ahead of the scan line to allow time for the Text Buffer to fetch the character row
-			else										-- 3 rows ahead is sufficient time - must be less that the minimum character height
-				VBLANK_i(0) <= '1';
+			if Vcount = Vc_r then
+				VBLANK_i <= '1';	
+			elsif Vcount = Vb_r then
+				VBLANK_i <= '0';
 			end if;		
-			VBLANK_i(8 downto 1) <= VBLANK_i(7 downto 0);		-- a vertical blank signal is used to shutter the pixel output	
-																					-- need a "tunable" delay to synchronize with the pipeline to output the first and last lines	
 																					
 			-- TEXTbuffer new line
-			if tVcount = CharHeight and (Vcount < Vd_r - 4) then		-- request a new row of characters after the current row has been used for CharHeight scanlines
-					FetchNextRow <= '1';											-- however do issue a FetchNextRow request prior to clearing the vertical bank, since that itself triggers the first row fetch
+			if tVcount = CharHeight and VBLANK_i = '1' then		-- request a new row of characters after the current row has been used for CharHeight scanlines
+					FetchNextRow <= '1';							-- however do issue a FetchNextRow request prior to clearing the vertical bank, since that itself triggers the first row fetch
 			else
 					FetchNextRow <= '0';
 			end if;			
-			
-			-- Vertical sync signal
-			if Vcount = Vb_r then
-				VSync_i <= '0';			
-			elsif Vcount = Vc_R then
-				VSync_i <= '1';			
-			end if;	
 
-		end if;
-			
---		-- count through the row of characters	
---		if Hcount = Ha then
---				addressText <= (others=>'0');	
---		elsif Hcount(3 downto 0) = Width then					-- move to the next character each time CharWidth of characters is read
---				addressText <= addressText + 1;					
---		end if;
+		end if;	
 			
 		-- count through the row of characters	
-		if Hcount = Ha_r then
+		if Hcount = Hb_r then
 				tHcount <= (others=>'0');	
 				addressText <= (others=>'0');	
 		elsif tHcount = width then
@@ -272,16 +264,19 @@ begin
 		end if;
 		
 		-- Drive pixel to output
-		if reset = '0' and VBLANK_i(3) = '0' and HBLANK_i(5) = '0' and mode_r(2 downto 0) /= "000" then
-																	-- VBLANK and HBLANK need to synchronize with the logic pipeline, hence a tuneable delay
-			if char_pixels(15) = '1' then	            -- replace with 7/15	
-				RGB_i <= text_f;
-			else
-				RGB_i <= text_b;
-			end if;
+		if reset = '0' and VBLANK_i = '0' and HBLANK_i = '0' and mode_r(2 downto 0) /= "000" then
+		
+		if char_pixels(15) = '1' then	            -- replace with 7/15	
+			RGB_i <= text_f;
+		else
+			RGB_i <= text_b;
+		end if;
+--			RGB_i <= (others=>'1');
 		else											
 			RGB_i <= (others=>'0');							-- RGB low in horizantal and vertical blank interval and when VGA is off
 		end if;
+		
+		
 
 	end process;
 
