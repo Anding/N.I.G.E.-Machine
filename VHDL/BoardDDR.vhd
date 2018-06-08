@@ -196,7 +196,7 @@ signal t_axi_rlast : std_logic;
 signal t_axi_rvalid : std_logic;
 signal s_aresetn : std_logic;
 signal VGA_columns : std_logic_vector(7 downto 0);
-signal FetchNextRow : std_logic;
+signal FetchNextRow, FetchFirstRow : std_logic;
 signal clk_system : std_logic;
 signal clk_VGA : std_logic;
 signal clk_MEM : std_logic;
@@ -370,8 +370,9 @@ PORT(
 	clk_MEM : IN std_logic;
 	clk_VGA : IN std_logic;
 	VGAcols : IN std_logic_vector(7 downto 0);
-	VBlank : IN std_logic;
+--	VBlank : IN std_logic;
 	FetchNextRow : IN std_logic;
+	FetchFirstRow : IN std_logic;
 	txt_zero : IN std_logic_vector(23 downto 0);
 	ADDR_TEXT : IN std_logic_vector(7 downto 0);
 	t_axi_arready : IN std_logic;
@@ -665,7 +666,8 @@ PORT(
 	VSync : OUT std_logic;
 	RGB : OUT std_logic_vector(11 downto 0);
 	VBlank : OUT std_logic;
-	FetchNextRow : OUT std_logic
+	FetchNextRow : OUT std_logic;
+	FetchFirstRow : OUT std_logic
 	);
 END COMPONENT;
 
@@ -1058,8 +1060,9 @@ PORT MAP(
 	clk_MEM => clk_MEM,
 	clk_VGA => clk_VGA,
 	VGAcols => VGAcols,
-	VBlank => VBlank,
+--	VBlank => VBlank,
 	FetchNextRow => FetchNextRow,
+	FetchFirstRow => FetchFirstRow,
 	txt_zero => txt_zero,
 	ADDR_TEXT => ADDR_TEXT,
 	DATA_TEXT => DATA_TEXT,
@@ -1363,6 +1366,7 @@ PORT MAP(
 	Ha => Ha, Hb => Hb, Hc => Hc, Hd => Hd,
 	Va => Va, Vb => Vb, Vc => Vc, Vd => Vd,	
 	FetchNextRow => FetchNextRow,
+	FetchFirstRow => FetchFirstRow,
 	SW => SW
 	);	
 

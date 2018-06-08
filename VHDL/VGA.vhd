@@ -30,7 +30,8 @@ entity VGA is
 			  RGB : out  STD_LOGIC_VECTOR (11 downto 0);			  
 			  VBlank	: out STD_LOGIC;									-- vertical blank		  
 --			  VGA_columns : out std_logic_vector(7 downto 0);	-- number of character columns less one
-			  FetchNextRow : out std_logic := '0'	;				-- signal that line has been displayed
+			  FetchNextRow : out std_logic;
+			  FetchFirstRow : out std_logic;
 			  SW : in STD_LOGIC_VECTOR (15 downto 0)
 			  );
 end VGA;
@@ -44,8 +45,8 @@ signal addressText : std_logic_vector(7 downto 0):= (others=>'0');		  		-- Colum
 signal addressChar : std_logic_vector(11 downto 0):= (others=>'0');		  		-- Char RAM lookup of current character
 signal addressColor : std_logic_vector(7 downto 0):= (others=>'0');	
 
-signal VBlank_i : std_logic;
-signal HBlank_i : std_logic;
+signal VBlank_i : std_logic_vector(7 downto 0);
+signal HBlank_i : std_logic_vector(7 downto 0);
 signal pixelGFX0, pixelGFX1, pixelGFX2 : std_logic_vector(7 downto 0);			-- Graphics pixel pipeline
 signal char_pixels : STD_LOGIC_VECTOR(15 downto 0);										-- Character shift register.  8 or 16 bit depending on character width
 signal char_color : STD_LOGIC_VECTOR(11 downto 0);										-- Colour data for current character
@@ -57,6 +58,8 @@ signal Hsync_i, Vsync_i : std_logic_vector(7 downto 0);
 signal RGB_i :  STD_LOGIC_VECTOR (11 downto 0);
 signal mode_r: STD_LOGIC_VECTOR (4 downto 0);
 
+constant delay : integer := 6;
+
 begin
 
 
@@ -66,14 +69,14 @@ begin
 	begin
 		wait until rising_edge(clk_VGA);
 		RGB <= RGB_i;
-		Hsync <= Hsync_i(2);
-		Vsync <= Vsync_i(2);
+		Hsync <= Hsync_i(delay);
+		Vsync <= Vsync_i(delay);
 	end process;
 
 	addr_Text <= addressText;
 	addr_Char <= addressChar; --"01000001" & addressChar(3 downto 0); --addressChar;
 	addr_Color <= addressColor;
-	VBLANK <= VBLANK_i;
+	VBLANK <= VBLANK_i(delay);
 --	VGA_COLUMNS <= (others=>'0');
 	
 	-- set the character sizes 
@@ -140,7 +143,11 @@ begin
 		Va_r <= Va; Vb_r <= Vb; Vc_r <= Vc; Vd_r <= Vd;	
 		
 		HSync_i(7 downto 1) <= HSync_i(6 downto 0); 
-		VSync_i(7 downto 1) <= VSync_i(6 downto 0);  -- pipleline "generation side" sync signals to "output side" to match pipeline on RGB from generation side to output side
+		VSync_i(7 downto 1) <= VSync_i(6 downto 0); 
+		HBLANK_i(7 downto 1) <= HBLANK_i(6 downto 0); 
+		VBLANK_i(7 downto 1) <= VBLANK_i(6 downto 0); 		
+		
+		 -- pipleline "generation side" sync signals to "output side" to match pipeline on RGB from generation side to output side
 	
 		-- Horizontal pixel clock				-- count pixels 0 ... (whole_line - 1), inclusive
 		if Hcount = Hd_r then
@@ -158,9 +165,9 @@ begin
 		
 		-- Horizontal blank signals				-- blank signals are active high
 		if Hcount = Hc_r then
-			HBLANK_i <= '1';
+			HBLANK_i(0) <= '1';
 		elsif Hcount = Hb_r then
-			HBLANK_i <= '0';
+			HBLANK_i(0) <= '0';
 		end if;
 		
 		-- Vertical counters
@@ -172,13 +179,6 @@ begin
 			else
 				Vcount <= Vcount + 1;		
 			end if;
-
-			-- text Vertical count
-			if Vcount = Vd_r or tVcount = height then		
-				tVcount <= (others=>'0');
-			else
-				tVcount <= tVcount + 1;
-			end if;	
 				
 			-- Vertical sync signal
 			if Vcount = Vd_r then
@@ -189,30 +189,44 @@ begin
 			
 			-- Vertical blank signals
 			if Vcount = Vc_r then
-				VBLANK_i <= '1';	
+				VBLANK_i(0) <= '1';	
 			elsif Vcount = Vb_r then
-				VBLANK_i <= '0';
+				VBLANK_i(0) <= '0';
 			end if;		
-																					
+			
+			-- text Vertical count
+			if VBLANK_i(0) = '1' or tVcount = height then		
+				tVcount <= (others=>'0');
+			else
+				tVcount <= tVcount + 1;
+			end if;	
+			
+			if Vcount = Va_r then								-- Fetch the first row at Va_r, since it will be needed for display at Vb_r
+					FetchFirstRow <= '1';
+			else
+					FetchFirstRow <= '0';
+			end if;
+																
 			-- TEXTbuffer new line
-			if tVcount = CharHeight and VBLANK_i = '1' then		-- request a new row of characters after the current row has been used for CharHeight scanlines
-					FetchNextRow <= '1';							-- however do issue a FetchNextRow request prior to clearing the vertical bank, since that itself triggers the first row fetch
+			if tVcount = CharHeight then		-- request a new row of characters after the current row has been used for CharHeight scanlines
+					FetchNextRow <= '1';							
 			else
 					FetchNextRow <= '0';
-			end if;			
-
+			end if;		
+			
 		end if;	
 			
-		-- count through the row of characters	
-		if Hcount = Hb_r then
+		if HBLANK_i(0) = '1' or tHcount = width then
 				tHcount <= (others=>'0');	
+		else	
+				tHcount <= tHcount + 1;				
+		end if;		
+		
+		if HBLANK_i(0) = '1' then
 				addressText <= (others=>'0');	
 		elsif tHcount = width then
-				tHcount <= (others=>'0');
-				addressText <= addressText + 1;
-		else	
-				tHcount <= tHcount + 1;					
-		end if;			
+				addressText <= addressText + 1;			
+		end if;		
 			
 		-- Read text memory and set char and color memory address
 		addressChar(11 downto 4)<= data_Text(15 downto 8); 		-- char contents of Text RAM
@@ -264,7 +278,7 @@ begin
 		end if;
 		
 		-- Drive pixel to output
-		if reset = '0' and VBLANK_i = '0' and HBLANK_i = '0' and mode_r(2 downto 0) /= "000" then
+		if reset = '0' and VBLANK_i(delay) = '0' and HBLANK_i(delay) = '0' and mode_r(2 downto 0) /= "000" then
 		
 		if char_pixels(15) = '1' then	            -- replace with 7/15	
 			RGB_i <= text_f;
