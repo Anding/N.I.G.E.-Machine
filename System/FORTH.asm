@@ -1947,28 +1947,8 @@ INTERLACE.CF	#.l	sem-screen
 		jsl	release.cf		
 INTERLACE.Z	rts
 ;
-; SCREENSIZE ( mode --, set VGA mode.  0=off, 1=VGA, 2=SVGA, 3=XGA, 4=HD)
-VGA.LF	dc.l	INTERLACE.NF
-VGA.NF	dc.b	3 128 +
-		dc.s	VGA
-VGA.SF	dc.w	VGA.Z VGA.CF del
-VGA.CF		#.l	sem-screen
-		jsl	acquire.cf
-		jsl	CLS.CF				( VGA)
-		#.l	mode
-		fetch.b				( VGA mode)
-		#.b	binary	11111000		
-		and					( VGA mode`)
-		or					( mode``)
-		#.l	mode
-		store.b	
-		jsl	SCRSET.CF
-		#.l	sem-screen
-		jsl	release.cf
-VGA.Z		rts
-;
 ; COLORMODE ( flag --. set 16/16 or 256/0 color mode)
-COLORMODE.LF	dc.l	VGA.NF
+COLORMODE.LF	dc.l	INTERLACE.NF
 COLORMODE.NF	dc.b	9 128 +
 		dc.s	COLORMODE
 COLORMODE.SF	dc.w	COLORMODE.Z COLORMODE.CF del
@@ -2071,7 +2051,6 @@ COLS.SF	dc.w	COLS.Z COLS.CF del
 COLS.CF	#.l	VGAcols
 		fetch.b
 COLS.Z		rts
-COLS		dc.w	100
 ;
 >REMOTE.LF	dc.l	COLS.NF
 >REMOTE.NF	dc.b	7 128 +

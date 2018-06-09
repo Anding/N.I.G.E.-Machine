@@ -5,6 +5,7 @@ use IEEE.STD_LOGIC_ARITH.ALL;
 
 entity TEXTbuffer is port
 			(
+			reset : IN std_logic;
 			clk_MEM : IN std_logic;
 			clk_VGA : IN std_logic;
 			-- VGA (trans regnum temporis)				  
@@ -61,11 +62,20 @@ COMPONENT BUFFER_TXT
 END COMPONENT;
 
 begin
+				
+		inst_BUFFER_TXT: BUFFER_TXT
+		PORT MAP (
+		 clka => CLK_MEM,
+		 wea => wea,
+		 addra => addra,
+		 dina => dina,
+		 clkb => CLK_VGA,
+		 addrb => addrb,
+		 doutb => DATA_TEXT
+		);
+		
 		t_axi_araddr <= "00000000" & axi_addr;		-- current start of row position in PSDRAM screen buffer 
 		t_axi_arlen  <= VGAcols - 1;					-- number of words to read is the number of characters in a row (AXI4 starts counting 0 = one)
---		t_axi_arsize <= "001";							-- readsize is word (16 bits)
---		t_axi_arburst <= "01";							-- Type: "01" = INCR
---		t_axi_rready <= '1';								-- The text buffer is always ready to read data
 		
 		addra <= (not bank) & buffer_addr;																							-- concatenate the active bank for writing with the current write address
 		addrb <= bank & ADDR_TEXT;																										-- concatenate the active bank for reading with the current read address
@@ -74,11 +84,17 @@ begin
 		process				-- cross clock domain signals
 		begin
 			wait until rising_edge(clk_MEM);
-			newline <= newline(3 downto 0) & FetchNextRow;
-			newline_m <= newline;
-			firstline <= firstline(3 downto 0) & FetchFirstRow;
-			firstline_m <= firstline;			
-			--active <= active(3 downto 0) & NOT VBlank;
+			if reset = '1' then
+				newline <= (others=>'0');
+				newline_m <= (others=>'0');
+				firstline <= (others=>'0');
+				firstline_m <= (others=>'0');
+			else
+				newline <= newline(3 downto 0) & FetchNextRow;
+				newline_m <= newline;
+				firstline <= firstline(3 downto 0) & FetchFirstRow;
+				firstline_m <= firstline;			
+			end if;
 		end process;
 		
 		newline_flag <= '1' when (newline = "11111" and newline_m /= "11111") else '0';
@@ -87,11 +103,19 @@ begin
 		process				-- state machine and register update
 		begin
 			wait until rising_edge(clk_MEM);
-			state <= next_state;																	
-			axi_addr <= axi_addr_n;	
-			line_count <= line_count_n;
-			bank <= bank_n;
-			buffer_addr <= buffer_addr_n;
+			if reset = '1' then
+				state <= pause;
+				axi_addr <= (others=>'0');
+				line_count <= (others=>'0');
+				bank <= '0';
+				buffer_addr <= (others=>'0');
+			else
+				state <= next_state;																	
+				axi_addr <= axi_addr_n;	
+				line_count <= line_count_n;
+				bank <= bank_n;
+				buffer_addr <= buffer_addr_n;
+			end if;
 		end process;
 		
 		-- state machine next state decode
@@ -150,17 +174,6 @@ begin
 						buffer_addr;
 							
 		wea <=	"1" when ((state = refill or state = first_fill) and t_axi_rvalid = '1') else "0";
-			
-inst_BUFFER_TXT: BUFFER_TXT
-PORT MAP (
- clka => CLK_MEM,
- wea => wea,
- addra => addra,
- dina => dina,
- clkb => CLK_VGA,
- addrb => addrb,
- doutb => DATA_TEXT
-);
 
 end Behavioral;
 

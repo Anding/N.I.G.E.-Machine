@@ -170,19 +170,19 @@ begin
 			txt_zero_r <= X"040000";									
 			background_r <= X"0000";
 			mode_r <= "11001";										-- 11001
-			Ha_r <= CONV_STD_LOGIC_VECTOR(95,12);
-			Hb_r <= CONV_STD_LOGIC_VECTOR(143,12);
-			Hc_r <= CONV_STD_LOGIC_VECTOR(783,12);
-			Hd_r <= CONV_STD_LOGIC_VECTOR(799,12);
-			Va_r <= CONV_STD_LOGIC_VECTOR(1,12);
-			Vb_r <= CONV_STD_LOGIC_VECTOR(34,12);
-			Vc_r <= CONV_STD_LOGIC_VECTOR(514,12);		
-			Vd_r <= CONV_STD_LOGIC_VECTOR(524,12);
+			Ha_r <= CONV_STD_LOGIC_VECTOR(95,12);					-- 95
+			Hb_r <= CONV_STD_LOGIC_VECTOR(143,12);					-- 143
+			Hc_r <= CONV_STD_LOGIC_VECTOR(783,12);					-- 783
+			Hd_r <= CONV_STD_LOGIC_VECTOR(799,12);					-- 799
+			Va_r <= CONV_STD_LOGIC_VECTOR(1,12);					-- 1
+			Vb_r <= CONV_STD_LOGIC_VECTOR(35,12);					-- 35
+			Vc_r <= CONV_STD_LOGIC_VECTOR(515,12);					-- 515
+			Vd_r <= CONV_STD_LOGIC_VECTOR(524,12);					-- 524
 			interlace_r <= X"2";
 			charHeight_r <= X"7";
 			charWidth_r <= X"7";	
-			VGArows_r <= CONV_STD_LOGIC_VECTOR(60,8);						  
-			VGAcols_r <= CONV_STD_LOGIC_VECTOR(100,8);
+			VGArows_r <= CONV_STD_LOGIC_VECTOR(47,8);				-- 47					  
+			VGAcols_r <= CONV_STD_LOGIC_VECTOR(80,8);				-- 80
 			RS232_tx_r_S0 <= (others=>'0');	
 			ssData_r <= (others=>'0');
 			MACdataTX_r <= (others=>'0');
@@ -264,7 +264,7 @@ begin
 					when x"A0" =>										-- VGA vertical
 						Vb_r <= datain_r(11 downto 0);						
 						
-					when x"A5" =>										-- VGA vertical
+					when x"A4" =>										-- VGA vertical
 						Vc_r <= datain_r(11 downto 0);						
 						
 					when x"A8" =>										-- VGA vertical
