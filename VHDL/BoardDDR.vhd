@@ -85,7 +85,7 @@ signal bank, bank_n : bank_t;
 signal counter_clk, counter_ms : std_logic_vector(31 downto 0) := (others =>'0');
 signal timer_ms : std_logic_vector(31 downto 0) := (others =>'0');	
 signal reset, invReset, trig : std_logic;
-signal VGAclk25, VGAclk50, VGAclk75, VGAclk150, clk100, CLK100_130: std_logic;
+signal VGAclk25, VGAclk40, VGAclk75, VGAclk150, clk100, CLK100_130: std_logic;
 signal irq, rti, ms_irq : std_logic;
 signal irv : std_logic_vector(3 downto 0);
 signal irq_mask : std_logic_vector(15 downto 1);
@@ -196,7 +196,7 @@ signal t_axi_rlast : std_logic;
 signal t_axi_rvalid : std_logic;
 signal s_aresetn : std_logic;
 signal VGA_columns : std_logic_vector(7 downto 0);
-signal FetchNextRow : std_logic;
+signal FetchNextRow, FetchFirstRow : std_logic;
 signal clk_system : std_logic;
 signal clk_VGA : std_logic;
 signal clk_MEM : std_logic;
@@ -220,6 +220,8 @@ signal charHeight: STD_LOGIC_VECTOR (3 downto 0);
 signal charWidth: STD_LOGIC_VECTOR (3 downto 0);	
 signal VGArows : STD_LOGIC_VECTOR (7 downto 0);					  
 signal VGAcols : STD_LOGIC_VECTOR (7 downto 0);
+signal Ha, Hb, Hc, Hd : std_logic_vector(11 downto 0);
+signal Va, Vb, Vc, Vd : std_logic_vector(11 downto 0);
 signal MACdataRX, MACdataTX : STD_LOGIC_VECTOR(7 DOWNTO 0);
 signal MACreadyRX, MACreadyTX, MACread_enable, MACchecksum_err, MACweTX, MACtransmit_request  : STD_LOGIC;
 signal CLK50MHZ : STD_LOGIC;
@@ -365,11 +367,13 @@ END COMPONENT;
 
 COMPONENT TEXTbuffer
 PORT(
+	reset : IN std_logic;
 	clk_MEM : IN std_logic;
 	clk_VGA : IN std_logic;
 	VGAcols : IN std_logic_vector(7 downto 0);
-	VBlank : IN std_logic;
+--	VBlank : IN std_logic;
 	FetchNextRow : IN std_logic;
+	FetchFirstRow : IN std_logic;
 	txt_zero : IN std_logic_vector(23 downto 0);
 	ADDR_TEXT : IN std_logic_vector(7 downto 0);
 	t_axi_arready : IN std_logic;
@@ -536,6 +540,8 @@ PORT(
 	charWidth : OUT std_logic_vector(3 downto 0);
 	VGArows : OUT std_logic_vector(7 downto 0);
 	VGAcols : OUT std_logic_vector(7 downto 0);
+	Ha, Hb, Hc, Hd : OUT std_logic_vector(11 downto 0);
+	Va, Vb, Vc, Vd : OUT std_logic_vector(11 downto 0);
 	irq_mask : OUT std_logic_vector(15 downto 1);
 	RS232_tx_S0 : OUT std_logic_vector(7 downto 0);
 	RS232_wr_S0 : OUT std_logic;
@@ -646,12 +652,11 @@ PORT(
 	interlace : IN std_logic_vector(3 downto 0);
 	charHeight : IN std_logic_vector(3 downto 0);
 	charWidth : IN std_logic_vector(3 downto 0);
-	VGArows : IN std_logic_vector(7 downto 0);
-	VGAcols : IN std_logic_vector(7 downto 0);
+	Ha, Hb, Hc, Hd : IN std_logic_vector(11 downto 0);
+	Va, Vb, Vc, Vd : IN std_logic_vector(11 downto 0);
 	data_Text : IN std_logic_vector(15 downto 0);
 	data_Char : IN std_logic_vector(15 downto 0);
-	data_Color : IN std_logic_vector(15 downto 0);
-	SW : IN std_logic_vector(15 downto 0);          
+	data_Color : IN std_logic_vector(15 downto 0);        
 	addr_Text : OUT std_logic_vector(7 downto 0);
 	addr_Char : OUT std_logic_vector(11 downto 0);
 	addr_Color : OUT std_logic_vector(7 downto 0);
@@ -659,7 +664,8 @@ PORT(
 	VSync : OUT std_logic;
 	RGB : OUT std_logic_vector(11 downto 0);
 	VBlank : OUT std_logic;
-	FetchNextRow : OUT std_logic
+	FetchNextRow : OUT std_logic;
+	FetchFirstRow : OUT std_logic
 	);
 END COMPONENT;
 
@@ -831,7 +837,7 @@ begin
 		clk_VGA <= 	VGAclk25  when "001",
 				VGAclk75  when "011",	
 				VGAclk150 when "100",
-				VGAclk50  when others; --"010"
+				VGAclk40  when others; --"010"
 	-- gated clocks are not good design practice in general but here we explicitly assume 
 	-- that the VGA clock domain is not synchronized with the SYSTEM clock domain
 	-- do not use these clocks to drive modules aside from VGA since they are be not timing constrained
@@ -939,7 +945,7 @@ port map
 	CLK_IN1 => CLK_IN,
 	-- Clock out ports
 	CLK_OUT1 => VGACLK25,
-	CLK_OUT2 => VGACLK50,
+	CLK_OUT2 => VGACLK40,
 	CLK_OUT3 => VGACLK75,
 	CLK_OUT4 => VGACLK150,	 
 	CLK_OUT5 => CLK100,
@@ -1049,11 +1055,13 @@ port map (
 
 Inst_TEXTbuffer: TEXTbuffer 
 PORT MAP(
+	reset => reset,
 	clk_MEM => clk_MEM,
 	clk_VGA => clk_VGA,
 	VGAcols => VGAcols,
-	VBlank => VBlank,
+--	VBlank => VBlank,
 	FetchNextRow => FetchNextRow,
+	FetchFirstRow => FetchFirstRow,
 	txt_zero => txt_zero,
 	ADDR_TEXT => ADDR_TEXT,
 	DATA_TEXT => DATA_TEXT,
@@ -1211,6 +1219,8 @@ PORT MAP(
 	charWidth => charWidth, 
 	VGArows => 	VGArows,	  
 	VGAcols => VGAcols,
+	Ha => Ha, Hb => Hb, Hc => Hc, Hd => Hd,
+	Va => Va, Vb => Vb, Vc => Vc, Vd => Vd,	
 	en => reg_en,
 	addr => MEMaddr(10 downto 0),
 	datain => MEMdataout_X,
@@ -1335,7 +1345,7 @@ Inst_VGAController: VGA
 PORT MAP(
 	CLK_VGA => CLK_VGA,
 	reset => reset,
-	mode	=> mode,
+	mode => mode,
 	background => background,
 	data_Text => DATA_TEXT,
 	addr_Text => ADDR_TEXT,
@@ -1350,10 +1360,10 @@ PORT MAP(
 	interlace => interlace,
 	charHeight => charHeight,
 	charWidth => charWidth, 
-	VGArows => 	VGArows,	  
-	VGAcols => VGAcols,
+	Ha => Ha, Hb => Hb, Hc => Hc, Hd => Hd,
+	Va => Va, Vb => Vb, Vc => Vc, Vd => Vd,	
 	FetchNextRow => FetchNextRow,
-	SW => SW
+	FetchFirstRow => FetchFirstRow
 	);	
 
 Inst_Interrupt: Interrupt 
