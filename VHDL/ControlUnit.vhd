@@ -1202,7 +1202,7 @@ begin
 				state_n <= Dstore_word;
 				ucode <= ops_NOP;	
 			end if;
-			if TOS(1) = '0' then
+			if TOS_r(1) = '0' then
 				s_axi_wstrb <= "0011";
 			else
 				s_axi_wstrb <= "1100";
@@ -1239,11 +1239,11 @@ begin
 				state_n <= Dstore_byte;
 				ucode <= ops_NOP;	
 			end if;
-			if TOS(1 downto 0) = "00" then
+			if TOS_r(1 downto 0) = "00" then
 				s_axi_wstrb <= "0001";
-			elsif TOS(1 downto 0) = "01" then
+			elsif TOS_r(1 downto 0) = "01" then
 				s_axi_wstrb <= "0010";
-			elsif TOS(1 downto 0) = "10" then
+			elsif TOS_r(1 downto 0) = "10" then
 				s_axi_wstrb <= "0100";	
 			else
 				s_axi_wstrb <= "1000";				
