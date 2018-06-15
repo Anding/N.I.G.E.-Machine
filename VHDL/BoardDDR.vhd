@@ -245,6 +245,10 @@ signal rd_dat : std_logic_vector(63 downto 0);
 signal rd_ack : std_logic;
 signal rd_valid : std_logic; 
 signal SDRAM_DM : std_logic_vector(1 downto 0);
+signal TXTbank : std_logic;
+signal TXTwea : STD_LOGIC_VECTOR(0 DOWNTO 0);
+signal TXTaddra, TXTaddrb : STD_LOGIC_VECTOR(8 DOWNTO 0);
+signal TXTbuffer_addr : STD_LOGIC_VECTOR(7 DOWNTO 0);
 
 
 component CLOCKMANAGER
@@ -365,26 +369,41 @@ PORT(
 	);
 END COMPONENT;
 
-COMPONENT TEXTbuffer
+COMPONENT TEXTbufferController
 PORT(
-	reset : IN std_logic;
+--	reset : IN std_logic;
 	clk_MEM : IN std_logic;
-	clk_VGA : IN std_logic;
+	--clk_VGA : IN std_logic;
 	VGAcols : IN std_logic_vector(7 downto 0);
 --	VBlank : IN std_logic;
 	FetchNextRow : IN std_logic;
 	FetchFirstRow : IN std_logic;
 	txt_zero : IN std_logic_vector(23 downto 0);
-	ADDR_TEXT : IN std_logic_vector(7 downto 0);
+	--ADDR_TEXT : IN std_logic_vector(7 downto 0);
+	buffer_addr : OUT std_logic_vector(7 downto 0);
 	t_axi_arready : IN std_logic;
-	t_axi_rdata : IN std_logic_vector(15 downto 0);
+	--t_axi_rdata : IN std_logic_vector(15 downto 0);
 	t_axi_rlast : IN std_logic;
 	t_axi_rvalid : IN std_logic;          
-	DATA_TEXT : OUT std_logic_vector(15 downto 0);
+	--DATA_TEXT : OUT std_logic_vector(15 downto 0);
 	t_axi_araddr : OUT std_logic_vector(31 downto 0);
 	t_axi_arlen : OUT std_logic_vector(7 downto 0);
-	t_axi_arvalid : OUT std_logic
+	t_axi_arvalid : OUT std_logic;
+	bank : OUT std_logic;
+	wea : OUT std_logic_vector(0 downto 0)
 	);
+END COMPONENT;
+
+COMPONENT BUFFER_TXT
+  PORT (
+    clka : IN STD_LOGIC;
+    wea : IN STD_LOGIC_VECTOR(0 DOWNTO 0);
+    addra : IN STD_LOGIC_VECTOR(8 DOWNTO 0);
+    dina : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
+    clkb : IN STD_LOGIC;
+    addrb : IN STD_LOGIC_VECTOR(8 DOWNTO 0);
+    doutb : OUT STD_LOGIC_VECTOR(15 DOWNTO 0)
+  );
 END COMPONENT;
 
 COMPONENT SRAM_controller
@@ -646,7 +665,7 @@ END COMPONENT;
 COMPONENT VGA
 PORT(
 	clk_VGA : IN std_logic;
-	reset : IN std_logic;
+	--reset : IN std_logic;
 	mode : IN std_logic_vector(4 downto 0);
 	background : IN std_logic_vector(15 downto 0);
 	interlace : IN std_logic_vector(3 downto 0);
@@ -832,7 +851,7 @@ begin
 -----------------------------------------------------------------------------------------------------------------------------------
 -- VGA clock selector
 -----------------------------------------------------------------------------------------------------------------------------------	
-
+--	clk_VGA <= 	VGAclk25;
 	with mode(2 downto 0) select
 		clk_VGA <= 	VGAclk25  when "001",
 				VGAclk75  when "011",	
@@ -1053,26 +1072,43 @@ port map (
 	SDRAM_nWE      	=> SDRAM_nWE
 );
 
-Inst_TEXTbuffer: TEXTbuffer 
+Inst_TEXTbufferController: TEXTbufferController 
 PORT MAP(
-	reset => reset,
+--	reset => reset,
 	clk_MEM => clk_MEM,
-	clk_VGA => clk_VGA,
+	--clk_VGA => clk_VGA,
 	VGAcols => VGAcols,
 --	VBlank => VBlank,
 	FetchNextRow => FetchNextRow,
 	FetchFirstRow => FetchFirstRow,
 	txt_zero => txt_zero,
-	ADDR_TEXT => ADDR_TEXT,
-	DATA_TEXT => DATA_TEXT,
+	--ADDR_TEXT => ADDR_TEXT,
+	--DATA_TEXT => DATA_TEXT,
+	bank => TXTbank,
+	wea => TXTwea,
+	buffer_addr => TXTbuffer_addr,
 	t_axi_araddr => t_axi_araddr,
 	t_axi_arlen => t_axi_arlen,
 	t_axi_arvalid => t_axi_arvalid,
 	t_axi_arready => t_axi_arready,
-	t_axi_rdata => t_axi_rdata,
+	--t_axi_rdata => t_axi_rdata,
 	t_axi_rlast => t_axi_rlast,
 	t_axi_rvalid => t_axi_rvalid
 	);
+	
+inst_BUFFER_TXT: BUFFER_TXT
+	PORT MAP (
+	 clka => CLK_MEM,
+	 wea => TXTwea,
+	 addra => TXTaddra,
+	 dina => t_axi_rdata,
+	 clkb => CLK_VGA,
+	 addrb => TXTaddrb,
+	 doutb => DATA_TEXT
+	);
+		
+	TXTaddra <= (not TXTbank) & TXTbuffer_addr;																							-- concatenate the active bank for writing with the current write address
+	TXTaddrb <= TXTbank & ADDR_TEXT;	
 
 Inst_SRAM_controller: SRAM_controller 
 PORT MAP(
@@ -1344,7 +1380,7 @@ PORT MAP(
 Inst_VGAController: VGA 
 PORT MAP(
 	CLK_VGA => CLK_VGA,
-	reset => reset,
+	--reset => reset,
 	mode => mode,
 	background => background,
 	data_Text => DATA_TEXT,

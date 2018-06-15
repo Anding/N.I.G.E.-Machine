@@ -121,7 +121,7 @@ signal state, state_n  : state_T;										-- state machine
 signal PC, PC_n, PC_plus, PC_jsl, PC_branch, PC_m1, PC_skipbranch : std_logic_vector (19 downto 0);		-- program counter logic
 signal PC_plus_two, PC_plus_three, PC_plus_four : std_logic_vector (19 downto 0);	
 signal delta :std_logic_vector (19 downto 0);
-signal ReturnAddress_n, ReturnAddressJSL, PC_addr : std_logic_vector (31 downto 0);
+signal ReturnAddress_n, ReturnAddressJSL, PC_addr, PC_addr_plus : std_logic_vector (31 downto 0);
 signal int_vector_ext : std_logic_vector (19 downto 0);
 signal int_vector_ext_i : std_logic_vector (7 downto 0);
 signal ucode : std_logic_vector (6 downto 0);					-- address driver for microcode BLOCK RAM
@@ -186,11 +186,13 @@ begin
 	PC_jsl <= MEMdatain_X(19 downto 0);
 	delta  <= signbit & signbit & signbit & signbit & signbit & signbit & signbit & MEMdatain_X(28 downto 16);
 	PC_branch <= PC + delta;											-- sign extended 14 bit branch for BRA or BEQ	
-	PC_addr <= "000000000000" & PC;
 	PC_plus <= PC + "001";
 	PC_plus_two <= PC + "010";
 	PC_plus_three <= PC + "011";
 	PC_plus_four <= PC + "100";
+	PC_addr <= "000000000000" & PC;
+	PC_addr_plus <= "000000000000" & PC_plus_two;
+
 	
 	MEMaddr <= MEMaddr_i;
 	MEM_WRQ_X <= MEM_WRQ_X_i;
@@ -350,7 +352,7 @@ begin
 				MEMsize_X_n <= "11";
 			end if;
 															
-			MEMaddr_i <= PC_addr;								
+			MEMaddr_i <= PC_addr;					-- this will be the correct address as referenced from the instruction before #.B, etc. since SYSRAM dataout is pipelined								
 					
 			-- Program counter logic					-- This logic has been hand balanced to minimize timimg	
 			if int_trig = '1' or retrap(0) = '1' or preempt = '1' or branch /="000" then		
@@ -749,8 +751,8 @@ begin
 		when Sfetch_byte =>											
 			state_n <= skip1;																	
 			ucode <= ops_REPLACE;											
-			timer <= 0;
-			PC_n <= PC;
+			timer <= 0;												-- the memory read will be available on the second cycle in this state
+			PC_n <= PC;												--  since SYS_RAM is registered before reaching the datapath
 			MEMaddr_i <= TOS_r;										-- address now available in registered TOS					
 			MEM_WRQ_X_i <= '0';
 			MEMdataout_X <= NOS_r;

@@ -397,7 +397,7 @@ begin
 	RSdata => RSdatain,
 	PSP => PSP,
 	datapathThaw => datapathThaw(31 downto 0),
-	Data => Data,
+	Data => DATA,
 	Control => MicroControl(2 downto 0),
 	Output => genmux_out);
 

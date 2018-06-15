@@ -31,7 +31,7 @@ architecture RTL of SRAM_controller is
 
 	signal base, base_plus : std_logic_vector(31 downto 2);
 	signal offset, offset_m : std_logic_vector(1 downto 0);
-	signal DATA_out_agg, DATA_out_agg_plus, DATA_out_base, DATA_out_base_plus : std_logic_vector(31 downto 0);
+	signal DATA_out_agg, DATA_out_agg_r, DATA_out_agg_plus, DATA_out_base, DATA_out_base_plus : std_logic_vector(31 downto 0);
 	signal DATA_out_i, DATA_out_plus_i : std_logic_vector(31 downto 0);
 	signal DATA_in_base, DATA_in_base_plus, DATA_in_r : std_logic_vector(31 downto 0);
 	signal size_m : std_logic_vector(1 downto 0);
@@ -51,11 +51,14 @@ begin
 	data_out_base_plus <= doutb;
 	data_out_quick <= DATA_out_agg;
 	DATA_out <= DATA_out_i;
+	DATA_out_agg_r <= DATA_out_agg;
 	
 	process
 	begin
 		wait until rising_edge(clk);
-		offset_m <= offset;  			-- when reading need to use the one-cycle-old value of offset to take account of the one cycle delay in a memory read	
+		offset_m <= offset;  			-- when reading need to use the one-cycle-old value of offset to take account of the one cycle delay in a memory read
+		--DATA_out_agg_r <= DATA_out_agg;			-- register the output for the datapath (adds one cycle to fectch instructions	
+												--  but not for the control unit (which would add one cycle to the length of the pipeline)
 	end process;			
 
 	 
@@ -66,9 +69,9 @@ begin
 								DATA_out_base (7 downto 0) & DATA_out_base_plus (31 downto 8) when others;
 								
 	with size select						-- realign data from memory bus with CPU cell and left pad with '0'
-		DATA_out_i <=		DATA_out_agg (31 downto 0) when "11",
-								blank(31 downto 16) & DATA_out_agg (31 downto 16) when "10",
-								blank(31 downto 8) & DATA_out_agg (31 downto 24) when others;
+		DATA_out_i <=		DATA_out_agg_r (31 downto 0) when "11",
+								blank(31 downto 16) & DATA_out_agg_r (31 downto 16) when "10",
+								blank(31 downto 8) & DATA_out_agg_r (31 downto 24) when others;
 
 	with offset & size select		-- align data from CPU cell with memory bus, port a
 		DATA_in_base <= 	DATA_in when "0011",
