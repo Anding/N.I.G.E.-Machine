@@ -15,10 +15,11 @@ entity Datapath is
 					);
     Port ( rst : in  STD_LOGIC;	 										-- reset
            clk : in  STD_LOGIC;	 										-- clock
-			  MEMdatain_X : in STD_LOGIC_VECTOR (31 downto 0);	
+			  MEMdatain_X : in STD_LOGIC_VECTOR (39 downto 0);	
+			  Size : in STD_LOGIC_VECTOR (1 downto 0);
 			  Accumulator : in STD_LOGIC_VECTOR (31 downto 0);		-- Immediate value read from memory by control unit for writing to TOS
 			  MicroControl : in  STD_LOGIC_VECTOR (22 downto 0);	-- control lines
-			  AuxControl : in STD_LOGIC_VECTOR (1 downto 0);		-- control lines 
+			  AuxControl : in STD_LOGIC_VECTOR (2 downto 0);		-- control lines 
 			  ReturnAddress : in STD_LOGIC_VECTOR (31 downto 0);	-- Return Address for JSR, BSR instructions
 			  TOS : out STD_LOGIC_VECTOR (31 downto 0);				-- Top Of Stack (TOS_n, one cycle ahead of registered value)
 			  TOS_r : out STD_LOGIC_VECTOR (31 downto 0);			-- Top Of Stack (the registered value)			  
@@ -163,7 +164,8 @@ signal SSP, SSP_n, SSP_m1, SSP_p1 : std_logic_vector (ssp_w -1 downto 0);
 signal ESP, ESP_n, ESP_m1, ESP_p1 : std_logic_vector (esp_w -1 downto 0);
 signal PSdataout_i, PSdatain_i : std_logic_vector (31 downto 0);
 signal PSw_i, PSw_m1 : std_logic_vector (0 downto 0);
-signal data : std_logic_vector (31 downto 0);
+signal data, MEMdatain, MEMdatain_plus  : std_logic_vector (31 downto 0);
+signal MEMdatain_X_r  : std_logic_vector (39 downto 0);
 signal equalzero_i, equalzero_n : std_logic;
 signal m_axis_quotient_signed, m_axis_quotient_unsigned : std_logic_vector (63 downto 0);
 
@@ -180,6 +182,7 @@ begin
 			ESP <= ESP_n;
 			SSP <= SSP_n;
 			equalzero_i <= equalzero_n;
+			MEMdatain_X_r <= MEMdatain_X;
 		else
 			TOS_i <= (others=>'0');
 			NOS_i <= (others=>'0');
@@ -188,6 +191,7 @@ begin
 			ESP <= (others=>'0');
 			SSP <= (others=>'0');			
 			equalzero_i <= '0';
+			MEMdatain_X_r <= (others=>'0');	
 		end if;
 	end process;
 	
@@ -320,10 +324,22 @@ begin
 --	NOS <= NOS_n;									-- output NOS to control unit, once cycle ahead of registered value	
 	NOS_r <= NOS_i;
 	
+	with size select						-- realign data from memory bus with CPU cell and left pad with '0'
+		MEMdatain_plus <=	MEMdatain_X_r (31 downto 0) when "11",
+						"0000000000000000" & MEMdatain_X_r (31 downto 16) when "10",
+						"000000000000000000000000" & MEMdatain_X_r (31 downto 24) when others;
+	
+	with size select
+		MEMdatain <=	MEMdatain_X_r (39 downto 8) when "11",
+							"0000000000000000" & MEMdatain_X_r (39 downto 24) when "10",
+							"000000000000000000000000" & MEMdatain_X_r (39 downto 32) when others; 
 			
-	with AuxControl (1 downto 1) select					-- immediate value for loading into TOS (one cycle delay to coincide with microcode)
-		DATA <= 	MEMdatain_X when "0",						-- SRAM fetch or load literal
-					accumulator when others;					-- PSDRAM control unit mediated fetch via accumulator
+	with AuxControl (2 downto 1) select					-- immediate value for loading into TOS (one cycle delay to coincide with microcode)
+		DATA <= 	MEMdatain when "01",				-- SRAM fetch
+					MEMdatain_plus when "10",			-- load literal
+					accumulator when "11",				-- PSDRAM control unit mediated fetch via accumulator
+					(others=>'0') when others;			-- force zero	;				
+
 		
 	with MicroControl(12 downto 10) select				-- multiplexer for parameter stack pointer
 		PSP_n <= PSP_m1 when "001",

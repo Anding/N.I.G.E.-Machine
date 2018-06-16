@@ -23,7 +23,7 @@ entity ControlUnit is
 			  equalzero_r : in STD_LOGIC;										-- flag '1' when TOS (registered) is zero			  
 			  chip_RAM : in STD_LOGIC;											-- flag used to identify SRAM vs. PSDRAM memory access
 			  MicroControl : out STD_LOGIC_VECTOR (22 downto 0);		-- ouput control logic
-			  AuxControl : out STD_LOGIC_VECTOR (1 downto 0);			-- output control logic
+			  AuxControl : out STD_LOGIC_VECTOR (2 downto 0);			-- output control logic
 			  Accumulator : out STD_LOGIC_VECTOR (31 downto 0);		-- literal value captured from memory for writing to TOS
 			  ReturnAddress : out STD_LOGIC_VECTOR (31 downto 0);		-- return address on interrupt, BSR or JSR for writing to TORS
 			  MEMaddr : out STD_LOGIC_VECTOR (31 downto 0);						  	  
@@ -121,7 +121,7 @@ signal state, state_n  : state_T;										-- state machine
 signal PC, PC_n, PC_plus, PC_jsl, PC_branch, PC_m1, PC_skipbranch : std_logic_vector (19 downto 0);		-- program counter logic
 signal PC_plus_two, PC_plus_three, PC_plus_four : std_logic_vector (19 downto 0);	
 signal delta :std_logic_vector (19 downto 0);
-signal ReturnAddress_n, ReturnAddressJSL, PC_addr, PC_addr_plus : std_logic_vector (31 downto 0);
+signal ReturnAddress_n, ReturnAddressJSL, PC_addr : std_logic_vector (31 downto 0);
 signal int_vector_ext : std_logic_vector (19 downto 0);
 signal int_vector_ext_i : std_logic_vector (7 downto 0);
 signal ucode : std_logic_vector (6 downto 0);					-- address driver for microcode BLOCK RAM
@@ -131,7 +131,7 @@ signal int_trig : std_logic;
 signal irq_m1, irq_n : std_logic;
 signal irv_i : std_logic_vector (7 downto 0);
 signal retrap, retrap_n : std_logic_vector(1 downto 0);
-signal AuxControl_i, AuxControl_n : std_logic_vector(1 downto 0);
+signal AuxControl_i, AuxControl_n : std_logic_vector(2 downto 0);
 signal opcode, next_opcode : std_logic_vector(6 downto 0);					-- opcode of current and next instructions
 signal branch, next_branch : std_logic_vector(1 downto 0);					-- branch codes of current and next instructions
 signal MEMsize_X_n : STD_LOGIC_VECTOR (1 downto 0);	
@@ -191,7 +191,7 @@ begin
 	PC_plus_three <= PC + "011";
 	PC_plus_four <= PC + "100";
 	PC_addr <= "000000000000" & PC;
-	PC_addr_plus <= "000000000000" & PC_plus_two;
+	--PC_addr_plus <= "000000000000" & PC_plus_two;
 
 	
 	MEMaddr <= MEMaddr_i;
@@ -477,8 +477,12 @@ begin
 			-- Accumulator logic
 			accumulator <= (others=>'0');
 			
-			-- Data multiplexer logic														
-				AuxControl_n(1 downto 1) <= "0";					-- setting for SRAM fetch or load literal instructions										
+			-- Data multiplexer logic		
+			if opcode = ops_BYTE or opcode = ops_WORD or opcode = OPS_LONG then						
+				AuxControl_n(2 downto 1) <= "10";													
+			else
+				AuxControl_n(2 downto 1) <= "00";
+			end if;						
 
 			-- Return stack control logic 
 			if (int_trig = '0') and (preempt = '0') and (opcode = ops_RETRAP or branch = bps_RTS) then -- override on interrupt or preemptive switch
@@ -564,7 +568,7 @@ begin
 			MEMdataout_X <= NOS_r;
 			MEMsize_X_n <= "11";
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
+			AuxControl_n(2 downto 1) <= "00";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -592,7 +596,7 @@ begin
 			MEMdataout_X <= NOS_r;
 			MEMsize_X_n <= "11";
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
+			AuxControl_n(2 downto 1) <= "00";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -620,7 +624,7 @@ begin
 			MEMdataout_X <= NOS_r;
 			MEMsize_X_n <= "11";
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
+			AuxControl_n(2 downto 1) <= "00";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -648,7 +652,7 @@ begin
 			MEMdataout_X <= NOS_r;
 			MEMsize_X_n <= "11";
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
+			AuxControl_n(2 downto 1) <= "00";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -676,7 +680,7 @@ begin
 			MEMdataout_X <= NOS_r;
 			MEMsize_X_n <= "11";
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
+			AuxControl_n(2 downto 1) <= "00";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -704,7 +708,7 @@ begin
 			MEMdataout_X <= NOS_r;
 			MEMsize_X_n <= "11";
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
+			AuxControl_n(2 downto 1) <= "00";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -732,7 +736,7 @@ begin
 			MEMdataout_X <= NOS_r;
 			MEMsize_X_n <= "11";
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
+			AuxControl_n(2 downto 1) <= "00";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -751,7 +755,7 @@ begin
 		when Sfetch_byte =>											
 			state_n <= skip1;																	
 			ucode <= ops_REPLACE;											
-			timer <= 0;												-- the memory read will be available on the second cycle in this state
+			timer <= 1;												-- the memory read will be available on the second cycle in this state
 			PC_n <= PC;												--  since SYS_RAM is registered before reaching the datapath
 			MEMaddr_i <= TOS_r;										-- address now available in registered TOS					
 			MEM_WRQ_X_i <= '0';
@@ -759,7 +763,7 @@ begin
 			MEMsize_X_n <= "01";
 			accumulator <= (others=>'0');			
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
+			AuxControl_n(2 downto 1) <= "01";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -779,7 +783,7 @@ begin
 		when Sfetch_word =>											
 			state_n <= skip1;																	
 			ucode <= ops_REPLACE;											
-			timer <= 0;
+			timer <= 1;
 			PC_n <= PC;
 			MEMaddr_i <= TOS_r;										-- address now available in registered TOS					
 			MEM_WRQ_X_i <= '0';
@@ -787,7 +791,7 @@ begin
 			MEMsize_X_n <= "10";
 			accumulator <= (others=>'0');			
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
+			AuxControl_n(2 downto 1) <= "01";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -807,7 +811,7 @@ begin
 		when Sfetch_long =>											
 			state_n <= skip1;																	
 			ucode <= ops_REPLACE;									
-			timer <= 0;
+			timer <= 1;
 			PC_n <= PC;
 			MEMaddr_i <= TOS_r;										-- address now available in registered TOS					
 			MEM_WRQ_X_i <= '0';
@@ -815,7 +819,7 @@ begin
 			MEMsize_X_n <= "11";
 			accumulator <= (others=>'0');			
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
+			AuxControl_n(2 downto 1) <= "01";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -843,7 +847,7 @@ begin
 			MEMsize_X_n <= "11";										-- long								
 			accumulator <= (others=>'0');			
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
+			AuxControl_n(2 downto 1) <= "00";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -871,7 +875,7 @@ begin
 			MEMsize_X_n <= "10";										-- word							
 			accumulator <= (others=>'0');			
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
+			AuxControl_n(2 downto 1) <= "00";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -899,7 +903,7 @@ begin
 			MEMsize_X_n <= "01";										-- byte								
 			accumulator <= (others=>'0');			
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
+			AuxControl_n(2 downto 1) <= "00";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -927,7 +931,7 @@ begin
 			MEMsize_X_n <= "11";
 			accumulator <= (others=>'0');			
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
+			AuxControl_n(2 downto 1) <= "00";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -959,7 +963,7 @@ begin
 			MEMdataout_X <= NOS_r;		
 			MEMsize_X_n <= "11";
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "1";
+			AuxControl_n(2 downto 1) <= "11";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -992,7 +996,7 @@ begin
 			MEMdataout_X <= NOS_r;
 			MEMsize_X_n <= "11";
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "1";
+			AuxControl_n(2 downto 1) <= "11";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -1028,7 +1032,7 @@ begin
 			MEMdataout_X <= NOS_r;		
 			MEMsize_X_n <= "11";
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "1";
+			AuxControl_n(2 downto 1) <= "11";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -1065,7 +1069,7 @@ begin
 			MEMdataout_X <= NOS_r;
 			MEMsize_X_n <= "11";
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "1";
+			AuxControl_n(2 downto 1) <= "11";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -1105,7 +1109,7 @@ begin
 			MEMdataout_X <= NOS_r;		
 			MEMsize_X_n <= "11";
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "1";
+			AuxControl_n(2 downto 1) <= "11";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -1146,7 +1150,7 @@ begin
 			MEMdataout_X <= NOS_r;
 			MEMsize_X_n <= "11";
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "1";
+			AuxControl_n(2 downto 1) <= "11";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -1179,7 +1183,7 @@ begin
 			MEMsize_X_n <= "11";
 			accumulator <= (others=>'0');			
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
+			AuxControl_n(2 downto 1) <= "00";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -1217,7 +1221,7 @@ begin
 			MEMsize_X_n <= "11";	
 			accumulator <= (others=>'0');			
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
+			AuxControl_n(2 downto 1) <= "00";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -1258,7 +1262,7 @@ begin
 			MEMsize_X_n <= "11";	
 			accumulator <= (others=>'0');			
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
+			AuxControl_n(2 downto 1) <= "00";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -1285,7 +1289,7 @@ begin
 			MEMsize_X_n <= "11";	
 			accumulator <= (others=>'0');
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
+			AuxControl_n(2 downto 1) <= "00";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -1318,7 +1322,7 @@ begin
 			MEMsize_X_n <= "11";
 			MEMdataout_X <= NOS_r;	
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
+			AuxControl_n(2 downto 1) <= "00";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -1351,7 +1355,7 @@ begin
 			MEMsize_X_n <= "11";
 			MEMdataout_X <= NOS_r;	
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
+			AuxControl_n(2 downto 1) <= "00";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			retrap_n <= retrap;
@@ -1383,7 +1387,7 @@ begin
 			MEMsize_X_n <= "11";
 			MEMdataout_X <= NOS_r;	
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
+			AuxControl_n(2 downto 1) <= "00";
 			ReturnAddress_n <= "000000000000" & PCthaw_m1;
 			irq_n <= int_trig;
 			rti <= '0';
@@ -1410,7 +1414,7 @@ begin
 			MEMsize_X_n <= "11";
 			MEMdataout_X <= NOS_r;	
 			AuxControl_n(0 downto 0) <= "0";
-			AuxControl_n(1 downto 1) <= "0";
+			AuxControl_n(2 downto 1) <= "00";
 			ReturnAddress_n <= PC_addr;
 			irq_n <= int_trig;
 			rti <= '0';

@@ -10,8 +10,8 @@ entity SRAM_controller is
 				size : in  STD_LOGIC_VECTOR (1 downto 0);						-- length of read or write 01 = byte, 02 = word, 03 = longword
 				WE : in  STD_LOGIC_VECTOR (0 downto 0);						-- write enable from CPU
 				DATA_in : in  STD_LOGIC_VECTOR (31 downto 0);				-- data from CPU cell to write to memory
-				DATA_out : out  STD_LOGIC_VECTOR (31 downto 0);				-- data read from memory at address ADDR to write to CPU cell
-				DATA_out_quick : out  STD_LOGIC_VECTOR (31 downto 0);		-- data without byte or word right shifted and zero padded
+				--DATA_out : out  STD_LOGIC_VECTOR (31 downto 0);				-- data read from memory at address ADDR to write to CPU cell
+				DATA_out_quick : out  STD_LOGIC_VECTOR (39 downto 0);		-- data without byte or word right shifted and zero padded
 				wea : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);						-- direct connections to SRAM module
 				addra : OUT STD_LOGIC_VECTOR(31 DOWNTO 2);					-- longword address
 				dina : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);						
@@ -31,8 +31,9 @@ architecture RTL of SRAM_controller is
 
 	signal base, base_plus : std_logic_vector(31 downto 2);
 	signal offset, offset_m : std_logic_vector(1 downto 0);
-	signal DATA_out_agg, DATA_out_agg_r, DATA_out_agg_plus, DATA_out_base, DATA_out_base_plus : std_logic_vector(31 downto 0);
-	signal DATA_out_i, DATA_out_plus_i : std_logic_vector(31 downto 0);
+	signal DATA_out_agg_plus, DATA_out_base, DATA_out_base_plus : std_logic_vector(31 downto 0);
+	signal DATA_out_agg, DATA_out_agg_r  : std_logic_vector(39 downto 0);
+--	signal DATA_out_i, DATA_out_plus_i : std_logic_vector(31 downto 0);
 	signal DATA_in_base, DATA_in_base_plus, DATA_in_r : std_logic_vector(31 downto 0);
 	signal size_m : std_logic_vector(1 downto 0);
 	
@@ -50,7 +51,7 @@ begin
 	data_out_base <= douta;			
 	data_out_base_plus <= doutb;
 	data_out_quick <= DATA_out_agg;
-	DATA_out <= DATA_out_i;
+	--DATA_out <= DATA_out_i;
 	DATA_out_agg_r <= DATA_out_agg;
 	
 	process
@@ -63,15 +64,15 @@ begin
 
 	 
    with offset_m select					-- read a longword at byte address ADDR by combining the data from port a and port b 
-      DATA_out_agg <= 	DATA_out_base (31 downto 0) when "00",
-								DATA_out_base (23 downto 0) & DATA_out_base_plus (31 downto 24) when "01",
-								DATA_out_base (15 downto 0) & DATA_out_base_plus (31 downto 16) when "10",
-								DATA_out_base (7 downto 0) & DATA_out_base_plus (31 downto 8) when others;
+      DATA_out_agg <= 	DATA_out_base (31 downto 0) & DATA_out_base_plus (31 downto 24) when "00",
+								DATA_out_base (23 downto 0) & DATA_out_base_plus (31 downto 16) when "01",
+								DATA_out_base (15 downto 0) & DATA_out_base_plus (31 downto 8) when "10",
+								DATA_out_base (7 downto 0) & DATA_out_base_plus (31 downto 0) when others;
 								
-	with size select						-- realign data from memory bus with CPU cell and left pad with '0'
-		DATA_out_i <=		DATA_out_agg_r (31 downto 0) when "11",
-								blank(31 downto 16) & DATA_out_agg_r (31 downto 16) when "10",
-								blank(31 downto 8) & DATA_out_agg_r (31 downto 24) when others;
+--	with size select						-- realign data from memory bus with CPU cell and left pad with '0'
+--		DATA_out_i <=		DATA_out_agg_r (31 downto 0) when "11",
+--								blank(31 downto 16) & DATA_out_agg_r (31 downto 16) when "10",
+--								blank(31 downto 8) & DATA_out_agg_r (31 downto 24) when others;
 
 	with offset & size select		-- align data from CPU cell with memory bus, port a
 		DATA_in_base <= 	DATA_in when "0011",

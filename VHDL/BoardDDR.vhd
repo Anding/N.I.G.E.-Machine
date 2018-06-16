@@ -91,11 +91,11 @@ signal irv : std_logic_vector(3 downto 0);
 signal irq_mask : std_logic_vector(15 downto 1);
 signal PSdatain :  std_logic_vector(31 downto 0);
 signal RSdatain :  std_logic_vector(31 downto 0);
-signal MEMdatain_Xi :  std_logic_vector(31 downto 0);
+signal MEMdatain_Xi :  std_logic_vector(39 downto 0);
 signal MEMdata_Char :  std_logic_vector(15 downto 0);
 signal MEMdata_Color :  std_logic_vector(15 downto 0);
 signal MEMdata_Pstack, MEMdata_Rstack, MEMdata_Reg, MEMdata_stack_access : std_logic_vector(31 downto 0);   
-signal MEMdata_User :  std_logic_vector(31 downto 0);      
+signal MEMdata_User :  std_logic_vector(39 downto 0);      
 signal PSaddr :  std_logic_vector(vmp_w + psp_w -1 downto 0);
 signal PSdataout :  std_logic_vector(31 downto 0);
 signal PSw :  std_logic_vector(0 to 0);
@@ -161,7 +161,7 @@ signal web_userram : std_logic_vector(3 downto 0);
 signal ena_userram, enb_userram : std_logic;
 signal addra_userram_all : std_logic_vector(31 downto 2);
 signal addrb_userram_all : std_logic_vector(31 downto 2);
-signal MEMdata_Sys, MEMdata_Sys_plus : std_logic_vector(31 downto 0);
+signal MEMdata_Sys : std_logic_vector(39 downto 0);
 signal MEMdata_Sys_quick : std_logic_vector(31 downto 0);
 signal MEMsize_X, MEMsize_Xp : std_logic_vector(1 downto 0);
 signal ram_en : std_logic;
@@ -249,6 +249,7 @@ signal TXTbank : std_logic;
 signal TXTwea : STD_LOGIC_VECTOR(0 DOWNTO 0);
 signal TXTaddra, TXTaddrb : STD_LOGIC_VECTOR(8 DOWNTO 0);
 signal TXTbuffer_addr : STD_LOGIC_VECTOR(7 DOWNTO 0);
+signal size : STD_LOGIC_VECTOR(1 downto 0);
 
 
 component CLOCKMANAGER
@@ -371,7 +372,7 @@ END COMPONENT;
 
 COMPONENT TEXTbufferController
 PORT(
---	reset : IN std_logic;
+	reset : IN std_logic;
 	clk_MEM : IN std_logic;
 	--clk_VGA : IN std_logic;
 	VGAcols : IN std_logic_vector(7 downto 0);
@@ -417,8 +418,8 @@ PORT(
 	DATA_in : IN std_logic_vector(31 downto 0);
 	douta : IN std_logic_vector(31 downto 0);
 	doutb : IN std_logic_vector(31 downto 0);          
-	DATA_out : OUT std_logic_vector(31 downto 0);
-	DATA_out_quick : OUT std_logic_vector(31 downto 0);
+	--DATA_out : OUT std_logic_vector(31 downto 0);
+	DATA_out_quick : OUT std_logic_vector(39 downto 0);
 	wea : OUT std_logic_vector(3 downto 0);
 	addra : OUT std_logic_vector(31 downto 2);
 	dina : OUT std_logic_vector(31 downto 0);
@@ -596,8 +597,8 @@ PORT(
 	RSdatain : IN std_logic_vector(31 downto 0);
 	SSdatain : IN std_logic_vector(351 downto 320);
 	ESdatain : IN std_logic_vector(303 downto 256);
-	MEMdatain_X : IN std_logic_vector(31 downto 0);
-	MEMdatain_X_quick : IN std_logic_vector(31 downto 0);
+	--MEMdatain_X : IN std_logic_vector(31 downto 0);
+	MEMdatain_X_quick : IN std_logic_vector(39 downto 0);
 	s_axi_awready : IN std_logic;
 	s_axi_wready : IN std_logic;
 	s_axi_arready : IN std_logic;
@@ -621,6 +622,7 @@ PORT(
 	MEMdataout_X : OUT std_logic_vector(31 downto 0);
 	MEM_WRQ_X : OUT std_logic;
 	MEMsize_X : OUT std_logic_vector(1 downto 0);
+	Size : IN std_logic_vector(1 downto 0);
 	s_axi_awaddr : OUT std_logic_vector(31 downto 0);
 	s_axi_awvalid : OUT std_logic;
 	s_axi_wdata : OUT std_logic_vector(31 downto 0);
@@ -665,7 +667,7 @@ END COMPONENT;
 COMPONENT VGA
 PORT(
 	clk_VGA : IN std_logic;
-	--reset : IN std_logic;
+	reset : IN std_logic;
 	mode : IN std_logic_vector(4 downto 0);
 	background : IN std_logic_vector(15 downto 0);
 	interlace : IN std_logic_vector(3 downto 0);
@@ -856,10 +858,10 @@ begin
 		clk_VGA <= 	VGAclk25  when "001",
 				VGAclk75  when "011",	
 				VGAclk150 when "100",
-				VGAclk40  when others; --"010"
-	-- gated clocks are not good design practice in general but here we explicitly assume 
-	-- that the VGA clock domain is not synchronized with the SYSTEM clock domain
-	-- do not use these clocks to drive modules aside from VGA since they are be not timing constrained
+				VGAclk40  when others; -- "010"
+--	 gated clocks are not good design practice in general but here we explicitly assume 
+--	 that the VGA clock domain is not synchronized with the SYSTEM clock domain
+--	 do not use these clocks to drive modules aside from VGA since they are be not timing constrained
 	 
 -----------------------------------------------------------------------------------------------------------------------------------
 -- Global counters and timers
@@ -916,14 +918,19 @@ begin
 	 Sys_EN <= '1' 		when bank_n = Sys else '0'; 
 	 
 	 with bank select										-- one cycle delayed to switch output
-		MEMdatain_Xi <=	"0000000000000000" & MEMdata_Char	when Char,
-					"0000000000000000" & MEMdata_Color when Color,
-					MEMdata_Reg 				when Reg,
-					Memdata_stack_access 		when stacks,
-					MEMdata_User 				when user,
-					MEMdata_Vir 				when vir,
-					MEMdata_Sys 				when others;
-					
+		MEMdatain_Xi <=	"0000000000000000" & MEMdata_Char 	& "00000000"		when Char,			-- & "00000000" redundant extra byte to align with MEMdata_User's "plus one" byte
+						"0000000000000000" & MEMdata_Color	& "00000000"		when Color,
+						MEMdata_Reg 						& "00000000"		when Reg,
+						Memdata_stack_access 				& "00000000"  		when stacks,
+						MEMdata_User 											when user,
+						MEMdata_Vir 						& "00000000"		when vir,
+						MEMdata_Sys 											when others;
+								
+	
+	with bank select					-- force size to "11" for all register based memory as they are actually little-endian
+		size <= MEMsize_X when sys,
+				MEMsize_X when user,
+				"11" when others;
 					
 	MEM_WRQ_XX(0) <= MEM_WRQ_X;				
 	douta_sysram_i <= douta_sysram;
@@ -1074,7 +1081,7 @@ port map (
 
 Inst_TEXTbufferController: TEXTbufferController 
 PORT MAP(
---	reset => reset,
+	reset => reset,
 	clk_MEM => clk_MEM,
 	--clk_VGA => clk_VGA,
 	VGAcols => VGAcols,
@@ -1119,8 +1126,8 @@ PORT MAP(
 	size => MEMsize_X,
 	WE => MEM_WRQ_XX,
 	DATA_in => MEMdataout_X,
-	DATA_out => MEMdata_Sys,
-	DATA_out_quick => MEMdata_Sys_quick,
+	--DATA_out => MEMdata_Sys,
+	DATA_out_quick => MEMdata_Sys,
 	wea => wea_sysram_s,
 	addra => addra_sysram_s,
 	dina => dina_sysram_s,
@@ -1142,8 +1149,8 @@ PORT MAP(
 	size => MEMsize_X,
 	WE => MEM_WRQ_XX,
 	DATA_in => MEMdataout_X,
-	DATA_out => MEMdata_User,
-	DATA_out_quick => open,
+	--DATA_out => MEMdata_User,
+	DATA_out_quick => MEMdata_User,
 	wea => wea_userram,
 	addra => addra_userram,
 	dina => dina_userram,
@@ -1327,10 +1334,11 @@ PORT MAP(
 	ESdataout => ESdataout(303 downto 256),
 	ESw => ESw(37 downto 32),
 	MEMaddr => MEMaddr,
-	MEMdatain_X => MEMdatain_Xi,
-	MEMdatain_X_quick => MEMdata_Sys_quick,
+	--MEMdatain_X => MEMdatain_Xi,
+	MEMdatain_X_quick => MEMdatain_Xi,
 	MEMdataout_X => MEMdataout_X,
 	MEMsize_X => MEMsize_X,
+	size => size,
 	MEM_WRQ_X => MEM_WRQ_X,
 	s_axi_awaddr => s_axi_awaddr,
 	s_axi_awvalid => s_axi_awvalid,
@@ -1380,7 +1388,7 @@ PORT MAP(
 Inst_VGAController: VGA 
 PORT MAP(
 	CLK_VGA => CLK_VGA,
-	--reset => reset,
+	reset => reset,
 	mode => mode,
 	background => background,
 	data_Text => DATA_TEXT,

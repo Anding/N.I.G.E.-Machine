@@ -37,11 +37,12 @@ entity CPU is
 			   ESw : out STD_LOGIC_VECTOR (37 downto 32);
 				-- 32 bit wide SRAM databus				
 				MEMaddr : out STD_LOGIC_VECTOR (31 downto 0);			
-			   MEMdatain_X : in STD_LOGIC_VECTOR (31 downto 0);			-- data at ADDR	
-				MEMdatain_X_quick : in STD_LOGIC_VECTOR (31 downto 0);
+			   --MEMdatain_X : in STD_LOGIC_VECTOR (39 downto 0);			-- data at ADDR	
+				MEMdatain_X_quick : in STD_LOGIC_VECTOR (39 downto 0);
 			   MEMdataout_X : out STD_LOGIC_VECTOR (31 downto 0);		
 			   MEM_WRQ_X : out STD_LOGIC;	
 				MEMsize_X : out STD_LOGIC_VECTOR (1 downto 0);
+				Size : in STD_LOGIC_VECTOR (1 downto 0);
 				-- 32 bit wide AXI databus
 				s_axi_awaddr : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
 				s_axi_awvalid : OUT STD_LOGIC;
@@ -77,7 +78,7 @@ architecture Structural of CPU is
 
 	signal	Accumulator : std_logic_vector(31 downto 0);
 	signal	MicroControl :  std_logic_vector(22 downto 0);
-	signal	AuxControl :  std_logic_vector(1 downto 0);
+	signal	AuxControl :  std_logic_vector(2 downto 0);
 	signal	ReturnAddress :  std_logic_vector(31 downto 0);          
 	signal	TOS, TOS_r :  std_logic_vector(31 downto 0);
 	signal	NOS, NOS_r :  std_logic_vector(31 downto 0);
@@ -116,7 +117,8 @@ begin
 	PORT MAP(
 		rst => rst,
 		clk => clk,
-		MEMdatain_X => MEMdatain_X,
+		MEMdatain_X => MEMdatain_X_quick,
+		Size => Size,
 		Accumulator => Accumulator,
 		MicroControl => MicroControl,
 		AuxControl => AuxControl,
@@ -172,7 +174,7 @@ begin
 		Accumulator => Accumulator,
 		ReturnAddress => ReturnAddress,
 		MEMaddr => MEMaddr_i,
-		MEMdatain_X => MEMdatain_X_quick,
+		MEMdatain_X => MEMdatain_X_quick(39 downto 8),
 		MEMdataout_X => MEMdataout_X_i,
 		MEM_WRQ_X => MEM_WRQ_X_i,
 		MEMsize_X => MEMsize_X,
