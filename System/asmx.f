@@ -904,21 +904,22 @@
 : asmx
 	\ open source file
 	r/o	open-file				( fileid ior)
-	abort" Error opening source file" 		( fileid)
+	if ." Error opening source file" close-all abort then
 	fileid !
 	
 	\ open output files
 	C" E:\N.I.G.E.-Machine\System\SRAM.bin" count w/o create-file
-	abort" Error opening output file .bin"	( fileid-w)
-	fileid-w3 !					( fileid-w)
+	if ." Error opening output file .bin" close-all abort then
+	fileid-w3 !					
 	
 	C" E:\N.I.G.E.-Machine\System\SRAM.txt" count w/o create-file
-	abort" Error opening output file .txt"	( fileid-w)
-	fileid-w2 !					( fileid-w)
+	if ." Error opening output file .txt" close-all abort then
+	fileid-w2 !					
 	
 	C" E:\N.I.G.E.-Machine\System\SRAM.coe" count w/o create-file
-	abort" Error opening output file .coe"	( fileid-w)
-	fileid-w1 !					( fileid-w)	
+	if ." Error opening output file .coe" close-all abort then
+	fileid-w1 !					
+	
 	S" memory_initialization_radix=16;" fileid-w1 @ write-line drop ( fileid-w)
 	S" memory_initialization_vector=" fileid-w1 @ write-line drop 	 ( )
 	
