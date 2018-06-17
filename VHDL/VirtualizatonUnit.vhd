@@ -50,6 +50,11 @@ signal trueSwitch : STD_LOGIC;
 signal reg_interval : STD_LOGIC_VECTOR(15 downto 0) := (others=>'0');
 signal pauseDelay : STD_LOGIC_VECTOR(4 downto 0);
 
+-- Configure Freezer_RAM as
+-- 	Input Options: Registered
+-- 	Simple Dual Port Address: Registered
+-- 	Output Options: Registered
+-- 	Commout Output Clock: Yes
 COMPONENT Freezer_RAM
   PORT (
     a : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
@@ -61,6 +66,11 @@ COMPONENT Freezer_RAM
   );
 END COMPONENT;
 
+-- Configure TaskControl_RAM as
+-- 	Input Options: Unregistered
+-- 	Simple Dual Port Address: Unregistered
+-- 	Output Options: Registered
+-- 	Commout Output Clock: Yes
 COMPONENT TaskControl_RAM
   PORT (
     a : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
@@ -73,6 +83,11 @@ COMPONENT TaskControl_RAM
   );
 END COMPONENT;
 
+-- Configure PC_Override_RAM as
+-- 	Input Options: Unregistered
+-- 	Simple Dual Port Address: Unregistered
+-- 	Output Options: Registered
+-- 	Commout Output Clock: Yes
 COMPONENT PCoveride_RAM
   PORT (
     a : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
@@ -85,6 +100,11 @@ COMPONENT PCoveride_RAM
   );
 END COMPONENT;
 
+-- Configure VirtualInterrupt_RAM as
+-- 	Input Options: Registered
+-- 	Simple Dual Port Address: Registered
+-- 	Output Options: Registered
+-- 	Commout Output Clock: Yes
 COMPONENT VirtualInterrupt_RAM
   PORT (
     a : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
@@ -107,7 +127,9 @@ nextVM <= TaskControl(vmp_w -1 downto 0);
 VM <= currentVM;
 interval <= reg_interval;
 task_switch <= pause;
-SingleMulti <= '1' when (reg_SingleMulti = '1' and trueSwitch = '1' and (pauseDelay = "00000")) else '0';
+
+-- switch off multitasking for an interval after a task switch to allow freezer memory to update 
+SingleMulti <= '1' when (reg_SingleMulti = '1' and trueSwitch = '1' and (pauseDelay = "00000")) else '0';		
 
 process
 begin

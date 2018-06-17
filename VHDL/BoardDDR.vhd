@@ -853,12 +853,12 @@ begin
 -----------------------------------------------------------------------------------------------------------------------------------
 -- VGA clock selector
 -----------------------------------------------------------------------------------------------------------------------------------	
---	clk_VGA <= 	VGAclk25;
-	with mode(2 downto 0) select
-		clk_VGA <= 	VGAclk25  when "001",
-				VGAclk75  when "011",	
-				VGAclk150 when "100",
-				VGAclk40  when others; -- "010"
+	clk_VGA <= 	VGAclk25;
+--	with mode(2 downto 0) select
+--		clk_VGA <= 	VGAclk25  when "001",
+--				VGAclk75  when "011",	
+--				VGAclk150 when "100",
+--				VGAclk40  when others; -- "010"
 --	 gated clocks are not good design practice in general but here we explicitly assume 
 --	 that the VGA clock domain is not synchronized with the SYSTEM clock domain
 --	 do not use these clocks to drive modules aside from VGA since they are be not timing constrained
