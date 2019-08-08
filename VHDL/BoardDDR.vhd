@@ -979,42 +979,42 @@ port map
 	CLK_OUT7 => CLK100_130
 );	
 
---Inst_RAM_for_Testbench: RAM_for_Testbench 
---PORT MAP(
---	rst => reset,
---	clk => clk_system,
---	enA => ena_sysram,
---	enB => enb_sysram,
---	weA => wea_sysram,
---	weB => web_sysram,
---	addressA => addra_sysram (16 downto 2),
---	data_inA => dina_sysram,
---	data_outA => douta_sysram,
---	addressB => addrb_sysram (16 downto 2),
---	data_inB => dinb_sysram,
---	data_outB => doutb_sysram
---	);
-	
-Inst_SYS_RAM: SYS_RAM
-PORT MAP (
-	clka => clk_system,
-	ena => '1',
-	wea => wea_sysram,
-	addra => addra_sysram (16 downto 2),
-	dina => dina_sysram,
-	douta => douta_sysram,
-	clkb => clk_system,
-	enb => enb_sysram,
-	web => web_sysram,
-	addrb => addrb_sysram (16 downto 2),
-	dinb => dinb_sysram,
-	doutb => doutb_sysram
+Inst_RAM_for_Testbench: RAM_for_Testbench 
+PORT MAP(
+	rst => reset,
+	clk => clk_system,
+	enA => ena_sysram,
+	enB => enb_sysram,
+	weA => wea_sysram,
+	weB => web_sysram,
+	addressA => addra_sysram (16 downto 2),
+	data_inA => dina_sysram,
+	data_outA => douta_sysram,
+	addressB => addrb_sysram (16 downto 2),
+	data_inB => dinb_sysram,
+	data_outB => doutb_sysram
 	);
+	
+--Inst_SYS_RAM: SYS_RAM
+--PORT MAP (
+--	clka => clk_system,
+--	ena => '1',
+--	wea => wea_sysram,
+--	addra => addra_sysram (16 downto 2),
+--	dina => dina_sysram,
+--	douta => douta_sysram,
+--	clkb => clk_system,
+--	enb => enb_sysram,
+--	web => web_sysram,
+--	addrb => addrb_sysram (16 downto 2),
+--	dinb => dinb_sysram,
+--	doutb => doutb_sysram
+--	);
 	
 Inst_DMAcontrollerDDR: DMAcontrollerDDR 
 PORT MAP(
 	CLK => CLK_SYSTEM,
-	reset => reset,
+	reset => '1',
 	s_axi_awaddr => s_axi_awaddr,
 	s_axi_awvalid => s_axi_awvalid,
 	s_axi_awready => s_axi_awready,
@@ -1050,7 +1050,7 @@ Inst_DDR_SDRAM_CTRL: DDR_SDRAM_CTRL
 port map (
 	CLK   => clk_system,
 	CLK_130 => clk100_130,
-	reset => reset,  
+	reset => '1',  
 
 	wrrd_ba_add => wrrd_ba_add,
 	wrrd_ras_add => wrrd_ras_add,
@@ -1081,7 +1081,7 @@ port map (
 
 Inst_TEXTbufferController: TEXTbufferController 
 PORT MAP(
-	reset => reset,
+	reset => '1',
 	clk_MEM => clk_MEM,
 	--clk_VGA => clk_VGA,
 	VGAcols => VGAcols,
@@ -1388,7 +1388,7 @@ PORT MAP(
 Inst_VGAController: VGA 
 PORT MAP(
 	CLK_VGA => CLK_VGA,
-	reset => reset,
+	reset => '1',
 	mode => mode,
 	background => background,
 	data_Text => DATA_TEXT,
@@ -1471,7 +1471,7 @@ Inst_SPImaster: SPImaster
 PORT MAP(
 	CLK => CLK_SYSTEM,
 	CLKSPI => CLKSPI,
-	RESET => reset,
+	RESET => '1',
 	DATA_IN => SD_datain,
 	WR => SD_wr,
 	TBE => SD_status(0),
@@ -1494,7 +1494,7 @@ Inst_MediaAccessController: MediaAccessController
 PORT MAP(
 	CLK50MHZ => CLK50MHZ,
 	CLK100MHZ => CLK_SYSTEM,
-	reset => reset,
+	reset => '1',
 	PHYCRS => PHYCRS,
 	PHYRXERR => PHYRXERR,
 	PHYRXD => PHYRXD,
