@@ -199,32 +199,32 @@ BEGIN
           PHYINTN => PHYINTN
         );
 	 
-	inst_ddr2: ddr2
-	PORT MAP (
-    ck => SDRAM_CK, 
-	ck_n => SDRAM_nCK, 
-	cke => SDRAM_CKE, 
-	cs_n => SDRAM_nCS, 
-	ras_n => SDRAM_nRAS, 
-	cas_n => SDRAM_nCAS, 
-	we_n => SDRAM_nWE, 
-	dm_rdqs => SDRAM_DM, 
-	ba => SDRAM_BA, 
-	addr => SDRAM_A(12 downto 0), 
-	dq => SDRAM_DQ, 
-	dqs => SDRAM_DQS,
-	dqs_n => SDRAM_nDQS,
-	rdqs_n => SDRAM_nRDQS,
-	odt => SDRAM_ODT
-	);		
+--	inst_ddr2: ddr2
+--	PORT MAP (
+--    ck => SDRAM_CK, 
+--	ck_n => SDRAM_nCK, 
+--	cke => SDRAM_CKE, 
+--	cs_n => SDRAM_nCS, 
+--	ras_n => SDRAM_nRAS, 
+--	cas_n => SDRAM_nCAS, 
+--	we_n => SDRAM_nWE, 
+--	dm_rdqs => SDRAM_DM, 
+--	ba => SDRAM_BA, 
+--	addr => SDRAM_A(12 downto 0), 
+--	dq => SDRAM_DQ, 
+--	dqs => SDRAM_DQS,
+--	dqs_n => SDRAM_nDQS,
+--	rdqs_n => SDRAM_nRDQS,
+--	odt => SDRAM_ODT
+--	);		
 
-	Inst_SPIslave3: entity work.SPIslave3 PORT MAP(
-		CS => SD_CS,
-		MOSI => MOSI,
-		MISO => MISO,
-		SCK => SCK,
-		mode => "00"
-		);
+--	Inst_SPIslave3: entity work.SPIslave3 PORT MAP(
+--		CS => SD_CS,
+--		MOSI => MOSI,
+--		MISO => MISO,
+--		SCK => SCK,
+--		mode => "00"
+--		);
 	
 	RXD_S0 <= tx_line;
 	PS2C <= PS2C_line;

@@ -941,7 +941,10 @@ begin
 	wea_sysram <= wea_sysram_s when Boot_we = "0" else "1111";			-- splice IOExpansion data ahead of the SRAM
 	dina_sysram <= dina_sysram_s when Boot_we = "0" else boot_data;
 	addra_sysram <= addra_sysram_s when Boot_we = "0" else boot_addr;	
-
+		
+	TXTaddra <= (not TXTbank) & TXTbuffer_addr;																							-- concatenate the active bank for writing with the current write address
+	TXTaddrb <= TXTbank & ADDR_TEXT;	
+	
 -----------------------------------------------------------------------------------------------------------------------------------
 -- SD card connections
 -----------------------------------------------------------------------------------------------------------------------------------	
@@ -1011,111 +1014,6 @@ PORT MAP(
 --	doutb => doutb_sysram
 --	);
 	
-Inst_DMAcontrollerDDR: DMAcontrollerDDR 
-PORT MAP(
-	CLK => CLK_SYSTEM,
-	reset => '1',
-	s_axi_awaddr => s_axi_awaddr,
-	s_axi_awvalid => s_axi_awvalid,
-	s_axi_awready => s_axi_awready,
-	s_axi_wdata => s_axi_wdata,
-	s_axi_wstrb => s_axi_wstrb,
-	s_axi_wvalid => s_axi_wvalid,
-	s_axi_wready => s_axi_wready,
-	s_axi_araddr => s_axi_araddr,
-	s_axi_arvalid => s_axi_arvalid,
-	s_axi_arready => s_axi_arready,
-	s_axi_rdata => s_axi_rdata,
-	s_axi_rvalid => s_axi_rvalid,
-	t_axi_araddr => t_axi_araddr,
-	t_axi_arlen => t_axi_arlen,
-	t_axi_arvalid => t_axi_arvalid,
-	t_axi_arready => t_axi_arready,
-	t_axi_rdata => t_axi_rdata,
-	t_axi_rlast => t_axi_rlast,
-	t_axi_rvalid => t_axi_rvalid,
-	wrrd_ba_add => wrrd_ba_add,
-	wrrd_ras_add => wrrd_ras_add,
-	wrrd_cas_add => wrrd_cas_add,
-	wr_we => wr_we,
-	wr_dat => wr_dat,
-	wr_ack => wr_ack,
-	rd_re => rd_re,
-	rd_dat => rd_dat,
-	rd_ack => rd_ack,  
-	rd_valid => rd_valid
-);
-	
-Inst_DDR_SDRAM_CTRL: DDR_SDRAM_CTRL 
-port map (
-	CLK   => clk_system,
-	CLK_130 => clk100_130,
-	reset => '1',  
-
-	wrrd_ba_add => wrrd_ba_add,
-	wrrd_ras_add => wrrd_ras_add,
-	wrrd_cas_add => wrrd_cas_add,
-	
-	wr_we => wr_we,
-	wr_dat => wr_dat,
-	wr_ack => wr_ack,
-	rd_re => rd_re,
-	rd_dat => rd_dat,
-	rd_ack => rd_ack,  
-	rd_valid => rd_valid,
-
-	SDRAM_A 		=> SDRAM_A,
-	SDRAM_BA 		=> SDRAM_BA,
-	SDRAM_CKE      	=> SDRAM_CKE,
-	SDRAM_CK        => SDRAM_CK,
-	SDRAM_nCK	    => SDRAM_nCK,
-	SDRAM_DQ       	=> SDRAM_DQ,
-	SDRAM_DQS	    => SDRAM_DQS,
-	--SDRAM_nDQS	    => SDRAM_nDQS,
-	SDRAM_DM    	=> SDRAM_DM,
-	SDRAM_nCAS     	=> SDRAM_nCAS,
-	SDRAM_nCS      	=> SDRAM_nCS,
-	SDRAM_nRAS     	=> SDRAM_nRAS,
-	SDRAM_nWE      	=> SDRAM_nWE
-);
-
-Inst_TEXTbufferController: TEXTbufferController 
-PORT MAP(
-	reset => '1',
-	clk_MEM => clk_MEM,
-	--clk_VGA => clk_VGA,
-	VGAcols => VGAcols,
---	VBlank => VBlank,
-	FetchNextRow => FetchNextRow,
-	FetchFirstRow => FetchFirstRow,
-	txt_zero => txt_zero,
-	--ADDR_TEXT => ADDR_TEXT,
-	--DATA_TEXT => DATA_TEXT,
-	bank => TXTbank,
-	wea => TXTwea,
-	buffer_addr => TXTbuffer_addr,
-	t_axi_araddr => t_axi_araddr,
-	t_axi_arlen => t_axi_arlen,
-	t_axi_arvalid => t_axi_arvalid,
-	t_axi_arready => t_axi_arready,
-	--t_axi_rdata => t_axi_rdata,
-	t_axi_rlast => t_axi_rlast,
-	t_axi_rvalid => t_axi_rvalid
-	);
-	
-inst_BUFFER_TXT: BUFFER_TXT
-	PORT MAP (
-	 clka => CLK_MEM,
-	 wea => TXTwea,
-	 addra => TXTaddra,
-	 dina => t_axi_rdata,
-	 clkb => CLK_VGA,
-	 addrb => TXTaddrb,
-	 doutb => DATA_TEXT
-	);
-		
-	TXTaddra <= (not TXTbank) & TXTbuffer_addr;																							-- concatenate the active bank for writing with the current write address
-	TXTaddrb <= TXTbank & ADDR_TEXT;	
 
 Inst_SRAM_controller: SRAM_controller 
 PORT MAP(
@@ -1384,32 +1282,7 @@ PORT MAP(
 	trig => trig,
 	reset => reset
 	);
-
-Inst_VGAController: VGA 
-PORT MAP(
-	CLK_VGA => CLK_VGA,
-	reset => '1',
-	mode => mode,
-	background => background,
-	data_Text => DATA_TEXT,
-	addr_Text => ADDR_TEXT,
-	data_Char => data_Char,
-	addr_Char => addr_Char,
-	data_Color => data_Color,
-	addr_Color => addr_Color,		
-	HSync => HSync,
-	VSync => VSync,
-	VBLANK => VBLANK,
-	RGB => RGB,
-	interlace => interlace,
-	charHeight => charHeight,
-	charWidth => charWidth, 
-	Ha => Ha, Hb => Hb, Hc => Hc, Hd => Hd,
-	Va => Va, Vb => Vb, Vc => Vc, Vd => Vd,	
-	FetchNextRow => FetchNextRow,
-	FetchFirstRow => FetchFirstRow
-	);	
-
+	
 Inst_Interrupt: Interrupt 
 PORT MAP(
 	clk => CLK_SYSTEM,
@@ -1425,28 +1298,6 @@ PORT MAP(
 	blocked => blocked
 	);
 
-Inst_UART: UART 
-PORT MAP(
-	RXD => RXD_S0,
-	TXD => TXD_S0,
-	DIVIDE => RS232_DIVIDE_S0,
-	TXDATA => RS232_tx_S0,
-	RXDATA => RS232_rx_S0,
-	RDA => RS232_RDA_S0,
-	WR => RS232_WR_S0,
-	TBE => RS232_TBE_S0,
-	CLK => CLK_SYSTEM
-	);
-
-Inst_PS2KeyboardDecoder: PS2KeyboardDecoder 
-PORT MAP(
-	clk => CLK_SYSTEM,
-	PS2C => PS2C,
-	PS2D => PS2D,
-	irq => PS2_irq,
-	data => PS2_data
-	);
-
 Inst_BootLoader: BootLoader 
 PORT MAP(
 	invReset => invReset,
@@ -1457,75 +1308,230 @@ PORT MAP(
 	addr => Boot_addr,
 	we => Boot_we
 	);
+	
+--------------------------------------------------------------------------------------
+-- Peripherals to CPU
+--------------------------------------------------------------------------------------
 
-Inst_ByteHEXdisplay: ByteHEXdisplay 
-PORT MAP(
-	ssData => ssData,
-	clk => CLK_SYSTEM,
-	count => counter_clk(15 downto 13),
-	sevenseg => sevenseg,
-	anode => anode
-	);
-
-Inst_SPImaster: SPImaster 
-PORT MAP(
-	CLK => CLK_SYSTEM,
-	CLKSPI => CLKSPI,
-	RESET => '1',
-	DATA_IN => SD_datain,
-	WR => SD_wr,
-	TBE => SD_status(0),
-	DATA_OUT => SD_dataout,
-	MOSI => MOSI,
-	MISO => MISO,
-	SCK => SCK,
-	mode => SD_control(3 downto 2),
-	MOSI_def => SD_control(1)
-	);
-
-Inst_DIV: DIV 
-PORT MAP(
-	CLKin => CLK_SYSTEM,
-	divide => SD_divide,
-	CLKout => CLKSPI
-);
-
-Inst_MediaAccessController: MediaAccessController 
-PORT MAP(
-	CLK50MHZ => CLK50MHZ,
-	CLK100MHZ => CLK_SYSTEM,
-	reset => '1',
-	PHYCRS => PHYCRS,
-	PHYRXERR => PHYRXERR,
-	PHYRXD => PHYRXD,
-	PHYCLK50MHZ => PHYCLK50MHZ,
-	PHYRSTN => PHYRSTN,
-	PHYTXEN => PHYTXEN,
-	PHYTXD => PHYTXD,
-	PHYINTN => PHYINTN,
-	dataRX => MACdataRX,
-	readyRX => MACreadyRX,
-	read_enable => MACread_enable,
-	Ethernet_IRQ => open,
-	checksum_err => MACchecksum_err,
-	dataTX => MACdataTX,
-	weTX => MACweTX,
-	readyTX => MACreadyTX,
-	transmit_request => MACtransmit_request
-	);
-
-Inst_SMI: SMI 
-PORT MAP(
-	CLK100MHz => CLK_SYSTEM,
-	addr => SMIaddr,
-	dataRead => SMIdataRead,
-	dataWrite => SMIdataWrite,
-	read_request => SMIread_request,
-	write_request => SMIwrite_request,
-	ready => SMIready,
-	MDC => PHYMDC,
-	MDIO => PHYMDIO
-	);
+--Inst_DMAcontrollerDDR: DMAcontrollerDDR 
+--PORT MAP(
+--	CLK => CLK_SYSTEM,
+--	reset => reset,
+--	s_axi_awaddr => s_axi_awaddr,
+--	s_axi_awvalid => s_axi_awvalid,
+--	s_axi_awready => s_axi_awready,
+--	s_axi_wdata => s_axi_wdata,
+--	s_axi_wstrb => s_axi_wstrb,
+--	s_axi_wvalid => s_axi_wvalid,
+--	s_axi_wready => s_axi_wready,
+--	s_axi_araddr => s_axi_araddr,
+--	s_axi_arvalid => s_axi_arvalid,
+--	s_axi_arready => s_axi_arready,
+--	s_axi_rdata => s_axi_rdata,
+--	s_axi_rvalid => s_axi_rvalid,
+--	t_axi_araddr => t_axi_araddr,
+--	t_axi_arlen => t_axi_arlen,
+--	t_axi_arvalid => t_axi_arvalid,
+--	t_axi_arready => t_axi_arready,
+--	t_axi_rdata => t_axi_rdata,
+--	t_axi_rlast => t_axi_rlast,
+--	t_axi_rvalid => t_axi_rvalid,
+--	wrrd_ba_add => wrrd_ba_add,
+--	wrrd_ras_add => wrrd_ras_add,
+--	wrrd_cas_add => wrrd_cas_add,
+--	wr_we => wr_we,
+--	wr_dat => wr_dat,
+--	wr_ack => wr_ack,
+--	rd_re => rd_re,
+--	rd_dat => rd_dat,
+--	rd_ack => rd_ack,  
+--	rd_valid => rd_valid
+--);
+--	
+--Inst_DDR_SDRAM_CTRL: DDR_SDRAM_CTRL 
+--port map (
+--	CLK   => clk_system,
+--	CLK_130 => clk100_130,
+--	reset => reset,  
+--
+--	wrrd_ba_add => wrrd_ba_add,
+--	wrrd_ras_add => wrrd_ras_add,
+--	wrrd_cas_add => wrrd_cas_add,
+--	
+--	wr_we => wr_we,
+--	wr_dat => wr_dat,
+--	wr_ack => wr_ack,
+--	rd_re => rd_re,
+--	rd_dat => rd_dat,
+--	rd_ack => rd_ack,  
+--	rd_valid => rd_valid,
+--
+--	SDRAM_A 		=> SDRAM_A,
+--	SDRAM_BA 		=> SDRAM_BA,
+--	SDRAM_CKE      	=> SDRAM_CKE,
+--	SDRAM_CK        => SDRAM_CK,
+--	SDRAM_nCK	    => SDRAM_nCK,
+--	SDRAM_DQ       	=> SDRAM_DQ,
+--	SDRAM_DQS	    => SDRAM_DQS,
+--	--SDRAM_nDQS	    => SDRAM_nDQS,
+--	SDRAM_DM    	=> SDRAM_DM,
+--	SDRAM_nCAS     	=> SDRAM_nCAS,
+--	SDRAM_nCS      	=> SDRAM_nCS,
+--	SDRAM_nRAS     	=> SDRAM_nRAS,
+--	SDRAM_nWE      	=> SDRAM_nWE
+--);
+--
+--Inst_TEXTbufferController: TEXTbufferController 
+--PORT MAP(
+--	reset => reset,
+--	clk_MEM => clk_MEM,
+--	--clk_VGA => clk_VGA,
+--	VGAcols => VGAcols,
+----	VBlank => VBlank,
+--	FetchNextRow => FetchNextRow,
+--	FetchFirstRow => FetchFirstRow,
+--	txt_zero => txt_zero,
+--	--ADDR_TEXT => ADDR_TEXT,
+--	--DATA_TEXT => DATA_TEXT,
+--	bank => TXTbank,
+--	wea => TXTwea,
+--	buffer_addr => TXTbuffer_addr,
+--	t_axi_araddr => t_axi_araddr,
+--	t_axi_arlen => t_axi_arlen,
+--	t_axi_arvalid => t_axi_arvalid,
+--	t_axi_arready => t_axi_arready,
+--	--t_axi_rdata => t_axi_rdata,
+--	t_axi_rlast => t_axi_rlast,
+--	t_axi_rvalid => t_axi_rvalid
+--	);
+--	
+--inst_BUFFER_TXT: BUFFER_TXT
+--	PORT MAP (
+--	 clka => CLK_MEM,
+--	 wea => TXTwea,
+--	 addra => TXTaddra,
+--	 dina => t_axi_rdata,
+--	 clkb => CLK_VGA,
+--	 addrb => TXTaddrb,
+--	 doutb => DATA_TEXT
+--	);
+--		
+--Inst_VGAController: VGA 
+--PORT MAP(
+--	CLK_VGA => CLK_VGA,
+--	reset => reset,
+--	mode => mode,
+--	background => background,
+--	data_Text => DATA_TEXT,
+--	addr_Text => ADDR_TEXT,
+--	data_Char => data_Char,
+--	addr_Char => addr_Char,
+--	data_Color => data_Color,
+--	addr_Color => addr_Color,		
+--	HSync => HSync,
+--	VSync => VSync,
+--	VBLANK => VBLANK,
+--	RGB => RGB,
+--	interlace => interlace,
+--	charHeight => charHeight,
+--	charWidth => charWidth, 
+--	Ha => Ha, Hb => Hb, Hc => Hc, Hd => Hd,
+--	Va => Va, Vb => Vb, Vc => Vc, Vd => Vd,	
+--	FetchNextRow => FetchNextRow,
+--	FetchFirstRow => FetchFirstRow
+--	);	
+--
+--
+--Inst_UART: UART 
+--PORT MAP(
+--	RXD => RXD_S0,
+--	TXD => TXD_S0,
+--	DIVIDE => RS232_DIVIDE_S0,
+--	TXDATA => RS232_tx_S0,
+--	RXDATA => RS232_rx_S0,
+--	RDA => RS232_RDA_S0,
+--	WR => RS232_WR_S0,
+--	TBE => RS232_TBE_S0,
+--	CLK => CLK_SYSTEM
+--	);
+--
+--Inst_PS2KeyboardDecoder: PS2KeyboardDecoder 
+--PORT MAP(
+--	clk => CLK_SYSTEM,
+--	PS2C => PS2C,
+--	PS2D => PS2D,
+--	irq => PS2_irq,
+--	data => PS2_data
+--	);
+--
+--Inst_ByteHEXdisplay: ByteHEXdisplay 
+--PORT MAP(
+--	ssData => ssData,
+--	clk => CLK_SYSTEM,
+--	count => counter_clk(15 downto 13),
+--	sevenseg => sevenseg,
+--	anode => anode
+--	);
+--
+--Inst_SPImaster: SPImaster 
+--PORT MAP(
+--	CLK => CLK_SYSTEM,
+--	CLKSPI => CLKSPI,
+--	RESET => reset,
+--	DATA_IN => SD_datain,
+--	WR => SD_wr,
+--	TBE => SD_status(0),
+--	DATA_OUT => SD_dataout,
+--	MOSI => MOSI,
+--	MISO => MISO,
+--	SCK => SCK,
+--	mode => SD_control(3 downto 2),
+--	MOSI_def => SD_control(1)
+--	);
+--
+--Inst_DIV: DIV 
+--PORT MAP(
+--	CLKin => CLK_SYSTEM,
+--	divide => SD_divide,
+--	CLKout => CLKSPI
+--);
+--
+--Inst_MediaAccessController: MediaAccessController 
+--PORT MAP(
+--	CLK50MHZ => CLK50MHZ,
+--	CLK100MHZ => CLK_SYSTEM,
+--	reset => reset,
+--	PHYCRS => PHYCRS,
+--	PHYRXERR => PHYRXERR,
+--	PHYRXD => PHYRXD,
+--	PHYCLK50MHZ => PHYCLK50MHZ,
+--	PHYRSTN => PHYRSTN,
+--	PHYTXEN => PHYTXEN,
+--	PHYTXD => PHYTXD,
+--	PHYINTN => PHYINTN,
+--	dataRX => MACdataRX,
+--	readyRX => MACreadyRX,
+--	read_enable => MACread_enable,
+--	Ethernet_IRQ => open,
+--	checksum_err => MACchecksum_err,
+--	dataTX => MACdataTX,
+--	weTX => MACweTX,
+--	readyTX => MACreadyTX,
+--	transmit_request => MACtransmit_request
+--	);
+--
+--Inst_SMI: SMI 
+--PORT MAP(
+--	CLK100MHz => CLK_SYSTEM,
+--	addr => SMIaddr,
+--	dataRead => SMIdataRead,
+--	dataWrite => SMIdataWrite,
+--	read_request => SMIread_request,
+--	write_request => SMIwrite_request,
+--	ready => SMIready,
+--	MDC => PHYMDC,
+--	MDIO => PHYMDIO
+--	);
 		
 end RTL;
 
