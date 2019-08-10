@@ -74,16 +74,33 @@ PORT(
 	);
 END COMPONENT;
 
-COMPONENT Logic
-PORT(
-	PortA : IN std_logic_vector(31 downto 0);
-	PortB : IN std_logic_vector(31 downto 0);
-	Control : IN std_logic_vector(2 downto 0);          
-	Output : OUT std_logic_vector(31 downto 0)
-	);
-END COMPONENT;
-
-
+--COMPONENT Logic
+--PORT(
+--	PortA : IN std_logic_vector(31 downto 0);
+--	PortB : IN std_logic_vector(31 downto 0);
+--	Control : IN std_logic_vector(2 downto 0);          
+--	Output : OUT std_logic_vector(31 downto 0)
+--	);
+--END COMPONENT;
+--
+--COMPONENT GenMux 
+--Generic (
+--	psp_w : integer;
+--	rsp_w : integer
+--	);
+--Port ( 
+--	TOS : in STD_LOGIC_VECTOR (31 downto 0);
+--	NOS : in  STD_LOGIC_VECTOR (31 downto 0);
+--	PSdata : in STD_LOGIC_VECTOR (31 downto 0);
+--	RSdata : in STD_LOGIC_VECTOR (31 downto 0);
+--	PSP : in STD_LOGIC_VECTOR (psp_w -1 downto 0);
+--	datapathThaw : in STD_LOGIC_VECTOR (31 downto 0);
+--	Data : in STD_LOGIC_VECTOR (31 downto 0);
+--    Control : in  STD_LOGIC_VECTOR (2 downto 0);
+--    Output : out  STD_LOGIC_VECTOR (31 downto 0)
+--    );
+--end COMPONENT;
+	
 component signed_mult
 	port (
 	clk : IN STD_LOGIC;
@@ -152,7 +169,10 @@ component unsigned_divider
 end component;
 
 constant dont_care : std_logic_vector(31 downto 0) := "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+constant blanklong : std_logic_vector(31 downto 0) := (others=>'0');
 constant blank : std_logic_vector(8 downto 0) := (others=>'0');
+constant one : std_logic_vector(31 downto 0) := "00000000000000000000000000000001";
+	
 signal adder_out, compare_out, genmux_out, logic_out : std_logic_vector(31 downto 0);
 signal unsigned_product, signed_product : std_logic_vector(63 downto 0);
 signal signed_quotient, signed_remainder, unsigned_quotient, unsigned_remainder : std_logic_vector(31 downto 0);
@@ -169,6 +189,9 @@ signal MEMdatain_X_r  : std_logic_vector (39 downto 0);
 signal equalzero_i, equalzero_n : std_logic;
 signal m_axis_quotient_signed, m_axis_quotient_unsigned : std_logic_vector (63 downto 0);
 
+alias sc is TOS_i(7);
+alias sw is TOS_i(15);
+	
 begin
 
 	process 
@@ -360,15 +383,54 @@ begin
 					datapathThaw(63 downto 32) when "100",
 					NOS_i 	when others;	
 					
-	with MicroControl(6 downto 4) select				-- multiplexer for TOS register
-		TOS_n <= logic_out when "001",
-					genmux_out when "010",
-					compare_out when "011",
-					signed_product(63 downto 32) 	when "100",
-					unsigned_product(63 downto 32) when "101",
-					signed_quotient when "110",
-					unsigned_quotient when "111",
-					adder_out when others;
+	with MicroControl(6 downto 0) select				-- multiplexer for TOS register
+--		TOS_n <= logic_out when "001",
+--					genmux_out when "010",
+--					compare_out when "011",
+--					signed_product(63 downto 32) 	when "100",
+--					unsigned_product(63 downto 32) when "101",
+--					signed_quotient when "110",
+--					unsigned_quotient when "111",
+--					adder_out when others;
+		TOS_n <= TOS_i when "0000000",
+					NOS_i 		when "0100000",
+					PSdataIN_i 	when "0100001",
+					RSdatain 	when "0100010",
+					blanklong(31 - psp_w downto 0) & PSP	when "0100011",
+					adder_out	when "0000010",
+					adder_out 	when "0000011",
+					adder_out when "0000001",
+					adder_out when "0000110",
+					adder_out when "0000111",
+					TOS_i(31) & TOS_i(31 downto 1)	when "0010111",
+					adder_out when "0000100",
+					adder_out when "0000101",
+					compare_out	when "0110000",
+					compare_out	when "0110001",
+					compare_out	when "0110010",
+					compare_out	when "0110011",
+					compare_out	when "0110100",
+					compare_out	when "0110101",
+					compare_out	when "0110110",
+					compare_out	when "0110111",
+					compare_out	when "0111000",
+					compare_out	when "0111001",
+					-- blanklong when "0111010",
+					TOS_i and NOS_i	when "0010000",
+					TOS_i or NOS_i	when "0010001",
+					not TOS_i	when "0010010",
+					TOS_i xor NOS_i when "0010011",
+					TOS_i(30 downto 0) & '0'	when "0010100",
+					'0' & TOS_i(31 downto 1)	when "0010101",
+					sc & sc & sc & sc & sc & sc & sc & sc & sc & sc & sc & sc & sc & sc & sc & sc & sc & sc & sc & sc & sc & sc & sc & sc & TOS_i(7 downto 0) when "0100101",
+					sw & sw & sw & sw & sw & sw & sw & sw & sw & sw & sw & sw & sw & sw & sw & sw & TOS_i(15 downto 0) when "0100110",
+					DATA when "0100111",
+					signed_product when "1000000",
+					unsigned_product when "1010000",
+					signed_quotient when "1100000",
+					unsigned_quotient when "1110000",
+					datapathThaw(31 downto 0) when "0100100",
+					blanklong when others;
 							
 	with MicroControl(6 downto 4) select				-- multiplexer for ALU output directed at NOS
 		NOS_alu <= signed_product(31 downto 0) when "100",
@@ -401,28 +463,28 @@ begin
 	Control => MicroControl(3 downto 0),
 	Output => compare_out);
 
-	Inst_GenMux: entity work.GenMux 										-- general multiplexer
-	GENERIC MAP(
-		psp_w => psp_w,
-		rsp_w => rsp_w
-		)
-	PORT MAP(
-	TOS => TOS_i,
-	NOS => NOS_i,
-	PSdata => PSdataIN_i,
-	RSdata => RSdatain,
-	PSP => PSP,
-	datapathThaw => datapathThaw(31 downto 0),
-	Data => DATA,
-	Control => MicroControl(2 downto 0),
-	Output => genmux_out);
-
-	Inst_Logic: Logic 
-	PORT MAP(
-	PortA => NOS_i,
-	PortB => TOS_i,
-	Control => MicroControl(2 downto 0),
-	Output => logic_out);
+--	Inst_GenMux: GenMux
+--	GENERIC MAP(
+--		psp_w => psp_w,
+--		rsp_w => rsp_w
+--		)
+--	PORT MAP(
+--	TOS => TOS_i,
+--	NOS => NOS_i,
+--	PSdata => PSdataIN_i,
+--	RSdata => RSdatain,
+--	PSP => PSP,
+--	datapathThaw => datapathThaw(31 downto 0),
+--	Data => DATA,
+--	Control => MicroControl(2 downto 0),
+--	Output => genmux_out);
+--
+--	Inst_Logic: Logic 
+--	PORT MAP(
+--	PortA => NOS_i,
+--	PortB => TOS_i,
+--	Control => MicroControl(2 downto 0),
+--	Output => logic_out);
 
 	inst_signed_mult : signed_mult
 	port map (
