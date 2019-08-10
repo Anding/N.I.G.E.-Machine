@@ -22,6 +22,7 @@
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
+use IEEE.STD_LOGIC_UNSIGNED.ALL;
 
 entity Comparator is
     Port ( PortA : in  STD_LOGIC_VECTOR (31 downto 0);			-- NOS
@@ -46,32 +47,52 @@ component unsignedComparitor
 	a_lt_b: OUT std_logic);
 	end component;
 
-component equalComparitor
-	port (
-	a: IN std_logic_VECTOR(31 downto 0);
-	b: IN std_logic_VECTOR(31 downto 0);
-	a_eq_b: OUT std_logic);
-	end component;
+--component equalComparitor
+--	port (
+--	a: IN std_logic_VECTOR(31 downto 0);
+--	b: IN std_logic_VECTOR(31 downto 0);
+--	a_eq_b: OUT std_logic);
+--	end component;
 
-component equalZeroComparitor
-	port (
-	a: IN std_logic_VECTOR(31 downto 0);
-	a_eqzero: OUT std_logic);
-	end component;
+--component equalZeroComparitor
+--	port (
+--	a: IN std_logic_VECTOR(31 downto 0);
+--	a_eqzero: OUT std_logic);
+--	end component;
 
 signal c : std_logic_vector (15 downto 0);
 signal output_i : std_logic;
 
 begin
 
-inst_equalComparitor : equalComparitor
-		port map (
-			a => PortA,
-			b => PortB,
-			a_eq_b => c(0));
+	process (PortA, PortB)
+	begin
+		if PortA = PortB then
+			c(0) <= '1';
+		else
+			c(0) <= '0';
+		end if;
+			
+		if PortB = 0 then
+			c(6) <= '1';
+		else
+			c(6) <= '0';
+		end if;
+	end process;
+
+--inst_equalComparitor : equalComparitor
+--		port map (
+--			a => PortA,
+--			b => PortB,
+--			a_eq_b => c(0));
+--inst_equalZeroComparitor : equalZeroComparitor
+--		port map (
+--			a => PortB,
+--			a_eqzero => c(6));
 			
 c(1) <= not c(0);
-
+c(7) <= not c(6);
+	
 inst_signedComparitor : signedComparitor
 		port map (
 			a => PortA,
@@ -88,12 +109,6 @@ inst_unsignedComparitor : unsignedComparitor
 
 c(5) <= not (c(0) or c(4));
 
-inst_equalZeroComparitor : equalZeroComparitor
-		port map (
-			a => PortB,
-			a_eqzero => c(6));
-
-c(7) <= not c(6);
 
 c(8) <= PortB(31);
 
