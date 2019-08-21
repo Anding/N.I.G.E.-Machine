@@ -6,6 +6,7 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.STD_LOGIC_UNSIGNED.ALL;
 use IEEE.STD_LOGIC_ARITH.ALL;
+use work.Common.all;
 
 entity ControlUnit is
     Port ( rst : in STD_LOGIC;												-- reset
@@ -149,6 +150,10 @@ signal s_axi_ar_state, s_axi_aw_state, s_axi_w_state : handshake_type;
 signal s_axi_ar_state_n, s_axi_aw_state_n, s_axi_w_state_n : handshake_type;
 signal s_axi_rvalid_r : STD_LOGIC;
 
+-- Decoder control signals
+signal ESP_control, ESP_control_r : ESP_control_type;
+signal SSP_control, SSP_control_r : SSP_control_type;
+
 alias signbit is MEMdatain_X(29);
 
 COMPONENT Microcode_ROM
@@ -158,6 +163,13 @@ COMPONENT Microcode_ROM
     douta : OUT STD_LOGIC_VECTOR(22 DOWNTO 0)
   );
 END COMPONENT;
+	
+COMPONENT Decoder
+	port (	opcode : in std_logic_vector(6 downto 0);
+			ESP_control : out ESP_control_type;
+			SSP_control : out SSP_control_type
+	);
+END COMPONENT;
 
 begin
 
@@ -166,6 +178,13 @@ begin
 	 clka => clk,
 	 addra => ucode,
 	 douta => MicroControl
+	);
+	
+	inst_Decoder : Decoder
+	PORT MAP (
+		opcode => ucode,
+		ESP_control => ESP_control,
+		SSP_control => SSP_control
 	);
 
 	opcode <= "0" & MEMdatain_X(29 downto 24); 
@@ -218,6 +237,19 @@ begin
 			state <= skip1;	-- skip2
 		end if;
 	end process;
+	
+	-- obtain registered decoder outputs
+	process
+	begin
+		wait until rising_edge(clk);
+		if rst = '0' then
+			ESP_control_r <= ESP_control;
+			SSP_control_r <= SSP_control;
+		else
+			ESP_control_r <= no_change;
+			SSP_control_r <= no_change;		
+		end if;
+	end process;	
 			
 	process																			
 	begin																		-- sequential (registered) section of state machine
