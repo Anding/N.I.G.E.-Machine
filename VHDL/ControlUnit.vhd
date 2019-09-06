@@ -166,12 +166,12 @@ COMPONENT Microcode_ROM
   );
 END COMPONENT;
 	
-COMPONENT Decoder
-	port (	opcode : in std_logic_vector(6 downto 0);
-			ESP_control : out ESP_control_type;
-			SSP_control : out SSP_control_type
-	);
-END COMPONENT;
+--COMPONENT Decoder
+--	port (	opcode : in std_logic_vector(6 downto 0);
+--			ESP_control : out ESP_control_type;
+--			SSP_control : out SSP_control_type
+--	);
+--END COMPONENT;
 
 begin
 
@@ -182,7 +182,7 @@ begin
 	 douta => MicroControl
 	);
 	
-	inst_Decoder : Decoder
+	inst_Decoder : entity xil_defaultlib.Decoder
 	PORT MAP (
 		opcode => ucode,
 		ESP_control => ESP_control,

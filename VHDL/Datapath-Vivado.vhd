@@ -54,26 +54,26 @@ end Datapath;
 
 architecture RTL of Datapath is
 
-COMPONENT Adder
-PORT(
-	rst : IN std_logic;
-	clk : IN std_logic;
-	PortA : IN std_logic_vector(31 downto 0);
-	PortB : IN std_logic_vector(31 downto 0);
-	ControlA : IN std_logic_vector(2 downto 0);
-	ControlB : IN std_logic_vector(2 downto 0);          
-	Output : OUT std_logic_vector(31 downto 0)
-	);
-END COMPONENT;
+--COMPONENT Adder
+--PORT(
+--	rst : IN std_logic;
+--	clk : IN std_logic;
+--	PortA : IN std_logic_vector(31 downto 0);
+--	PortB : IN std_logic_vector(31 downto 0);
+--	ControlA : IN std_logic_vector(2 downto 0);
+--	ControlB : IN std_logic_vector(2 downto 0);          
+--	Output : OUT std_logic_vector(31 downto 0)
+--	);
+--END COMPONENT;
 
-COMPONENT Comparator
-PORT(
-	PortA : IN std_logic_vector(31 downto 0);
-	PortB : IN std_logic_vector(31 downto 0);
-	Control : IN std_logic_vector(3 downto 0);          
-	Output : OUT std_logic_vector(31 downto 0)
-	);
-END COMPONENT;
+--COMPONENT Comparator
+--PORT(
+--	PortA : IN std_logic_vector(31 downto 0);
+--	PortB : IN std_logic_vector(31 downto 0);
+--	Control : IN std_logic_vector(3 downto 0);          
+--	Output : OUT std_logic_vector(31 downto 0)
+--	);
+--END COMPONENT;
 
 --COMPONENT Logic
 --PORT(
@@ -447,7 +447,7 @@ begin
 	equalzero_r <= equalzero_i; 	
 	chip_RAM <= '1' when TOS_n(23 downto 18) = 0 else '0';		-- flag used to identify SRAM vs. PSDRAM memory access
 
-	Inst_Adder: Adder 
+	Inst_Adder: entity xil_defaultlib.Adder 
 	PORT MAP(
 	rst => rst,
 	clk => clk,
@@ -457,7 +457,7 @@ begin
 	ControlB => MicroControl(6 downto 4),
 	Output => adder_out);
 
-	Inst_Comparator: Comparator 
+	Inst_Comparator: entity xil_defaultlib.Comparator 
 	PORT MAP(
 	PortA => NOS_i,
 	PortB => TOS_i,

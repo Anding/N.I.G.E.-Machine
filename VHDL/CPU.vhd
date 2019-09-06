@@ -106,7 +106,7 @@ begin
 	MEM_WRQ_X <= MEM_WRQ_X_i;
 	VM <= VM_i;
 
-	Inst_Datapath: entity work.Datapath 
+	Inst_Datapath: entity xil_defaultlib.Datapath 
 	
 	GENERIC MAP(
 		vmp_w => vmp_w,
@@ -154,7 +154,7 @@ begin
 		datapaththaw => datapaththaw
 	);
 	
-	Inst_ControlUnit: entity work.ControlUnit 
+	Inst_ControlUnit: entity xil_defaultlib.ControlUnit 
 	
 	PORT MAP(
 		rst => rst,
