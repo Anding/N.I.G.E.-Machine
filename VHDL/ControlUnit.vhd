@@ -3,10 +3,12 @@
 -- Created 22 May 2011
 
 library IEEE;
+library xil_defaultlib;
+
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.STD_LOGIC_UNSIGNED.ALL;
 use IEEE.STD_LOGIC_ARITH.ALL;
-use work.Common.all;
+use xil_defaultlib.Common.all;
 
 entity ControlUnit is
     Port ( rst : in STD_LOGIC;												-- reset

@@ -3,6 +3,8 @@
 -- Created 11 June 2011
 
 library IEEE;
+library xil_defaultlib;
+
 use IEEE.STD_LOGIC_1164.ALL;
 
 entity CPU is

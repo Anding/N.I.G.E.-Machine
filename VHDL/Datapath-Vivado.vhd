@@ -3,6 +3,7 @@
 -- Created 1 May 2011
 
 library IEEE;
+library xil_defaultlib;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.STD_LOGIC_UNSIGNED.ALL;
 
