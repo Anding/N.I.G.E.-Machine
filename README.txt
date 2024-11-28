@@ -2,7 +2,17 @@
 The N.I.G.E. Machine
 ====================
 
-The N.I.G.E. Machine is a user-expandable micro-computer system that runs on an FPGA development board. It is designed specifically for the rapid prototyping of experimental scientific hardware or other devices. The key components of the system include a stack-based softcore CPU optimized for embedded control, a FORTH software environment, and a flexible digital logic layer that interfaces the micro-computer components with the external environment. The system is currently hosted on the Digilent Nexys 4 and Digilent Nexys 4 DDR development boards.
+The N.I.G.E. Machine is a user-expandable micro-computer system that runs on an FPGA development board. It is designed specifically for the rapid prototyping of experimental scientific hardware or other devices. The key components of the system include a stack-based softcore CPU optimized for embedded control, a FORTH software environment, and a flexible digital logic layer that interfaces the micro-computer components with the external environment. 
+
+Current development
+===================
+
+The N.I.G.E. Machince runs on Digilent Nexys 4 and Nexys 4DDR development boards but I am currently porting to the Digilint cmod-A7 and will continue deveopment on that platform.  The Nexys boards have been an excellent platform for development but are an unlikely choice for a real-world microcontroller project.  The cmod-A7 has neither VGA nor HDMI output, but display technology has developed considerably since the inception of the project.  Smart displays with embedded IC's, communicating over a serial interface are better suited to micro-computer project like this one.
+
+See Next_steps.md for progress on the port to the cmod-A7.
+
+Other documentation
+===================
 
 Short video introductions: 
 https://www.youtube.com/channel/UCz_LqPfKT0r2rEID7Av-Chw
@@ -16,7 +26,7 @@ http://www.complang.tuwien.ac.at/anton/euroforth/ef15/papers/
 Copyright and license
 =====================
 
-The N.I.G.E machine, its design and its source code are Copyright (C) 2012-2016 by Andrew Read and dual licensed.
+The N.I.G.E machine, its design and its source code are Copyright (C) 2012-2024 by Andrew Read and dual licensed.
     
 (1) For commercial or proprietary use you must obtain a commercial license agreement with Andrew Read (andrew81244@outlook.com)
     
@@ -65,7 +75,7 @@ Suggested experience
 Hardware
 --------
 
-The system currently runs on a Digilent Nexys 4 and Nexys 4 DDR development boards.  Prior versions (available in this repository) are available for the Nexys 2, 1200k gates and 500k gate boards - please see below.  
+The system currently runs on a Digilent Nexys 4 and Nexys 4 DDR development boards (porting to the cmod-A7).  Prior versions (available in this repository) are available for the Nexys 2, 1200k gates and 500k gate boards.
 
 
 Software
@@ -73,17 +83,12 @@ Software
 
 The required software for using this project is available from the internet at no charge (under the respective license agreements of the providers):
 
-* Xilinx ISE or Vidado is required for synthesizing the FPGA configuration files
+* Xilinx Vidado is required for synthesizing the FPGA configuration files
 
 * The latest version of Digilent Adept is required for downloading the design files to the Nexys 2 board.  It is not necessary for the Nexys 4 or Nexys 4 DDR boards.
 <http://www.digilentinc.com/Products/Detail.cfm?NavPath=2%2C66%2C828&Prod=ADEPT2>
 
 Other software packages are not required but may be helpful for development work:
-
-* Programmers Notepad and FORTH files add-on. 
-<http://www.pnotepad.org/>
-<http://www.pnotepad.org/add-ons/>
-Set Tools/Options/General/Defaults "Tab Width" to 7
 
 * VFX Forth from MicroProcessor Engineering
 <http://www.mpeforth.com/>
@@ -100,8 +105,8 @@ v2.0 is applicable to the Nexys2 board (1200K gate).  It represents the version 
 v1.0 is the original version that was presented at EuroFORTH 2012
 
 
-Possible next steps
-===================
+Invitations
+===========
 
 * It is very much hoped that the N.I.G.E. Machine will find uses in its intended application of supporting the prototyping and use of experimental scientific hardware.  If this applies to you, your initiative and contact would be warmly welcomed.  In fact it may be possible to work together to configure the N.I.G.E. Machine for your intended application.
 
