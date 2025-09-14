@@ -26,7 +26,7 @@ end RAM_for_Testbench;
 
 architecture Behavioral of RAM_for_Testbench is
 	type memory is array (0 to 8191) of std_logic_vector(31 downto 0);	-- 32K bytes
-	file f : text open read_mode is "E:\N.I.G.E.-Machine\System\sram.txt";	
+	file f : text open read_mode is "E:\coding\N.I.G.E.-Machine\System\sram.txt";	
 	signal sysRAM : memory := (others=>X"00000000");
 	signal addressA_i, addressB_i : integer;
 	signal CE_A, CE_B : std_logic;
