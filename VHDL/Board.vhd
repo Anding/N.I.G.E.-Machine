@@ -85,11 +85,11 @@ signal irv : std_logic_vector(3 downto 0);
 signal irq_mask : std_logic_vector(15 downto 1);
 signal PSdatain :  std_logic_vector(31 downto 0);
 signal RSdatain :  std_logic_vector(31 downto 0);
-signal MEMdatain_Xi :  std_logic_vector(31 downto 0);
+signal MEMdatain_Xi :  std_logic_vector(39 downto 0);
 signal MEMdata_Char :  std_logic_vector(15 downto 0);
 signal MEMdata_Color :  std_logic_vector(15 downto 0);
 signal MEMdata_Pstack, MEMdata_Rstack, MEMdata_Reg, MEMdata_stack_access : std_logic_vector(31 downto 0);   
-signal MEMdata_User :  std_logic_vector(31 downto 0);      
+signal MEMdata_User :  std_logic_vector(39 downto 0);      
 signal PSaddr :  std_logic_vector(vmp_w + psp_w -1 downto 0);
 signal PSdataout :  std_logic_vector(31 downto 0);
 signal PSw :  std_logic_vector(0 to 0);
@@ -155,7 +155,7 @@ signal web_userram : std_logic_vector(3 downto 0);
 signal ena_userram, enb_userram : std_logic;
 signal addra_userram_all : std_logic_vector(31 downto 2);
 signal addrb_userram_all : std_logic_vector(31 downto 2);
-signal MEMdata_Sys, MEMdata_Sys_plus : std_logic_vector(31 downto 0);
+signal MEMdata_Sys : std_logic_vector(39 downto 0);
 signal MEMdata_Sys_quick : std_logic_vector(31 downto 0);
 signal MEMsize_X, MEMsize_Xp : std_logic_vector(1 downto 0);
 signal ram_en : std_logic;
@@ -190,7 +190,7 @@ signal t_axi_rlast : std_logic;
 signal t_axi_rvalid : std_logic;
 signal s_aresetn : std_logic;
 signal VGA_columns : std_logic_vector(7 downto 0);
-signal FetchNextRow : std_logic;
+signal FetchNextRow, FetchFirstRow : std_logic;
 signal clk_system : std_logic;
 signal clk_VGA : std_logic;
 signal clk_MEM : std_logic;
@@ -214,6 +214,8 @@ signal charHeight: STD_LOGIC_VECTOR (3 downto 0);
 signal charWidth: STD_LOGIC_VECTOR (3 downto 0);	
 signal VGArows : STD_LOGIC_VECTOR (7 downto 0);					  
 signal VGAcols : STD_LOGIC_VECTOR (7 downto 0);
+signal Ha, Hb, Hc, Hd : std_logic_vector(11 downto 0);
+signal Va, Vb, Vc, Vd : std_logic_vector(11 downto 0);
 signal MACdataRX, MACdataTX : STD_LOGIC_VECTOR(7 DOWNTO 0);
 signal MACreadyRX, MACreadyTX, MACread_enable, MACchecksum_err, MACweTX, MACtransmit_request  : STD_LOGIC;
 signal CLK50MHZ : STD_LOGIC;
@@ -223,6 +225,11 @@ signal SMIread_request :  std_logic;
 signal SMIwrite_request :  std_logic;       
 signal SMIdataRead :  std_logic_vector(15 downto 0);
 signal SMIready :  std_logic;
+signal TXTbank : std_logic;
+signal TXTwea : STD_LOGIC_VECTOR(0 DOWNTO 0);
+signal TXTaddra, TXTaddrb : STD_LOGIC_VECTOR(8 DOWNTO 0);
+signal TXTbuffer_addr : STD_LOGIC_VECTOR(7 DOWNTO 0);
+
 
 
 component CLOCKMANAGER
@@ -314,21 +321,21 @@ END COMPONENT;
 
 COMPONENT TEXTbuffer
 PORT(
-	clk_MEM : IN std_logic;
-	clk_VGA : IN std_logic;
-	VGAcols : IN std_logic_vector(7 downto 0);
-	VBlank : IN std_logic;
-	FetchNextRow : IN std_logic;
-	txt_zero : IN std_logic_vector(23 downto 0);
-	ADDR_TEXT : IN std_logic_vector(7 downto 0);
-	t_axi_arready : IN std_logic;
-	t_axi_rdata : IN std_logic_vector(15 downto 0);
-	t_axi_rlast : IN std_logic;
-	t_axi_rvalid : IN std_logic;          
-	DATA_TEXT : OUT std_logic_vector(15 downto 0);
-	t_axi_araddr : OUT std_logic_vector(31 downto 0);
-	t_axi_arlen : OUT std_logic_vector(7 downto 0);
-	t_axi_arvalid : OUT std_logic
+			reset : IN std_logic;
+			clk_MEM : IN std_logic;  
+			VGAcols : IN STD_LOGIC_VECTOR (7 downto 0);					-- number of complete character columns displayed on the screen											-- Vertical Blank indicator
+			FetchFirstRow : IN std_logic;
+			FetchNextRow : IN std_logic;										-- request that the next row of character data be fetched from memory
+			txt_zero : IN std_logic_vector(23 downto 0);					-- base address of the screen buffer in PSDRAM
+			t_axi_araddr : OUT  std_logic_vector(31 downto 0);
+			t_axi_arlen : OUT  std_logic_vector(7 downto 0);			-- Burst length = value + 1.  Set directly from VGA_columns
+			t_axi_arvalid : OUT  std_logic;
+			t_axi_arready : IN  std_logic;
+			t_axi_rlast : IN  std_logic;										-- Set high on last data item
+			t_axi_rvalid : IN  std_logic;
+			bank : OUT std_logic;
+			buffer_addr : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
+			wea : OUT STD_LOGIC_VECTOR(0 DOWNTO 0)
 	);
 END COMPONENT;
 
@@ -343,8 +350,8 @@ PORT(
 	DATA_in : IN std_logic_vector(31 downto 0);
 	douta : IN std_logic_vector(31 downto 0);
 	doutb : IN std_logic_vector(31 downto 0);          
-	DATA_out : OUT std_logic_vector(31 downto 0);
-	DATA_out_quick : OUT std_logic_vector(31 downto 0);
+	--DATA_out : OUT std_logic_vector(31 downto 0);
+	DATA_out_quick : OUT std_logic_vector(39 downto 0);
 	wea : OUT std_logic_vector(3 downto 0);
 	addra : OUT std_logic_vector(31 downto 2);
 	dina : OUT std_logic_vector(31 downto 0);
@@ -449,6 +456,7 @@ COMPONENT Estack_RAM
   );
 END COMPONENT;
 
+
 COMPONENT HW_Registers
 PORT(
 	clk : IN std_logic;
@@ -485,6 +493,8 @@ PORT(
 	charWidth : OUT std_logic_vector(3 downto 0);
 	VGArows : OUT std_logic_vector(7 downto 0);
 	VGAcols : OUT std_logic_vector(7 downto 0);
+	Ha, Hb, Hc, Hd : OUT std_logic_vector(11 downto 0);
+	Va, Vb, Vc, Vd : OUT std_logic_vector(11 downto 0);
 	irq_mask : OUT std_logic_vector(15 downto 1);
 	RS232_tx_S0 : OUT std_logic_vector(7 downto 0);
 	RS232_wr_S0 : OUT std_logic;
@@ -520,8 +530,8 @@ PORT(
 	RSdatain : IN std_logic_vector(31 downto 0);
 	SSdatain : IN std_logic_vector(351 downto 320);
 	ESdatain : IN std_logic_vector(303 downto 256);
-	MEMdatain_X : IN std_logic_vector(31 downto 0);
-	MEMdatain_X_quick : IN std_logic_vector(31 downto 0);
+	--MEMdatain_X : IN std_logic_vector(31 downto 0);
+	MEMdatain_X_quick : IN std_logic_vector(39 downto 0);
 	s_axi_awready : IN std_logic;
 	s_axi_wready : IN std_logic;
 	s_axi_arready : IN std_logic;
@@ -545,6 +555,7 @@ PORT(
 	MEMdataout_X : OUT std_logic_vector(31 downto 0);
 	MEM_WRQ_X : OUT std_logic;
 	MEMsize_X : OUT std_logic_vector(1 downto 0);
+	Size : IN std_logic_vector(1 downto 0);
 	s_axi_awaddr : OUT std_logic_vector(31 downto 0);
 	s_axi_awvalid : OUT std_logic;
 	s_axi_wdata : OUT std_logic_vector(31 downto 0);
@@ -595,12 +606,11 @@ PORT(
 	interlace : IN std_logic_vector(3 downto 0);
 	charHeight : IN std_logic_vector(3 downto 0);
 	charWidth : IN std_logic_vector(3 downto 0);
-	VGArows : IN std_logic_vector(7 downto 0);
-	VGAcols : IN std_logic_vector(7 downto 0);
+	Ha, Hb, Hc, Hd : IN std_logic_vector(11 downto 0);
+	Va, Vb, Vc, Vd : IN std_logic_vector(11 downto 0);
 	data_Text : IN std_logic_vector(15 downto 0);
 	data_Char : IN std_logic_vector(15 downto 0);
-	data_Color : IN std_logic_vector(15 downto 0);
-	SW : IN std_logic_vector(15 downto 0);          
+	data_Color : IN std_logic_vector(15 downto 0);        
 	addr_Text : OUT std_logic_vector(7 downto 0);
 	addr_Char : OUT std_logic_vector(11 downto 0);
 	addr_Color : OUT std_logic_vector(7 downto 0);
@@ -608,7 +618,8 @@ PORT(
 	VSync : OUT std_logic;
 	RGB : OUT std_logic_vector(11 downto 0);
 	VBlank : OUT std_logic;
-	FetchNextRow : OUT std_logic
+	FetchNextRow : OUT std_logic;
+	FetchFirstRow : OUT std_logic
 	);
 END COMPONENT;
 
@@ -840,13 +851,13 @@ begin
 	 Sys_EN <= '1' 		when bank_n = Sys else '0'; 
 	 
 	 with bank select										-- one cycle delayed to switch output
-		MEMdatain_Xi <=	"0000000000000000" & MEMdata_Char	when Char,
-					"0000000000000000" & MEMdata_Color when Color,
-					MEMdata_Reg 				when Reg,
-					Memdata_stack_access 		when stacks,
-					MEMdata_User 				when user,
-					MEMdata_Vir 				when vir,
-					MEMdata_Sys 				when others;
+		MEMdatain_Xi <=	"0000000000000000" & MEMdata_Char 	& "00000000"	when Char,			-- & "00000000" redundant extra byte to align with MEMdata_User's "plus one" byte
+						"0000000000000000" & MEMdata_Color	& "00000000"			when Color,
+						MEMdata_Reg 				& "00000000"		when Reg,
+						Memdata_stack_access 	& "00000000"  		when stacks,
+						MEMdata_User 										when user,
+						MEMdata_Vir 				& "00000000"		when vir,
+						MEMdata_Sys 										when others;
 					
 					
 	MEM_WRQ_XX(0) <= MEM_WRQ_X;				
@@ -960,19 +971,19 @@ PORT MAP(
 
 Inst_TEXTbuffer: TEXTbuffer 
 PORT MAP(
+	reset => reset,
 	clk_MEM => clk_MEM,
-	clk_VGA => clk_VGA,
 	VGAcols => VGAcols,
-	VBlank => VBlank,
 	FetchNextRow => FetchNextRow,
+	FetchFirstRow => FetchFirstRow,
 	txt_zero => txt_zero,
-	ADDR_TEXT => ADDR_TEXT,
-	DATA_TEXT => DATA_TEXT,
+	bank => TXTbank,
+	wea => TXTwea,
+	buffer_addr => TXTbuffer_addr,
 	t_axi_araddr => t_axi_araddr,
 	t_axi_arlen => t_axi_arlen,
 	t_axi_arvalid => t_axi_arvalid,
 	t_axi_arready => t_axi_arready,
-	t_axi_rdata => t_axi_rdata,
 	t_axi_rlast => t_axi_rlast,
 	t_axi_rvalid => t_axi_rvalid
 	);
@@ -986,8 +997,8 @@ PORT MAP(
 	size => MEMsize_X,
 	WE => MEM_WRQ_XX,
 	DATA_in => MEMdataout_X,
-	DATA_out => MEMdata_Sys,
-	DATA_out_quick => MEMdata_Sys_quick,
+	--DATA_out => MEMdata_Sys,
+	DATA_out_quick => MEMdata_Sys,
 	wea => wea_sysram_s,
 	addra => addra_sysram_s,
 	dina => dina_sysram_s,
@@ -1009,8 +1020,8 @@ PORT MAP(
 	size => MEMsize_X,
 	WE => MEM_WRQ_XX,
 	DATA_in => MEMdataout_X,
-	DATA_out => MEMdata_User,
-	DATA_out_quick => open,
+	--DATA_out => MEMdata_User,
+	DATA_out_quick => MEMdata_User,
 	wea => wea_userram,
 	addra => addra_userram,
 	dina => dina_userram,
@@ -1122,6 +1133,8 @@ PORT MAP(
 	charWidth => charWidth, 
 	VGArows => 	VGArows,	  
 	VGAcols => VGAcols,
+	Ha => Ha, Hb => Hb, Hc => Hc, Hd => Hd,
+	Va => Va, Vb => Vb, Vc => Vc, Vd => Vd,	
 	en => reg_en,
 	addr => MEMaddr(10 downto 0),
 	datain => MEMdataout_X,
@@ -1192,10 +1205,11 @@ PORT MAP(
 	ESdataout => ESdataout(303 downto 256),
 	ESw => ESw(37 downto 32),
 	MEMaddr => MEMaddr,
-	MEMdatain_X => MEMdatain_Xi,
-	MEMdatain_X_quick => MEMdata_Sys_quick,
+	--MEMdatain_X => MEMdatain_Xi,
+	MEMdatain_X_quick => MEMdatain_Xi,
 	MEMdataout_X => MEMdataout_X,
 	MEMsize_X => MEMsize_X,
+	size => size,
 	MEM_WRQ_X => MEM_WRQ_X,
 	s_axi_awaddr => s_axi_awaddr,
 	s_axi_awvalid => s_axi_awvalid,
@@ -1246,7 +1260,7 @@ Inst_VGAController: VGA
 PORT MAP(
 	CLK_VGA => CLK_VGA,
 	reset => reset,
-	mode	=> mode,
+	mode => mode,
 	background => background,
 	data_Text => DATA_TEXT,
 	addr_Text => ADDR_TEXT,
@@ -1261,10 +1275,10 @@ PORT MAP(
 	interlace => interlace,
 	charHeight => charHeight,
 	charWidth => charWidth, 
-	VGArows => 	VGArows,	  
-	VGAcols => VGAcols,
+	Ha => Ha, Hb => Hb, Hc => Hc, Hd => Hd,
+	Va => Va, Vb => Vb, Vc => Vc, Vd => Vd,	
 	FetchNextRow => FetchNextRow,
-	SW => SW
+	FetchFirstRow => FetchFirstRow
 	);	
 
 Inst_Interrupt: Interrupt 

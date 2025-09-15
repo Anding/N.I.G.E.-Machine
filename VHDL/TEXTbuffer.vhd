@@ -3,7 +3,7 @@ use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.STD_LOGIC_UNSIGNED.ALL;
 use IEEE.STD_LOGIC_ARITH.ALL;
 
-entity TEXTbufferController is port
+entity TEXTbuffer is port
 			(
 			reset : IN std_logic;
 			clk_MEM : IN std_logic;
@@ -33,9 +33,9 @@ entity TEXTbufferController is port
 			wea : OUT STD_LOGIC_VECTOR(0 DOWNTO 0)
 --			t_axi_rready : OUT  std_logic
 			);
-end TEXTbufferController;
+end TEXTbuffer;
 
-architecture Behavioral of TEXTbufferController is
+architecture Behavioral of TEXTbuffer is
 
 type state_T is (pause, first_fill, refill, switch_bank);
 signal state, next_state : state_T;
