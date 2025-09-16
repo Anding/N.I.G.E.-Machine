@@ -229,7 +229,7 @@ signal TXTbank : std_logic;
 signal TXTwea : STD_LOGIC_VECTOR(0 DOWNTO 0);
 signal TXTaddra, TXTaddrb : STD_LOGIC_VECTOR(8 DOWNTO 0);
 signal TXTbuffer_addr : STD_LOGIC_VECTOR(7 DOWNTO 0);
-
+signal size : STD_LOGIC_VECTOR(1 downto 0);
 
 
 component CLOCKMANAGER
@@ -245,6 +245,7 @@ port (	-- Clock in ports
 	CLK_OUT7	: out	  std_logic
  );
 end component;
+
 
 COMPONENT SYS_RAM
   PORT (
@@ -859,6 +860,11 @@ begin
 						MEMdata_Vir 				& "00000000"		when vir,
 						MEMdata_Sys 										when others;
 					
+
+	with bank select					-- force size to "11" for all register based memory as they are actually little-endian
+		size <= MEMsize_X when sys,
+				MEMsize_X when user,
+				"11" when others;
 					
 	MEM_WRQ_XX(0) <= MEM_WRQ_X;				
 	douta_sysram_i <= douta_sysram;
