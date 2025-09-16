@@ -1,10 +1,11 @@
 # Next steps
 
 ### Verify last known good operation
-1. Program the Nexys4 (SDRAM version) with Vivado 2018.1
-2. Use VGA (video capture card) and attached keyboard to confirm operation in microcontroller mode
+1. Program the Nexys4 (SDRAM version) with Vivado 2024.2
+2. Use VGA monitor and attached keyboard to confirm operation in microcontroller mode
 3. Confirm inclusion and operation of Forth system software from an SD-card
 4. Confirm operation of the secondary terminal via UART over USB
+   - If not operational, swap the primary and secondary terminal in the code
 
 ### Build a testbench file on SD-card to provide simple functionality testing 
 1. Base on simple-tester - test results output to the terminal
