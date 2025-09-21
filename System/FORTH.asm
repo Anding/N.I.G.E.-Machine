@@ -273,6 +273,7 @@ START.CF	jsl	ESTACKINIT.CF
 		jsl	RUN.CF
 		drop
 		drop
+		jsl	MULTI.CF
 ; Power-on message and enter interpret loop
 		jsl	POMESSAGE
 		jsl	QUIT.CF	; QUIT will not return but JSL is more efficient than #.W JMP
