@@ -606,7 +606,7 @@ set_property IOSTANDARD LVCMOS33 [get_ports PHYINTN]
 ##Bank = 14, Pin name = IO_L12P_T1_MRCC_14,					Sch name = CRAM_DQ15
 #set_property PACKAGE_PIN P17 [get_ports {DATA_SDRAM[15]}]
 #	set_property IOSTANDARD LVCMOS33 [get_ports {DATA_SDRAM[15]}]
-
+#
 ##Bank = 15, Pin name = IO_L23N_T3_FWE_B_15,					Sch name = CRAM_A0
 #set_property PACKAGE_PIN J18 [get_ports {ADDR_SDRAM[1]}]
 #	set_property IOSTANDARD LVCMOS33 [get_ports {ADDR_SDRAM[1]}]
