@@ -267,15 +267,12 @@ START.CF	jsl	ESTACKINIT.CF
 		fetch.b
 		#.w	INK
 		store.b
-; activate a second terminal in another task that will comminucate by RS232
-		zero
-		#.l	TERM2.CF
-		jsl	RUN.CF
-		drop
-		drop
-		jsl	MULTI.CF
-; Power-on message and enter interpret loop
+; Power-on message by VGA
 		jsl	POMESSAGE
+; Power-on message on the serial port and enter interpret loop		
+		jsl	>remote.cf
+		jsl	<remote.cf		
+		jsl	POMESSAGE			
 		jsl	QUIT.CF	; QUIT will not return but JSL is more efficient than #.W JMP
 ;
 POMESSAGE	#.w	START.0	
@@ -299,12 +296,6 @@ START.0	dc.s	******************************
 START.1	dc.s	bytes free
 		dc.b	EOL EOL
 ;
-; Second terminal running over RS232
-TERM2.CF	jsl	SZERO.CF
-		jsl	>remote.cf
-		jsl	<remote.cf
-		jsl	POMESSAGE
-		jsl	QUIT.CF
 ;
 ;
 ; ----------------------------------------------------------------------------------------------
