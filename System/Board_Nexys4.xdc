@@ -285,11 +285,11 @@ set_property PACKAGE_PIN U11 [get_ports {JB[7]}]
 #set_property PACKAGE_PIN E6 [get_ports {JC[5]}]					
 	#set_property IOSTANDARD LVCMOS33 [get_ports {JC[5]}]
 #Bank = 35, Pin name = IO_L22N_T3_35,						Sch name = JC9
-set_property PACKAGE_PIN J2 [get_ports {RXD_S0}]					
-	set_property IOSTANDARD LVCMOS33 [get_ports {RXD_S0}]
-#Bank = 35, Pin name = IO_L19P_T3_35,						Sch name = JC10
-set_property PACKAGE_PIN G6 [get_ports {TXD_S0}]					
-	set_property IOSTANDARD LVCMOS33 [get_ports {TXD_S0}]
+#set_property PACKAGE_PIN J2 [get_ports {RXD_S0}]					
+#	set_property IOSTANDARD LVCMOS33 [get_ports {RXD_S0}]
+##Bank = 35, Pin name = IO_L19P_T3_35,						Sch name = JC10
+#set_property PACKAGE_PIN G6 [get_ports {TXD_S0}]					
+#	set_property IOSTANDARD LVCMOS33 [get_ports {TXD_S0}]
  
 
  
@@ -349,49 +349,49 @@ set_property PACKAGE_PIN G6 [get_ports {TXD_S0}]
 
 
 
-#VGA Connector
-#Bank = 35, Pin name = IO_L8N_T1_AD14N_35,					Sch name = VGA_R0
-set_property PACKAGE_PIN A3 [get_ports {RGB[8]}]				
-	set_property IOSTANDARD LVCMOS33 [get_ports {RGB[8]}]
-#Bank = 35, Pin name = IO_L7N_T1_AD6N_35,					Sch name = VGA_R1
-set_property PACKAGE_PIN B4 [get_ports {RGB[9]}]				
-	set_property IOSTANDARD LVCMOS33 [get_ports {RGB[9]}]
-#Bank = 35, Pin name = IO_L1N_T0_AD4N_35,					Sch name = VGA_R2
-set_property PACKAGE_PIN C5 [get_ports {RGB[10]}]				
-	set_property IOSTANDARD LVCMOS33 [get_ports {RGB[10]}]
-#Bank = 35, Pin name = IO_L8P_T1_AD14P_35,					Sch name = VGA_R3
-set_property PACKAGE_PIN A4 [get_ports {RGB[11]}]				
-	set_property IOSTANDARD LVCMOS33 [get_ports {RGB[11]}]
-#Bank = 35, Pin name = IO_L2P_T0_AD12P_35,					Sch name = VGA_B0
-set_property PACKAGE_PIN B7 [get_ports {RGB[0]}]				
-	set_property IOSTANDARD LVCMOS33 [get_ports {RGB[0]}]
-#Bank = 35, Pin name = IO_L4N_T0_35,						Sch name = VGA_B1
-set_property PACKAGE_PIN C7 [get_ports {RGB[1]}]				
-	set_property IOSTANDARD LVCMOS33 [get_ports {RGB[1]}]
-#Bank = 35, Pin name = IO_L6N_T0_VREF_35,					Sch name = VGA_B2
-set_property PACKAGE_PIN D7 [get_ports {RGB[2]}]				
-	set_property IOSTANDARD LVCMOS33 [get_ports {RGB[2]}]
-#Bank = 35, Pin name = IO_L4P_T0_35,						Sch name = VGA_B3
-set_property PACKAGE_PIN D8 [get_ports {RGB[3]}]				
-	set_property IOSTANDARD LVCMOS33 [get_ports {RGB[3]}]
-#Bank = 35, Pin name = IO_L1P_T0_AD4P_35,					Sch name = VGA_G0
-set_property PACKAGE_PIN C6 [get_ports {RGB[4]}]				
-	set_property IOSTANDARD LVCMOS33 [get_ports {RGB[4]}]
-#Bank = 35, Pin name = IO_L3N_T0_DQS_AD5N_35,				Sch name = VGA_G1
-set_property PACKAGE_PIN A5 [get_ports {RGB[5]}]				
-	set_property IOSTANDARD LVCMOS33 [get_ports {RGB[5]}]
-#Bank = 35, Pin name = IO_L2N_T0_AD12N_35,					Sch name = VGA_G2
-set_property PACKAGE_PIN B6 [get_ports {RGB[6]}]				
-	set_property IOSTANDARD LVCMOS33 [get_ports {RGB[6]}]
-#Bank = 35, Pin name = IO_L3P_T0_DQS_AD5P_35,				Sch name = VGA_G3
-set_property PACKAGE_PIN A6 [get_ports {RGB[7]}]				
-	set_property IOSTANDARD LVCMOS33 [get_ports {RGB[7]}]
-#Bank = 15, Pin name = IO_L4P_T0_15,						Sch name = VGA_HS
-set_property PACKAGE_PIN B11 [get_ports HSync]						
-	set_property IOSTANDARD LVCMOS33 [get_ports HSync]
-#Bank = 15, Pin name = IO_L3N_T0_DQS_AD1N_15,				Sch name = VGA_VS
-set_property PACKAGE_PIN B12 [get_ports VSync]						
-	set_property IOSTANDARD LVCMOS33 [get_ports VSync]
+##VGA Connector
+##Bank = 35, Pin name = IO_L8N_T1_AD14N_35,					Sch name = VGA_R0
+#set_property PACKAGE_PIN A3 [get_ports {RGB[8]}]				
+#	set_property IOSTANDARD LVCMOS33 [get_ports {RGB[8]}]
+##Bank = 35, Pin name = IO_L7N_T1_AD6N_35,					Sch name = VGA_R1
+#set_property PACKAGE_PIN B4 [get_ports {RGB[9]}]				
+#	set_property IOSTANDARD LVCMOS33 [get_ports {RGB[9]}]
+##Bank = 35, Pin name = IO_L1N_T0_AD4N_35,					Sch name = VGA_R2
+#set_property PACKAGE_PIN C5 [get_ports {RGB[10]}]				
+#	set_property IOSTANDARD LVCMOS33 [get_ports {RGB[10]}]
+##Bank = 35, Pin name = IO_L8P_T1_AD14P_35,					Sch name = VGA_R3
+#set_property PACKAGE_PIN A4 [get_ports {RGB[11]}]				
+#	set_property IOSTANDARD LVCMOS33 [get_ports {RGB[11]}]
+##Bank = 35, Pin name = IO_L2P_T0_AD12P_35,					Sch name = VGA_B0
+#set_property PACKAGE_PIN B7 [get_ports {RGB[0]}]				
+#	set_property IOSTANDARD LVCMOS33 [get_ports {RGB[0]}]
+##Bank = 35, Pin name = IO_L4N_T0_35,						Sch name = VGA_B1
+#set_property PACKAGE_PIN C7 [get_ports {RGB[1]}]				
+#	set_property IOSTANDARD LVCMOS33 [get_ports {RGB[1]}]
+##Bank = 35, Pin name = IO_L6N_T0_VREF_35,					Sch name = VGA_B2
+#set_property PACKAGE_PIN D7 [get_ports {RGB[2]}]				
+#	set_property IOSTANDARD LVCMOS33 [get_ports {RGB[2]}]
+##Bank = 35, Pin name = IO_L4P_T0_35,						Sch name = VGA_B3
+#set_property PACKAGE_PIN D8 [get_ports {RGB[3]}]				
+#	set_property IOSTANDARD LVCMOS33 [get_ports {RGB[3]}]
+##Bank = 35, Pin name = IO_L1P_T0_AD4P_35,					Sch name = VGA_G0
+#set_property PACKAGE_PIN C6 [get_ports {RGB[4]}]				
+#	set_property IOSTANDARD LVCMOS33 [get_ports {RGB[4]}]
+##Bank = 35, Pin name = IO_L3N_T0_DQS_AD5N_35,				Sch name = VGA_G1
+#set_property PACKAGE_PIN A5 [get_ports {RGB[5]}]				
+#	set_property IOSTANDARD LVCMOS33 [get_ports {RGB[5]}]
+##Bank = 35, Pin name = IO_L2N_T0_AD12N_35,					Sch name = VGA_G2
+#set_property PACKAGE_PIN B6 [get_ports {RGB[6]}]				
+#	set_property IOSTANDARD LVCMOS33 [get_ports {RGB[6]}]
+##Bank = 35, Pin name = IO_L3P_T0_DQS_AD5P_35,				Sch name = VGA_G3
+#set_property PACKAGE_PIN A6 [get_ports {RGB[7]}]				
+#	set_property IOSTANDARD LVCMOS33 [get_ports {RGB[7]}]
+##Bank = 15, Pin name = IO_L4P_T0_15,						Sch name = VGA_HS
+#set_property PACKAGE_PIN B11 [get_ports HSync]						
+#	set_property IOSTANDARD LVCMOS33 [get_ports HSync]
+##Bank = 15, Pin name = IO_L3N_T0_DQS_AD1N_15,				Sch name = VGA_VS
+#set_property PACKAGE_PIN B12 [get_ports VSync]						
+#	set_property IOSTANDARD LVCMOS33 [get_ports VSync]
 
 
 
@@ -483,13 +483,13 @@ set_property PACKAGE_PIN D2 [get_ports {SD_CS}]
 	#set_property IOSTANDARD LVCMOS33 [get_ports ampSD]
 
 
-##USB-RS232 Interface
-##Bank = 35, Pin name = IO_L7P_T1_AD6P_35,					Sch name = UART_TXD_IN
-#set_property PACKAGE_PIN C4 [get_ports RsRx]						
-	#set_property IOSTANDARD LVCMOS33 [get_ports RsRx]
-##Bank = 35, Pin name = IO_L11N_T1_SRCC_35,					Sch name = UART_RXD_OUT
-#set_property PACKAGE_PIN D4 [get_ports RsTx]						
-	#set_property IOSTANDARD LVCMOS33 [get_ports RsTx]
+#USB-RS232 Interface
+#Bank = 35, Pin name = IO_L7P_T1_AD6P_35,					Sch name = UART_TXD_IN
+set_property PACKAGE_PIN C4 [get_ports RXD_S0]						
+	set_property IOSTANDARD LVCMOS33 [get_ports RXD_S0]
+#Bank = 35, Pin name = IO_L11N_T1_SRCC_35,					Sch name = UART_RXD_OUT
+set_property PACKAGE_PIN D4 [get_ports TXD_S0]						
+	set_property IOSTANDARD LVCMOS33 [get_ports TXD_S0]
 ##Bank = 35, Pin name = IO_L12N_T1_MRCC_35,					Sch name = UART_CTS
 #set_property PACKAGE_PIN D3 [get_ports RsCts]						
 	#set_property IOSTANDARD LVCMOS33 [get_ports RsCts]
@@ -499,55 +499,55 @@ set_property PACKAGE_PIN D2 [get_ports {SD_CS}]
 
 
 
-#USB HID (PS/2)
-#Bank = 35, Pin name = IO_L13P_T2_MRCC_35,					Sch name = PS2_CLK
-set_property PACKAGE_PIN F4 [get_ports PS2C]						
-	set_property IOSTANDARD LVCMOS33 [get_ports PS2C]
-	set_property PULLUP true [get_ports PS2C]
-#Bank = 35, Pin name = IO_L10N_T1_AD15N_35,					Sch name = PS2_DATA
-set_property PACKAGE_PIN B2 [get_ports PS2D]					
-	set_property IOSTANDARD LVCMOS33 [get_ports PS2D]	
-	set_property PULLUP true [get_ports PS2D]
+##USB HID (PS/2)
+##Bank = 35, Pin name = IO_L13P_T2_MRCC_35,					Sch name = PS2_CLK
+#set_property PACKAGE_PIN F4 [get_ports PS2C]						
+#	set_property IOSTANDARD LVCMOS33 [get_ports PS2C]
+#	set_property PULLUP true [get_ports PS2C]
+##Bank = 35, Pin name = IO_L10N_T1_AD15N_35,					Sch name = PS2_DATA
+#set_property PACKAGE_PIN B2 [get_ports PS2D]					
+#	set_property IOSTANDARD LVCMOS33 [get_ports PS2D]	
+#	set_property PULLUP true [get_ports PS2D]
 
 
 
-#SMSC Ethernet PHY
-#Bank = 16, Pin name = IO_L11P_T1_SRCC_16,					Sch name = ETH_MDC
-set_property PACKAGE_PIN C9 [get_ports PHYMDC]						
-	set_property IOSTANDARD LVCMOS33 [get_ports PHYMDC]
-#Bank = 16, Pin name = IO_L14N_T2_SRCC_16,					Sch name = ETH_MDIO
-set_property PACKAGE_PIN A9 [get_ports PHYMDIO]					
-	set_property IOSTANDARD LVCMOS33 [get_ports PHYMDIO]
-#Bank = 35, Pin name = IO_L10P_T1_AD15P_35,					Sch name = ETH_RSTN
-set_property PACKAGE_PIN B3 [get_ports PHYRSTN]					
-	set_property IOSTANDARD LVCMOS33 [get_ports PHYRSTN]
-#Bank = 16, Pin name = IO_L6N_T0_VREF_16,					Sch name = ETH_CRSDV
-set_property PACKAGE_PIN D9 [get_ports PHYCRS]						
-	set_property IOSTANDARD LVCMOS33 [get_ports PHYCRS]
-#Bank = 16, Pin name = IO_L13N_T2_MRCC_16,					Sch name = ETH_RXERR
-set_property PACKAGE_PIN C10 [get_ports PHYRXERR]					
-	set_property IOSTANDARD LVCMOS33 [get_ports PHYRXERR]
-#Bank = 16, Pin name = IO_L19N_T3_VREF_16,					Sch name = ETH_RXD0
-set_property PACKAGE_PIN D10 [get_ports {PHYRXD[0]}]				
-	set_property IOSTANDARD LVCMOS33 [get_ports {PHYRXD[0]}]
-#Bank = 16, Pin name = IO_L13P_T2_MRCC_16,					Sch name = ETH_RXD1
-set_property PACKAGE_PIN C11 [get_ports {PHYRXD[1]}]				
-	set_property IOSTANDARD LVCMOS33 [get_ports {PHYRXD[1]}]
-#Bank = 16, Pin name = IO_L11N_T1_SRCC_16,					Sch name = ETH_TXEN
-set_property PACKAGE_PIN B9 [get_ports PHYTXEN]					
-	set_property IOSTANDARD LVCMOS33 [get_ports PHYTXEN]
-#Bank = 16, Pin name = IO_L14P_T2_SRCC_16,					Sch name = ETH_TXD0
-set_property PACKAGE_PIN A10 [get_ports {PHYTXD[0]}]				
-	set_property IOSTANDARD LVCMOS33 [get_ports {PHYTXD[0]}]
-#Bank = 16, Pin name = IO_L12N_T1_MRCC_16,					Sch name = ETH_TXD1
-set_property PACKAGE_PIN A8 [get_ports {PHYTXD[1]}]				
-	set_property IOSTANDARD LVCMOS33 [get_ports {PHYTXD[1]}]
-#Bank = 35, Pin name = IO_L11P_T1_SRCC_35,					Sch name = ETH_REFCLK
-set_property PACKAGE_PIN D5 [get_ports PHYCLK50MHZ]				
-	set_property IOSTANDARD LVCMOS33 [get_ports PHYCLK50MHZ]
-#Bank = 16, Pin name = IO_L12P_T1_MRCC_16,					Sch name = ETH_INTN
-set_property PACKAGE_PIN B8 [get_ports PHYINTN]					
-	set_property IOSTANDARD LVCMOS33 [get_ports PHYINTN]
+##SMSC Ethernet PHY
+##Bank = 16, Pin name = IO_L11P_T1_SRCC_16,					Sch name = ETH_MDC
+#set_property PACKAGE_PIN C9 [get_ports PHYMDC]						
+#	set_property IOSTANDARD LVCMOS33 [get_ports PHYMDC]
+##Bank = 16, Pin name = IO_L14N_T2_SRCC_16,					Sch name = ETH_MDIO
+#set_property PACKAGE_PIN A9 [get_ports PHYMDIO]					
+#	set_property IOSTANDARD LVCMOS33 [get_ports PHYMDIO]
+##Bank = 35, Pin name = IO_L10P_T1_AD15P_35,					Sch name = ETH_RSTN
+#set_property PACKAGE_PIN B3 [get_ports PHYRSTN]					
+#	set_property IOSTANDARD LVCMOS33 [get_ports PHYRSTN]
+##Bank = 16, Pin name = IO_L6N_T0_VREF_16,					Sch name = ETH_CRSDV
+#set_property PACKAGE_PIN D9 [get_ports PHYCRS]						
+#	set_property IOSTANDARD LVCMOS33 [get_ports PHYCRS]
+##Bank = 16, Pin name = IO_L13N_T2_MRCC_16,					Sch name = ETH_RXERR
+#set_property PACKAGE_PIN C10 [get_ports PHYRXERR]					
+#	set_property IOSTANDARD LVCMOS33 [get_ports PHYRXERR]
+##Bank = 16, Pin name = IO_L19N_T3_VREF_16,					Sch name = ETH_RXD0
+#set_property PACKAGE_PIN D10 [get_ports {PHYRXD[0]}]				
+#	set_property IOSTANDARD LVCMOS33 [get_ports {PHYRXD[0]}]
+##Bank = 16, Pin name = IO_L13P_T2_MRCC_16,					Sch name = ETH_RXD1
+#set_property PACKAGE_PIN C11 [get_ports {PHYRXD[1]}]				
+#	set_property IOSTANDARD LVCMOS33 [get_ports {PHYRXD[1]}]
+##Bank = 16, Pin name = IO_L11N_T1_SRCC_16,					Sch name = ETH_TXEN
+#set_property PACKAGE_PIN B9 [get_ports PHYTXEN]					
+#	set_property IOSTANDARD LVCMOS33 [get_ports PHYTXEN]
+##Bank = 16, Pin name = IO_L14P_T2_SRCC_16,					Sch name = ETH_TXD0
+#set_property PACKAGE_PIN A10 [get_ports {PHYTXD[0]}]				
+#	set_property IOSTANDARD LVCMOS33 [get_ports {PHYTXD[0]}]
+##Bank = 16, Pin name = IO_L12N_T1_MRCC_16,					Sch name = ETH_TXD1
+#set_property PACKAGE_PIN A8 [get_ports {PHYTXD[1]}]				
+#	set_property IOSTANDARD LVCMOS33 [get_ports {PHYTXD[1]}]
+##Bank = 35, Pin name = IO_L11P_T1_SRCC_35,					Sch name = ETH_REFCLK
+#set_property PACKAGE_PIN D5 [get_ports PHYCLK50MHZ]				
+#	set_property IOSTANDARD LVCMOS33 [get_ports PHYCLK50MHZ]
+##Bank = 16, Pin name = IO_L12P_T1_MRCC_16,					Sch name = ETH_INTN
+#set_property PACKAGE_PIN B8 [get_ports PHYINTN]					
+#	set_property IOSTANDARD LVCMOS33 [get_ports PHYINTN]
 
 
 
