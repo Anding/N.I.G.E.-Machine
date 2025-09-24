@@ -18,9 +18,9 @@ Generic (
 					
 Port ( 	
 	CLK_IN : in  STD_LOGIC;
-	RGB : out  STD_LOGIC_VECTOR (11 downto 0);
-	HSync : out  STD_LOGIC;
-	VSync : out  STD_LOGIC;
+--	RGB : out  STD_LOGIC_VECTOR (11 downto 0);
+--	HSync : out  STD_LOGIC;
+--	VSync : out  STD_LOGIC;
 	ADDR_SDRAM : out  STD_LOGIC_VECTOR (23 downto 1);		
 	DATA_SDRAM : inout  STD_LOGIC_VECTOR (15 downto 0);
 	OE_SDRAM : out  STD_LOGIC;
@@ -51,16 +51,16 @@ Port (
 	SD_CS : out STD_LOGIC;
 	SD_CD : in STD_LOGIC;
 	-- Ethernet
-	PHYMDC : out  STD_LOGIC;
-	PHYMDIO : inout  STD_LOGIC;
-	PHYRSTN : out  STD_LOGIC;
-	PHYCRS : in  STD_LOGIC;
-	PHYRXERR : in  STD_LOGIC;
-	PHYRXD : in  STD_LOGIC_VECTOR (1 downto 0);
-	PHYTXEN : out  STD_LOGIC;
-	PHYTXD : out  STD_LOGIC_VECTOR (1 downto 0);
-	PHYCLK50MHZ : out  STD_LOGIC;
-	PHYINTN : in  STD_LOGIC;
+--	PHYMDC : out  STD_LOGIC;
+--	PHYMDIO : inout  STD_LOGIC;
+--	PHYRSTN : out  STD_LOGIC;
+--	PHYCRS : in  STD_LOGIC;
+--	PHYRXERR : in  STD_LOGIC;
+--	PHYRXD : in  STD_LOGIC_VECTOR (1 downto 0);
+--	PHYTXEN : out  STD_LOGIC;
+--	PHYTXD : out  STD_LOGIC_VECTOR (1 downto 0);
+--	PHYCLK50MHZ : out  STD_LOGIC;
+--	PHYINTN : in  STD_LOGIC;
 	JB : out  STD_LOGIC_VECTOR (7 downto 0);
 	--SD_WP : In STD_LOGIC
 	SD_RESET : out STD_LOGIC
@@ -320,25 +320,25 @@ PORT(
 	);
 END COMPONENT;
 
-COMPONENT TEXTbuffer
-PORT(
-			reset : IN std_logic;
-			clk_MEM : IN std_logic;  
-			VGAcols : IN STD_LOGIC_VECTOR (7 downto 0);					-- number of complete character columns displayed on the screen											-- Vertical Blank indicator
-			FetchFirstRow : IN std_logic;
-			FetchNextRow : IN std_logic;										-- request that the next row of character data be fetched from memory
-			txt_zero : IN std_logic_vector(23 downto 0);					-- base address of the screen buffer in PSDRAM
-			t_axi_araddr : OUT  std_logic_vector(31 downto 0);
-			t_axi_arlen : OUT  std_logic_vector(7 downto 0);			-- Burst length = value + 1.  Set directly from VGA_columns
-			t_axi_arvalid : OUT  std_logic;
-			t_axi_arready : IN  std_logic;
-			t_axi_rlast : IN  std_logic;										-- Set high on last data item
-			t_axi_rvalid : IN  std_logic;
-			bank : OUT std_logic;
-			buffer_addr : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
-			wea : OUT STD_LOGIC_VECTOR(0 DOWNTO 0)
-	);
-END COMPONENT;
+--COMPONENT TEXTbuffer
+--PORT(
+--			reset : IN std_logic;
+--			clk_MEM : IN std_logic;  
+--			VGAcols : IN STD_LOGIC_VECTOR (7 downto 0);					-- number of complete character columns displayed on the screen											-- Vertical Blank indicator
+--			FetchFirstRow : IN std_logic;
+--			FetchNextRow : IN std_logic;										-- request that the next row of character data be fetched from memory
+--			txt_zero : IN std_logic_vector(23 downto 0);					-- base address of the screen buffer in PSDRAM
+--			t_axi_araddr : OUT  std_logic_vector(31 downto 0);
+--			t_axi_arlen : OUT  std_logic_vector(7 downto 0);			-- Burst length = value + 1.  Set directly from VGA_columns
+--			t_axi_arvalid : OUT  std_logic;
+--			t_axi_arready : IN  std_logic;
+--			t_axi_rlast : IN  std_logic;										-- Set high on last data item
+--			t_axi_rvalid : IN  std_logic;
+--			bank : OUT std_logic;
+--			buffer_addr : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
+--			wea : OUT STD_LOGIC_VECTOR(0 DOWNTO 0)
+--	);
+--END COMPONENT;
 
 COMPONENT SRAM_controller
 PORT(
@@ -381,37 +381,37 @@ COMPONENT USER_RAM
   );
 END COMPONENT;
 
-COMPONENT Char_RAM
-  PORT (
-    clka : IN STD_LOGIC;
-    wea : IN STD_LOGIC_VECTOR(0 DOWNTO 0);
-    addra : IN STD_LOGIC_VECTOR(11 DOWNTO 0);
-    dina : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
-    douta : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
-    clkb : IN STD_LOGIC;
-    enb : IN STD_LOGIC;
-    web : IN STD_LOGIC_VECTOR(0 DOWNTO 0);
-    addrb : IN STD_LOGIC_VECTOR(11 DOWNTO 0);
-    dinb : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
-    doutb : OUT STD_LOGIC_VECTOR(15 DOWNTO 0)
-  );
-END COMPONENT;
-
-COMPONENT Color_RAM
-  PORT (
-    clka : IN STD_LOGIC;
-    wea : IN STD_LOGIC_VECTOR(0 DOWNTO 0);
-    addra : IN STD_LOGIC_VECTOR(7 DOWNTO 0);
-    dina : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
-    douta : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
-    clkb : IN STD_LOGIC;
-    enb : IN STD_LOGIC;
-    web : IN STD_LOGIC_VECTOR(0 DOWNTO 0);
-    addrb : IN STD_LOGIC_VECTOR(7 DOWNTO 0);
-    dinb : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
-    doutb : OUT STD_LOGIC_VECTOR(15 DOWNTO 0)
-  );
-END COMPONENT;
+--COMPONENT Char_RAM
+--  PORT (
+--    clka : IN STD_LOGIC;
+--    wea : IN STD_LOGIC_VECTOR(0 DOWNTO 0);
+--    addra : IN STD_LOGIC_VECTOR(11 DOWNTO 0);
+--    dina : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
+--    douta : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
+--    clkb : IN STD_LOGIC;
+--    enb : IN STD_LOGIC;
+--    web : IN STD_LOGIC_VECTOR(0 DOWNTO 0);
+--    addrb : IN STD_LOGIC_VECTOR(11 DOWNTO 0);
+--    dinb : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
+--    doutb : OUT STD_LOGIC_VECTOR(15 DOWNTO 0)
+--  );
+--END COMPONENT;
+--
+--COMPONENT Color_RAM
+--  PORT (
+--    clka : IN STD_LOGIC;
+--    wea : IN STD_LOGIC_VECTOR(0 DOWNTO 0);
+--    addra : IN STD_LOGIC_VECTOR(7 DOWNTO 0);
+--    dina : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
+--    douta : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
+--    clkb : IN STD_LOGIC;
+--    enb : IN STD_LOGIC;
+--    web : IN STD_LOGIC_VECTOR(0 DOWNTO 0);
+--    addrb : IN STD_LOGIC_VECTOR(7 DOWNTO 0);
+--    dinb : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
+--    doutb : OUT STD_LOGIC_VECTOR(15 DOWNTO 0)
+--  );
+--END COMPONENT;
 
 -- must be configured as WRITE FIRST
 COMPONENT Pstack_RAM
@@ -598,31 +598,31 @@ PORT(
 	);
 END COMPONENT;
 
-COMPONENT VGA
-PORT(
-	clk_VGA : IN std_logic;
-	reset : IN std_logic;
-	mode : IN std_logic_vector(4 downto 0);
-	background : IN std_logic_vector(15 downto 0);
-	interlace : IN std_logic_vector(3 downto 0);
-	charHeight : IN std_logic_vector(3 downto 0);
-	charWidth : IN std_logic_vector(3 downto 0);
-	Ha, Hb, Hc, Hd : IN std_logic_vector(11 downto 0);
-	Va, Vb, Vc, Vd : IN std_logic_vector(11 downto 0);
-	data_Text : IN std_logic_vector(15 downto 0);
-	data_Char : IN std_logic_vector(15 downto 0);
-	data_Color : IN std_logic_vector(15 downto 0);        
-	addr_Text : OUT std_logic_vector(7 downto 0);
-	addr_Char : OUT std_logic_vector(11 downto 0);
-	addr_Color : OUT std_logic_vector(7 downto 0);
-	HSync : OUT std_logic;
-	VSync : OUT std_logic;
-	RGB : OUT std_logic_vector(11 downto 0);
-	VBlank : OUT std_logic;
-	FetchNextRow : OUT std_logic;
-	FetchFirstRow : OUT std_logic
-	);
-END COMPONENT;
+--COMPONENT VGA
+--PORT(
+--	clk_VGA : IN std_logic;
+--	reset : IN std_logic;
+--	mode : IN std_logic_vector(4 downto 0);
+--	background : IN std_logic_vector(15 downto 0);
+--	interlace : IN std_logic_vector(3 downto 0);
+--	charHeight : IN std_logic_vector(3 downto 0);
+--	charWidth : IN std_logic_vector(3 downto 0);
+--	Ha, Hb, Hc, Hd : IN std_logic_vector(11 downto 0);
+--	Va, Vb, Vc, Vd : IN std_logic_vector(11 downto 0);
+--	data_Text : IN std_logic_vector(15 downto 0);
+--	data_Char : IN std_logic_vector(15 downto 0);
+--	data_Color : IN std_logic_vector(15 downto 0);        
+--	addr_Text : OUT std_logic_vector(7 downto 0);
+--	addr_Char : OUT std_logic_vector(11 downto 0);
+--	addr_Color : OUT std_logic_vector(7 downto 0);
+--	HSync : OUT std_logic;
+--	VSync : OUT std_logic;
+--	RGB : OUT std_logic_vector(11 downto 0);
+--	VBlank : OUT std_logic;
+--	FetchNextRow : OUT std_logic;
+--	FetchFirstRow : OUT std_logic
+--	);
+--END COMPONENT;
 
 COMPONENT Interrupt
 PORT(
@@ -654,15 +654,15 @@ PORT(
 	);
 END COMPONENT;
 
-COMPONENT PS2KeyboardDecoder
-PORT(
-	clk : IN std_logic;
-	PS2C : IN std_logic;
-	PS2D : IN std_logic;          
-	irq : OUT std_logic;
-	data : OUT std_logic_vector(7 downto 0)
-	);
-END COMPONENT;
+--COMPONENT PS2KeyboardDecoder
+--PORT(
+--	clk : IN std_logic;
+--	PS2C : IN std_logic;
+--	PS2D : IN std_logic;          
+--	irq : OUT std_logic;
+--	data : OUT std_logic_vector(7 downto 0)
+--	);
+--END COMPONENT;
 
 COMPONENT BootLoader
 PORT(
@@ -711,44 +711,44 @@ PORT(
 	);
 END COMPONENT;
 
-COMPONENT MediaAccessController
-PORT(
-	CLK100MHZ : IN std_logic;
-	CLK50MHZ : IN std_logic;
-	reset : IN std_logic;
-	PHYCRS : IN std_logic;
-	PHYRXERR : IN std_logic;
-	PHYRXD : IN std_logic_vector(1 downto 0);
-	PHYINTN : IN std_logic;
-	read_enable : IN std_logic;
-	dataTX : IN std_logic_vector(7 downto 0);
-	weTX : IN std_logic;
-	transmit_request : IN std_logic;          
-	PHYCLK50MHZ : OUT std_logic;
-	PHYRSTN : OUT std_logic;
-	PHYTXEN : OUT std_logic;
-	PHYTXD : OUT std_logic_vector(1 downto 0);
-	dataRX : OUT std_logic_vector(7 downto 0);
-	readyRX : OUT std_logic;
-	Ethernet_IRQ : OUT std_logic;
-	checksum_err : OUT std_logic;
-	readyTX : OUT std_logic
-	);
-END COMPONENT;
+--COMPONENT MediaAccessController
+--PORT(
+--	CLK100MHZ : IN std_logic;
+--	CLK50MHZ : IN std_logic;
+--	reset : IN std_logic;
+--	PHYCRS : IN std_logic;
+--	PHYRXERR : IN std_logic;
+--	PHYRXD : IN std_logic_vector(1 downto 0);
+--	PHYINTN : IN std_logic;
+--	read_enable : IN std_logic;
+--	dataTX : IN std_logic_vector(7 downto 0);
+--	weTX : IN std_logic;
+--	transmit_request : IN std_logic;          
+--	PHYCLK50MHZ : OUT std_logic;
+--	PHYRSTN : OUT std_logic;
+--	PHYTXEN : OUT std_logic;
+--	PHYTXD : OUT std_logic_vector(1 downto 0);
+--	dataRX : OUT std_logic_vector(7 downto 0);
+--	readyRX : OUT std_logic;
+--	Ethernet_IRQ : OUT std_logic;
+--	checksum_err : OUT std_logic;
+--	readyTX : OUT std_logic
+--	);
+--END COMPONENT;
 		
-COMPONENT SMI
-PORT(
-	CLK100MHz : IN std_logic;
-	addr : IN std_logic_vector(9 downto 0);
-	dataWrite : IN std_logic_vector(15 downto 0);
-	read_request : IN std_logic;
-	write_request : IN std_logic;    
-	MDIO : INOUT std_logic;      
-	dataRead : OUT std_logic_vector(15 downto 0);
-	ready : OUT std_logic;
-	MDC : OUT std_logic
-	);
-END COMPONENT;
+--COMPONENT SMI
+--PORT(
+--	CLK100MHz : IN std_logic;
+--	addr : IN std_logic_vector(9 downto 0);
+--	dataWrite : IN std_logic_vector(15 downto 0);
+--	read_request : IN std_logic;
+--	write_request : IN std_logic;    
+--	MDIO : INOUT std_logic;      
+--	dataRead : OUT std_logic_vector(15 downto 0);
+--	ready : OUT std_logic;
+--	MDC : OUT std_logic
+--	);
+--END COMPONENT;
 	
 begin
 
@@ -757,14 +757,14 @@ begin
 -----------------------------------------------------------------------------------------------------------------------------------	
 
 	-- Ethernet
-	JB(0) <= PHYCRS;
-	JB(1) <= '0';
-	JB(2) <= '0';
-	JB(3) <= '0';
-	JB(4) <= '0';
-	JB(5) <= '0';
-	JB(6) <= '0';
-	JB(7) <= '0';
+--	JB(0) <= PHYCRS;
+--	JB(1) <= '0';
+--	JB(2) <= '0';
+--	JB(3) <= '0';
+--	JB(4) <= '0';
+--	JB(5) <= '0';
+--	JB(6) <= '0';
+--	JB(7) <= '0';
 	
 	-- Debug and monitoring
 	-- do not drive high continuously (use PWM)
@@ -788,11 +788,11 @@ begin
 -- VGA clock selector
 -----------------------------------------------------------------------------------------------------------------------------------	
 
-	with mode(2 downto 0) select
-		clk_VGA <= 	VGAclk25  when "001",
-				VGAclk75  when "011",	
-				VGAclk150 when "100",
-				VGAclk50  when others; --"010"
+--	with mode(2 downto 0) select
+--		clk_VGA <= 	VGAclk25  when "001",
+--				VGAclk75  when "011",	
+--				VGAclk150 when "100",
+--				VGAclk50  when others; --"010"
 	-- gated clocks are not good design practice in general but here we explicitly assume 
 	-- that the VGA clock domain is not synchronized with the SYSTEM clock domain
 	-- do not use these clocks to drive modules aside from VGA since they are be not timing constrained
@@ -975,24 +975,24 @@ PORT MAP(
 	debug => debug_DMAcontroller
 	);
 
-Inst_TEXTbuffer: TEXTbuffer 
-PORT MAP(
-	reset => reset,
-	clk_MEM => clk_MEM,
-	VGAcols => VGAcols,
-	FetchNextRow => FetchNextRow,
-	FetchFirstRow => FetchFirstRow,
-	txt_zero => txt_zero,
-	bank => TXTbank,
-	wea => TXTwea,
-	buffer_addr => TXTbuffer_addr,
-	t_axi_araddr => t_axi_araddr,
-	t_axi_arlen => t_axi_arlen,
-	t_axi_arvalid => t_axi_arvalid,
-	t_axi_arready => t_axi_arready,
-	t_axi_rlast => t_axi_rlast,
-	t_axi_rvalid => t_axi_rvalid
-	);
+--Inst_TEXTbuffer: TEXTbuffer 
+--PORT MAP(
+--	reset => reset,
+--	clk_MEM => clk_MEM,
+--	VGAcols => VGAcols,
+--	FetchNextRow => FetchNextRow,
+--	FetchFirstRow => FetchFirstRow,
+--	txt_zero => txt_zero,
+--	bank => TXTbank,
+--	wea => TXTwea,
+--	buffer_addr => TXTbuffer_addr,
+--	t_axi_araddr => t_axi_araddr,
+--	t_axi_arlen => t_axi_arlen,
+--	t_axi_arvalid => t_axi_arvalid,
+--	t_axi_arready => t_axi_arready,
+--	t_axi_rlast => t_axi_rlast,
+--	t_axi_rvalid => t_axi_rvalid
+--	);
 
 Inst_SRAM_controller: SRAM_controller 
 PORT MAP(
@@ -1056,35 +1056,35 @@ PORT MAP (
 	doutb => doutb_userram
 	);
 
-inst_Char_RAM : Char_RAM
-PORT MAP (
-	clka => clk_VGA,
-	wea => blank(0 downto 0),
-	addra => addr_Char,
-	dina => blank(15 downto 0),
-	douta => data_Char,
-	clkb => clk_system,
-	enb => Char_EN,
-	web => MEM_WRQ_XX,
-	addrb => MEMaddr(12 downto 1),
-	dinb => MEMdataout_X(15 downto 0),
-	doutb => MEMdata_Char
-	);		
+--inst_Char_RAM : Char_RAM
+--PORT MAP (
+--	clka => clk_VGA,
+--	wea => blank(0 downto 0),
+--	addra => addr_Char,
+--	dina => blank(15 downto 0),
+--	douta => data_Char,
+--	clkb => clk_system,
+--	enb => Char_EN,
+--	web => MEM_WRQ_XX,
+--	addrb => MEMaddr(12 downto 1),
+--	dinb => MEMdataout_X(15 downto 0),
+--	doutb => MEMdata_Char
+--	);		
 
-inst_Color_RAM : Color_RAM
-PORT MAP (
-	clka => clk_VGA,
-	wea => blank(0 downto 0),
-	addra => addr_Color,
-	dina => blank(15 downto 0),
-	douta => data_Color,
-	clkb => clk_system,
-	enb => Color_EN,
-	web => MEM_WRQ_XX,
-	addrb => MEMaddr(8 downto 1),
-	dinb => MEMdataout_X(15 downto 0),
-	doutb => MEMdata_Color
-	);
+--inst_Color_RAM : Color_RAM
+--PORT MAP (
+--	clka => clk_VGA,
+--	wea => blank(0 downto 0),
+--	addra => addr_Color,
+--	dina => blank(15 downto 0),
+--	douta => data_Color,
+--	clkb => clk_system,
+--	enb => Color_EN,
+--	web => MEM_WRQ_XX,
+--	addrb => MEMaddr(8 downto 1),
+--	dinb => MEMdataout_X(15 downto 0),
+--	doutb => MEMdata_Color
+--	);
 
 -- Pstack_RAM must be configured as WRITE FIRST
 inst_Pstack_RAM : Pstack_RAM
@@ -1262,30 +1262,30 @@ PORT MAP(
 	reset => reset
 	);
 
-Inst_VGAController: VGA 
-PORT MAP(
-	CLK_VGA => CLK_VGA,
-	reset => reset,
-	mode => mode,
-	background => background,
-	data_Text => DATA_TEXT,
-	addr_Text => ADDR_TEXT,
-	data_Char => data_Char,
-	addr_Char => addr_Char,
-	data_Color => data_Color,
-	addr_Color => addr_Color,		
-	HSync => HSync,
-	VSync => VSync,
-	VBLANK => VBLANK,
-	RGB => RGB,
-	interlace => interlace,
-	charHeight => charHeight,
-	charWidth => charWidth, 
-	Ha => Ha, Hb => Hb, Hc => Hc, Hd => Hd,
-	Va => Va, Vb => Vb, Vc => Vc, Vd => Vd,	
-	FetchNextRow => FetchNextRow,
-	FetchFirstRow => FetchFirstRow
-	);	
+--Inst_VGAController: VGA 
+--PORT MAP(
+--	CLK_VGA => CLK_VGA,
+--	reset => reset,
+--	mode => mode,
+--	background => background,
+--	data_Text => DATA_TEXT,
+--	addr_Text => ADDR_TEXT,
+--	data_Char => data_Char,
+--	addr_Char => addr_Char,
+--	data_Color => data_Color,
+--	addr_Color => addr_Color,		
+--	HSync => HSync,
+--	VSync => VSync,
+--	VBLANK => VBLANK,
+--	RGB => RGB,
+--	interlace => interlace,
+--	charHeight => charHeight,
+--	charWidth => charWidth, 
+--	Ha => Ha, Hb => Hb, Hc => Hc, Hd => Hd,
+--	Va => Va, Vb => Vb, Vc => Vc, Vd => Vd,	
+--	FetchNextRow => FetchNextRow,
+--	FetchFirstRow => FetchFirstRow
+--	);	
 
 Inst_Interrupt: Interrupt 
 PORT MAP(
@@ -1304,8 +1304,8 @@ PORT MAP(
 
 Inst_UART: UART 
 PORT MAP(
-	RXD => RXD_S0,
-	TXD => TXD_S0,
+	RXD => RXD_S0, --'0',
+	TXD => TXD_S0, --open,
 	DIVIDE => RS232_DIVIDE_S0,
 	TXDATA => RS232_tx_S0,
 	RXDATA => RS232_rx_S0,
@@ -1314,15 +1314,17 @@ PORT MAP(
 	TBE => RS232_TBE_S0,
 	CLK => CLK_SYSTEM
 	);
+	
+--	TXD_S0 <= RXD_S0;
 
-Inst_PS2KeyboardDecoder: PS2KeyboardDecoder 
-PORT MAP(
-	clk => CLK_SYSTEM,
-	PS2C => PS2C,
-	PS2D => PS2D,
-	irq => PS2_irq,
-	data => PS2_data
-	);
+--Inst_PS2KeyboardDecoder: PS2KeyboardDecoder 
+--PORT MAP(
+--	clk => CLK_SYSTEM,
+--	PS2C => PS2C,
+--	PS2D => PS2D,
+--	irq => PS2_irq,
+--	data => PS2_data
+--	);
 
 Inst_BootLoader: BootLoader 
 PORT MAP(
@@ -1367,42 +1369,42 @@ PORT MAP(
 	CLKout => CLKSPI
 );
 
-Inst_MediaAccessController: MediaAccessController 
-PORT MAP(
-	CLK50MHZ => CLK50MHZ,
-	CLK100MHZ => CLK_SYSTEM,
-	reset => reset,
-	PHYCRS => PHYCRS,
-	PHYRXERR => PHYRXERR,
-	PHYRXD => PHYRXD,
-	PHYCLK50MHZ => PHYCLK50MHZ,
-	PHYRSTN => PHYRSTN,
-	PHYTXEN => PHYTXEN,
-	PHYTXD => PHYTXD,
-	PHYINTN => PHYINTN,
-	dataRX => MACdataRX,
-	readyRX => MACreadyRX,
-	read_enable => MACread_enable,
-	Ethernet_IRQ => open,
-	checksum_err => MACchecksum_err,
-	dataTX => MACdataTX,
-	weTX => MACweTX,
-	readyTX => MACreadyTX,
-	transmit_request => MACtransmit_request
-	);
-
-Inst_SMI: SMI 
-PORT MAP(
-	CLK100MHz => CLK_SYSTEM,
-	addr => SMIaddr,
-	dataRead => SMIdataRead,
-	dataWrite => SMIdataWrite,
-	read_request => SMIread_request,
-	write_request => SMIwrite_request,
-	ready => SMIready,
-	MDC => PHYMDC,
-	MDIO => PHYMDIO
-	);
+--Inst_MediaAccessController: MediaAccessController 
+--PORT MAP(
+--	CLK50MHZ => CLK50MHZ,
+--	CLK100MHZ => CLK_SYSTEM,
+--	reset => reset,
+--	PHYCRS => PHYCRS,
+--	PHYRXERR => PHYRXERR,
+--	PHYRXD => PHYRXD,
+--	PHYCLK50MHZ => PHYCLK50MHZ,
+--	PHYRSTN => PHYRSTN,
+--	PHYTXEN => PHYTXEN,
+--	PHYTXD => PHYTXD,
+--	PHYINTN => PHYINTN,
+--	dataRX => MACdataRX,
+--	readyRX => MACreadyRX,
+--	read_enable => MACread_enable,
+--	Ethernet_IRQ => open,
+--	checksum_err => MACchecksum_err,
+--	dataTX => MACdataTX,
+--	weTX => MACweTX,
+--	readyTX => MACreadyTX,
+--	transmit_request => MACtransmit_request
+--	);
+--
+--Inst_SMI: SMI 
+--PORT MAP(
+--	CLK100MHz => CLK_SYSTEM,
+--	addr => SMIaddr,
+--	dataRead => SMIdataRead,
+--	dataWrite => SMIdataWrite,
+--	read_request => SMIread_request,
+--	write_request => SMIwrite_request,
+--	ready => SMIready,
+--	MDC => PHYMDC,
+--	MDIO => PHYMDIO
+--	);
 		
 end RTL;
 
