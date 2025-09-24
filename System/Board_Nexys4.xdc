@@ -285,11 +285,11 @@ set_property PACKAGE_PIN U11 [get_ports {JB[7]}]
 #set_property PACKAGE_PIN E6 [get_ports {JC[5]}]					
 	#set_property IOSTANDARD LVCMOS33 [get_ports {JC[5]}]
 #Bank = 35, Pin name = IO_L22N_T3_35,						Sch name = JC9
-set_property PACKAGE_PIN J2 [get_ports {RXD_S0}]					
-	set_property IOSTANDARD LVCMOS33 [get_ports {RXD_S0}]
-#Bank = 35, Pin name = IO_L19P_T3_35,						Sch name = JC10
-set_property PACKAGE_PIN G6 [get_ports {TXD_S0}]					
-	set_property IOSTANDARD LVCMOS33 [get_ports {TXD_S0}]
+#set_property PACKAGE_PIN J2 [get_ports {RXD_S0}]					
+#	set_property IOSTANDARD LVCMOS33 [get_ports {RXD_S0}]
+##Bank = 35, Pin name = IO_L19P_T3_35,						Sch name = JC10
+#set_property PACKAGE_PIN G6 [get_ports {TXD_S0}]					
+#	set_property IOSTANDARD LVCMOS33 [get_ports {TXD_S0}]
  
 
  
@@ -483,13 +483,13 @@ set_property PACKAGE_PIN D2 [get_ports {SD_CS}]
 	#set_property IOSTANDARD LVCMOS33 [get_ports ampSD]
 
 
-##USB-RS232 Interface
-##Bank = 35, Pin name = IO_L7P_T1_AD6P_35,					Sch name = UART_TXD_IN
-#set_property PACKAGE_PIN C4 [get_ports RsRx]						
-	#set_property IOSTANDARD LVCMOS33 [get_ports RsRx]
-##Bank = 35, Pin name = IO_L11N_T1_SRCC_35,					Sch name = UART_RXD_OUT
-#set_property PACKAGE_PIN D4 [get_ports RsTx]						
-	#set_property IOSTANDARD LVCMOS33 [get_ports RsTx]
+#USB-RS232 Interface
+#Bank = 35, Pin name = IO_L7P_T1_AD6P_35,					Sch name = UART_TXD_IN
+set_property PACKAGE_PIN C4 [get_ports RXD_S0]						
+	set_property IOSTANDARD LVCMOS33 [get_ports RXD_S0]
+#Bank = 35, Pin name = IO_L11N_T1_SRCC_35,					Sch name = UART_RXD_OUT
+set_property PACKAGE_PIN D4 [get_ports TXD_S0]						
+	set_property IOSTANDARD LVCMOS33 [get_ports TXD_S0]
 ##Bank = 35, Pin name = IO_L12N_T1_MRCC_35,					Sch name = UART_CTS
 #set_property PACKAGE_PIN D3 [get_ports RsCts]						
 	#set_property IOSTANDARD LVCMOS33 [get_ports RsCts]
