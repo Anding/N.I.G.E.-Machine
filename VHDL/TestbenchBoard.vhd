@@ -41,7 +41,7 @@ Port (
 	-- Board
 	SW : in STD_LOGIC_VECTOR (15 downto 0);
 	sevenseg : out STD_LOGIC_VECTOR (6 downto 0);
-	anode : out STD_LOGIC_VECTOR (3 downto 0);
+	anode : out STD_LOGIC_VECTOR (7 downto 0);
 	RGB1_Red : out STD_LOGIC;
 	-- Ethernet
 	PHYMDC : out  STD_LOGIC;

@@ -78,7 +78,7 @@ signal bank, bank_n : bank_t;
 signal counter_clk, counter_ms : std_logic_vector(31 downto 0) := (others =>'0');
 signal timer_ms : std_logic_vector(31 downto 0) := (others =>'0');	
 signal reset, invReset, trig : std_logic;
-signal VGAclk25, VGAclk50, VGAclk75, VGAclk150, clk100, CLK200MHZ: std_logic;
+signal VGAclk25, VGAclk50, VGAclk75, VGAclk150, clk100, CLK200MHZ: std_logic := '0';
 signal irq, rti, ms_irq : std_logic;
 signal irv : std_logic_vector(3 downto 0);
 signal irq_mask : std_logic_vector(15 downto 1);
@@ -224,19 +224,19 @@ signal SMIdataRead :  std_logic_vector(15 downto 0);
 signal SMIready :  std_logic;
 
 
-component CLOCKMANAGER
-port (	-- Clock in ports
-	CLK_IN1	: in     std_logic;
-	-- Clock out ports
-	CLK_OUT1	: out    std_logic;
-	CLK_OUT2	: out    std_logic;
-	CLK_OUT3	: out    std_logic;
-	CLK_OUT4	: out    std_logic;
-	CLK_OUT5	: out    std_logic;
-	CLK_OUT6	: out    std_logic;
-	CLK_OUT7	: out	  std_logic
- );
-end component;
+--component clk_wiz_0
+--port (	-- Clock in ports
+--	CLK_IN1	: in     std_logic;
+--	-- Clock out ports
+--	CLK_OUT1	: out    std_logic;
+--	CLK_OUT2	: out    std_logic;
+--	CLK_OUT3	: out    std_logic;
+--	CLK_OUT4	: out    std_logic;
+--	CLK_OUT5	: out    std_logic;
+--	CLK_OUT6	: out    std_logic;
+--	CLK_OUT7	: out	  std_logic
+-- );
+--end component;
 
 COMPONENT SYS_RAM
   PORT (
@@ -873,19 +873,21 @@ begin
 -- Module instantiations
 -----------------------------------------------------------------------------------------------------------------------------------
 	
-inst_CLOCKMANAGER: CLOCKMANAGER
-port map
-(	-- Clock in ports
-	CLK_IN1 => CLK_IN,
-	-- Clock out ports
-	CLK_OUT1 => VGACLK25,
-	CLK_OUT2 => VGACLK50,
-	CLK_OUT3 => VGACLK75,
-	CLK_OUT4 => VGACLK150,	 
-	CLK_OUT5 => CLK100,
-	CLK_OUT6 => CLK50MHZ,
-	CLK_OUT7 => CLK200MHZ
-);	
+--inst_clk_wiz_0: clk_wiz_0
+--port map
+--(	-- Clock in ports
+--	CLK_IN1 => CLK_IN,
+--	-- Clock out ports
+--	CLK_OUT1 => VGACLK25,
+--	CLK_OUT2 => VGACLK50,
+--	CLK_OUT3 => VGACLK75,
+--	CLK_OUT4 => VGACLK150,	 
+--	CLK_OUT5 => open, --CLK100,
+--	CLK_OUT6 => CLK50MHZ,
+--	CLK_OUT7 => CLK200MHZ
+--);	
+
+	CLK100 <= CLK_IN;
 
 Inst_RAM_for_Testbench: RAM_for_Testbench 
 PORT MAP(
