@@ -908,15 +908,15 @@
 	fileid !
 	
 	\ open output files
-	C" E:\N.I.G.E.-Machine\System\SRAM.bin" count w/o create-file
+	C" E:\coding\N.I.G.E.-Machine\System\SRAM.bin" count w/o create-file
 	if ." Error opening output file .bin" close-all abort then
 	fileid-w3 !					
 	
-	C" E:\N.I.G.E.-Machine\System\SRAM.txt" count w/o create-file
+	C" E:\coding\N.I.G.E.-Machine\System\SRAM.txt" count w/o create-file
 	if ." Error opening output file .txt" close-all abort then
 	fileid-w2 !					
 	
-	C" E:\N.I.G.E.-Machine\System\SRAM.coe" count w/o create-file
+	C" E:\coding\N.I.G.E.-Machine\System\SRAM.coe" count w/o create-file
 	if ." Error opening output file .coe" close-all abort then
 	fileid-w1 !					
 	

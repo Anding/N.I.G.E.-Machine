@@ -965,51 +965,54 @@ begin
 -- Module instantiations
 -----------------------------------------------------------------------------------------------------------------------------------
 	
-inst_CLOCKMANAGER: CLOCKMANAGER
-port map
-(	-- Clock in ports
-	CLK_IN1 => CLK_IN,
-	-- Clock out ports
-	CLK_OUT1 => VGACLK25,
-	CLK_OUT2 => VGACLK40,
-	CLK_OUT3 => VGACLK75,
-	CLK_OUT4 => VGACLK150,	 
-	CLK_OUT5 => CLK100,
-	CLK_OUT6 => CLK50MHZ,
-	CLK_OUT7 => CLK100_130
-);	
+--inst_CLOCKMANAGER: CLOCKMANAGER
+--port map
+--(	-- Clock in ports
+--	CLK_IN1 => CLK_IN,
+--	-- Clock out ports
+--	CLK_OUT1 => VGACLK25,
+--	CLK_OUT2 => VGACLK40,
+--	CLK_OUT3 => VGACLK75,
+--	CLK_OUT4 => VGACLK150,	 
+--	CLK_OUT5 => CLK100,
+--	CLK_OUT6 => CLK50MHZ,
+--	CLK_OUT7 => CLK100_130
+--);	
 
---Inst_RAM_for_Testbench: RAM_for_Testbench 
---PORT MAP(
---	rst => reset,
---	clk => clk_system,
---	enA => ena_sysram,
---	enB => enb_sysram,
---	weA => wea_sysram,
---	weB => web_sysram,
---	addressA => addra_sysram (16 downto 2),
---	data_inA => dina_sysram,
---	data_outA => douta_sysram,
---	addressB => addrb_sysram (16 downto 2),
---	data_inB => dinb_sysram,
---	data_outB => doutb_sysram
---	);
-	
-Inst_SYS_RAM: SYS_RAM
-PORT MAP (
-	clka => clk_system,
-	ena => '1',
-	wea => wea_sysram,
-	addra => addra_sysram (16 downto 2),
-	dina => dina_sysram,
-	douta => douta_sysram,
-	clkb => clk_system,
-	enb => enb_sysram,
-	web => web_sysram,
-	addrb => addrb_sysram (16 downto 2),
-	dinb => dinb_sysram,
-	doutb => doutb_sysram
+CLK100 <= CLK_IN;
+
+
+Inst_RAM_for_Testbench: RAM_for_Testbench 
+PORT MAP(
+	rst => reset,
+	clk => clk_system,
+	enA => ena_sysram,
+	enB => enb_sysram,
+	weA => wea_sysram,
+	weB => web_sysram,
+	addressA => addra_sysram (16 downto 2),
+	data_inA => dina_sysram,
+	data_outA => douta_sysram,
+	addressB => addrb_sysram (16 downto 2),
+	data_inB => dinb_sysram,
+	data_outB => doutb_sysram
 	);
+	
+--Inst_SYS_RAM: SYS_RAM
+--PORT MAP (
+--	clka => clk_system,
+--	ena => '1',
+--	wea => wea_sysram,
+--	addra => addra_sysram (16 downto 2),
+--	dina => dina_sysram,
+--	douta => douta_sysram,
+--	clkb => clk_system,
+--	enb => enb_sysram,
+--	web => web_sysram,
+--	addrb => addrb_sysram (16 downto 2),
+--	dinb => dinb_sysram,
+--	doutb => doutb_sysram
+--	);
 	
 Inst_DMAcontrollerDDR: DMAcontrollerDDR 
 PORT MAP(
